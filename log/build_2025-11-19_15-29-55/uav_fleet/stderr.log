@@ -1,0 +1,9 @@
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:158:10:[m[K [01;31m[Kerror: [m[K‘[01m[Kvoid UavNode::publishTraffic()[m[K’ cannot be overloaded with ‘[01m[Kvoid UavNode::publishTraffic()[m[K’
+  158 |     void [01;31m[KpublishTraffic[m[K()
+      |          [01;31m[K^~~~~~~~~~~~~~[m[K
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:99:8:[m[K [01;36m[Knote: [m[Kprevious declaration ‘[01m[Kvoid UavNode::publishTraffic()[m[K’
+   99 |   void [01;36m[KpublishTraffic[m[K()
+      |        [01;36m[K^~~~~~~~~~~~~~[m[K
+gmake[2]: *** [CMakeFiles/uav_node.dir/build.make:76: CMakeFiles/uav_node.dir/src/uav_node.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/uav_node.dir/all] Error 2
+gmake: *** [Makefile:146: all] Error 2

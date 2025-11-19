@@ -1,0 +1,15 @@
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/ament_index/resource_index/package_run_dependencies/system_bringup
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/ament_index/resource_index/parent_prefix_path/system_bringup
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/environment/ament_prefix_path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/environment/ament_prefix_path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/environment/path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/environment/path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/local_setup.bash
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/local_setup.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/local_setup.zsh
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/local_setup.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/package.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/ament_index/resource_index/packages/system_bringup
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/cmake/system_bringupConfig.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/cmake/system_bringupConfig-version.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/package.xml

@@ -1,0 +1,37 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from uav_msgs/msg/TrafficMessage.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+
+module uav_msgs {
+  module msg {
+    struct TrafficMessage {
+      @verbatim (language="comment", text=
+        "unique per message")
+      string msg_id;
+
+      @verbatim (language="comment", text=
+        "\"uav_1\", \"user_3\", \"ugv\", \"sink_gateway\"")
+      string src_id;
+
+      @verbatim (language="comment", text=
+        "same style")
+      string dst_id;
+
+      @verbatim (language="comment", text=
+        "0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT")
+      uint8 msg_type;
+
+      @verbatim (language="comment", text=
+        "0=low ... 3=emergency (you decide later)")
+      uint8 priority;
+
+      uint32 size_bytes;
+
+      builtin_interfaces::msg::Time creation_time;
+
+      uint32 hop_count;
+    };
+  };
+};

@@ -1,0 +1,26 @@
+// generated from rosidl_adapter/resource/action.idl.em
+// with input from uav_msgs/action/DockAndCharge.action
+// generated code does not contain a copyright notice
+
+
+module uav_msgs {
+  module action {
+    @verbatim (language="comment", text=
+      "Goal")
+    struct DockAndCharge_Goal {
+      string uav_id;
+    };
+    @verbatim (language="comment", text=
+      "Result (sent once when charging completes)")
+    struct DockAndCharge_Result {
+      @verbatim (language="comment", text=
+        "final battery level after charge")
+      float battery_level;
+    };
+    @verbatim (language="comment", text=
+      "Feedback (periodic updates while charging)")
+    struct DockAndCharge_Feedback {
+      float current_battery;
+    };
+  };
+};

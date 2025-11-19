@@ -1,0 +1,4 @@
+source;share/sink_gateway/local_setup.bash
+source;share/sink_gateway/local_setup.dsv
+source;share/sink_gateway/local_setup.sh
+source;share/sink_gateway/local_setup.zsh

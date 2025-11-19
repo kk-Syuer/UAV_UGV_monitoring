@@ -1,0 +1,9 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/weather_server_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/install/strip.dir

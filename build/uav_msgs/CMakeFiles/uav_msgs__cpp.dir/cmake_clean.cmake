@@ -1,0 +1,38 @@
+file(REMOVE_RECURSE
+  "CMakeFiles/uav_msgs__cpp"
+  "rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/action/dock_and_charge.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/cluster_info.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/heartbeat.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/traffic_message.hpp"
+  "rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/request_charge.hpp"
+)
+
+# Per-language clean rules from dependency scanning.
+foreach(lang )
+  include(CMakeFiles/uav_msgs__cpp.dir/cmake_clean_${lang}.cmake OPTIONAL)
+endforeach()

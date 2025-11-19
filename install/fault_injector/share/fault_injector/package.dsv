@@ -1,0 +1,8 @@
+source;share/fault_injector/hook/cmake_prefix_path.ps1
+source;share/fault_injector/hook/cmake_prefix_path.dsv
+source;share/fault_injector/hook/cmake_prefix_path.sh
+source;share/fault_injector/local_setup.bash
+source;share/fault_injector/local_setup.dsv
+source;share/fault_injector/local_setup.ps1
+source;share/fault_injector/local_setup.sh
+source;share/fault_injector/local_setup.zsh

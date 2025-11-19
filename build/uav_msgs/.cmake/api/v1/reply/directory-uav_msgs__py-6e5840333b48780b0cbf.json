@@ -1,0 +1,14 @@
+{
+	"backtraceGraph" : 
+	{
+		"commands" : [],
+		"files" : [],
+		"nodes" : []
+	},
+	"installers" : [],
+	"paths" : 
+	{
+		"build" : "uav_msgs__py",
+		"source" : "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/uav_msgs__py"
+	}
+}

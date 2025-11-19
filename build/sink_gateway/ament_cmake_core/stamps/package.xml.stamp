@@ -1,0 +1,20 @@
+<package format="3">
+  <name>sink_gateway</name>
+  <version>0.0.0</version>
+  <description>Gateway node between UAV network and the outside world.</description>
+
+  <maintainer email="liyu.jin03@gmail.com">vboxuser</maintainer>
+  <license>TODO: License declaration</license>
+
+  <buildtool_depend>ament_cmake</buildtool_depend>
+
+  <build_depend>rclcpp</build_depend>
+  <exec_depend>rclcpp</exec_depend>
+
+  <build_depend>uav_msgs</build_depend>
+  <exec_depend>uav_msgs</exec_depend>
+
+  <export>
+    <build_type>ament_cmake</build_type>
+  </export>
+</package>

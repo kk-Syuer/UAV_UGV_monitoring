@@ -1,0 +1,16 @@
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/lib/ugv_charger/ugv_charger_node
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ament_index/resource_index/package_run_dependencies/ugv_charger
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ament_index/resource_index/parent_prefix_path/ugv_charger
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/environment/ament_prefix_path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/environment/ament_prefix_path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/environment/path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/environment/path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/local_setup.bash
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/local_setup.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/local_setup.zsh
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/local_setup.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/package.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ament_index/resource_index/packages/ugv_charger
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/cmake/ugv_chargerConfig.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/cmake/ugv_chargerConfig-version.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger/share/ugv_charger/package.xml

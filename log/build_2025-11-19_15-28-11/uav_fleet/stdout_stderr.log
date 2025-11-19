@@ -1,0 +1,16 @@
+[ 50%] [32mBuilding CXX object CMakeFiles/uav_node.dir/src/uav_node.cpp.o[0m
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:142:10:[m[K [01;31m[Kerror: [m[K‘[01m[Kvoid UavNode::publishTraffic()[m[K’ cannot be overloaded with ‘[01m[Kvoid UavNode::publishTraffic()[m[K’
+  142 |     void [01;31m[KpublishTraffic[m[K()
+      |          [01;31m[K^~~~~~~~~~~~~~[m[K
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:99:8:[m[K [01;36m[Knote: [m[Kprevious declaration ‘[01m[Kvoid UavNode::publishTraffic()[m[K’
+   99 |   void [01;36m[KpublishTraffic[m[K()
+      |        [01;36m[K^~~~~~~~~~~~~~[m[K
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:167:10:[m[K [01;31m[Kerror: [m[K‘[01m[Kvoid UavNode::trafficCallback(uav_msgs::msg::TrafficMessage_<std::allocator<void> >::SharedPtr)[m[K’ cannot be overloaded with ‘[01m[Kvoid UavNode::trafficCallback(uav_msgs::msg::TrafficMessage_<std::allocator<void> >::SharedPtr)[m[K’
+  167 |     void [01;31m[KtrafficCallback[m[K(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+      |          [01;31m[K^~~~~~~~~~~~~~~[m[K
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:118:8:[m[K [01;36m[Knote: [m[Kprevious declaration ‘[01m[Kvoid UavNode::trafficCallback(uav_msgs::msg::TrafficMessage_<std::allocator<void> >::SharedPtr)[m[K’
+  118 |   void [01;36m[KtrafficCallback[m[K(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+      |        [01;36m[K^~~~~~~~~~~~~~~[m[K
+gmake[2]: *** [CMakeFiles/uav_node.dir/build.make:76: CMakeFiles/uav_node.dir/src/uav_node.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/uav_node.dir/all] Error 2
+gmake: *** [Makefile:146: all] Error 2

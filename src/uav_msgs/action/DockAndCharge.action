@@ -1,0 +1,10 @@
+# Goal
+string uav_id
+
+---
+# Result (sent once when charging completes)
+float32 battery_level       # final battery level after charge
+
+---
+# Feedback (periodic updates while charging)
+float32 current_battery

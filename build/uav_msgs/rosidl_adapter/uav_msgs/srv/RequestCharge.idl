@@ -1,0 +1,32 @@
+// generated from rosidl_adapter/resource/srv.idl.em
+// with input from uav_msgs/srv/RequestCharge.srv
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+
+module uav_msgs {
+  module srv {
+    @verbatim (language="comment", text=
+      "Request")
+    struct RequestCharge_Request {
+      string uav_id;
+
+      float battery_level;
+
+      @verbatim (language="comment", text=
+        "0=MEMBER, 1=CH, 2=BACKUP_CH")
+      uint8 role;
+    };
+    @verbatim (language="comment", text=
+      "Response")
+    struct RequestCharge_Response {
+      boolean accepted;
+
+      @verbatim (language="comment", text=
+        "estimated charging start time")
+      builtin_interfaces::msg::Time eta;
+
+      uint8 assigned_priority;
+    };
+  };
+};

@@ -1,0 +1,10 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/uav_fleet_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/uav_node.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_fleet/CMakeFiles/install/strip.dir

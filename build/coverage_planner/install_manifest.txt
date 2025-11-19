@@ -1,0 +1,15 @@
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/ament_index/resource_index/package_run_dependencies/coverage_planner
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/ament_index/resource_index/parent_prefix_path/coverage_planner
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/environment/ament_prefix_path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/environment/ament_prefix_path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/environment/path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/environment/path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/local_setup.bash
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/local_setup.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/local_setup.zsh
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/local_setup.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/package.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/ament_index/resource_index/packages/coverage_planner
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/cmake/coverage_plannerConfig.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/cmake/coverage_plannerConfig-version.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/coverage_planner/package.xml

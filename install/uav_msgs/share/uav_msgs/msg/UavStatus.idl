@@ -1,0 +1,52 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from uav_msgs/msg/UavStatus.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+#include "geometry_msgs/msg/Pose.idl"
+
+module uav_msgs {
+  module msg {
+    struct UavStatus {
+      @verbatim (language="comment", text=
+        "\"uav_1\", \"uav_2\", ...")
+      string uav_id;
+
+      @verbatim (language="comment", text=
+        "0 = MEMBER, 1 = CH, 2 = BACKUP_CH")
+      uint8 role;
+
+      @verbatim (language="comment", text=
+        "e.g. \"cluster_1\"")
+      string cluster_id;
+
+      @verbatim (language="comment", text=
+        "0.0 - 100.0 (%)")
+      float battery_level;
+
+      @verbatim (language="comment", text=
+        "optional, in Wh or similar")
+      float battery_capacity;
+
+      geometry_msgs::msg::Pose pose;
+
+      @verbatim (language="comment", text=
+        "meters (CH > MEMBER)")
+      float service_radius;
+
+      @verbatim (language="comment", text=
+        "number of user devices associated")
+      uint32 connected_users;
+
+      @verbatim (language="comment", text=
+        "e.g. kbps or some abstract load")
+      float traffic_load;
+
+      float packet_loss_estimate;
+
+      float energy_consumption_rate;
+
+      builtin_interfaces::msg::Time stamp;
+    };
+  };
+};

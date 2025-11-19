@@ -1,0 +1,10 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/user_devices_sim_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/user_device_node.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/user_devices_sim/CMakeFiles/install/strip.dir

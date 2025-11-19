@@ -1,0 +1,4 @@
+source;share/network_monitor/local_setup.bash
+source;share/network_monitor/local_setup.dsv
+source;share/network_monitor/local_setup.sh
+source;share/network_monitor/local_setup.zsh

@@ -1,0 +1,9 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/coverage_planner_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/coverage_planner/CMakeFiles/install/strip.dir

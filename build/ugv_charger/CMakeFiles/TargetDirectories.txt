@@ -1,0 +1,10 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/ugv_charger_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/ugv_charger_node.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/CMakeFiles/install/strip.dir

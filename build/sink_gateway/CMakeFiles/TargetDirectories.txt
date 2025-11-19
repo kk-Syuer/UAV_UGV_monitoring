@@ -1,0 +1,10 @@
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/sink_gateway_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/sink_gateway_node.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/test.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/edit_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/rebuild_cache.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/list_install_components.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/install.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/install/local.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/sink_gateway/CMakeFiles/install/strip.dir

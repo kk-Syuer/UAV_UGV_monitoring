@@ -1,0 +1,15 @@
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/ament_index/resource_index/package_run_dependencies/weather_server
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/ament_index/resource_index/parent_prefix_path/weather_server
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/environment/ament_prefix_path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/environment/ament_prefix_path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/environment/path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/environment/path.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/local_setup.bash
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/local_setup.sh
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/local_setup.zsh
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/local_setup.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/package.dsv
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/ament_index/resource_index/packages/weather_server
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/cmake/weather_serverConfig.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/cmake/weather_serverConfig-version.cmake
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/package.xml
