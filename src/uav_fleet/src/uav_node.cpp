@@ -9,6 +9,8 @@
 #include "uav_msgs/msg/heartbeat.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/cluster_info.hpp"
+#include "uav_msgs/msg/charge_decision.hpp"
+#include "uav_msgs/msg/charge_request.hpp"
 
 #include "uav_msgs/srv/request_charge.hpp"
 
@@ -35,7 +37,6 @@ public:
     default_dst_id_ = this->declare_parameter<std::string>("default_dst_id", "sink_gateway");
     my_ch_id_ = this->declare_parameter<std::string>("my_ch_id", "uav_1");
 
-    // Battery capacities (units are arbitrary "energy units")
     double cap_member = this->declare_parameter<double>("battery_capacity_member", 100.0);
     double cap_ch     = this->declare_parameter<double>("battery_capacity_ch", 200.0);
     battery_capacity_ = (role_ == 1) ? static_cast<float>(cap_ch)
@@ -60,6 +61,8 @@ public:
       "/uav_fleet/heartbeat", 10);
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 10);
+    charge_request_pub_ = this->create_publisher<uav_msgs::msg::ChargeRequest>(
+      "/uav_fleet/charge_requests", 10);
 
     // ---- Subscribers ----
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -70,6 +73,10 @@ public:
       "/ch_manager/cluster_info", 10,
       std::bind(&UavNode::clusterInfoCallback, this, std::placeholders::_1));
 
+    charge_decision_sub_ = this->create_subscription<uav_msgs::msg::ChargeDecision>(
+      "/ugv/charge_decisions", 10,
+      std::bind(&UavNode::chargeDecisionCallback, this, std::placeholders::_1));
+
     // ---- Timers ----
     status_timer_ = this->create_wall_timer(
       1s, std::bind(&UavNode::publishStatus, this));
@@ -78,13 +85,13 @@ public:
     traffic_timer_ = this->create_wall_timer(
       2s, std::bind(&UavNode::publishTraffic, this));
 
-    // Dummy pose for now (0,0,10)
+    // Dummy pose
     pose_.position.x = 0.0;
     pose_.position.y = 0.0;
     pose_.position.z = 10.0;
     pose_.orientation.w = 1.0;
 
-    service_radius_ = 100.0f;  // arbitrary
+    service_radius_ = 100.0f;
 
     // Charging client
     charge_client_ = this->create_client<uav_msgs::srv::RequestCharge>("/ugv/request_charge");
@@ -101,7 +108,7 @@ private:
   {
     auto now = this->now();
 
-    // START charging when our reserved slot begins
+    // Start charging when our reserved slot begins
     if (!is_charging_ && has_charge_slot_ && now >= charge_start_time_) {
       is_charging_ = true;
       has_charge_slot_ = false;
@@ -115,7 +122,7 @@ private:
     }
 
     if (is_charging_) {
-      // Charging: interpolate energy from start value to full capacity
+      // Charging: interpolate
       if (now >= charge_end_time_) {
         battery_energy_ = battery_capacity_;
         is_charging_ = false;
@@ -135,25 +142,25 @@ private:
       }
     } else {
       // Not charging: drain battery
-      float drain_rate = 0.5f;  // energy units per second
+      float drain_rate = 0.5f;  // energy units per second (can be improved later)
       battery_energy_ -= drain_rate;
       if (battery_energy_ < 0.0f) battery_energy_ = 0.0f;
     }
 
-    // Convert to percentage for reporting & thresholds
+    // Percentage
     float battery_percent = 0.0f;
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
     }
 
-    // If low and not already waiting or scheduled, request a charge slot
+    // If low and not waiting or scheduled, request a charge slot
     if (!is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
         battery_percent <= battery_threshold_percent_)
     {
       requestCharge(battery_percent);
     }
 
-    // Publish UavStatus
+    // Publish status
     uav_msgs::msg::UavStatus msg;
     msg.uav_id = uav_id_;
     msg.role = role_;
@@ -189,7 +196,13 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: requesting charge (battery=%.1f%%)",
                 uav_id_.c_str(), battery_percent);
-
+    // NEW: publish a ChargeRequest for monitoring purposes
+    uav_msgs::msg::ChargeRequest cr;
+    cr.uav_id = uav_id_;
+    cr.role = role_;
+    cr.battery_level = battery_percent;
+    cr.stamp = this->now();
+    charge_request_pub_->publish(cr);
     auto cb =
       [this](rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedFuture future)
       {
@@ -202,24 +215,46 @@ private:
   void handleChargeResponse(
     rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedFuture future)
   {
-    waiting_for_charge_response_ = false;
     auto res = future.get();
 
-    if (!res->accepted) {
+    if  (!res->accepted) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: charge request rejected", uav_id_.c_str());
+      waiting_for_charge_response_ = false;  // allow a new request in the future
       return;
     }
 
-    charge_start_time_ = rclcpp::Time(res->eta);
+    // Keep waiting_for_charge_response_ = true here, so we DON'T send duplicates.
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: charge request acknowledged by UGV (waiting for ChargeDecision).",
+                uav_id_.c_str());
+  }
+
+  void chargeDecisionCallback(const uav_msgs::msg::ChargeDecision::SharedPtr msg)
+  {
+    if (msg->uav_id != uav_id_) {
+      return;
+    }
+
+    if (!msg->accepted) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: received negative ChargeDecision", uav_id_.c_str());
+      has_charge_slot_ = false;
+      waiting_for_charge_response_ = false;
+      return;
+    }
+
+    charge_start_time_ = rclcpp::Time(msg->slot_start_time);
     has_charge_slot_ = true;
+    waiting_for_charge_response_ = false;
 
     auto now = this->now();
     double wait = (charge_start_time_ - now).seconds();
 
     RCLCPP_INFO(this->get_logger(),
-                "UAV %s: charge accepted. Will start charging in %.1f seconds.",
-                uav_id_.c_str(), wait);
+                "UAV %s: received ChargeDecision (policy=%s). "
+                "Charging will start in %.1f seconds.",
+                uav_id_.c_str(), msg->policy.c_str(), wait);
   }
 
   // ---------------- Heartbeat & traffic ----------------
@@ -270,7 +305,6 @@ private:
     }
 
     if (msg->dst_id == uav_id_) {
-      // If I am CH and the message came from someone else -> forward to sink
       if (role_ == 1 && msg->src_id != uav_id_) {
         uav_msgs::msg::TrafficMessage fwd = *msg;
         fwd.dst_id = default_dst_id_;
@@ -316,9 +350,9 @@ private:
   float service_radius_;
 
   // Battery model
-  float battery_capacity_;          // energy units
-  float battery_energy_;            // current energy
-  float battery_threshold_percent_; // when to request charge
+  float battery_capacity_;
+  float battery_energy_;
+  float battery_threshold_percent_;
   double charging_duration_sec_;
 
   bool waiting_for_charge_response_;
@@ -336,12 +370,15 @@ private:
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::ClusterInfo>::SharedPtr   cluster_sub_;
+  rclcpp::Subscription<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_sub_;
 
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
   rclcpp::TimerBase::SharedPtr traffic_timer_;
 
   rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedPtr charge_client_;
+  rclcpp::Publisher<uav_msgs::msg::ChargeRequest>::SharedPtr charge_request_pub_;
+
 };
 
 int main(int argc, char ** argv)

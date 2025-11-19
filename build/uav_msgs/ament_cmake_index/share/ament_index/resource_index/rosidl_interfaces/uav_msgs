@@ -1,5 +1,9 @@
 action/DockAndCharge.action
 action/DockAndCharge.idl
+msg/ChargeDecision.idl
+msg/ChargeDecision.msg
+msg/ChargeRequest.idl
+msg/ChargeRequest.msg
 msg/ClusterInfo.idl
 msg/ClusterInfo.msg
 msg/Heartbeat.idl

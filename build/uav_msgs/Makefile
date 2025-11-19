@@ -429,6 +429,54 @@ rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c.s
 .PHONY : rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c.s
 
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.o: rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.o
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.o
+
+# target to build an object file
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.o
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.o
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.i: rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.i
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.i
+
+# target to preprocess a source file
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.i
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.i
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.s: rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.s
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.s
+
+# target to generate assembly for a file
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.s
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.s
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.o: rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.o
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.o
+
+# target to build an object file
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.o
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.o
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.i: rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.i
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.i
+
+# target to preprocess a source file
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.i
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.i
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.s: rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.s
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.s
+
+# target to generate assembly for a file
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.s
+.PHONY : rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.s
+
 rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.o: rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.c.o
 .PHONY : rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.o
 
@@ -645,6 +693,54 @@ rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.s
 .PHONY : rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.s
 
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.o: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.o
+
+# target to build an object file
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o
+
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.i: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.i
+
+# target to preprocess a source file
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i
+
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.s: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.s
+
+# target to generate assembly for a file
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s
+
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.o: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.o
+
+# target to build an object file
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o
+
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.i: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.i
+
+# target to preprocess a source file
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i
+
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.s: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.s
+
+# target to generate assembly for a file
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s
+.PHONY : rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s
+
 rosidl_generator_py/uav_msgs/msg/_cluster_info_s.o: rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.o
 .PHONY : rosidl_generator_py/uav_msgs/msg/_cluster_info_s.o
 
@@ -788,6 +884,54 @@ rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.s: rosidl_typ
 rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.cpp.s
 .PHONY : rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.cpp.s
+
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.o: rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.o
+
+# target to build an object file
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.o
+
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.i: rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.i
+
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.s: rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.s
+
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.o: rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.o
+
+# target to build an object file
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.o
+
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.i: rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.i
+
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.s: rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.s
 
 rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.o: rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.cpp.o
 .PHONY : rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.o
@@ -933,6 +1077,54 @@ rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.cpp.s
 .PHONY : rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.cpp.s
 
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.o: rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.o
+
+# target to build an object file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.o
+
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.i: rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.i
+
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.s: rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.s
+
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.o: rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.o
+
+# target to build an object file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.o
+
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.i: rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.i
+
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.s: rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.s
+
 rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.o: rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.cpp.o
 .PHONY : rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.o
 
@@ -1076,6 +1268,54 @@ rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_suppo
 rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.cpp.s
 .PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.cpp.s
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.o: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.o
+
+# target to build an object file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.o
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.i: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.i
+
+# target to preprocess a source file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.i
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.s: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.s
+
+# target to generate assembly for a file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.s
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.o: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.o
+
+# target to build an object file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.o
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.i: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.i
+
+# target to preprocess a source file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.i
+
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.s: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.s
+
+# target to generate assembly for a file
+rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.s
 
 rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.o: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.cpp.o
 .PHONY : rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.o
@@ -1221,6 +1461,54 @@ rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_cha
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.cpp.s
 .PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.cpp.s
 
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.o: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.o
+
+# target to build an object file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.o
+
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.i: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.i
+
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.s: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.s
+
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.o: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.o
+
+# target to build an object file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.o
+
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.i: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.i
+
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.s: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.s
+
 rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.o: rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.cpp.o
 .PHONY : rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.o
 
@@ -1365,6 +1653,54 @@ rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.s
 .PHONY : rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.s
 
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.o: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.o
+
+# target to build an object file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.i: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.s: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.o: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.o
+
+# target to build an object file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.i: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.s: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s
+.PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s
+
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.o: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.o
 .PHONY : rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.o
 
@@ -1508,6 +1844,54 @@ rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__typ
 rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.cpp.s:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.cpp.s
 .PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.cpp.s
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.o: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.o
+
+# target to build an object file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.o
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.o
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.i: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.i
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.i
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.s: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.s
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.s
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.o: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.o
+
+# target to build an object file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.o
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.o
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.i: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.i
+
+# target to preprocess a source file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.i
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.i
+
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.s: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.s
+
+# target to generate assembly for a file
+rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/build.make CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.s
+.PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.s
 
 rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.o: rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.cpp.o
 .PHONY : rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.o
@@ -1663,6 +2047,12 @@ help:
 	@echo "... rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.o"
 	@echo "... rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.i"
 	@echo "... rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.s"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.o"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.i"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.s"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.o"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.i"
+	@echo "... rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.s"
 	@echo "... rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.o"
 	@echo "... rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.i"
 	@echo "... rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.s"
@@ -1690,6 +2080,12 @@ help:
 	@echo "... rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.o"
 	@echo "... rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.i"
 	@echo "... rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.s"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_decision_s.o"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_decision_s.i"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_decision_s.s"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_request_s.o"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_request_s.i"
+	@echo "... rosidl_generator_py/uav_msgs/msg/_charge_request_s.s"
 	@echo "... rosidl_generator_py/uav_msgs/msg/_cluster_info_s.o"
 	@echo "... rosidl_generator_py/uav_msgs/msg/_cluster_info_s.i"
 	@echo "... rosidl_generator_py/uav_msgs/msg/_cluster_info_s.s"
@@ -1708,6 +2104,12 @@ help:
 	@echo "... rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.o"
 	@echo "... rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.i"
 	@echo "... rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.s"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.o"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.i"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.s"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.o"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.i"
+	@echo "... rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.s"
 	@echo "... rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.o"
 	@echo "... rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.i"
 	@echo "... rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.s"
@@ -1726,6 +2128,12 @@ help:
 	@echo "... rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.o"
 	@echo "... rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.i"
 	@echo "... rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.s"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.o"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.i"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.s"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.o"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.i"
+	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.s"
 	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.o"
 	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.i"
 	@echo "... rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.s"
@@ -1744,6 +2152,12 @@ help:
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.o"
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.i"
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.s"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.o"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.i"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.s"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.o"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.i"
+	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.s"
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.o"
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.i"
 	@echo "... rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.s"
@@ -1762,6 +2176,12 @@ help:
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.o"
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.i"
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.s"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.o"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.i"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.s"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.o"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.i"
+	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.s"
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.o"
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.i"
 	@echo "... rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.s"
@@ -1780,6 +2200,12 @@ help:
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.o"
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.i"
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.s"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.o"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.i"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.s"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.o"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.i"
+	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.s"
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.o"
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.i"
 	@echo "... rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.s"
@@ -1798,6 +2224,12 @@ help:
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.o"
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.i"
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.s"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.o"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.i"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.s"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.o"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.i"
+	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.s"
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.o"
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.i"
 	@echo "... rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.s"

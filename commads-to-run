@@ -1,0 +1,30 @@
+//run ch manager
+ros2 run ch_manager ch_manager_node --ros-args \
+  -p cluster_id:=cluster_1 \
+  -p ch_id:=uav_1 \
+  -p member_ids:="[uav_1, uav_2]"
+
+//run ugv with some policy eg edf
+ros2 run ugv_charger ugv_charger_node --ros-args \
+  -p charging_duration_sec:=20.0 \
+  -p charging_policy:=edf \
+  -p drain_percent_member:=0.5 \
+  -p drain_percent_ch:=0.25
+
+
+// create a ch
+ros2 run uav_fleet uav_node --ros-args \
+  -p uav_id:=uav_1 \
+  -p role:=1 \
+  -p default_dst_id:=sink_gateway \
+  -p battery_threshold:=60.0
+
+// create a member
+ros2 run uav_fleet uav_node --ros-args \
+  -p uav_id:=uav_2 \
+  -p role:=0 \
+  -p my_ch_id:=uav_1 \
+  -p battery_threshold:=60.0
+
+// run network monitor
+ros2 run network_monitor network_monitor_node

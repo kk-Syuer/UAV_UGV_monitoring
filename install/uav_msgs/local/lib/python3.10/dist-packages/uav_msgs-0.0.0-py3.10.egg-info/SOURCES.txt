@@ -7,6 +7,8 @@ uav_msgs.egg-info/top_level.txt
 uav_msgs/action/__init__.py
 uav_msgs/action/_dock_and_charge.py
 uav_msgs/msg/__init__.py
+uav_msgs/msg/_charge_decision.py
+uav_msgs/msg/_charge_request.py
 uav_msgs/msg/_cluster_info.py
 uav_msgs/msg/_heartbeat.py
 uav_msgs/msg/_traffic_message.py

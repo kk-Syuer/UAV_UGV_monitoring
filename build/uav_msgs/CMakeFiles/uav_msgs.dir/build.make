@@ -70,6 +70,8 @@ CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/UavSt
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/Heartbeat.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/TrafficMessage.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/ClusterInfo.msg
+CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/ChargeDecision.msg
+CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/ChargeRequest.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/srv/RequestCharge.srv
 CMakeFiles/uav_msgs: rosidl_cmake/srv/RequestCharge_Request.msg
 CMakeFiles/uav_msgs: rosidl_cmake/srv/RequestCharge_Response.msg

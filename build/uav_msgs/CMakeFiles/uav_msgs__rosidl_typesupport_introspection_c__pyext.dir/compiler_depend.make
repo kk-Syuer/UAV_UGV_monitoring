@@ -261,6 +261,12 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_decision__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_decision__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_request__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_request__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h \
@@ -271,6 +277,16 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
 
 
 rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_request__type_support.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__struct.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 
@@ -539,6 +555,8 @@ rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_introspection_c.c
 /usr/include/python3.10/sliceobject.h:
 
 /usr/include/linux/types.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/charge_decision__type_support.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
 

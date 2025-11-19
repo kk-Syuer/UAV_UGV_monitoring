@@ -7,6 +7,8 @@
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/Heartbeat.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/TrafficMessage.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/ClusterInfo.idl",
+    "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/ChargeDecision.idl",
+    "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/ChargeRequest.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:srv/RequestCharge.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:action/DockAndCharge.idl"
   ],
@@ -94,6 +96,8 @@
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/Heartbeat.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/TrafficMessage.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/ClusterInfo.idl",
+    "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/ChargeDecision.idl",
+    "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/ChargeRequest.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/srv/RequestCharge.idl",
     "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/action/DockAndCharge.idl",
     "/opt/ros/humble/share/builtin_interfaces/msg/Duration.idl",

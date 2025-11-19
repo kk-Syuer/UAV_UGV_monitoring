@@ -81,6 +81,8 @@ rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesu
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/msg/Heartbeat.idl
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/msg/TrafficMessage.idl
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/msg/ClusterInfo.idl
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/msg/ChargeDecision.idl
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: rosidl_adapter/uav_msgs/action/DockAndCharge.idl
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
@@ -164,6 +166,12 @@ rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__rosidl_t
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h
 
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h
+
 rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_c.h: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_c.h
 
@@ -181,6 +189,12 @@ rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_sup
 
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c
+
+rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c
 
 rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c
@@ -244,10 +258,38 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_i
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.s
 
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o -MF CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o.d -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c
+
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c > CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.i
+
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.s
+
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o -MF CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o.d -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c
+
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c > CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.i
+
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.s
+
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o: rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o -MF CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o.d -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c
 
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.i: cmake_force
@@ -261,7 +303,7 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_i
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o: rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Building C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o -MF CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o.d -o CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c
 
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.i: cmake_force
@@ -278,6 +320,8 @@ uav_msgs__rosidl_typesupport_introspection_c_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/heartbeat__type_support.c.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.o" \
+"CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o" \
+"CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o"
 
@@ -288,6 +332,8 @@ libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/heartbeat__type_support.c.o
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c.o
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.o
+libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o
+libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/build.make
@@ -306,7 +352,7 @@ libuav_msgs__rosidl_typesupport_introspection_c.so: /opt/ros/humble/lib/libuniqu
 libuav_msgs__rosidl_typesupport_introspection_c.so: /opt/ros/humble/lib/librosidl_runtime_c.so
 libuav_msgs__rosidl_typesupport_introspection_c.so: /opt/ros/humble/lib/librcutils.so
 libuav_msgs__rosidl_typesupport_introspection_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Linking C shared library libuav_msgs__rosidl_typesupport_introspection_c.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_10) "Linking C shared library libuav_msgs__rosidl_typesupport_introspection_c.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -319,6 +365,10 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/clean:
 
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_introspection_c.h
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h
+CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c
 CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/depend: rosidl_typesupport_introspection_c/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_c.h

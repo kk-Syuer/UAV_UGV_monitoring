@@ -5,6 +5,8 @@
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/Heartbeat.msg",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/TrafficMessage.msg",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/ClusterInfo.msg",
+    "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/ChargeDecision.msg",
+    "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/ChargeRequest.msg",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:srv/RequestCharge.srv",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:action/DockAndCharge.action"
   ]

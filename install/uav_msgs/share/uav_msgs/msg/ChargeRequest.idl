@@ -1,0 +1,25 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from uav_msgs/msg/ChargeRequest.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+
+module uav_msgs {
+  module msg {
+    struct ChargeRequest {
+      string uav_id;
+
+      @verbatim (language="comment", text=
+        "0=MEMBER, 1=CH, 2=BACKUP_CH (if any)")
+      uint8 role;
+
+      @verbatim (language="comment", text=
+        "battery percent at request time")
+      float battery_level;
+
+      @verbatim (language="comment", text=
+        "when the UAV sent the request")
+      builtin_interfaces::msg::Time stamp;
+    };
+  };
+};

@@ -73,6 +73,8 @@ uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_uav_stat
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_heartbeat.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_traffic_message.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_cluster_info.py
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_decision.py
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/__init__.py
@@ -82,6 +84,8 @@ uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_uav_stat
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
 
@@ -102,6 +106,8 @@ rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: ros
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/Heartbeat.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/TrafficMessage.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/ClusterInfo.idl
+rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/ChargeDecision.idl
+rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/action/DockAndCharge.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
@@ -194,6 +200,12 @@ rosidl_generator_py/uav_msgs/msg/_traffic_message.py: rosidl_generator_py/uav_ms
 rosidl_generator_py/uav_msgs/msg/_cluster_info.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_cluster_info.py
 
+rosidl_generator_py/uav_msgs/msg/_charge_decision.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_charge_decision.py
+
+rosidl_generator_py/uav_msgs/msg/_charge_request.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_charge_request.py
+
 rosidl_generator_py/uav_msgs/srv/_request_charge.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/srv/_request_charge.py
 
@@ -221,6 +233,12 @@ rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c: rosidl_generator_py/uav_m
 rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c
 
+rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c
+
+rosidl_generator_py/uav_msgs/msg/_charge_request_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
+
 rosidl_generator_py/uav_msgs/srv/_request_charge_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/srv/_request_charge_s.c
 
@@ -234,6 +252,10 @@ uav_msgs__py: rosidl_generator_py/uav_msgs/action/__init__.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/__init__.py
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_decision.py
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request.py
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_cluster_info.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_heartbeat.py

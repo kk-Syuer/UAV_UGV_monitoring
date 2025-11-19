@@ -1,0 +1,9 @@
+[35m[1mConsolidate compiler generated dependencies of target ugv_charger_node[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o[0m
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/ugv_charger/src/ugv_charger_node.cpp:7:10:[m[K [01;31m[Kfatal error: [m[Kuav_msgs/msg/charge_decision.hpp: No such file or directory
+    7 | #include [01;31m[K"uav_msgs/msg/charge_decision.hpp"[m[K
+      |          [01;31m[K^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~[m[K
+compilation terminated.
+gmake[2]: *** [CMakeFiles/ugv_charger_node.dir/build.make:76: CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/ugv_charger_node.dir/all] Error 2
+gmake: *** [Makefile:146: all] Error 2

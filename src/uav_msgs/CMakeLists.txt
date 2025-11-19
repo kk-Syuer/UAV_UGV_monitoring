@@ -19,10 +19,13 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/Heartbeat.msg"
   "msg/TrafficMessage.msg"
   "msg/ClusterInfo.msg"
+  "msg/ChargeDecision.msg"        
+  "msg/ChargeRequest.msg"
   "srv/RequestCharge.srv"
   "action/DockAndCharge.action"
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
+
 
 ament_export_dependencies(rosidl_default_runtime)
 

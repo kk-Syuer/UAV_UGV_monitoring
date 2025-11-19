@@ -125,10 +125,38 @@ CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_c
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.s
 
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o: rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o -MF CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o.d -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c
+
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c > CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.i
+
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.s
+
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o -MF CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o.d -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
+
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c > CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.i
+
+CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.s
+
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o: rosidl_generator_py/uav_msgs/srv/_request_charge_s.c
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_5) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o -MF CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o.d -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c
 
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.i: cmake_force
@@ -142,7 +170,7 @@ CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_r
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o: rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o: CMakeFiles/uav_msgs__rosidl_generator_py.dir/compiler_depend.ts
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_6) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_8) "Building C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o -MF CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o.d -o CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
 
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.i: cmake_force
@@ -159,6 +187,8 @@ uav_msgs__rosidl_generator_py_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.o" \
+"CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o" \
+"CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o"
 
@@ -169,6 +199,8 @@ rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c.o
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c.o
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.o
+rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o
+rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/build.make
@@ -194,7 +226,7 @@ rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: /opt/ros/humbl
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: /opt/ros/humble/lib/librosidl_runtime_c.so
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: /opt/ros/humble/lib/librcutils.so
 rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so: CMakeFiles/uav_msgs__rosidl_generator_py.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_7) "Linking C shared library rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_9) "Linking C shared library rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/uav_msgs__rosidl_generator_py.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
