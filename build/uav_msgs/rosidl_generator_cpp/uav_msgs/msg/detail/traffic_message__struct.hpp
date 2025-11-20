@@ -51,6 +51,8 @@ struct TrafficMessage_
       this->priority = 0;
       this->size_bytes = 0ul;
       this->hop_count = 0ul;
+      this->control_type = "";
+      this->control_payload = "";
     }
   }
 
@@ -59,7 +61,9 @@ struct TrafficMessage_
     src_id(_alloc),
     dst_id(_alloc),
     next_hop_id(_alloc),
-    creation_time(_alloc, _init)
+    creation_time(_alloc, _init),
+    control_type(_alloc),
+    control_payload(_alloc)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
@@ -72,6 +76,8 @@ struct TrafficMessage_
       this->priority = 0;
       this->size_bytes = 0ul;
       this->hop_count = 0ul;
+      this->control_type = "";
+      this->control_payload = "";
     }
   }
 
@@ -103,6 +109,12 @@ struct TrafficMessage_
   using _hop_count_type =
     uint32_t;
   _hop_count_type hop_count;
+  using _control_type_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _control_type_type control_type;
+  using _control_payload_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _control_payload_type control_payload;
 
   // setters for named parameter idiom
   Type & set__msg_id(
@@ -157,6 +169,18 @@ struct TrafficMessage_
     const uint32_t & _arg)
   {
     this->hop_count = _arg;
+    return *this;
+  }
+  Type & set__control_type(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->control_type = _arg;
+    return *this;
+  }
+  Type & set__control_payload(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->control_payload = _arg;
     return *this;
   }
 
@@ -227,6 +251,12 @@ struct TrafficMessage_
       return false;
     }
     if (this->hop_count != other.hop_count) {
+      return false;
+    }
+    if (this->control_type != other.control_type) {
+      return false;
+    }
+    if (this->control_payload != other.control_payload) {
       return false;
     }
     return true;

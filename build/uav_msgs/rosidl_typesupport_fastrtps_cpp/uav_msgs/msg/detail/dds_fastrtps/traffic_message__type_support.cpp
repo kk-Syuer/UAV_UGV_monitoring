@@ -76,6 +76,10 @@ cdr_serialize(
     cdr);
   // Member: hop_count
   cdr << ros_message.hop_count;
+  // Member: control_type
+  cdr << ros_message.control_type;
+  // Member: control_payload
+  cdr << ros_message.control_payload;
   return true;
 }
 
@@ -112,6 +116,12 @@ cdr_deserialize(
 
   // Member: hop_count
   cdr >> ros_message.hop_count;
+
+  // Member: control_type
+  cdr >> ros_message.control_type;
+
+  // Member: control_payload
+  cdr >> ros_message.control_payload;
 
   return true;
 }
@@ -174,6 +184,14 @@ get_serialized_size(
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
+  // Member: control_type
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.control_type.size() + 1);
+  // Member: control_payload
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.control_payload.size() + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -303,6 +321,32 @@ max_serialized_size_TrafficMessage(
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
   }
 
+  // Member: control_type
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: control_payload
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -311,7 +355,7 @@ max_serialized_size_TrafficMessage(
     using DataType = uav_msgs::msg::TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, hop_count) +
+      offsetof(DataType, control_payload) +
       last_member_size
       ) == ret_val;
   }

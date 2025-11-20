@@ -36,6 +36,14 @@ module uav_msgs {
       builtin_interfaces::msg::Time creation_time;
 
       uint32 hop_count;
+
+      @verbatim (language="comment", text=
+        "optional for CONTROL_ALERT, e.g. \"CHARGE_REQUEST\"")
+      string control_type;
+
+      @verbatim (language="comment", text=
+        "optional free-form payload (e.g. JSON, key=value, etc.)")
+      string control_payload;
     };
   };
 };

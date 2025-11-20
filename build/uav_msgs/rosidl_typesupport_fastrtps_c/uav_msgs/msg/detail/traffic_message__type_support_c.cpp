@@ -35,8 +35,8 @@ extern "C"
 #endif
 
 #include "builtin_interfaces/msg/detail/time__functions.h"  // creation_time
-#include "rosidl_runtime_c/string.h"  // dst_id, msg_id, next_hop_id, src_id
-#include "rosidl_runtime_c/string_functions.h"  // dst_id, msg_id, next_hop_id, src_id
+#include "rosidl_runtime_c/string.h"  // control_payload, control_type, dst_id, msg_id, next_hop_id, src_id
+#include "rosidl_runtime_c/string_functions.h"  // control_payload, control_type, dst_id, msg_id, next_hop_id, src_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -156,6 +156,34 @@ static bool _TrafficMessage__cdr_serialize(
     cdr << ros_message->hop_count;
   }
 
+  // Field name: control_type
+  {
+    const rosidl_runtime_c__String * str = &ros_message->control_type;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
+  // Field name: control_payload
+  {
+    const rosidl_runtime_c__String * str = &ros_message->control_payload;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
   return true;
 }
 
@@ -266,6 +294,38 @@ static bool _TrafficMessage__cdr_deserialize(
     cdr >> ros_message->hop_count;
   }
 
+  // Field name: control_type
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->control_type.data) {
+      rosidl_runtime_c__String__init(&ros_message->control_type);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->control_type,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'control_type'\n");
+      return false;
+    }
+  }
+
+  // Field name: control_payload
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->control_payload.data) {
+      rosidl_runtime_c__String__init(&ros_message->control_payload);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->control_payload,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'control_payload'\n");
+      return false;
+    }
+  }
+
   return true;
 }  // NOLINT(readability/fn_size)
 
@@ -327,6 +387,14 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
+  // field.name control_type
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->control_type.size + 1);
+  // field.name control_payload
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->control_payload.size + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -453,6 +521,30 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     current_alignment += array_size * sizeof(uint32_t) +
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
   }
+  // member: control_type
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: control_payload
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
 
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
@@ -462,7 +554,7 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     using DataType = uav_msgs__msg__TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, hop_count) +
+      offsetof(DataType, control_payload) +
       last_member_size
       ) == ret_val;
   }

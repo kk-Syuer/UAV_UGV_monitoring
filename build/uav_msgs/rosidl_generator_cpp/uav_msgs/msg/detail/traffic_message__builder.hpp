@@ -21,16 +21,48 @@ namespace msg
 namespace builder
 {
 
+class Init_TrafficMessage_control_payload
+{
+public:
+  explicit Init_TrafficMessage_control_payload(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  ::uav_msgs::msg::TrafficMessage control_payload(::uav_msgs::msg::TrafficMessage::_control_payload_type arg)
+  {
+    msg_.control_payload = std::move(arg);
+    return std::move(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_control_type
+{
+public:
+  explicit Init_TrafficMessage_control_type(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_control_payload control_type(::uav_msgs::msg::TrafficMessage::_control_type_type arg)
+  {
+    msg_.control_type = std::move(arg);
+    return Init_TrafficMessage_control_payload(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
 class Init_TrafficMessage_hop_count
 {
 public:
   explicit Init_TrafficMessage_hop_count(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::TrafficMessage hop_count(::uav_msgs::msg::TrafficMessage::_hop_count_type arg)
+  Init_TrafficMessage_control_type hop_count(::uav_msgs::msg::TrafficMessage::_hop_count_type arg)
   {
     msg_.hop_count = std::move(arg);
-    return std::move(msg_);
+    return Init_TrafficMessage_control_type(msg_);
   }
 
 private:

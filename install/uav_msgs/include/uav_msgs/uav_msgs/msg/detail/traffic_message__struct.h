@@ -22,6 +22,8 @@ extern "C"
 // Member 'src_id'
 // Member 'dst_id'
 // Member 'next_hop_id'
+// Member 'control_type'
+// Member 'control_payload'
 #include "rosidl_runtime_c/string.h"
 // Member 'creation_time'
 #include "builtin_interfaces/msg/detail/time__struct.h"
@@ -44,6 +46,10 @@ typedef struct uav_msgs__msg__TrafficMessage
   uint32_t size_bytes;
   builtin_interfaces__msg__Time creation_time;
   uint32_t hop_count;
+  /// optional for CONTROL_ALERT, e.g. "CHARGE_REQUEST"
+  rosidl_runtime_c__String control_type;
+  /// optional free-form payload (e.g. JSON, key=value, etc.)
+  rosidl_runtime_c__String control_payload;
 } uav_msgs__msg__TrafficMessage;
 
 // Struct for a sequence of uav_msgs__msg__TrafficMessage.

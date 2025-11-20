@@ -1,36 +1,19 @@
 {
-  "configurations": [
-    {
-      "browse": {
-        "databaseFilename": "${default}",
-        "limitSymbolsToIncludedHeaders": false
-      },
-      "includePath": [
-        "/home/vboxuser/ros2_ws/install/uav_msgs/include/**",
-        "/home/vboxuser/ros2_ws/install/action_tutorials_interfaces/include/**",
-        "/home/vboxuser/install/turtlesim/include/**",
-        "/home/vboxuser/ros2_ws/install/tutorial_interfaces/include/**",
-        "/home/vboxuser/ros2_ws/install/patrol_interfaces/include/**",
-        "/opt/ros/humble/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/ch_manager/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/fault_injector/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/network_monitor/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/sink_gateway/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/system_bringup/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/ugv_charger/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/user_devices_sim/include/**",
-        "/home/vboxuser/UAV_UGV_netmonitoring/src/weather_server/include/**",
-        "/usr/include/**"
-      ],
-      "name": "ROS",
-      "intelliSenseMode": "gcc-x64",
-      "compilerPath": "/usr/bin/gcc",
-      "cStandard": "gnu11",
-      "cppStandard": "c++14"
-    }
-  ],
-  "version": 4
+    "configurations": [
+        {
+            "name": "ROS",
+            "includePath": [
+                "${workspaceFolder}/**",
+                "/opt/ros/humble/include",
+                "${workspaceFolder}/install/**",
+                "${workspaceFolder}/build/**"
+            ],
+            "defines": [],
+            "compilerPath": "/usr/bin/g++",
+            "intelliSenseMode": "linux-gcc-x64",
+            "cStandard": "c11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
 }

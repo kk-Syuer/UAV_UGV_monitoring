@@ -1,10 +1,12 @@
 #include <memory>
 #include <string>
 #include <deque>
+#include <unordered_map>
 
 #include "rclcpp/rclcpp.hpp"
-#include "uav_msgs/srv/request_charge.hpp"
+#include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
+#include "uav_msgs/msg/uav_status.hpp"
 
 using namespace std::chrono_literals;
 
@@ -15,6 +17,8 @@ public:
   : Node("ugv_charger_node"),
     dock_busy_(false)
   {
+    ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
 
@@ -32,6 +36,8 @@ public:
       policy_name = "fcfs";
     }
     policy_name_ = policy_name;
+    uplink_ch_id_ =
+      this->declare_parameter<std::string>("uplink_ch_id", "uav_3");
 
     // Parameters for EDF: approximate drain of battery percentage per second
     drain_percent_member_ = this->declare_parameter<double>("drain_percent_member", 0.5); // %/s
@@ -44,18 +50,31 @@ public:
 
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 10);
+    control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
+      "/network/traffic", 100);
+    RCLCPP_INFO(this->get_logger(),
+                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
+                ugv_id_.c_str(), policy_name_.c_str(),
+                charging_duration_sec_, uplink_ch_id_.c_str());
+    delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
+      "/network/traffic_delivered", 100);
 
-    service_ = this->create_service<uav_msgs::srv::RequestCharge>(
-      "/ugv/request_charge",
-      std::bind(&UgvChargerNode::handleRequest, this,
-                std::placeholders::_1, std::placeholders::_2));
+    // NEW: subscribe to network control messages
+    traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
+      "/network/traffic", 100,
+      std::bind(&UgvChargerNode::trafficCallback, this, std::placeholders::_1));
+
+    // NEW: subscribe to UAV status to know battery & role
+    status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
+      "/uav_fleet/status", 100,
+      std::bind(&UgvChargerNode::statusCallback, this, std::placeholders::_1));
 
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
 
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. Policy='%s', charging_duration=%.1f s",
-                policy_name_.c_str(), charging_duration_sec_);
+                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s",
+                ugv_id_.c_str(), policy_name_.c_str(), charging_duration_sec_);
   }
 
 private:
@@ -75,33 +94,69 @@ private:
     rclcpp::Time request_time;
   };
 
-  // --- Service: enqueue requests ---
-  void handleRequest(
-    const std::shared_ptr<uav_msgs::srv::RequestCharge::Request> request,
-    std::shared_ptr<uav_msgs::srv::RequestCharge::Response> response)
+  struct UavInfo
   {
+    uint8_t role;
+    float battery_level;
+  };
+
+  // ------------- Callbacks -------------
+
+  void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
+  {
+    UavInfo info;
+    info.role = msg->role;
+    info.battery_level = msg->battery_level;
+    uav_status_[msg->uav_id] = info;
+  }
+
+  void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    // Only consider messages whose final destination is this UGV
+    if (msg->dst_id != ugv_id_) {
+      return;
+    }
+
+    // Only consider CONTROL_ALERT messages
+    if (msg->msg_type != 3) { // 3 = CONTROL_ALERT
+      return;
+    }
+
+    // If control_type is set, check it's a CHARGE_REQUEST
+    if (!msg->control_type.empty() && msg->control_type != "CHARGE_REQUEST") {
+      return;
+    }
+
+    const std::string & uav_id = msg->src_id;
     auto now = this->now();
 
+    // Lookup last known status for this UAV
+    auto it = uav_status_.find(uav_id);
+    if (it == uav_status_.end()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV: received CHARGE_REQUEST from '%s' but no status known. Ignoring.",
+                  uav_id.c_str());
+      return;
+    }
+
     QueueEntry entry;
-    entry.uav_id = request->uav_id;
-    entry.role = request->role;
-    entry.battery_level = request->battery_level;
+    entry.uav_id = uav_id;
+    entry.role = it->second.role;
+    entry.battery_level = it->second.battery_level;
     entry.request_time = now;
 
     queue_.push_back(entry);
+    delivered_pub_->publish(*msg);
 
-    // Service just acknowledges; real schedule will come via ChargeDecision
-    response->accepted = true;
-    response->eta = now;
-    response->assigned_priority = (entry.role == 1 ? 1 : 0);
 
     RCLCPP_INFO(this->get_logger(),
-                "Enqueued charge request from %s (role=%u, batt=%.1f%%). "
+                "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
                 "Queue size now: %zu",
                 entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
   }
 
-  // --- Main scheduler loop (runs periodically) ---
+  // ------------- Scheduler -------------
+
   void schedulerLoop()
   {
     auto now = this->now();
@@ -125,7 +180,7 @@ private:
       return;
     }
 
-    // Choose index according to current policy
+    // Choose according to current policy
     size_t idx = chooseNextIndex(now);
     QueueEntry job = queue_[idx];
     queue_.erase(queue_.begin() + static_cast<long>(idx));
@@ -137,7 +192,7 @@ private:
                       rclcpp::Duration::from_seconds(charging_duration_sec_);
     current_uav_id_ = job.uav_id;
 
-    // Publish ChargeDecision
+    // Publish ChargeDecision (direct, not routed yet)
     uav_msgs::msg::ChargeDecision decision;
     decision.uav_id = job.uav_id;
     decision.accepted = true;
@@ -148,15 +203,19 @@ private:
     charge_decision_pub_->publish(decision);
 
     RCLCPP_INFO(this->get_logger(),
-                "Assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
+                "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
                 "Session: [%.1f, %.1f], queue size now: %zu",
                 job.uav_id.c_str(), job.role, job.battery_level,
                 policy_name_.c_str(),
                 slot_start_time.seconds(), dock_free_time_.seconds(),
                 queue_.size());
+    // Also send the decision through the routed network as a control message
+    sendDecisionControlMessage(job, now);
+
   }
 
-  // --- Policy-specific selection ---
+  // ------------- Policy-specific selection -------------
+
   size_t chooseNextIndex(const rclcpp::Time & now)
   {
     if (policy_ == Policy::FCFS) {
@@ -164,7 +223,6 @@ private:
     }
 
     if (policy_ == Policy::ROLE_PRIORITY) {
-      // First CH in queue if any, else first
       for (size_t i = 0; i < queue_.size(); ++i) {
         if (queue_[i].role == 1) { // CH
           return i;
@@ -174,7 +232,6 @@ private:
     }
 
     if (policy_ == Policy::EDF) {
-      // Choose UAV with smallest estimated time-to-empty
       double best_tte = std::numeric_limits<double>::infinity();
       size_t best_idx = 0;
 
@@ -218,16 +275,23 @@ private:
     return best_idx;
   }
 
-  // --- Members ---
-  rclcpp::Service<uav_msgs::srv::RequestCharge>::SharedPtr service_;
+  // ------------- Members -------------
+
+  std::string ugv_id_;
+
+  rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
+  rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
+  std::string uplink_ch_id_;
+  rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
+  rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
 
   double charging_duration_sec_;
   Policy policy_;
   std::string policy_name_;
 
-  // EDF parameters: approximate drain of battery percentage per second
+  // EDF parameters
   double drain_percent_member_;
   double drain_percent_ch_;
 
@@ -241,6 +305,34 @@ private:
   bool dock_busy_;
   rclcpp::Time dock_free_time_;
   std::string current_uav_id_;
+
+  std::unordered_map<std::string, UavInfo> uav_status_;
+  void sendDecisionControlMessage(const QueueEntry & job,
+                                  const rclcpp::Time & now)
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = ugv_id_ + "_charge_decision_" + job.uav_id + "_" +
+                 std::to_string(now.nanoseconds());
+    msg.src_id = ugv_id_;
+    msg.dst_id = job.uav_id;
+    msg.next_hop_id = uplink_ch_id_;
+
+    msg.msg_type = 3;              // CONTROL_ALERT
+    msg.priority = 2;
+    msg.size_bytes = 40;
+    msg.creation_time = now;
+    msg.hop_count = 0;
+
+    msg.control_type = "CHARGE_DECISION";
+    msg.control_payload = "";      // we start immediately, so no schedule needed
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV: sending CHARGE_DECISION msg_id=%s to %s via %s",
+                msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str());
+
+    control_pub_->publish(msg);
+  }
+
 };
 
 int main(int argc, char ** argv)

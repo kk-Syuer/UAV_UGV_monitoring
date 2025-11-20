@@ -68,6 +68,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         '_size_bytes',
         '_creation_time',
         '_hop_count',
+        '_control_type',
+        '_control_payload',
     ]
 
     _fields_and_field_types = {
@@ -80,6 +82,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         'size_bytes': 'uint32',
         'creation_time': 'builtin_interfaces/Time',
         'hop_count': 'uint32',
+        'control_type': 'string',
+        'control_payload': 'string',
     }
 
     SLOT_TYPES = (
@@ -92,6 +96,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
         rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -108,6 +114,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         from builtin_interfaces.msg import Time
         self.creation_time = kwargs.get('creation_time', Time())
         self.hop_count = kwargs.get('hop_count', int())
+        self.control_type = kwargs.get('control_type', str())
+        self.control_payload = kwargs.get('control_payload', str())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -155,6 +163,10 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         if self.creation_time != other.creation_time:
             return False
         if self.hop_count != other.hop_count:
+            return False
+        if self.control_type != other.control_type:
+            return False
+        if self.control_payload != other.control_payload:
             return False
         return True
 
@@ -288,3 +300,29 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
             assert value >= 0 and value < 4294967296, \
                 "The 'hop_count' field must be an unsigned integer in [0, 4294967295]"
         self._hop_count = value
+
+    @builtins.property
+    def control_type(self):
+        """Message field 'control_type'."""
+        return self._control_type
+
+    @control_type.setter
+    def control_type(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'control_type' field must be of type 'str'"
+        self._control_type = value
+
+    @builtins.property
+    def control_payload(self):
+        """Message field 'control_payload'."""
+        return self._control_payload
+
+    @control_payload.setter
+    def control_payload(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'control_payload' field must be of type 'str'"
+        self._control_payload = value

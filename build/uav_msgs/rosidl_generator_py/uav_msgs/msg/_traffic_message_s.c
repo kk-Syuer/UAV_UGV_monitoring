@@ -164,6 +164,36 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     ros_message->hop_count = PyLong_AsUnsignedLong(field);
     Py_DECREF(field);
   }
+  {  // control_type
+    PyObject * field = PyObject_GetAttrString(_pymsg, "control_type");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->control_type, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // control_payload
+    PyObject * field = PyObject_GetAttrString(_pymsg, "control_payload");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->control_payload, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
 
   return true;
 }
@@ -306,6 +336,40 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
     field = PyLong_FromUnsignedLong(ros_message->hop_count);
     {
       int rc = PyObject_SetAttrString(_pymessage, "hop_count", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // control_type
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->control_type.data,
+      strlen(ros_message->control_type.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "control_type", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // control_payload
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->control_payload.data,
+      strlen(ros_message->control_payload.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "control_payload", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

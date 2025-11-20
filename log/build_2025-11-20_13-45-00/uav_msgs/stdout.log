@@ -1,0 +1,364 @@
+-- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+-- Found rosidl_default_generators: 1.2.0 (/opt/ros/humble/share/rosidl_default_generators/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Found rosidl_adapter: 3.1.7 (/opt/ros/humble/share/rosidl_adapter/cmake)
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found builtin_interfaces: 1.2.2 (/opt/ros/humble/share/builtin_interfaces/cmake)
+-- Found geometry_msgs: 4.9.0 (/opt/ros/humble/share/geometry_msgs/cmake)
+-- Found ament_cmake_ros: 0.10.0 (/opt/ros/humble/share/ament_cmake_ros/cmake)
+-- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+-- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+-- Found python_cmake_module: 0.10.0 (/opt/ros/humble/share/python_cmake_module/cmake)
+-- Using PYTHON_EXECUTABLE: /usr/bin/python3
+-- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.10
+-- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.10.so
+-- Found ament_lint_auto: 0.12.14 (/opt/ros/humble/share/ament_lint_auto/cmake)
+-- Configuring done
+-- Generating done
+-- Build files have been written to: /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_generator_c[0m
+[  1%] Built target uav_msgs__cpp
+[ 12%] Built target uav_msgs__rosidl_generator_c
+[ 12%] Built target ament_cmake_python_copy_uav_msgs
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_cpp[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_cpp[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_cpp[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_c[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_c[0m
+[ 24%] Built target uav_msgs__rosidl_typesupport_cpp
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_c[0m
+[ 35%] Built target uav_msgs__rosidl_typesupport_fastrtps_cpp
+[ 47%] Built target uav_msgs__rosidl_typesupport_c
+[ 58%] Built target uav_msgs__rosidl_typesupport_introspection_cpp
+[ 70%] Built target uav_msgs__rosidl_typesupport_introspection_c
+[ 82%] Built target uav_msgs__rosidl_typesupport_fastrtps_c
+[ 82%] Built target uav_msgs
+[ 83%] Built target uav_msgs__py
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_generator_py[0m
+[ 93%] Built target uav_msgs__rosidl_generator_py
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_c__pyext[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_c__pyext[0m
+[35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_c__pyext[0m
+[ 95%] Built target uav_msgs__rosidl_typesupport_fastrtps_c__pyext
+[ 97%] Built target uav_msgs__rosidl_typesupport_c__pyext
+[100%] Built target uav_msgs__rosidl_typesupport_introspection_c__pyext
+running egg_info
+writing uav_msgs.egg-info/PKG-INFO
+writing dependency_links to uav_msgs.egg-info/dependency_links.txt
+writing top-level names to uav_msgs.egg-info/top_level.txt
+reading manifest file 'uav_msgs.egg-info/SOURCES.txt'
+writing manifest file 'uav_msgs.egg-info/SOURCES.txt'
+[100%] Built target ament_cmake_python_build_uav_msgs_egg
+-- Install configuration: ""
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/rosidl_interfaces/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_c__visibility_control.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/dock_and_charge.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/request_charge.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__functions.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__struct.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__functions.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/library_path.sh
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/library_path.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_c.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_c.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_c.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_c.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_c.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/dock_and_charge.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/request_charge.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__builder.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__traits.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__struct.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/dds_fastrtps
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dds_fastrtps
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/dds_fastrtps
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_cpp.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_cpp.hpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.cpp
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_cpp.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_cpp.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/pythonpath.sh
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/pythonpath.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/top_level.txt
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/SOURCES.txt
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/PKG-INFO
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/dependency_links.txt
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/__init__.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/libuav_msgs__rosidl_generator_py.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/__init__.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/__init__.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/_dock_and_charge_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/_dock_and_charge.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/__init__.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_request_charge_s.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_request_charge.py
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_introspection_c.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs'...
+Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/__init__.py'...
+Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action'...
+Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg'...
+Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv'...
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_py.so
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/UavStatus.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/Heartbeat.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/TrafficMessage.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ClusterInfo.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeDecision.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeRequest.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.idl
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/UavStatus.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/Heartbeat.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/TrafficMessage.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ClusterInfo.msg
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeDecision.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeRequest.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge.srv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Request.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Response.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.action
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.msg
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/package_run_dependencies/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/parent_prefix_path/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/ament_prefix_path.sh
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/path.sh
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/path.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.bash
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.sh
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.zsh
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.dsv
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/package.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/packages/uav_msgs
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cppExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cppExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cppExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_pyExport.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_pyExport-noconfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_targets-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgsConfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgsConfig-version.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/package.xml

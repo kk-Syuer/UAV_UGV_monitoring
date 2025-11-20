@@ -13,8 +13,6 @@
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/weather_status.hpp"
 
-#include "uav_msgs/srv/request_charge.hpp"
-
 #include "geometry_msgs/msg/pose.hpp"
 
 using namespace std::chrono_literals;
@@ -39,6 +37,10 @@ public:
     my_ch_id_ = this->declare_parameter<std::string>("my_ch_id", "uav_1");
     next_hop_to_sink_ = this->declare_parameter<std::string>(
       "next_hop_to_sink", default_dst_id_);
+
+    // NEW: id of the UGV in the network, used as dst_id for CHARGE_REQUEST
+    ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+
     // Optional per-destination routing rules: ["dst:next_hop", ...]
     std::vector<std::string> routing_rules =
       this->declare_parameter<std::vector<std::string>>(
@@ -106,10 +108,6 @@ public:
       "/ch_manager/cluster_info", 10,
       std::bind(&UavNode::clusterInfoCallback, this, std::placeholders::_1));
 
-    charge_decision_sub_ = this->create_subscription<uav_msgs::msg::ChargeDecision>(
-      "/ugv/charge_decisions", 10,
-      std::bind(&UavNode::chargeDecisionCallback, this, std::placeholders::_1));
-
     weather_sub_ = this->create_subscription<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10,
       std::bind(&UavNode::weatherCallback, this, std::placeholders::_1));
@@ -130,8 +128,6 @@ public:
 
     service_radius_ = 100.0f;
 
-    // Charging client
-    charge_client_ = this->create_client<uav_msgs::srv::RequestCharge>("/ugv/request_charge");
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s ready. Role=%u, CH capacity flag=%s",
@@ -217,6 +213,7 @@ private:
       if (battery_energy_ < 0.0f) {
         battery_energy_ = 0.0f;
       }
+
     }
 
     // Percentage
@@ -224,7 +221,21 @@ private:
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
     }
-
+    // If we are dead, just publish status and return
+    if (battery_energy_ <= 0.0f) {
+      // Optionally: log one time that this UAV is dead.
+      uav_msgs::msg::UavStatus msg;
+      msg.uav_id = uav_id_;
+      msg.role = role_;
+      msg.cluster_id = cluster_id_;
+      msg.battery_level = battery_percent;
+      msg.battery_capacity = battery_capacity_;
+      msg.pose = pose_;
+      msg.service_radius = service_radius_;
+      msg.stamp = now;
+      status_pub_->publish(msg);
+      return;
+    }
     // If low and not waiting or scheduled, request a charge slot
     if (!is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
         battery_percent <= battery_threshold_percent_)
@@ -252,83 +263,72 @@ private:
 
   void requestCharge(float battery_percent)
   {
-    if (!charge_client_->wait_for_service(0s)) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: charge service not available", uav_id_.c_str());
-      return;
-    }
-
-    auto req = std::make_shared<uav_msgs::srv::RequestCharge::Request>();
-    req->uav_id = uav_id_;
-    req->battery_level = battery_percent;
-    req->role = role_;
-
+    // Set flag to avoid duplicate requests while waiting for decision
     waiting_for_charge_response_ = true;
 
+    auto now = this->now();
+
     RCLCPP_INFO(this->get_logger(),
-                "UAV %s: requesting charge (battery=%.1f%%)",
+                "UAV %s: requesting charge via network (battery=%.1f%%)",
                 uav_id_.c_str(), battery_percent);
 
-    // Publish a ChargeRequest for monitoring
+    // 1) Publish a ChargeRequest for monitoring (unchanged)
     uav_msgs::msg::ChargeRequest cr;
     cr.uav_id = uav_id_;
     cr.role = role_;
     cr.battery_level = battery_percent;
-    cr.stamp = this->now();
+    cr.stamp = now;
     charge_request_pub_->publish(cr);
 
-    auto cb =
-      [this](rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedFuture future)
-      {
-        handleChargeResponse(future);
-      };
+    // 2) Send a CONTROL_ALERT message through the network to the UGV
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = ugv_id_;       // final destination: UGV
+    msg.msg_type = 3;           // CONTROL_ALERT
+    msg.priority = 2;
+    msg.size_bytes = 50;
+    msg.creation_time = now;
+    msg.hop_count = 0;
 
-    charge_client_->async_send_request(req, cb);
-  }
+    // Let routing decide, as for any other dst:
+    // - members will rely on their CH
+    // - CHs will use routing_rules / next_hop_to_sink_
+    msg.next_hop_id = resolveNextHop(msg.dst_id);
 
-  void handleChargeResponse(
-    rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedFuture future)
-  {
-    auto res = future.get();
+    // Optional control metadata
+    msg.control_type = "CHARGE_REQUEST";
+    // For now payload is empty; UGV will look up status from /uav_fleet/status
 
-    if (!res->accepted) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: charge request rejected", uav_id_.c_str());
-      waiting_for_charge_response_ = false;
-      return;
-    }
-
-    // Keep waiting_for_charge_response_ = true until ChargeDecision arrives
     RCLCPP_INFO(this->get_logger(),
-                "UAV %s: charge request acknowledged by UGV (waiting for ChargeDecision).",
-                uav_id_.c_str());
+                "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
+                uav_id_.c_str(), msg.msg_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str());
+
+    traffic_pub_->publish(msg);
   }
 
-  void chargeDecisionCallback(const uav_msgs::msg::ChargeDecision::SharedPtr msg)
+  void handleChargeDecisionFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
   {
-    if (msg->uav_id != uav_id_) {
+    // Only act if this UAV is the final destination
+    if (msg->dst_id != uav_id_) {
       return;
     }
 
-    if (!msg->accepted) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: received negative ChargeDecision", uav_id_.c_str());
-      has_charge_slot_ = false;
-      waiting_for_charge_response_ = false;
+    // Basic sanity: must be a CHARGE_DECISION control alert
+    if (msg->msg_type != 3 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
-    charge_start_time_ = rclcpp::Time(msg->slot_start_time);
-    has_charge_slot_ = true;
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
+                "Starting charging session.",
+                uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str());
+
     waiting_for_charge_response_ = false;
+    has_charge_slot_ = true;
+    delivered_pub_->publish(*msg);
 
-    auto now = this->now();
-    double wait = (charge_start_time_ - now).seconds();
-
-    RCLCPP_INFO(this->get_logger(),
-                "UAV %s: received ChargeDecision (policy=%s). "
-                "Charging will start in %.1f seconds.",
-                uav_id_.c_str(), msg->policy.c_str(), wait);
   }
 
   // ---------------- Heartbeat & traffic ----------------
@@ -344,7 +344,7 @@ private:
   void publishTraffic()
   {
     // Do not generate application traffic while charging
-    if (is_charging_) {
+    if (is_charging_ || battery_energy_ <= 0.0f) {
       return;
     }
 
@@ -380,34 +380,43 @@ private:
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    // Don't route anything while charging
+      // Dead UAV: ignore all traffic
+    if (battery_energy_ <= 0.0f) {
+      return;
+    }
+    // Don't route anything while charging (you can relax this if you want later)
     if (is_charging_) {
       return;
     }
 
-    // If I'm not the next hop, ignore this message
+    // If I'm not the next hop, ignore
     if (msg->next_hop_id != uav_id_) {
       return;
     }
 
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
+
+      // First, see if this is a control message for charging
+      if (msg->msg_type == 3 && msg->control_type == "CHARGE_DECISION") {
+        handleChargeDecisionFromNetwork(msg);
+        return;
+      }
+
+      // Otherwise: normal data delivery
       RCLCPP_INFO(this->get_logger(),
                   "[RX] msg_id=%s delivered to %s (from %s, hop=%u)",
                   msg->msg_id.c_str(), uav_id_.c_str(),
                   msg->src_id.c_str(), msg->hop_count);
 
-      // Mark as delivered for metrics
       delivered_pub_->publish(*msg);
       return;
     }
 
-    // I'm an intermediate router (currently only CHs act like this)
+    // I'm not final destination; if I'm a CH, I may forward
     if (role_ == 1) { // CH
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.hop_count = msg->hop_count + 1;
-
-      // Use per-destination routing if possible; otherwise fallback
       fwd.next_hop_id = resolveNextHop(msg->dst_id);
 
       RCLCPP_INFO(this->get_logger(),
@@ -419,8 +428,8 @@ private:
 
       traffic_pub_->publish(fwd);
     }
-
   }
+
 
 
   void clusterInfoCallback(const uav_msgs::msg::ClusterInfo::SharedPtr msg)
@@ -457,6 +466,7 @@ private:
     // Fallback: use generic "towards sink" direction
     return next_hop_to_sink_;
   }
+  std::string ugv_id_;   // logical id of the UGV in the network
 
   geometry_msgs::msg::Pose pose_;
   float service_radius_;
@@ -495,7 +505,6 @@ private:
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
   rclcpp::TimerBase::SharedPtr traffic_timer_;
 
-  rclcpp::Client<uav_msgs::srv::RequestCharge>::SharedPtr charge_client_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
 
 };

@@ -1,0 +1,7 @@
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:[m[K In member function ‘[01m[Kvoid UavNode::handleChargeDecisionFromNetwork(const SharedPtr&)[m[K’:
+[01m[K/home/vboxuser/UAV_UGV_netmonitoring/src/uav_fleet/src/uav_node.cpp:323:7:[m[K [01;31m[Kerror: [m[K‘[01m[KstartCharging[m[K’ was not declared in this scope
+  323 |       [01;31m[KstartCharging[m[K();
+      |       [01;31m[K^~~~~~~~~~~~~[m[K
+gmake[2]: *** [CMakeFiles/uav_node.dir/build.make:76: CMakeFiles/uav_node.dir/src/uav_node.cpp.o] Error 1
+gmake[1]: *** [CMakeFiles/Makefile2:137: CMakeFiles/uav_node.dir/all] Error 2
+gmake: *** [Makefile:146: all] Error 2

@@ -16,6 +16,8 @@
 // Member `src_id`
 // Member `dst_id`
 // Member `next_hop_id`
+// Member `control_type`
+// Member `control_payload`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `creation_time`
 #include "builtin_interfaces/msg/detail/time__functions.h"
@@ -55,6 +57,16 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
     return false;
   }
   // hop_count
+  // control_type
+  if (!rosidl_runtime_c__String__init(&msg->control_type)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // control_payload
+  if (!rosidl_runtime_c__String__init(&msg->control_payload)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
   return true;
 }
 
@@ -78,6 +90,10 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   // creation_time
   builtin_interfaces__msg__Time__fini(&msg->creation_time);
   // hop_count
+  // control_type
+  rosidl_runtime_c__String__fini(&msg->control_type);
+  // control_payload
+  rosidl_runtime_c__String__fini(&msg->control_payload);
 }
 
 bool
@@ -132,6 +148,18 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   if (lhs->hop_count != rhs->hop_count) {
     return false;
   }
+  // control_type
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->control_type), &(rhs->control_type)))
+  {
+    return false;
+  }
+  // control_payload
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->control_payload), &(rhs->control_payload)))
+  {
+    return false;
+  }
   return true;
 }
 
@@ -181,6 +209,18 @@ uav_msgs__msg__TrafficMessage__copy(
   }
   // hop_count
   output->hop_count = input->hop_count;
+  // control_type
+  if (!rosidl_runtime_c__String__copy(
+      &(input->control_type), &(output->control_type)))
+  {
+    return false;
+  }
+  // control_payload
+  if (!rosidl_runtime_c__String__copy(
+      &(input->control_payload), &(output->control_payload)))
+  {
+    return false;
+  }
   return true;
 }
 
