@@ -15,6 +15,7 @@
 // Member `msg_id`
 // Member `src_id`
 // Member `dst_id`
+// Member `next_hop_id`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `creation_time`
 #include "builtin_interfaces/msg/detail/time__functions.h"
@@ -37,6 +38,11 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
   }
   // dst_id
   if (!rosidl_runtime_c__String__init(&msg->dst_id)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // next_hop_id
+  if (!rosidl_runtime_c__String__init(&msg->next_hop_id)) {
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
@@ -64,6 +70,8 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   rosidl_runtime_c__String__fini(&msg->src_id);
   // dst_id
   rosidl_runtime_c__String__fini(&msg->dst_id);
+  // next_hop_id
+  rosidl_runtime_c__String__fini(&msg->next_hop_id);
   // msg_type
   // priority
   // size_bytes
@@ -93,6 +101,12 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   // dst_id
   if (!rosidl_runtime_c__String__are_equal(
       &(lhs->dst_id), &(rhs->dst_id)))
+  {
+    return false;
+  }
+  // next_hop_id
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->next_hop_id), &(rhs->next_hop_id)))
   {
     return false;
   }
@@ -144,6 +158,12 @@ uav_msgs__msg__TrafficMessage__copy(
   // dst_id
   if (!rosidl_runtime_c__String__copy(
       &(input->dst_id), &(output->dst_id)))
+  {
+    return false;
+  }
+  // next_hop_id
+  if (!rosidl_runtime_c__String__copy(
+      &(input->next_hop_id), &(output->next_hop_id)))
   {
     return false;
   }

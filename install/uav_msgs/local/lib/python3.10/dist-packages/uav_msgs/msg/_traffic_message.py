@@ -62,6 +62,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         '_msg_id',
         '_src_id',
         '_dst_id',
+        '_next_hop_id',
         '_msg_type',
         '_priority',
         '_size_bytes',
@@ -73,6 +74,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         'msg_id': 'string',
         'src_id': 'string',
         'dst_id': 'string',
+        'next_hop_id': 'string',
         'msg_type': 'uint8',
         'priority': 'uint8',
         'size_bytes': 'uint32',
@@ -81,6 +83,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
     }
 
     SLOT_TYPES = (
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
@@ -98,6 +101,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self.msg_id = kwargs.get('msg_id', str())
         self.src_id = kwargs.get('src_id', str())
         self.dst_id = kwargs.get('dst_id', str())
+        self.next_hop_id = kwargs.get('next_hop_id', str())
         self.msg_type = kwargs.get('msg_type', int())
         self.priority = kwargs.get('priority', int())
         self.size_bytes = kwargs.get('size_bytes', int())
@@ -139,6 +143,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         if self.src_id != other.src_id:
             return False
         if self.dst_id != other.dst_id:
+            return False
+        if self.next_hop_id != other.next_hop_id:
             return False
         if self.msg_type != other.msg_type:
             return False
@@ -195,6 +201,19 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
                 isinstance(value, str), \
                 "The 'dst_id' field must be of type 'str'"
         self._dst_id = value
+
+    @builtins.property
+    def next_hop_id(self):
+        """Message field 'next_hop_id'."""
+        return self._next_hop_id
+
+    @next_hop_id.setter
+    def next_hop_id(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'next_hop_id' field must be of type 'str'"
+        self._next_hop_id = value
 
     @builtins.property
     def msg_type(self):

@@ -16,8 +16,12 @@ module uav_msgs {
       string src_id;
 
       @verbatim (language="comment", text=
-        "same style")
+        "final destination (who should ultimately receive it)")
       string dst_id;
+
+      @verbatim (language="comment", text=
+        "for this hop, who we are sending to")
+      string next_hop_id;
 
       @verbatim (language="comment", text=
         "0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT")

@@ -62,6 +62,8 @@ cdr_serialize(
   cdr << ros_message.src_id;
   // Member: dst_id
   cdr << ros_message.dst_id;
+  // Member: next_hop_id
+  cdr << ros_message.next_hop_id;
   // Member: msg_type
   cdr << ros_message.msg_type;
   // Member: priority
@@ -91,6 +93,9 @@ cdr_deserialize(
 
   // Member: dst_id
   cdr >> ros_message.dst_id;
+
+  // Member: next_hop_id
+  cdr >> ros_message.next_hop_id;
 
   // Member: msg_type
   cdr >> ros_message.msg_type;
@@ -136,6 +141,10 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.dst_id.size() + 1);
+  // Member: next_hop_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.next_hop_id.size() + 1);
   // Member: msg_type
   {
     size_t item_size = sizeof(ros_message.msg_type);
@@ -216,6 +225,19 @@ max_serialized_size_TrafficMessage(
   }
 
   // Member: dst_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: next_hop_id
   {
     size_t array_size = 1;
 

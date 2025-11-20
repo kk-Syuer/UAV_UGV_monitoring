@@ -46,6 +46,7 @@ struct TrafficMessage_
       this->msg_id = "";
       this->src_id = "";
       this->dst_id = "";
+      this->next_hop_id = "";
       this->msg_type = 0;
       this->priority = 0;
       this->size_bytes = 0ul;
@@ -57,6 +58,7 @@ struct TrafficMessage_
   : msg_id(_alloc),
     src_id(_alloc),
     dst_id(_alloc),
+    next_hop_id(_alloc),
     creation_time(_alloc, _init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
@@ -65,6 +67,7 @@ struct TrafficMessage_
       this->msg_id = "";
       this->src_id = "";
       this->dst_id = "";
+      this->next_hop_id = "";
       this->msg_type = 0;
       this->priority = 0;
       this->size_bytes = 0ul;
@@ -82,6 +85,9 @@ struct TrafficMessage_
   using _dst_id_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _dst_id_type dst_id;
+  using _next_hop_id_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _next_hop_id_type next_hop_id;
   using _msg_type_type =
     uint8_t;
   _msg_type_type msg_type;
@@ -115,6 +121,12 @@ struct TrafficMessage_
     const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
     this->dst_id = _arg;
+    return *this;
+  }
+  Type & set__next_hop_id(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->next_hop_id = _arg;
     return *this;
   }
   Type & set__msg_type(
@@ -197,6 +209,9 @@ struct TrafficMessage_
       return false;
     }
     if (this->dst_id != other.dst_id) {
+      return false;
+    }
+    if (this->next_hop_id != other.next_hop_id) {
       return false;
     }
     if (this->msg_type != other.msg_type) {

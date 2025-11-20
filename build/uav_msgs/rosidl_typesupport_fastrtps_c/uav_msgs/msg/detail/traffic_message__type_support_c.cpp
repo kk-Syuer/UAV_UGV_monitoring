@@ -35,8 +35,8 @@ extern "C"
 #endif
 
 #include "builtin_interfaces/msg/detail/time__functions.h"  // creation_time
-#include "rosidl_runtime_c/string.h"  // dst_id, msg_id, src_id
-#include "rosidl_runtime_c/string_functions.h"  // dst_id, msg_id, src_id
+#include "rosidl_runtime_c/string.h"  // dst_id, msg_id, next_hop_id, src_id
+#include "rosidl_runtime_c/string_functions.h"  // dst_id, msg_id, next_hop_id, src_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -97,6 +97,20 @@ static bool _TrafficMessage__cdr_serialize(
   // Field name: dst_id
   {
     const rosidl_runtime_c__String * str = &ros_message->dst_id;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
+  // Field name: next_hop_id
+  {
+    const rosidl_runtime_c__String * str = &ros_message->next_hop_id;
     if (str->capacity == 0 || str->capacity <= str->size) {
       fprintf(stderr, "string capacity not greater than size\n");
       return false;
@@ -202,6 +216,22 @@ static bool _TrafficMessage__cdr_deserialize(
     }
   }
 
+  // Field name: next_hop_id
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->next_hop_id.data) {
+      rosidl_runtime_c__String__init(&ros_message->next_hop_id);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->next_hop_id,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'next_hop_id'\n");
+      return false;
+    }
+  }
+
   // Field name: msg_type
   {
     cdr >> ros_message->msg_type;
@@ -265,6 +295,10 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->dst_id.size + 1);
+  // field.name next_hop_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->next_hop_id.size + 1);
   // field.name msg_type
   {
     size_t item_size = sizeof(ros_message->msg_type);
@@ -347,6 +381,18 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     }
   }
   // member: dst_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: next_hop_id
   {
     size_t array_size = 1;
 

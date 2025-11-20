@@ -102,6 +102,21 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
+  {  // next_hop_id
+    PyObject * field = PyObject_GetAttrString(_pymsg, "next_hop_id");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->next_hop_id, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
   {  // msg_type
     PyObject * field = PyObject_GetAttrString(_pymsg, "msg_type");
     if (!field) {
@@ -216,6 +231,23 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "dst_id", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // next_hop_id
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->next_hop_id.data,
+      strlen(ros_message->next_hop_id.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "next_hop_id", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

@@ -21,6 +21,7 @@ extern "C"
 // Member 'msg_id'
 // Member 'src_id'
 // Member 'dst_id'
+// Member 'next_hop_id'
 #include "rosidl_runtime_c/string.h"
 // Member 'creation_time'
 #include "builtin_interfaces/msg/detail/time__struct.h"
@@ -32,8 +33,10 @@ typedef struct uav_msgs__msg__TrafficMessage
   rosidl_runtime_c__String msg_id;
   /// "uav_1", "user_3", "ugv", "sink_gateway"
   rosidl_runtime_c__String src_id;
-  /// same style
+  /// final destination (who should ultimately receive it)
   rosidl_runtime_c__String dst_id;
+  /// for this hop, who we are sending to
+  rosidl_runtime_c__String next_hop_id;
   /// 0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT
   uint8_t msg_type;
   /// 0=low ... 3=emergency (you decide later)
