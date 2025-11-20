@@ -330,10 +330,15 @@ private:
     msg.msg_id = uav_id_ + "_" + std::to_string(msg_counter_++);
     msg.src_id = uav_id_;
 
+    // Final destination: by default, sink_gateway (or whatever default_dst_id_ is)
+    msg.dst_id = default_dst_id_;
+
     if (role_ == 0) { // MEMBER
-      msg.dst_id = my_ch_id_;
+      // First hop is my CH
+      msg.next_hop_id = my_ch_id_;
     } else { // CH
-      msg.dst_id = default_dst_id_;
+      // CH sends directly towards sink (or default destination)
+      msg.next_hop_id = default_dst_id_;
     }
 
     msg.msg_type = 0;       // TEXT
@@ -343,11 +348,13 @@ private:
     msg.hop_count = 0;
 
     RCLCPP_INFO(this->get_logger(),
-                "[TX] msg_id=%s src=%s dst=%s",
-                msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str());
+                "[TX] msg_id=%s src=%s dst=%s next_hop=%s",
+                msg.msg_id.c_str(), msg.src_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     traffic_pub_->publish(msg);
   }
+
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
@@ -356,28 +363,49 @@ private:
       return;
     }
 
+    // If I'm not the next hop, ignore this message
+    if (msg->next_hop_id != uav_id_) {
+      return;
+    }
+
+    // If I'm the final destination
     if (msg->dst_id == uav_id_) {
-      if (role_ == 1 && msg->src_id != uav_id_) {
-        uav_msgs::msg::TrafficMessage fwd = *msg;
-        fwd.dst_id = default_dst_id_;
-        fwd.hop_count = msg->hop_count + 1;
+      RCLCPP_INFO(this->get_logger(),
+                  "[RX] msg_id=%s delivered to %s (from %s, hop=%u)",
+                  msg->msg_id.c_str(), uav_id_.c_str(),
+                  msg->src_id.c_str(), msg->hop_count);
 
-        RCLCPP_INFO(this->get_logger(),
-                    "[FWD] CH %s forwarding msg_id=%s from=%s to=%s",
-                    uav_id_.c_str(), msg->msg_id.c_str(),
-                    msg->src_id.c_str(), fwd.dst_id.c_str());
+      // Mark as delivered for metrics
+      delivered_pub_->publish(*msg);
+      return;
+    }
 
-        traffic_pub_->publish(fwd);
+    // I'm an intermediate router (currently only CHs act like this)
+    if (role_ == 1) { // CH
+      uav_msgs::msg::TrafficMessage fwd = *msg;
+      fwd.hop_count = msg->hop_count + 1;
+
+      // For now we only know how to route towards default_dst_id_ (sink_gateway)
+      // Later we'll extend this with a real backbone routing table.
+      if (msg->dst_id == default_dst_id_) {
+        fwd.next_hop_id = default_dst_id_;
       } else {
-        RCLCPP_INFO(this->get_logger(),
-                    "[RX] msg_id=%s delivered to %s (from %s)",
-                    msg->msg_id.c_str(), uav_id_.c_str(), msg->src_id.c_str());
-
-        // This UAV is the final sink for this message -> mark as delivered
-        delivered_pub_->publish(*msg);
+        // TODO: routing to other destinations via backbone (future step)
+        // For now, just try to push towards default_dst_id_ as a fallback
+        fwd.next_hop_id = default_dst_id_;
       }
+
+      RCLCPP_INFO(this->get_logger(),
+                  "[FWD] CH %s forwarding msg_id=%s src=%s dst=%s next_hop=%s hop=%u",
+                  uav_id_.c_str(),
+                  fwd.msg_id.c_str(), fwd.src_id.c_str(),
+                  fwd.dst_id.c_str(), fwd.next_hop_id.c_str(),
+                  fwd.hop_count);
+
+      traffic_pub_->publish(fwd);
     }
   }
+
 
   void clusterInfoCallback(const uav_msgs::msg::ClusterInfo::SharedPtr msg)
   {

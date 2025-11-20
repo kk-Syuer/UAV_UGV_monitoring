@@ -30,17 +30,22 @@ public:
 private:
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    // I'm the gateway; I only care about messages whose final destination is me
     if (msg->dst_id != sink_id_) {
       return;
     }
 
+    // Optionally we could also check msg->next_hop_id == sink_id_ here,
+    // but it's not strictly necessary since only messages destined to me
+    // should set dst_id = sink_id_.
     RCLCPP_INFO(this->get_logger(),
-                "[SINK RX] msg_id=%s src=%s dst=%s (delivered to gateway)",
-                msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str());
+                "[SINK RX] msg_id=%s src=%s dst=%s hop=%u (delivered to gateway)",
+                msg->msg_id.c_str(), msg->src_id.c_str(),
+                msg->dst_id.c_str(), msg->hop_count);
 
-    // Republishing *the same message* on /network/traffic_delivered
     delivered_pub_->publish(*msg);
   }
+
 
   std::string sink_id_;
 

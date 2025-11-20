@@ -42,7 +42,14 @@ private:
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = user_id_ + "_" + std::to_string(msg_counter_++);
     msg.src_id = user_id_;
-    msg.dst_id = ch_id_;
+
+    // Final destination is usually sink_gateway in this scenario
+    std::string final_dst = "sink_gateway";
+    msg.dst_id = final_dst;
+
+    // First hop is my attached CH
+    msg.next_hop_id = ch_id_;
+
     msg.msg_type = 0;       // TEXT
     msg.priority = 0;
     msg.size_bytes = 200;
@@ -50,8 +57,9 @@ private:
     msg.hop_count = 0;
 
     RCLCPP_INFO(this->get_logger(),
-                "[USER TX] msg_id=%s src=%s dst=%s",
-                msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str());
+                "[USER TX] msg_id=%s src=%s dst=%s next_hop=%s",
+                msg.msg_id.c_str(), msg.src_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     traffic_pub_->publish(msg);
   }
