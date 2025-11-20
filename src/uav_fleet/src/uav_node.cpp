@@ -37,6 +37,28 @@ public:
     cluster_id_ = this->declare_parameter<std::string>("cluster_id", "cluster_1");
     default_dst_id_ = this->declare_parameter<std::string>("default_dst_id", "sink_gateway");
     my_ch_id_ = this->declare_parameter<std::string>("my_ch_id", "uav_1");
+    next_hop_to_sink_ = this->declare_parameter<std::string>(
+      "next_hop_to_sink", default_dst_id_);
+    // Optional per-destination routing rules: ["dst:next_hop", ...]
+    std::vector<std::string> routing_rules =
+      this->declare_parameter<std::vector<std::string>>(
+        "routing_rules", std::vector<std::string>{});
+
+    for (const auto & rule : routing_rules) {
+      auto pos = rule.find(':');
+      if (pos == std::string::npos || pos == 0 || pos == rule.size() - 1) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: invalid routing rule '%s' (expected 'dst:next_hop')",
+                    uav_id_.c_str(), rule.c_str());
+        continue;
+      }
+      std::string dst = rule.substr(0, pos);
+      std::string nh = rule.substr(pos + 1);
+      routing_table_[dst] = nh;
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: routing rule added dst='%s' -> next_hop='%s'",
+                  uav_id_.c_str(), dst.c_str(), nh.c_str());
+    }
 
     double cap_member = this->declare_parameter<double>("battery_capacity_member", 100.0);
     double cap_ch     = this->declare_parameter<double>("battery_capacity_ch", 200.0);
@@ -337,8 +359,8 @@ private:
       // First hop is my CH
       msg.next_hop_id = my_ch_id_;
     } else { // CH
-      // CH sends directly towards sink (or default destination)
-      msg.next_hop_id = default_dst_id_;
+      // CH sends towards sink/backbone using next_hop_to_sink_
+      msg.next_hop_id = next_hop_to_sink_;
     }
 
     msg.msg_type = 0;       // TEXT
@@ -385,15 +407,8 @@ private:
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.hop_count = msg->hop_count + 1;
 
-      // For now we only know how to route towards default_dst_id_ (sink_gateway)
-      // Later we'll extend this with a real backbone routing table.
-      if (msg->dst_id == default_dst_id_) {
-        fwd.next_hop_id = default_dst_id_;
-      } else {
-        // TODO: routing to other destinations via backbone (future step)
-        // For now, just try to push towards default_dst_id_ as a fallback
-        fwd.next_hop_id = default_dst_id_;
-      }
+      // Use per-destination routing if possible; otherwise fallback
+      fwd.next_hop_id = resolveNextHop(msg->dst_id);
 
       RCLCPP_INFO(this->get_logger(),
                   "[FWD] CH %s forwarding msg_id=%s src=%s dst=%s next_hop=%s hop=%u",
@@ -404,6 +419,7 @@ private:
 
       traffic_pub_->publish(fwd);
     }
+
   }
 
 
@@ -428,6 +444,19 @@ private:
   std::string cluster_id_;
   std::string default_dst_id_;
   std::string my_ch_id_;
+  std::string next_hop_to_sink_;
+  // New: simple per-destination routing table for CHs
+  std::unordered_map<std::string, std::string> routing_table_;
+  std::string resolveNextHop(const std::string & dst) const
+  {
+    // If we have an explicit rule for this destination, use it
+    auto it = routing_table_.find(dst);
+    if (it != routing_table_.end()) {
+      return it->second;
+    }
+    // Fallback: use generic "towards sink" direction
+    return next_hop_to_sink_;
+  }
 
   geometry_msgs::msg::Pose pose_;
   float service_radius_;
