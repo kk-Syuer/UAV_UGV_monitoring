@@ -1,0 +1,33 @@
+// generated from rosidl_generator_c/resource/idl__type_support.h.em
+// with input from uav_msgs:msg/WeatherStatus.idl
+// generated code does not contain a copyright notice
+
+#ifndef UAV_MSGS__MSG__DETAIL__WEATHER_STATUS__TYPE_SUPPORT_H_
+#define UAV_MSGS__MSG__DETAIL__WEATHER_STATUS__TYPE_SUPPORT_H_
+
+#include "rosidl_typesupport_interface/macros.h"
+
+#include "uav_msgs/msg/rosidl_generator_c__visibility_control.h"
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+#include "rosidl_runtime_c/message_type_support_struct.h"
+
+// Forward declare the get type support functions for this type.
+ROSIDL_GENERATOR_C_PUBLIC_uav_msgs
+const rosidl_message_type_support_t *
+ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+  rosidl_typesupport_c,
+  uav_msgs,
+  msg,
+  WeatherStatus
+)();
+
+#ifdef __cplusplus
+}
+#endif
+
+#endif  // UAV_MSGS__MSG__DETAIL__WEATHER_STATUS__TYPE_SUPPORT_H_

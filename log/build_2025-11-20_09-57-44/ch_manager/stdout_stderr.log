@@ -1,0 +1,22 @@
+[35m[1mConsolidate compiler generated dependencies of target ch_manager_node[0m
+[ 50%] [32mBuilding CXX object CMakeFiles/ch_manager_node.dir/src/ch_manager_node.cpp.o[0m
+[100%] [32m[1mLinking CXX executable ch_manager_node[0m
+[100%] Built target ch_manager_node
+-- Install configuration: ""
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/lib/ch_manager/ch_manager_node
+-- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/lib/ch_manager/ch_manager_node" to ""
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ament_index/resource_index/package_run_dependencies/ch_manager
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ament_index/resource_index/parent_prefix_path/ch_manager
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/environment/ament_prefix_path.sh
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/environment/ament_prefix_path.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/environment/path.sh
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/environment/path.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/local_setup.bash
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/local_setup.sh
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/local_setup.zsh
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/local_setup.dsv
+-- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/package.dsv
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ament_index/resource_index/packages/ch_manager
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/cmake/ch_managerConfig.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/cmake/ch_managerConfig-version.cmake
+-- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager/share/ch_manager/package.xml

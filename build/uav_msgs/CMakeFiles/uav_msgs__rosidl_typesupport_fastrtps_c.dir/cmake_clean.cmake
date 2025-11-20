@@ -13,6 +13,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/traffic_message__type_support_c.cpp.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__type_support_c.cpp.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__type_support_c.cpp.o.d"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp.o"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o.d"
   "libuav_msgs__rosidl_typesupport_fastrtps_c.pdb"
@@ -31,6 +33,8 @@ file(REMOVE_RECURSE
   "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/traffic_message__type_support_c.cpp"
   "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h"
   "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp"
   "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_c.h"
   "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp"
 )

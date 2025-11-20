@@ -25,6 +25,14 @@ ros2 run uav_fleet uav_node --ros-args \
   -p role:=0 \
   -p my_ch_id:=uav_1 \
   -p battery_threshold:=60.0
+//check uav status info
+ros2 topic echo /uav_fleet/status
+
 
 // run network monitor
 ros2 run network_monitor network_monitor_node
+
+// run weather node
+ros2 run weather_server weather_node
+ros2 topic echo /environment/weather //check weather
+

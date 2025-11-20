@@ -1,5 +1,6 @@
 /home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/uninstall.dir
 /home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/weather_server_uninstall.dir
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/weather_node.dir
 /home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/test.dir
 /home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/edit_cache.dir
 /home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/CMakeFiles/rebuild_cache.dir

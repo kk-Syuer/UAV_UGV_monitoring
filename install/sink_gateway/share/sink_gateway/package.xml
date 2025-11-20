@@ -1,7 +1,8 @@
+<?xml version="1.0"?>
 <package format="3">
   <name>sink_gateway</name>
   <version>0.0.0</version>
-  <description>Gateway node between UAV network and the outside world.</description>
+  <description>Sink gateway node: represents connection to outside world and marks messages as delivered.</description>
 
   <maintainer email="liyu.jin03@gmail.com">vboxuser</maintainer>
   <license>TODO: License declaration</license>
@@ -18,3 +19,4 @@
     <build_type>ament_cmake</build_type>
   </export>
 </package>
+

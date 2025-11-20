@@ -13,5 +13,6 @@ uav_msgs/msg/_cluster_info.py
 uav_msgs/msg/_heartbeat.py
 uav_msgs/msg/_traffic_message.py
 uav_msgs/msg/_uav_status.py
+uav_msgs/msg/_weather_status.py
 uav_msgs/srv/__init__.py
 uav_msgs/srv/_request_charge.py

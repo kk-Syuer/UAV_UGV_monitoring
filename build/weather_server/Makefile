@@ -197,6 +197,43 @@ weather_server_uninstall/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/weather_server_uninstall.dir/build.make CMakeFiles/weather_server_uninstall.dir/build
 .PHONY : weather_server_uninstall/fast
 
+#=============================================================================
+# Target rules for targets named weather_node
+
+# Build rule for target.
+weather_node: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 weather_node
+.PHONY : weather_node
+
+# fast build rule for target.
+weather_node/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/weather_node.dir/build.make CMakeFiles/weather_node.dir/build
+.PHONY : weather_node/fast
+
+src/weather_node.o: src/weather_node.cpp.o
+.PHONY : src/weather_node.o
+
+# target to build an object file
+src/weather_node.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/weather_node.dir/build.make CMakeFiles/weather_node.dir/src/weather_node.cpp.o
+.PHONY : src/weather_node.cpp.o
+
+src/weather_node.i: src/weather_node.cpp.i
+.PHONY : src/weather_node.i
+
+# target to preprocess a source file
+src/weather_node.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/weather_node.dir/build.make CMakeFiles/weather_node.dir/src/weather_node.cpp.i
+.PHONY : src/weather_node.cpp.i
+
+src/weather_node.s: src/weather_node.cpp.s
+.PHONY : src/weather_node.s
+
+# target to generate assembly for a file
+src/weather_node.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/weather_node.dir/build.make CMakeFiles/weather_node.dir/src/weather_node.cpp.s
+.PHONY : src/weather_node.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -212,6 +249,10 @@ help:
 	@echo "... test"
 	@echo "... uninstall"
 	@echo "... weather_server_uninstall"
+	@echo "... weather_node"
+	@echo "... src/weather_node.o"
+	@echo "... src/weather_node.i"
+	@echo "... src/weather_node.s"
 .PHONY : help
 
 

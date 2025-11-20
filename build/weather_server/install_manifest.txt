@@ -1,3 +1,4 @@
+/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/lib/weather_server/weather_node
 /home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/ament_index/resource_index/package_run_dependencies/weather_server
 /home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/ament_index/resource_index/parent_prefix_path/weather_server
 /home/vboxuser/UAV_UGV_netmonitoring/install/weather_server/share/weather_server/environment/ament_prefix_path.sh

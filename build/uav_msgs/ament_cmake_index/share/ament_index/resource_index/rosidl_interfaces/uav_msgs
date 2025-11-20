@@ -12,6 +12,8 @@ msg/TrafficMessage.idl
 msg/TrafficMessage.msg
 msg/UavStatus.idl
 msg/UavStatus.msg
+msg/WeatherStatus.idl
+msg/WeatherStatus.msg
 srv/RequestCharge.idl
 srv/RequestCharge.srv
 srv/RequestCharge_Request.msg

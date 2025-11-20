@@ -106,6 +106,11 @@ CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_c
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__struct.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__traits.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__type_support.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/weather_status.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__builder.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__struct.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__traits.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__type_support.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
 
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: /opt/ros/humble/lib/rosidl_generator_cpp/rosidl_generator_cpp
@@ -131,6 +136,7 @@ rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/Ch
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/action/DockAndCharge.idl
+rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/WeatherStatus.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: /opt/ros/humble/share/builtin_interfaces/msg/Time.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: /opt/ros/humble/share/geometry_msgs/msg/Accel.idl
@@ -320,6 +326,21 @@ rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__traits.hpp: rosidl_
 rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__type_support.hpp
 
+rosidl_generator_cpp/uav_msgs/msg/weather_status.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/weather_status.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__builder.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__builder.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__struct.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__struct.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__traits.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__traits.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__type_support.hpp
+
 uav_msgs__cpp: CMakeFiles/uav_msgs__cpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__builder.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__struct.hpp
@@ -353,9 +374,14 @@ uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__builder.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__struct.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__traits.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/uav_status__type_support.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__builder.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__struct.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__traits.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__type_support.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/heartbeat.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/traffic_message.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/weather_status.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__builder.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp

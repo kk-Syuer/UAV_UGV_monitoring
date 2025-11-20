@@ -77,6 +77,7 @@ uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_d
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge.py
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_weather_status.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/__init__.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/srv/__init__.py
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/action/__init__.py
@@ -88,6 +89,7 @@ uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_d
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_charge_request_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge_s.c
 uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
+uav_msgs__py/CMakeFiles/uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_weather_status_s.c
 
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/lib/rosidl_generator_py/rosidl_generator_py
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/local/lib/python3.10/dist-packages/rosidl_generator_py/__init__.py
@@ -110,6 +112,7 @@ rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: ros
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/action/DockAndCharge.idl
+rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: rosidl_adapter/uav_msgs/msg/WeatherStatus.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/share/builtin_interfaces/msg/Time.idl
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c: /opt/ros/humble/share/geometry_msgs/msg/Accel.idl
@@ -212,6 +215,9 @@ rosidl_generator_py/uav_msgs/srv/_request_charge.py: rosidl_generator_py/uav_msg
 rosidl_generator_py/uav_msgs/action/_dock_and_charge.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/action/_dock_and_charge.py
 
+rosidl_generator_py/uav_msgs/msg/_weather_status.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_weather_status.py
+
 rosidl_generator_py/uav_msgs/msg/__init__.py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/__init__.py
 
@@ -245,6 +251,9 @@ rosidl_generator_py/uav_msgs/srv/_request_charge_s.c: rosidl_generator_py/uav_ms
 rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c
 
+rosidl_generator_py/uav_msgs/msg/_weather_status_s.c: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_py/uav_msgs/msg/_weather_status_s.c
+
 uav_msgs__py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_introspection_c.c
@@ -264,6 +273,8 @@ uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_traffic_message.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_uav_status.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_uav_status_s.c
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_weather_status.py
+uav_msgs__py: rosidl_generator_py/uav_msgs/msg/_weather_status_s.c
 uav_msgs__py: rosidl_generator_py/uav_msgs/srv/__init__.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge.py
 uav_msgs__py: rosidl_generator_py/uav_msgs/srv/_request_charge_s.c

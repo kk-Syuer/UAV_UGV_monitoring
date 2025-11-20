@@ -267,6 +267,9 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
   rosidl_generator_c/uav_msgs/msg/detail/charge_request__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/charge_request__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/weather_status__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h \
@@ -277,6 +280,10 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
 
 
 rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/weather_status__type_support.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h:
 
@@ -379,6 +386,8 @@ rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 /usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.h:
 
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
 

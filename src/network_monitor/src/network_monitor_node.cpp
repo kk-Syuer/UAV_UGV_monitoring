@@ -49,7 +49,13 @@ private:
       rclcpp::Time t_created(msg->creation_time);
       creation_times_[msg->msg_id] = t_created;
       total_generated_++;
+
+      RCLCPP_INFO(this->get_logger(),
+                  "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
+                  msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                  total_generated_);
     }
+    // If we've already seen this msg_id, we don't log again; it's just forwarding/duplicates
   }
 
   void deliveredCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)

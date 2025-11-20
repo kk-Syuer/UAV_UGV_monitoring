@@ -1,12 +1,16 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/rosidl_interfaces/uav_msgs
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_c__visibility_control.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__functions.c
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__struct.h
@@ -23,6 +27,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__functions.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__functions.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__functions.c
@@ -48,6 +53,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_fastrtps_c.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_fastrtps_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_c.h
@@ -56,11 +62,13 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_c.h
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.c
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.c
@@ -75,10 +83,12 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__traits.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__traits.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp
@@ -95,10 +105,13 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__builder.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__builder.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__traits.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__traits.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__struct.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__builder.hpp
@@ -120,6 +133,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_cpp.hpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_cpp.so
@@ -132,6 +146,8 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.cpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.cpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.cpp
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_cpp.hpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.cpp
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_cpp.hpp
@@ -150,6 +166,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/__init__.py
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/libuav_msgs__rosidl_generator_py.so
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/__init__.py
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status_s.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status.py
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat.py
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info.py
@@ -161,6 +178,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision_s.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info_s.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request_s.c
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status.py
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message.py
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
@@ -186,6 +204,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeRequest.idl
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge.idl
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.idl
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.idl
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/UavStatus.msg
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/Heartbeat.msg
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/TrafficMessage.msg
@@ -196,6 +215,7 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Request.msg
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Response.msg
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.action
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.msg
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/package_run_dependencies/uav_msgs
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/parent_prefix_path/uav_msgs
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/ament_prefix_path.sh

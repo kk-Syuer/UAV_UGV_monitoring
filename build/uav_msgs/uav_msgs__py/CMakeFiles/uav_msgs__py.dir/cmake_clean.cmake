@@ -18,6 +18,8 @@ file(REMOVE_RECURSE
   "../rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_uav_status.py"
   "../rosidl_generator_py/uav_msgs/msg/_uav_status_s.c"
+  "../rosidl_generator_py/uav_msgs/msg/_weather_status.py"
+  "../rosidl_generator_py/uav_msgs/msg/_weather_status_s.c"
   "../rosidl_generator_py/uav_msgs/srv/__init__.py"
   "../rosidl_generator_py/uav_msgs/srv/_request_charge.py"
   "../rosidl_generator_py/uav_msgs/srv/_request_charge_s.c"

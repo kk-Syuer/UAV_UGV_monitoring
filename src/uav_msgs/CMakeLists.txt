@@ -23,6 +23,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/ChargeRequest.msg"
   "srv/RequestCharge.srv"
   "action/DockAndCharge.action"
+  "msg/WeatherStatus.msg"
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
 

@@ -13,6 +13,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__type_support.c.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__type_support.c.o.d"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__type_support.c.o"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__type_support.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o.d"
   "libuav_msgs__rosidl_typesupport_introspection_c.pdb"
@@ -31,6 +33,8 @@ file(REMOVE_RECURSE
   "rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c"
   "rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h"
   "rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__type_support.c"
+  "rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_c.h"
+  "rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__type_support.c"
   "rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_c.h"
   "rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c"
 )

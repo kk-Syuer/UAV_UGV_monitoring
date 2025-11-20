@@ -1,0 +1,28 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from uav_msgs/msg/WeatherStatus.msg
+// generated code does not contain a copyright notice
+
+
+module uav_msgs {
+  module msg {
+    @verbatim (language="comment", text=
+      "Simple weather model for the simulator")
+    struct WeatherStatus {
+      @verbatim (language="comment", text=
+        "mm/h (0 = no rain)")
+      float rain_intensity;
+
+      @verbatim (language="comment", text=
+        "m/s")
+      float wind_speed;
+
+      @verbatim (language="comment", text=
+        "0–360, 0 = north")
+      float wind_direction_deg;
+
+      @verbatim (language="comment", text=
+        "ambient temperature in Celsius")
+      float temperature_c;
+    };
+  };
+};
