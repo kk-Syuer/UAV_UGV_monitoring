@@ -12,6 +12,8 @@ file(REMOVE_RECURSE
   "../rosidl_generator_py/uav_msgs/msg/_charge_request_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_cluster_info.py"
   "../rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c"
+  "../rosidl_generator_py/uav_msgs/msg/_failure_event.py"
+  "../rosidl_generator_py/uav_msgs/msg/_failure_event_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_heartbeat.py"
   "../rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_traffic_message.py"

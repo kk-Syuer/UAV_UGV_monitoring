@@ -16,6 +16,8 @@
 #include "geometry_msgs/msg/pose.hpp"
 
 #include "uav_msgs/srv/send_debug_text.hpp"
+#include "uav_msgs/msg/failure_event.hpp"
+
 
 
 using namespace std::chrono_literals;
@@ -101,6 +103,8 @@ public:
       "/network/traffic_delivered", 10);
     charge_request_pub_ = this->create_publisher<uav_msgs::msg::ChargeRequest>(
       "/uav_fleet/charge_requests", 10);
+    failure_pub_ = this->create_publisher<uav_msgs::msg::FailureEvent>(
+      "/uav_fleet/failure_events", 10);
 
     // ---- Subscribers ----
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -213,6 +217,22 @@ private:
     float battery_percent = 0.0f;
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
+    }
+
+    // If we just died from battery, publish a FailureEvent once
+    if (battery_energy_ <= 0.0f && !reported_battery_dead_) {
+      reported_battery_dead_ = true;
+
+      uav_msgs::msg::FailureEvent fe;
+      fe.uav_id = uav_id_;
+      fe.failure_type = 1;  // 1 = BATTERY_DEAD
+      fe.description = "Battery depleted (0%).";
+      fe.stamp = now;
+
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: BATTERY_DEAD at t=%.3f", uav_id_.c_str(), now.seconds());
+
+      failure_pub_->publish(fe);
     }
 
     // If low and not waiting or scheduled, request a charge slot
@@ -442,7 +462,7 @@ private:
         handleChargeDecisionFromNetwork(msg);
         return;
       }
-      
+
       // 如果是 debug 文本消息
       if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
@@ -533,6 +553,8 @@ private:
   float battery_energy_;
   float battery_threshold_percent_;
   double charging_duration_sec_;
+  bool reported_battery_dead_ = false;
+
 
   // Drain model
   float drain_rate_member_;
@@ -564,6 +586,7 @@ private:
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
+  rclcpp::Publisher<uav_msgs::msg::FailureEvent>::SharedPtr failure_pub_;
 
 };
 

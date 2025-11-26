@@ -1,0 +1,546 @@
+[0.378s] Invoking command in '/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/vboxuser/ros2_ws/install/weather_server:/home/vboxuser/ros2_ws/install/ugv_charger:/home/vboxuser/ros2_ws/install/uav_controller:/home/vboxuser/ros2_ws/install/traffic_generator:/home/vboxuser/ros2_ws/install/system_launcher:/home/vboxuser/ros2_ws/install/net_emulator:/home/vboxuser/ros2_ws/install/metrics_aggregator:/home/vboxuser/ros2_ws/install/fault_injector:/home/vboxuser/ros2_ws/install/coverage_planner:/home/vboxuser/ros2_ws/install/ch_manager:/home/vboxuser/ros2_ws/install/battery_manager:/home/vboxuser/ros2_ws/install/turtle_square_py:/home/vboxuser/ros2_ws/install/python_parameters:/home/vboxuser/ros2_ws/install/py_srvcli:/home/vboxuser/ros2_ws/install/py_pubsub:/home/vboxuser/ros2_ws/install/fibonacci_action:/opt/ros/humble /usr/bin/cmake --build /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs -- -j6 -l6
+[0.674s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.419s] -- Found rosidl_default_generators: 1.2.0 (/opt/ros/humble/share/rosidl_default_generators/cmake)
+[1.421s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[1.489s] -- Found rosidl_adapter: 3.1.7 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[1.566s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[1.639s] -- Found builtin_interfaces: 1.2.2 (/opt/ros/humble/share/builtin_interfaces/cmake)
+[1.654s] -- Found geometry_msgs: 4.9.0 (/opt/ros/humble/share/geometry_msgs/cmake)
+[3.454s] -- Found ament_cmake_ros: 0.10.0 (/opt/ros/humble/share/ament_cmake_ros/cmake)
+[4.571s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[6.124s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[6.287s] -- Found python_cmake_module: 0.10.0 (/opt/ros/humble/share/python_cmake_module/cmake)
+[6.404s] -- Using PYTHON_EXECUTABLE: /usr/bin/python3
+[6.407s] -- Using PYTHON_INCLUDE_DIRS: /usr/include/python3.10
+[6.407s] -- Using PYTHON_LIBRARIES: /usr/lib/x86_64-linux-gnu/libpython3.10.so
+[6.657s] -- Found ament_lint_auto: 0.12.14 (/opt/ros/humble/share/ament_lint_auto/cmake)
+[6.686s] -- Configuring done
+[7.375s] -- Generating done
+[7.468s] -- Build files have been written to: /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs
+[7.688s] [  1%] [34m[1mGenerating C code for ROS interfaces[0m
+[7.741s] [  1%] [34m[1mGenerating C++ code for ROS interfaces[0m
+[7.942s] [  1%] Built target ament_cmake_python_copy_uav_msgs
+[8.994s] running egg_info
+[8.994s] writing uav_msgs.egg-info/PKG-INFO
+[8.994s] writing dependency_links to uav_msgs.egg-info/dependency_links.txt
+[8.995s] writing top-level names to uav_msgs.egg-info/top_level.txt
+[8.999s] reading manifest file 'uav_msgs.egg-info/SOURCES.txt'
+[8.999s] writing manifest file 'uav_msgs.egg-info/SOURCES.txt'
+[9.146s] [  1%] Built target ament_cmake_python_build_uav_msgs_egg
+[13.305s] [  1%] Built target uav_msgs__cpp
+[13.434s] [  2%] [34m[1mGenerating C++ type support dispatch for ROS interfaces[0m
+[13.448s] [  2%] [34m[1mGenerating C++ type support for eProsima Fast-RTPS[0m
+[13.714s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_generator_c[0m
+[13.956s] [  3%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c.o[0m
+[13.999s] [  5%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/heartbeat__functions.c.o[0m
+[14.004s] [  5%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/traffic_message__functions.c.o[0m
+[14.486s] [  6%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.c.o[0m
+[14.531s] [  7%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c.o[0m
+[14.574s] [  8%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.c.o[0m
+[14.992s] [  8%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c.o[0m
+[14.999s] [  9%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c.o[0m
+[15.052s] [ 10%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c.o[0m
+[15.375s] [ 11%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c.o[0m
+[15.524s] [ 12%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.c.o[0m
+[15.929s] [ 13%] [32m[1mLinking C shared library libuav_msgs__rosidl_generator_c.so[0m
+[16.299s] [ 13%] Built target uav_msgs__rosidl_generator_c
+[16.391s] [ 14%] [34m[1mGenerating C++ introspection for ROS interfaces[0m
+[18.571s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_cpp[0m
+[18.699s] [ 15%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/uav_status__type_support.cpp.o[0m
+[20.005s] [ 16%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/heartbeat__type_support.cpp.o[0m
+[20.113s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_cpp[0m
+[20.343s] [ 17%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/uav_status__type_support.cpp.o[0m
+[21.152s] [ 18%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/traffic_message__type_support.cpp.o[0m
+[21.757s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_cpp[0m
+[21.909s] [ 19%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/uav_status__type_support.cpp.o[0m
+[22.308s] [ 20%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/heartbeat__type_support.cpp.o[0m
+[22.787s] [ 21%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/cluster_info__type_support.cpp.o[0m
+[23.814s] [ 21%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/heartbeat__type_support.cpp.o[0m
+[24.203s] [ 22%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_decision__type_support.cpp.o[0m
+[24.205s] [ 23%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/traffic_message__type_support.cpp.o[0m
+[25.039s] [ 24%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/charge_request__type_support.cpp.o[0m
+[25.260s] [ 25%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/traffic_message__type_support.cpp.o[0m
+[25.832s] [ 26%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/cluster_info__type_support.cpp.o[0m
+[26.072s] [ 27%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/request_charge__type_support.cpp.o[0m
+[26.692s] [ 28%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/cluster_info__type_support.cpp.o[0m
+[26.978s] [ 28%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/send_debug_text__type_support.cpp.o[0m
+[27.507s] [ 29%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_decision__type_support.cpp.o[0m
+[27.776s] [ 30%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.cpp.o[0m
+[27.877s] [ 31%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_decision__type_support.cpp.o[0m
+[28.521s] [ 32%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/charge_request__type_support.cpp.o[0m
+[28.768s] [ 33%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/charge_request__type_support.cpp.o[0m
+[29.349s] [ 34%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/weather_status__type_support.cpp.o[0m
+[30.334s] [ 35%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/srv/detail/dds_fastrtps/request_charge__type_support.cpp.o[0m
+[30.606s] [ 36%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/srv/detail/request_charge__type_support.cpp.o[0m
+[30.657s] [ 37%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/failure_event__type_support.cpp.o[0m
+[31.897s] [ 38%] [32m[1mLinking CXX shared library libuav_msgs__rosidl_typesupport_cpp.so[0m
+[31.979s] [ 39%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/srv/detail/dds_fastrtps/send_debug_text__type_support.cpp.o[0m
+[32.061s] [ 39%] Built target uav_msgs__rosidl_typesupport_cpp
+[32.074s] [ 40%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/srv/detail/send_debug_text__type_support.cpp.o[0m
+[32.482s] [ 41%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dds_fastrtps/dock_and_charge__type_support.cpp.o[0m
+[32.563s] [ 42%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/action/detail/dock_and_charge__type_support.cpp.o[0m
+[34.722s] [ 42%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/weather_status__type_support.cpp.o[0m
+[35.003s] [ 43%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/weather_status__type_support.cpp.o[0m
+[36.291s] [ 44%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fastrtps_cpp/uav_msgs/msg/detail/dds_fastrtps/failure_event__type_support.cpp.o[0m
+[36.424s] [ 45%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_cpp.dir/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/failure_event__type_support.cpp.o[0m
+[37.851s] [ 46%] [32m[1mLinking CXX shared library libuav_msgs__rosidl_typesupport_fastrtps_cpp.so[0m
+[37.933s] [ 47%] [32m[1mLinking CXX shared library libuav_msgs__rosidl_typesupport_introspection_cpp.so[0m
+[38.173s] [ 47%] Built target uav_msgs__rosidl_typesupport_fastrtps_cpp
+[38.406s] [ 47%] Built target uav_msgs__rosidl_typesupport_introspection_cpp
+[38.469s] [ 48%] [34m[1mGenerating C type support dispatch for ROS interfaces[0m
+[41.485s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_c[0m
+[41.630s] [ 49%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp.o[0m
+[41.808s] [ 50%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.cpp.o[0m
+[42.045s] [ 51%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_decision__type_support.cpp.o[0m
+[42.231s] [ 52%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp.o[0m
+[42.476s] [ 53%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/srv/request_charge__type_support.cpp.o[0m
+[42.577s] [ 54%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/srv/send_debug_text__type_support.cpp.o[0m
+[42.719s] [ 55%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.cpp.o[0m
+[43.135s] [ 56%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/weather_status__type_support.cpp.o[0m
+[43.336s] [ 57%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/failure_event__type_support.cpp.o[0m
+[43.557s] [ 57%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/traffic_message__type_support.cpp.o[0m
+[43.885s] [ 58%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/heartbeat__type_support.cpp.o[0m
+[44.143s] [ 59%] [32m[1mLinking CXX shared library libuav_msgs__rosidl_typesupport_c.so[0m
+[44.520s] [ 59%] Built target uav_msgs__rosidl_typesupport_c
+[44.616s] [ 60%] [34m[1mGenerating C introspection for ROS interfaces[0m
+[48.454s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_c[0m
+[48.593s] [ 61%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__type_support.c.o[0m
+[48.829s] [ 62%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_decision__type_support.c.o[0m
+[48.976s] [ 63%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/charge_request__type_support.c.o[0m
+[49.193s] [ 63%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/request_charge__type_support.c.o[0m
+[49.412s] [ 64%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/srv/detail/send_debug_text__type_support.c.o[0m
+[49.793s] [ 65%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_support.c.o[0m
+[50.123s] [ 66%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__type_support.c.o[0m
+[50.344s] [ 67%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/failure_event__type_support.c.o[0m
+[50.542s] [ 68%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/cluster_info__type_support.c.o[0m
+[50.821s] [ 69%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c.o[0m
+[51.065s] [ 70%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/heartbeat__type_support.c.o[0m
+[51.254s] [ 71%] [32m[1mLinking C shared library libuav_msgs__rosidl_typesupport_introspection_c.so[0m
+[51.494s] [ 71%] Built target uav_msgs__rosidl_typesupport_introspection_c
+[51.630s] [ 72%] [34m[1mGenerating C type support for eProsima Fast-RTPS[0m
+[55.680s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_c[0m
+[55.715s] [ 73%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__type_support_c.cpp.o[0m
+[56.347s] [ 74%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_request__type_support_c.cpp.o[0m
+[57.580s] [ 75%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o[0m
+[58.945s] [ 76%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/send_debug_text__type_support_c.cpp.o[0m
+[60.078s] [ 77%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__type_support_c.cpp.o[0m
+[61.603s] [ 78%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp.o[0m
+[63.153s] [ 79%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/failure_event__type_support_c.cpp.o[0m
+[64.404s] [ 79%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/charge_decision__type_support_c.cpp.o[0m
+[65.779s] [ 80%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/cluster_info__type_support_c.cpp.o[0m
+[67.084s] [ 81%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/traffic_message__type_support_c.cpp.o[0m
+[68.422s] [ 82%] [32mBuilding CXX object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/heartbeat__type_support_c.cpp.o[0m
+[69.739s] [ 83%] [32m[1mLinking CXX shared library libuav_msgs__rosidl_typesupport_fastrtps_c.so[0m
+[70.145s] [ 83%] Built target uav_msgs__rosidl_typesupport_fastrtps_c
+[70.361s] [ 83%] Built target uav_msgs
+[70.549s] [ 84%] [34m[1mGenerating Python code for ROS interfaces[0m
+[75.582s] [ 84%] Built target uav_msgs__py
+[75.600s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_generator_py[0m
+[75.634s] [ 85%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_uav_status_s.c.o[0m
+[75.739s] [ 85%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_request_s.c.o[0m
+[75.831s] [ 86%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o[0m
+[75.958s] [ 87%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_send_debug_text_s.c.o[0m
+[76.658s] [ 88%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/action/_dock_and_charge_s.c.o[0m
+[77.312s] [ 89%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_weather_status_s.c.o[0m
+[77.734s] [ 90%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_failure_event_s.c.o[0m
+[78.151s] [ 91%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_charge_decision_s.c.o[0m
+[78.557s] [ 92%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_cluster_info_s.c.o[0m
+[79.028s] [ 93%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_traffic_message_s.c.o[0m
+[79.651s] [ 94%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c.o[0m
+[80.152s] [ 95%] [32m[1mLinking C shared library rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so[0m
+[80.518s] [ 95%] Built target uav_msgs__rosidl_generator_py
+[80.629s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_fastrtps_c__pyext[0m
+[80.875s] [ 96%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c.o[0m
+[81.649s] [ 97%] [32m[1mLinking C shared library rosidl_generator_py/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so[0m
+[82.052s] [ 97%] Built target uav_msgs__rosidl_typesupport_fastrtps_c__pyext
+[82.193s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_c__pyext[0m
+[82.281s] [ 97%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c.o[0m
+[82.922s] [ 98%] [32m[1mLinking C shared library rosidl_generator_py/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so[0m
+[83.216s] [ 98%] Built target uav_msgs__rosidl_typesupport_c__pyext
+[83.348s] [35m[1mConsolidate compiler generated dependencies of target uav_msgs__rosidl_typesupport_introspection_c__pyext[0m
+[83.393s] [ 99%] [32mBuilding C object CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_introspection_c.c.o[0m
+[83.931s] [100%] [32m[1mLinking C shared library rosidl_generator_py/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so[0m
+[84.169s] [100%] Built target uav_msgs__rosidl_typesupport_introspection_c__pyext
+[84.270s] Invoked command in '/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/vboxuser/ros2_ws/install/weather_server:/home/vboxuser/ros2_ws/install/ugv_charger:/home/vboxuser/ros2_ws/install/uav_controller:/home/vboxuser/ros2_ws/install/traffic_generator:/home/vboxuser/ros2_ws/install/system_launcher:/home/vboxuser/ros2_ws/install/net_emulator:/home/vboxuser/ros2_ws/install/metrics_aggregator:/home/vboxuser/ros2_ws/install/fault_injector:/home/vboxuser/ros2_ws/install/coverage_planner:/home/vboxuser/ros2_ws/install/ch_manager:/home/vboxuser/ros2_ws/install/battery_manager:/home/vboxuser/ros2_ws/install/turtle_square_py:/home/vboxuser/ros2_ws/install/python_parameters:/home/vboxuser/ros2_ws/install/py_srvcli:/home/vboxuser/ros2_ws/install/py_pubsub:/home/vboxuser/ros2_ws/install/fibonacci_action:/opt/ros/humble /usr/bin/cmake --build /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs -- -j6 -l6
+[84.271s] Invoking command in '/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/vboxuser/ros2_ws/install/weather_server:/home/vboxuser/ros2_ws/install/ugv_charger:/home/vboxuser/ros2_ws/install/uav_controller:/home/vboxuser/ros2_ws/install/traffic_generator:/home/vboxuser/ros2_ws/install/system_launcher:/home/vboxuser/ros2_ws/install/net_emulator:/home/vboxuser/ros2_ws/install/metrics_aggregator:/home/vboxuser/ros2_ws/install/fault_injector:/home/vboxuser/ros2_ws/install/coverage_planner:/home/vboxuser/ros2_ws/install/ch_manager:/home/vboxuser/ros2_ws/install/battery_manager:/home/vboxuser/ros2_ws/install/turtle_square_py:/home/vboxuser/ros2_ws/install/python_parameters:/home/vboxuser/ros2_ws/install/py_srvcli:/home/vboxuser/ros2_ws/install/py_pubsub:/home/vboxuser/ros2_ws/install/fibonacci_action:/opt/ros/humble /usr/bin/cmake --install /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs
+[84.321s] -- Install configuration: ""
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/rosidl_interfaces/uav_msgs
+[84.321s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.321s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.h
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.h
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.h
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.h
+[84.321s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.h
+[84.321s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_c__visibility_control.h
+[84.322s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.h
+[84.322s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.h
+[84.322s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.h
+[84.322s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.322s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.c
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__functions.c
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__functions.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__functions.c
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__struct.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__functions.c
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__functions.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__functions.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__functions.h
+[84.328s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__functions.h
+[84.329s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.h
+[84.329s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.h
+[84.330s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.h
+[84.330s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.h
+[84.330s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__struct.h
+[84.330s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.h
+[84.330s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__functions.c
+[84.331s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__functions.c
+[84.331s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.h
+[84.331s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__functions.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__functions.c
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__functions.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__functions.c
+[84.332s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.332s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__functions.c
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__struct.h
+[84.332s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__functions.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/dock_and_charge.h
+[84.333s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/request_charge.h
+[84.333s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__functions.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__functions.c
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__struct.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__functions.c
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.h
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__functions.h
+[84.333s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/library_path.sh
+[84.333s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/library_path.dsv
+[84.346s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_c.so
+[84.346s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_c.so" to ""
+[84.346s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.346s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.346s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_fastrtps_c__visibility_control.h
+[84.346s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.347s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_fastrtps_c.h
+[84.347s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_fastrtps_c.h
+[84.350s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.354s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.354s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_c.h
+[84.355s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.355s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.355s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_c.h
+[84.355s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__rosidl_typesupport_fastrtps_c.h
+[84.355s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_c.so
+[84.357s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_c.so" to ""
+[84.357s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.357s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.358s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.c
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.c
+[84.358s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h
+[84.358s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.358s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_introspection_c.h
+[84.358s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.c
+[84.359s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.359s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.c
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__rosidl_typesupport_introspection_c.h
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_c.h
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.c
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_c.so
+[84.359s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_c.so" to ""
+[84.359s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_c.so
+[84.361s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_c.so" to ""
+[84.361s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.361s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.362s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp
+[84.362s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/cluster_info.hpp
+[84.362s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+[84.362s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_request.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/charge_decision.hpp
+[84.363s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__traits.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__traits.hpp
+[84.363s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp
+[84.365s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp
+[84.365s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp
+[84.366s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.hpp
+[84.366s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__struct.hpp
+[84.366s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp
+[84.366s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp
+[84.366s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__traits.hpp
+[84.367s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.hpp
+[84.368s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__builder.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__traits.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__builder.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__struct.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__builder.hpp
+[84.369s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.hpp
+[84.370s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__traits.hpp
+[84.370s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.hpp
+[84.370s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp
+[84.371s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.hpp
+[84.371s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.hpp
+[84.371s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__traits.hpp
+[84.371s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__struct.hpp
+[84.371s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp
+[84.372s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__builder.hpp
+[84.373s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.hpp
+[84.373s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.374s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/dock_and_charge.hpp
+[84.375s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.375s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__struct.hpp
+[84.375s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.hpp
+[84.375s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__traits.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__builder.hpp
+[84.376s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/request_charge.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.hpp
+[84.376s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__builder.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__traits.hpp
+[84.376s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__struct.hpp
+[84.377s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__traits.hpp
+[84.377s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.377s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.377s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_typesupport_fastrtps_cpp__visibility_control.h
+[84.377s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.377s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_fastrtps_cpp.hpp
+[84.377s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__rosidl_typesupport_fastrtps_cpp.hpp
+[84.377s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/dds_fastrtps
+[84.378s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_fastrtps_cpp.hpp
+[84.378s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_fastrtps_cpp.hpp
+[84.379s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_fastrtps_cpp.hpp
+[84.379s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_fastrtps_cpp.hpp
+[84.379s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_cpp.hpp
+[84.379s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_fastrtps_cpp.hpp
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dds_fastrtps
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_cpp.hpp
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__rosidl_typesupport_fastrtps_cpp.hpp
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/dds_fastrtps
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_cpp.hpp
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_cpp.so
+[84.380s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_fastrtps_cpp.so" to ""
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg
+[84.380s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__rosidl_typesupport_introspection_cpp.hpp
+[84.380s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__rosidl_typesupport_introspection_cpp.hpp
+[84.381s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action
+[84.381s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__type_support.cpp
+[84.381s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_introspection_cpp.hpp
+[84.383s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv
+[84.384s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__rosidl_typesupport_introspection_cpp.hpp
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__rosidl_typesupport_introspection_cpp.hpp
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.cpp
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/request_charge__type_support.cpp
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_cpp.so
+[84.385s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_introspection_cpp.so" to ""
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_cpp.so
+[84.385s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_typesupport_cpp.so" to ""
+[84.385s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/pythonpath.sh
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/pythonpath.dsv
+[84.385s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/top_level.txt
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/SOURCES.txt
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/PKG-INFO
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs-0.0.0-py3.10.egg-info/dependency_links.txt
+[84.385s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs
+[84.385s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/__init__.py
+[84.386s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/libuav_msgs__rosidl_generator_py.so
+[84.386s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/__init__.py
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status_s.c
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status.py
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat.py
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info.py
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat_s.c
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_failure_event.py
+[84.387s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_failure_event_s.c
+[84.388s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision.py
+[84.388s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status_s.c
+[84.388s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request.py
+[84.389s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message_s.c
+[84.389s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision_s.c
+[84.389s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info_s.c
+[84.389s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request_s.c
+[84.390s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status.py
+[84.390s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message.py
+[84.390s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c
+[84.390s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[84.390s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/__init__.py
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/_dock_and_charge_s.c
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/_dock_and_charge.py
+[84.394s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/__init__.py
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_send_debug_text_s.c
+[84.394s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_request_charge_s.c
+[84.409s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_send_debug_text.py
+[84.414s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_request_charge.py
+[84.414s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_introspection_c.c
+[84.415s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[84.415s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c
+[84.415s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[84.656s] Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs'...
+[84.658s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/__init__.py'...
+[84.659s] Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/__init__.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/action/_dock_and_charge.py'...
+[84.659s] Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/__init__.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_decision.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_charge_request.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_cluster_info.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_failure_event.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_heartbeat.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_traffic_message.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_uav_status.py'...
+[84.659s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/msg/_weather_status.py'...
+[84.659s] Listing '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv'...
+[84.661s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/__init__.py'...
+[84.662s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_request_charge.py'...
+[84.662s] Compiling '/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/srv/_send_debug_text.py'...
+[84.688s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so
+[84.688s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_fastrtps_c.cpython-310-x86_64-linux-gnu.so" to ""
+[84.688s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so
+[84.707s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_introspection_c.cpython-310-x86_64-linux-gnu.so" to ""
+[84.707s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so
+[84.707s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/local/lib/python3.10/dist-packages/uav_msgs/uav_msgs_s__rosidl_typesupport_c.cpython-310-x86_64-linux-gnu.so" to ""
+[84.707s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_py.so
+[84.707s] -- Set runtime path of "/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/lib/libuav_msgs__rosidl_generator_py.so" to ""
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/UavStatus.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/Heartbeat.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/TrafficMessage.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ClusterInfo.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeDecision.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeRequest.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/SendDebugText.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.idl
+[84.708s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/FailureEvent.idl
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/UavStatus.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/Heartbeat.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/TrafficMessage.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ClusterInfo.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeDecision.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/ChargeRequest.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge.srv
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Request.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/RequestCharge_Response.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/SendDebugText.srv
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/SendDebugText_Request.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/srv/SendDebugText_Response.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/action/DockAndCharge.action
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/WeatherStatus.msg
+[84.708s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/msg/FailureEvent.msg
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/package_run_dependencies/uav_msgs
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/parent_prefix_path/uav_msgs
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/ament_prefix_path.sh
+[84.708s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/ament_prefix_path.dsv
+[84.708s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/path.sh
+[84.709s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/environment/path.dsv
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.bash
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.sh
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.zsh
+[84.709s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/local_setup.dsv
+[84.709s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/package.dsv
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/ament_index/resource_index/packages/uav_msgs
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_cppExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cppExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_typesupport_fastrtps_cppExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cppExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_introspection_cppExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cppExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgs__rosidl_typesupport_cppExport-noconfig.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_pyExport.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/export_uav_msgs__rosidl_generator_pyExport-noconfig.cmake
+[84.709s] -- Installing: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake-extras.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_dependencies-extras.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_include_directories-extras.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_libraries-extras.cmake
+[84.709s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/ament_cmake_export_targets-extras.cmake
+[84.710s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake_export_typesupport_targets-extras.cmake
+[84.710s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/rosidl_cmake_export_typesupport_libraries-extras.cmake
+[84.710s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgsConfig.cmake
+[84.710s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake/uav_msgsConfig-version.cmake
+[84.710s] -- Up-to-date: /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/package.xml
+[84.712s] Invoked command in '/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs' returned '0': CMAKE_PREFIX_PATH=${CMAKE_PREFIX_PATH}:/home/vboxuser/ros2_ws/install/weather_server:/home/vboxuser/ros2_ws/install/ugv_charger:/home/vboxuser/ros2_ws/install/uav_controller:/home/vboxuser/ros2_ws/install/traffic_generator:/home/vboxuser/ros2_ws/install/system_launcher:/home/vboxuser/ros2_ws/install/net_emulator:/home/vboxuser/ros2_ws/install/metrics_aggregator:/home/vboxuser/ros2_ws/install/fault_injector:/home/vboxuser/ros2_ws/install/coverage_planner:/home/vboxuser/ros2_ws/install/ch_manager:/home/vboxuser/ros2_ws/install/battery_manager:/home/vboxuser/ros2_ws/install/turtle_square_py:/home/vboxuser/ros2_ws/install/python_parameters:/home/vboxuser/ros2_ws/install/py_srvcli:/home/vboxuser/ros2_ws/install/py_pubsub:/home/vboxuser/ros2_ws/install/fibonacci_action:/opt/ros/humble /usr/bin/cmake --install /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs

@@ -270,9 +270,15 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/failure_event__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/failure_event__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h \
+  rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__type_support.h \
+  rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h \
+  rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h \
   rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__type_support.h \
   rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h \
   /opt/ros/humble/include/unique_identifier_msgs/unique_identifier_msgs/msg/detail/uuid__struct.h \
@@ -280,6 +286,16 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
 
 
 rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h:
+
+rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h:
+
+rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/failure_event__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/failure_event__type_support.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
 
@@ -672,6 +688,8 @@ rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__type_support.h:
 /usr/include/x86_64-linux-gnu/bits/posix1_lim.h:
 
 /usr/include/python3.10/complexobject.h:
+
+rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__type_support.h:
 
 /usr/include/python3.10/rangeobject.h:
 

@@ -1,0 +1,21 @@
+// generated from rosidl_adapter/resource/msg.idl.em
+// with input from uav_msgs/msg/FailureEvent.msg
+// generated code does not contain a copyright notice
+
+#include "builtin_interfaces/msg/Time.idl"
+
+module uav_msgs {
+  module msg {
+    struct FailureEvent {
+      string uav_id;
+
+      @verbatim (language="comment", text=
+        "0=UNKNOWN, 1=BATTERY_DEAD, 2=OTHER")
+      uint8 failure_type;
+
+      string description;
+
+      builtin_interfaces::msg::Time stamp;
+    };
+  };
+};

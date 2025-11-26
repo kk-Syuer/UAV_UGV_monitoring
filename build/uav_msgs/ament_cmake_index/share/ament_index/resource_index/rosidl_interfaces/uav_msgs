@@ -6,6 +6,8 @@ msg/ChargeRequest.idl
 msg/ChargeRequest.msg
 msg/ClusterInfo.idl
 msg/ClusterInfo.msg
+msg/FailureEvent.idl
+msg/FailureEvent.msg
 msg/Heartbeat.idl
 msg/Heartbeat.msg
 msg/TrafficMessage.idl

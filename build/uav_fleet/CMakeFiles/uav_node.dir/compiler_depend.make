@@ -729,8 +729,32 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__traits.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp
 
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__type_support.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__traits.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -1084,6 +1108,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/enable_special_members.h:
 
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp:
+
 /usr/include/c++/11/bits/basic_ios.tcc:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_value.hpp:
@@ -1321,6 +1347,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/c++/11/tr1/legendre_function.tcc:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/timesize.h:
 
@@ -2039,6 +2067,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
 
 /usr/include/libintl.h:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
 

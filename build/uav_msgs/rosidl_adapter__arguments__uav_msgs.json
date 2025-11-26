@@ -10,6 +10,7 @@
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:srv/RequestCharge.srv",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:srv/SendDebugText.srv",
     "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:action/DockAndCharge.action",
-    "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/WeatherStatus.msg"
+    "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/WeatherStatus.msg",
+    "/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs:msg/FailureEvent.msg"
   ]
 }

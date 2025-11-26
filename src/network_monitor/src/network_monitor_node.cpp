@@ -7,6 +7,7 @@
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
+#include "uav_msgs/msg/failure_event.hpp"
 
 using std::placeholders::_1;
 
@@ -36,6 +37,10 @@ public:
     charge_decision_sub_ = this->create_subscription<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 100,
       std::bind(&NetworkMonitorNode::chargeDecisionCallback, this, _1));
+
+    failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
+      "/uav_fleet/failure_events", 100,
+      std::bind(&NetworkMonitorNode::failureCallback, this, _1));
 
     RCLCPP_INFO(this->get_logger(), "Network monitor started.");
   }
@@ -138,6 +143,31 @@ private:
     // Optionally erase so map doesn't grow forever
     request_times_.erase(it);
   }
+  
+  void failureCallback(const uav_msgs::msg::FailureEvent::SharedPtr msg)
+  {
+    // Convert builtin_interfaces/Time -> rclcpp::Time so we can use .seconds()
+    rclcpp::Time t(msg->stamp);
+
+    if (msg->failure_type == 1)  // BATTERY_DEAD
+    {
+      battery_dead_count_++;
+      RCLCPP_WARN(this->get_logger(),
+                  "[FAIL] BATTERY_DEAD from %s at t=%.3f (total=%zu)",
+                  msg->uav_id.c_str(),
+                  t.seconds(),
+                  battery_dead_count_);
+    }
+    else
+    {
+      RCLCPP_WARN(this->get_logger(),
+                  "[FAIL] failure from %s type=%u desc=%s",
+                  msg->uav_id.c_str(),
+                  msg->failure_type,
+                  msg->description.c_str());
+    }
+  }
+
 
   // ---- Members ----
   // Traffic
@@ -148,6 +178,10 @@ private:
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
+
+  // Failures
+  size_t battery_dead_count_ = 0;
+  rclcpp::Subscription<uav_msgs::msg::FailureEvent>::SharedPtr failure_sub_;
 
   // Charging
   std::unordered_map<std::string, rclcpp::Time> request_times_;

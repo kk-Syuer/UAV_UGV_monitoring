@@ -1,0 +1,19 @@
+[0.466s] Invoking command in '/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger': CMAKE_PREFIX_PATH=/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs:/home/vboxuser/UAV_UGV_netmonitoring/install/weather_server:/home/vboxuser/UAV_UGV_netmonitoring/install/user_devices_sim:/home/vboxuser/UAV_UGV_netmonitoring/install/ugv_charger:/home/vboxuser/UAV_UGV_netmonitoring/install/uav_fleet:/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup:/home/vboxuser/UAV_UGV_netmonitoring/install/sink_gateway:/home/vboxuser/UAV_UGV_netmonitoring/install/network_monitor:/home/vboxuser/UAV_UGV_netmonitoring/install/fault_injector:/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner:/home/vboxuser/UAV_UGV_netmonitoring/install/ch_manager:/home/vboxuser/ros2_ws/install/uav_msgs:/home/vboxuser/ros2_ws/install/action_tutorials_interfaces:/home/vboxuser/install/turtlesim:/home/vboxuser/ros2_ws/install/tutorial_interfaces:/home/vboxuser/ros2_ws/install/patrol_interfaces:/home/vboxuser/ros2_ws/install/weather_server:/home/vboxuser/ros2_ws/install/ugv_charger:/home/vboxuser/ros2_ws/install/uav_controller:/home/vboxuser/ros2_ws/install/traffic_generator:/home/vboxuser/ros2_ws/install/system_launcher:/home/vboxuser/ros2_ws/install/net_emulator:/home/vboxuser/ros2_ws/install/metrics_aggregator:/home/vboxuser/ros2_ws/install/fault_injector:/home/vboxuser/ros2_ws/install/coverage_planner:/home/vboxuser/ros2_ws/install/ch_manager:/home/vboxuser/ros2_ws/install/battery_manager:/home/vboxuser/ros2_ws/install/turtle_square_py:/home/vboxuser/ros2_ws/install/python_parameters:/home/vboxuser/ros2_ws/install/py_srvcli:/home/vboxuser/ros2_ws/install/py_pubsub:/home/vboxuser/ros2_ws/install/fibonacci_action:/opt/ros/humble /usr/bin/cmake --build /home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger -- -j6 -l6
+[0.592s] -- Found ament_cmake: 1.3.12 (/opt/ros/humble/share/ament_cmake/cmake)
+[1.598s] -- Found rclcpp: 16.0.15 (/opt/ros/humble/share/rclcpp/cmake)
+[1.875s] -- Found rosidl_generator_c: 3.1.7 (/opt/ros/humble/share/rosidl_generator_c/cmake)
+[1.882s] -- Found rosidl_adapter: 3.1.7 (/opt/ros/humble/share/rosidl_adapter/cmake)
+[1.999s] -- Found rosidl_generator_cpp: 3.1.7 (/opt/ros/humble/share/rosidl_generator_cpp/cmake)
+[2.180s] -- Using all available rosidl_typesupport_c: rosidl_typesupport_fastrtps_c;rosidl_typesupport_introspection_c
+[2.267s] -- Using all available rosidl_typesupport_cpp: rosidl_typesupport_fastrtps_cpp;rosidl_typesupport_introspection_cpp
+[2.613s] -- Found rmw_implementation_cmake: 6.1.2 (/opt/ros/humble/share/rmw_implementation_cmake/cmake)
+[2.622s] -- Found rmw_fastrtps_cpp: 6.2.9 (/opt/ros/humble/share/rmw_fastrtps_cpp/cmake)
+[3.228s] -- Using RMW implementation 'rmw_fastrtps_cpp' as default
+[3.410s] -- Found uav_msgs: 0.0.0 (/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/share/uav_msgs/cmake)
+[4.067s] -- Configuring done
+[4.349s] -- Generating done
+[4.364s] -- Build files have been written to: /home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger
+[4.741s] [35m[1mConsolidate compiler generated dependencies of target ugv_charger_node[0m
+[4.860s] [ 50%] [32mBuilding CXX object CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o[0m
+[30.049s] [100%] [32m[1mLinking CXX executable ugv_charger_node[0m
+[30.525s] [100%] Built target ugv_charger_node
