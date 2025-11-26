@@ -27,6 +27,8 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "action/DockAndCharge.action"
   "msg/WeatherStatus.msg"
   "msg/FailureEvent.msg"  
+  "msg/UavDeployment.msg"
+
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
 

@@ -12,6 +12,8 @@ msg/Heartbeat.idl
 msg/Heartbeat.msg
 msg/TrafficMessage.idl
 msg/TrafficMessage.msg
+msg/UavDeployment.idl
+msg/UavDeployment.msg
 msg/UavStatus.idl
 msg/UavStatus.msg
 msg/WeatherStatus.idl

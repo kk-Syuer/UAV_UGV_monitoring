@@ -197,6 +197,43 @@ coverage_planner_uninstall/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_uninstall.dir/build.make CMakeFiles/coverage_planner_uninstall.dir/build
 .PHONY : coverage_planner_uninstall/fast
 
+#=============================================================================
+# Target rules for targets named coverage_planner_node
+
+# Build rule for target.
+coverage_planner_node: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 coverage_planner_node
+.PHONY : coverage_planner_node
+
+# fast build rule for target.
+coverage_planner_node/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_node.dir/build.make CMakeFiles/coverage_planner_node.dir/build
+.PHONY : coverage_planner_node/fast
+
+src/coverage_planner_node.o: src/coverage_planner_node.cpp.o
+.PHONY : src/coverage_planner_node.o
+
+# target to build an object file
+src/coverage_planner_node.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_node.dir/build.make CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o
+.PHONY : src/coverage_planner_node.cpp.o
+
+src/coverage_planner_node.i: src/coverage_planner_node.cpp.i
+.PHONY : src/coverage_planner_node.i
+
+# target to preprocess a source file
+src/coverage_planner_node.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_node.dir/build.make CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.i
+.PHONY : src/coverage_planner_node.cpp.i
+
+src/coverage_planner_node.s: src/coverage_planner_node.cpp.s
+.PHONY : src/coverage_planner_node.s
+
+# target to generate assembly for a file
+src/coverage_planner_node.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_node.dir/build.make CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.s
+.PHONY : src/coverage_planner_node.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -212,6 +249,10 @@ help:
 	@echo "... test"
 	@echo "... coverage_planner_uninstall"
 	@echo "... uninstall"
+	@echo "... coverage_planner_node"
+	@echo "... src/coverage_planner_node.o"
+	@echo "... src/coverage_planner_node.i"
+	@echo "... src/coverage_planner_node.s"
 .PHONY : help
 
 

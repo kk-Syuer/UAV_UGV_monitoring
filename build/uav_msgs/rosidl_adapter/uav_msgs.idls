@@ -9,3 +9,4 @@
 /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:action/DockAndCharge.idl
 /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/WeatherStatus.idl
 /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/FailureEvent.idl
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs:msg/UavDeployment.idl

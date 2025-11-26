@@ -273,6 +273,9 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c__pyext.dir/rosidl_generator_p
   rosidl_generator_c/uav_msgs/msg/detail/failure_event__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/failure_event__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h \
   rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h \
@@ -290,6 +293,10 @@ rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h:
 rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h:
 
 rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__struct.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.h:
 
@@ -438,6 +445,8 @@ rosidl_generator_c/uav_msgs/msg/detail/traffic_message__struct.h:
 /usr/include/x86_64-linux-gnu/python3.10/pyconfig.h:
 
 /usr/include/x86_64-linux-gnu/bits/pthreadtypes.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__type_support.h:
 
 /usr/include/limits.h:
 

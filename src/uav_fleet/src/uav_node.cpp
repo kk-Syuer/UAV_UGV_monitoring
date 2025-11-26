@@ -17,6 +17,8 @@
 
 #include "uav_msgs/srv/send_debug_text.hpp"
 #include "uav_msgs/msg/failure_event.hpp"
+#include "uav_msgs/msg/uav_deployment.hpp"
+
 
 
 
@@ -118,6 +120,9 @@ public:
     weather_sub_ = this->create_subscription<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10,
       std::bind(&UavNode::weatherCallback, this, std::placeholders::_1));
+    deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
+      "/coverage_planner/deployment", 10,
+      std::bind(&UavNode::deploymentCallback, this, std::placeholders::_1));
 
     // ---- Timers ----
     status_timer_ = this->create_wall_timer(
@@ -523,6 +528,39 @@ private:
     }
   }
 
+  void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
+  {
+    if (msg->uav_id != uav_id_) {
+      return;
+    }
+
+    // Instant teleport for now – later this becomes a motion goal.
+    pose_ = msg->target_pose;
+
+    // Apply role + cluster information from the planner
+    role_ = msg->role;
+    cluster_id_ = msg->cluster_id;
+
+    if (role_ == 0) {
+      // MEMBER: remember our CH
+      my_ch_id_ = msg->ch_id;
+    } else {
+      // CH: its own CH id is itself; we keep my_ch_id_ unchanged or set to self
+      my_ch_id_ = uav_id_;
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: deployment received. New pose=(%.1f, %.1f, %.1f), "
+                "role=%u, cluster=%s, ch=%s",
+                uav_id_.c_str(),
+                pose_.position.x,
+                pose_.position.y,
+                pose_.position.z,
+                role_,
+                cluster_id_.c_str(),
+                my_ch_id_.c_str());
+  }
+
   // ---------------- Members ----------------
 
   std::string uav_id_;
@@ -579,6 +617,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::ClusterInfo>::SharedPtr   cluster_sub_;
   rclcpp::Subscription<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_sub_;
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr  weather_sub_;
+  rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
 
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
