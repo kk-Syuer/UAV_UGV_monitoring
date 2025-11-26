@@ -232,6 +232,9 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/uav_msg
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__type_support.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__type_support.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__struct.h \
  /opt/ros/humble/include/unique_identifier_msgs/unique_identifier_msgs/msg/detail/uuid__struct.h \

@@ -18,3 +18,7 @@ srv/RequestCharge.idl
 srv/RequestCharge.srv
 srv/RequestCharge_Request.msg
 srv/RequestCharge_Response.msg
+srv/SendDebugText.idl
+srv/SendDebugText.srv
+srv/SendDebugText_Request.msg
+srv/SendDebugText_Response.msg

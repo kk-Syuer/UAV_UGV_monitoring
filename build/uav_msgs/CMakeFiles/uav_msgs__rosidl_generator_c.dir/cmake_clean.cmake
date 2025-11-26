@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c.o"
   "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c.o.d"
+  "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c.o"
+  "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c.o.d"
   "libuav_msgs__rosidl_generator_c.pdb"
   "libuav_msgs__rosidl_generator_c.so"
   "rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c"
@@ -63,7 +65,12 @@ file(REMOVE_RECURSE
   "rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h"
   "rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h"
   "rosidl_generator_c/uav_msgs/srv/detail/request_charge__type_support.h"
+  "rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c"
+  "rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h"
+  "rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h"
+  "rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__type_support.h"
   "rosidl_generator_c/uav_msgs/srv/request_charge.h"
+  "rosidl_generator_c/uav_msgs/srv/send_debug_text.h"
 )
 
 # Per-language clean rules from dependency scanning.

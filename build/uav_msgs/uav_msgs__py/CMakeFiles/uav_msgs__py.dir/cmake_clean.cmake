@@ -23,6 +23,8 @@ file(REMOVE_RECURSE
   "../rosidl_generator_py/uav_msgs/srv/__init__.py"
   "../rosidl_generator_py/uav_msgs/srv/_request_charge.py"
   "../rosidl_generator_py/uav_msgs/srv/_request_charge_s.c"
+  "../rosidl_generator_py/uav_msgs/srv/_send_debug_text.py"
+  "../rosidl_generator_py/uav_msgs/srv/_send_debug_text_s.c"
   "CMakeFiles/uav_msgs__py"
 )
 

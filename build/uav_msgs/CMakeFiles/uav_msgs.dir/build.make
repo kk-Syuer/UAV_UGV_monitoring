@@ -75,6 +75,9 @@ CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/Charg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/srv/RequestCharge.srv
 CMakeFiles/uav_msgs: rosidl_cmake/srv/RequestCharge_Request.msg
 CMakeFiles/uav_msgs: rosidl_cmake/srv/RequestCharge_Response.msg
+CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/srv/SendDebugText.srv
+CMakeFiles/uav_msgs: rosidl_cmake/srv/SendDebugText_Request.msg
+CMakeFiles/uav_msgs: rosidl_cmake/srv/SendDebugText_Response.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/action/DockAndCharge.action
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/WeatherStatus.msg
 CMakeFiles/uav_msgs: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl

@@ -1,0 +1,5 @@
+string dst_id
+string text
+---
+bool accepted
+string info

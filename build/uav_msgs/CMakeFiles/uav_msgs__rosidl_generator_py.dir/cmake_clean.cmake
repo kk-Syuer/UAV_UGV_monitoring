@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_weather_status_s.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o.d"
+  "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_send_debug_text_s.c.o"
+  "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_send_debug_text_s.c.o.d"
   "rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.pdb"
   "rosidl_generator_py/uav_msgs/libuav_msgs__rosidl_generator_py.so"
 )

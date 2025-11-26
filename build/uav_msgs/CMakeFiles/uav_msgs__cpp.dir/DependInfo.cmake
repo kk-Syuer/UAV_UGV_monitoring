@@ -55,7 +55,12 @@ set(CMAKE_MULTIPLE_OUTPUT_PAIRS
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/request_charge.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp"
   )
 
 

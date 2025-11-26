@@ -44,7 +44,12 @@ file(REMOVE_RECURSE
   "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp"
   "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp"
   "rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp"
   "rosidl_generator_cpp/uav_msgs/srv/request_charge.hpp"
+  "rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp"
 )
 
 # Per-language clean rules from dependency scanning.

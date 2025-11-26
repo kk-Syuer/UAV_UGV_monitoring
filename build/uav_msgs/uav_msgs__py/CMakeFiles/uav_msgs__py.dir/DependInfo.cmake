@@ -35,6 +35,8 @@ set(CMAKE_MULTIPLE_OUTPUT_PAIRS
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/__init__.py" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c"
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/_request_charge.py" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c"
   "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/_send_debug_text.py" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c"
+  "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/srv/_send_debug_text_s.c" "/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_fastrtps_c.c"
   )
 
 

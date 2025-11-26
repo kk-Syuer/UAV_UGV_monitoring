@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o.d"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/send_debug_text__type_support_c.cpp.o"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/send_debug_text__type_support_c.cpp.o.d"
   "libuav_msgs__rosidl_typesupport_fastrtps_c.pdb"
   "libuav_msgs__rosidl_typesupport_fastrtps_c.so"
   "rosidl_typesupport_fastrtps_c/uav_msgs/action/detail/dock_and_charge__rosidl_typesupport_fastrtps_c.h"
@@ -37,6 +39,8 @@ file(REMOVE_RECURSE
   "rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp"
   "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__rosidl_typesupport_fastrtps_c.h"
   "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp"
+  "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/send_debug_text__rosidl_typesupport_fastrtps_c.h"
+  "rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/send_debug_text__type_support_c.cpp"
 )
 
 # Per-language clean rules from dependency scanning.

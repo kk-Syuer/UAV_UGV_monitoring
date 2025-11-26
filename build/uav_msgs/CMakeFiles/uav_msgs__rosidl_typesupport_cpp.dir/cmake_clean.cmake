@@ -17,6 +17,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/msg/weather_status__type_support.cpp.o.d"
   "CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/request_charge__type_support.cpp.o"
   "CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/request_charge__type_support.cpp.o.d"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/send_debug_text__type_support.cpp.o"
+  "CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/srv/send_debug_text__type_support.cpp.o.d"
   "libuav_msgs__rosidl_typesupport_cpp.pdb"
   "libuav_msgs__rosidl_typesupport_cpp.so"
   "rosidl_typesupport_cpp/uav_msgs/action/dock_and_charge__type_support.cpp"
@@ -28,6 +30,7 @@ file(REMOVE_RECURSE
   "rosidl_typesupport_cpp/uav_msgs/msg/uav_status__type_support.cpp"
   "rosidl_typesupport_cpp/uav_msgs/msg/weather_status__type_support.cpp"
   "rosidl_typesupport_cpp/uav_msgs/srv/request_charge__type_support.cpp"
+  "rosidl_typesupport_cpp/uav_msgs/srv/send_debug_text__type_support.cpp"
 )
 
 # Per-language clean rules from dependency scanning.

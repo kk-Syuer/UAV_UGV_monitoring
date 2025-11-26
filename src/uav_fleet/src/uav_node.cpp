@@ -15,6 +15,9 @@
 
 #include "geometry_msgs/msg/pose.hpp"
 
+#include "uav_msgs/srv/send_debug_text.hpp"
+
+
 using namespace std::chrono_literals;
 
 class UavNode : public rclcpp::Node
@@ -119,6 +122,11 @@ public:
       1s, std::bind(&UavNode::publishHeartbeat, this));
     traffic_timer_ = this->create_wall_timer(
       2s, std::bind(&UavNode::publishTraffic, this));
+    // Debug service: send a one-shot text message from this UAV
+    debug_service_ = this->create_service<uav_msgs::srv::SendDebugText>(
+      "/uav_fleet/" + uav_id_ + "/send_debug_text",
+      std::bind(&UavNode::handleDebugSendText, this,
+                std::placeholders::_1, std::placeholders::_2));
 
     // Dummy pose
     pose_.position.x = 0.0;
@@ -166,23 +174,9 @@ private:
   }
 
   // ---------------- Battery & charging ----------------
-
   void publishStatus()
   {
     auto now = this->now();
-
-    // Start charging when our slot begins
-    if (!is_charging_ && has_charge_slot_ && now >= charge_start_time_) {
-      is_charging_ = true;
-      has_charge_slot_ = false;
-      energy_at_charge_start_ = battery_energy_;
-      charge_end_time_ = charge_start_time_ +
-                         rclcpp::Duration::from_seconds(charging_duration_sec_);
-
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: starting charging session (from %.1f / %.1f)",
-                  uav_id_.c_str(), battery_energy_, battery_capacity_);
-    }
 
     if (is_charging_) {
       // Charging: interpolate
@@ -213,7 +207,6 @@ private:
       if (battery_energy_ < 0.0f) {
         battery_energy_ = 0.0f;
       }
-
     }
 
     // Percentage
@@ -221,21 +214,7 @@ private:
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
     }
-    // If we are dead, just publish status and return
-    if (battery_energy_ <= 0.0f) {
-      // Optionally: log one time that this UAV is dead.
-      uav_msgs::msg::UavStatus msg;
-      msg.uav_id = uav_id_;
-      msg.role = role_;
-      msg.cluster_id = cluster_id_;
-      msg.battery_level = battery_percent;
-      msg.battery_capacity = battery_capacity_;
-      msg.pose = pose_;
-      msg.service_radius = service_radius_;
-      msg.stamp = now;
-      status_pub_->publish(msg);
-      return;
-    }
+
     // If low and not waiting or scheduled, request a charge slot
     if (!is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
         battery_percent <= battery_threshold_percent_)
@@ -260,6 +239,7 @@ private:
 
     status_pub_->publish(msg);
   }
+
 
   void requestCharge(float battery_percent)
   {
@@ -315,21 +295,38 @@ private:
       return;
     }
 
-    // Basic sanity: must be a CHARGE_DECISION control alert
+    // Must be a CHARGE_DECISION control alert
     if (msg->msg_type != 3 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
-    RCLCPP_INFO(this->get_logger(),
-                "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
-                "Starting charging session.",
-                uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str());
+    auto now = this->now();
 
     waiting_for_charge_response_ = false;
-    has_charge_slot_ = true;
-    delivered_pub_->publish(*msg);
+    has_charge_slot_ = false;  // we start charging immediately
 
+    if (!is_charging_ && battery_energy_ > 0.0f) {
+      is_charging_ = true;
+      energy_at_charge_start_ = battery_energy_;
+      charge_start_time_ = now;
+      charge_end_time_ = now + rclcpp::Duration::from_seconds(charging_duration_sec_);
+
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
+                  "Starting charging session now.",
+                  uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str());
+    } else {
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: received CHARGE_DECISION but is already charging or dead.",
+                  uav_id_.c_str());
+    }
+
+    // Optional: mark control message as delivered for metrics
+    if (delivered_pub_) {
+      delivered_pub_->publish(*msg);
+    }
   }
+
 
   // ---------------- Heartbeat & traffic ----------------
 
@@ -377,6 +374,49 @@ private:
     traffic_pub_->publish(msg);
   }
 
+  void handleDebugSendText(
+    const std::shared_ptr<uav_msgs::srv::SendDebugText::Request> req,
+    std::shared_ptr<uav_msgs::srv::SendDebugText::Response> res)
+  {
+    if (battery_energy_ <= 0.0f) {
+      res->accepted = false;
+      res->info = "UAV is dead (battery=0).";
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: debug send requested but battery is 0.", uav_id_.c_str());
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_dbg_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = req->dst_id;
+    msg.msg_type = 0; // TEXT
+    msg.priority = 1;
+    msg.size_bytes = static_cast<uint32_t>(req->text.size());
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+
+    // 用 control_* 来存调试信息
+    msg.control_payload = req->text;
+    msg.control_type = "DEBUG_TEXT:" + uav_id_;  // 初始路径就是自己
+
+    // 正常走路由
+    if (role_ == 0) { // MEMBER
+      msg.next_hop_id = my_ch_id_;
+    } else { // CH 也可以发
+      msg.next_hop_id = resolveNextHop(msg.dst_id);
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "[DEBUG TX] msg_id=%s src=%s dst=%s next_hop=%s text=\"%s\"",
+                msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(), msg.control_payload.c_str());
+
+    traffic_pub_->publish(msg);
+
+    res->accepted = true;
+    res->info = "sent";
+  }
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
@@ -402,6 +442,20 @@ private:
         handleChargeDecisionFromNetwork(msg);
         return;
       }
+      
+      // 如果是 debug 文本消息
+      if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
+        std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
+        std::string text = msg->control_payload;
+
+        RCLCPP_INFO(this->get_logger(),
+                    "[DEBUG RX] msg_id=%s src=%s dst=%s hops=%u path=%s text=\"%s\"",
+                    msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                    msg->hop_count, path.c_str(), text.c_str());
+
+        delivered_pub_->publish(*msg);
+        return;
+      }
 
       // Otherwise: normal data delivery
       RCLCPP_INFO(this->get_logger(),
@@ -419,6 +473,9 @@ private:
       fwd.hop_count = msg->hop_count + 1;
       fwd.next_hop_id = resolveNextHop(msg->dst_id);
 
+      if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // 以 DEBUG_TEXT: 开头
+        fwd.control_type += "->" + uav_id_;
+      }
       RCLCPP_INFO(this->get_logger(),
                   "[FWD] CH %s forwarding msg_id=%s src=%s dst=%s next_hop=%s hop=%u",
                   uav_id_.c_str(),
@@ -506,6 +563,7 @@ private:
   rclcpp::TimerBase::SharedPtr traffic_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
+  rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
 
 };
 

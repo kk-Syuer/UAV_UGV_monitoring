@@ -101,6 +101,11 @@ CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charg
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/dock_and_charge.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__builder.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/action/detail/dock_and_charge__struct.hpp
@@ -135,6 +140,7 @@ rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/Cl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ChargeDecision.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
+rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/srv/SendDebugText.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/action/DockAndCharge.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/WeatherStatus.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
@@ -311,6 +317,21 @@ rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp: rosidl_gene
 rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp
 
+rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp
+
+rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp
+
+rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp
+
+rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp
+
+rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp
+
 rosidl_generator_cpp/uav_msgs/action/dock_and_charge.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/action/dock_and_charge.hpp
 
@@ -386,7 +407,12 @@ uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__builder.
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__struct.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__traits.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__builder.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__struct.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__traits.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/detail/send_debug_text__type_support.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/request_charge.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/srv/send_debug_text.hpp
 uav_msgs__cpp: CMakeFiles/uav_msgs__cpp.dir/build.make
 .PHONY : uav_msgs__cpp
 
