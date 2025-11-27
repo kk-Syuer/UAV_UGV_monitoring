@@ -11,7 +11,6 @@ ros2 run ugv_charger ugv_charger_node --ros-args \
   -p drain_percent_member:=0.5 \
   -p drain_percent_ch:=0.25
 
-
 // create a ch
 ros2 run uav_fleet uav_node --ros-args \
   -p uav_id:=uav_1 \
@@ -28,11 +27,19 @@ ros2 run uav_fleet uav_node --ros-args \
 //check uav status info
 ros2 topic echo /uav_fleet/status
 
-
 // run network monitor
 ros2 run network_monitor network_monitor_node
 
 // run weather node
 ros2 run weather_server weather_node
 ros2 topic echo /environment/weather //check weather
+
+// run coverage planner
+ros2 run coverage_planner coverage_planner_node --ros-args \
+  -p num_ch:=2 \
+  -p uav_ids:="[uav_1, uav_2, uav_3]" \
+  -p area_x_min:=0.0 -p area_x_max:=600.0 \
+  -p area_y_min:=0.0 -p area_y_max:=600.0 \
+  -p service_radius_ch:=250.0 \
+  -p connectivity_radius_ch:=400.0
 

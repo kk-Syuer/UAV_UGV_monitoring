@@ -7,18 +7,18 @@ from rclpy.node import Node
 
 import matplotlib.pyplot as plt
 
-from uav_msgs.msg import UavDeployment
+from uav_msgs.msg import UavStatus
 
 
 class PlannerVizNode(Node):
     def __init__(self) -> None:
         super().__init__("planner_viz_node")
 
-        # Area & parameters (match coverage_planner)
+        # ---- Area & parameters (match coverage_planner) ----
         self.x_min = self.declare_parameter("x_min", 0.0).get_parameter_value().double_value
-        self.x_max = self.declare_parameter("x_max", 500.0).get_parameter_value().double_value
+        self.x_max = self.declare_parameter("x_max", 600.0).get_parameter_value().double_value
         self.y_min = self.declare_parameter("y_min", 0.0).get_parameter_value().double_value
-        self.y_max = self.declare_parameter("y_max", 500.0).get_parameter_value().double_value
+        self.y_max = self.declare_parameter("y_max", 600.0).get_parameter_value().double_value
 
         self.service_radius_ch = (
             self.declare_parameter("service_radius_ch", 250.0)
@@ -27,34 +27,29 @@ class PlannerVizNode(Node):
         )
 
         # Sink & UGV positions
-        self.sink_x = self.declare_parameter("sink_x", 0.0).get_parameter_value().double_value
-        self.sink_y = self.declare_parameter("sink_y", 0.0).get_parameter_value().double_value
+        self.sink_x = self.declare_parameter("sink_x", 300.0).get_parameter_value().double_value
+        self.sink_y = self.declare_parameter("sink_y", 300.0).get_parameter_value().double_value
 
-        self.ugv_x = self.declare_parameter("ugv_x", 0.0).get_parameter_value().double_value
-        self.ugv_y = self.declare_parameter("ugv_y", 0.0).get_parameter_value().double_value
+        self.ugv_x = self.declare_parameter("ugv_x", 50.0).get_parameter_value().double_value
+        self.ugv_y = self.declare_parameter("ugv_y", 50.0).get_parameter_value().double_value
 
         # Storage for UAVs: uav_id -> dict(role, x, y, cluster_id)
         self.uavs: Dict[str, Dict] = {}
 
-        self.sub_ = self.create_subscription(
-            UavDeployment,
-            "/coverage_planner/deployment",
-            self.deployment_callback,
-            10,
+        # Subscribe to UAV status (periodic, dynamic)
+        self.status_sub = self.create_subscription(
+            UavStatus,
+            "/uav_fleet/status",
+            self.status_callback,
+            50,
         )
 
-        # Setup matplotlib figure
+        # Matplotlib setup
         plt.ion()
         self.fig, self.ax = plt.subplots()
-        self.ax.set_facecolor("black")
-        self.ax.set_xlim(self.x_min, self.x_max)
-        self.ax.set_ylim(self.y_min, self.y_max)
-        self.ax.set_aspect("equal", adjustable="box")
-        self.ax.set_xlabel("X [m]")
-        self.ax.set_ylabel("Y [m]")
-        self.ax.set_title("Coverage planner view")
+        self._init_axes()
 
-        # Timer to refresh the plot
+        # Timer to refresh plot
         self.timer = self.create_timer(0.5, self.update_plot)
 
         self.get_logger().info(
@@ -65,25 +60,18 @@ class PlannerVizNode(Node):
 
     # ---- Callbacks ----
 
-    def deployment_callback(self, msg: UavDeployment) -> None:
-        # Store/update UAV info
+    def status_callback(self, msg: UavStatus) -> None:
+        """Store latest UAV pose/role/cluster from status."""
         self.uavs[msg.uav_id] = {
-            "role": msg.role,
-            "x": msg.target_pose.position.x,
-            "y": msg.target_pose.position.y,
+            "role": msg.role,               # 0 = MEMBER, 1 = CH
+            "x": msg.pose.position.x,
+            "y": msg.pose.position.y,
             "cluster": msg.cluster_id,
         }
 
-        self.get_logger().info(
-            f"Deployment: {msg.uav_id} role={msg.role} cluster={msg.cluster_id} "
-            f"pos=({msg.target_pose.position.x:.1f}, {msg.target_pose.position.y:.1f})"
-        )
+    # ---- Plot helpers ----
 
-    # ---- Plotting ----
-
-    def update_plot(self) -> None:
-        # Clear axes
-        self.ax.cla()
+    def _init_axes(self) -> None:
         self.ax.set_facecolor("black")
         self.ax.set_xlim(self.x_min, self.x_max)
         self.ax.set_ylim(self.y_min, self.y_max)
@@ -92,7 +80,12 @@ class PlannerVizNode(Node):
         self.ax.set_ylabel("Y [m]")
         self.ax.set_title("Coverage planner view")
 
-        # Plot sink (blue)
+    def update_plot(self) -> None:
+        """Redraw the plot with current UAV positions."""
+        self.ax.cla()
+        self._init_axes()
+
+        # Sink (blue)
         self.ax.scatter(
             [self.sink_x],
             [self.sink_y],
@@ -102,7 +95,7 @@ class PlannerVizNode(Node):
             label="sink",
         )
 
-        # Plot UGV (yellow)
+        # UGV (yellow)
         self.ax.scatter(
             [self.ugv_x],
             [self.ugv_y],
@@ -112,14 +105,14 @@ class PlannerVizNode(Node):
             label="ugv",
         )
 
-        # Plot UAVs: CHs red + circles; members green
+        # UAVs
         for uav_id, info in self.uavs.items():
             x = info["x"]
             y = info["y"]
             role = info["role"]
 
             if role == 1:
-                # CH
+                # Cluster Head: red dot + coverage circle
                 self.ax.scatter([x], [y], c="red", marker="o", s=50)
                 circ = plt.Circle(
                     (x, y),
@@ -133,7 +126,7 @@ class PlannerVizNode(Node):
                 self.ax.add_patch(circ)
                 self.ax.text(x, y, uav_id, color="white", fontsize=8, ha="center", va="center")
             else:
-                # Member
+                # Member: green dot
                 self.ax.scatter([x], [y], c="green", marker="o", s=30)
                 self.ax.text(x, y, uav_id, color="white", fontsize=7, ha="center", va="center")
 

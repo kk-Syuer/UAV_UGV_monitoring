@@ -40,9 +40,19 @@ public:
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
 
-    // Sink position inside the area (2D)
-    sink_x_ = this->declare_parameter<double>("sink_x", 0.0);
-    sink_y_ = this->declare_parameter<double>("sink_y", 0.0);
+    // ---- Randomize sink & UGV positions inside the area ----
+    {
+      std::random_device rd;
+      std::mt19937 rng(rd());
+      std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
+      std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
+
+      sink_x_ = dist_x(rng);
+      sink_y_ = dist_y(rng);
+
+      ugv_x_  = dist_x(rng);
+      ugv_y_  = dist_y(rng);
+    }
 
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
@@ -52,11 +62,13 @@ public:
 
     RCLCPP_INFO(this->get_logger(),
                 "Coverage planner started. num_ch=%d, uav_ids=%zu, "
-                "area=[%.1f,%.1f]x[%.1f,%.1f], R_s=%.1f, R_c=%.1f, sink=(%.1f,%.1f)",
+                "area=[%.1f,%.1f]x[%.1f,%.1f], R_s=%.1f, R_c=%.1f, "
+                "sink=(%.1f,%.1f), ugv=(%.1f,%.1f)",
                 num_ch_, uav_ids_.size(),
                 x_min_, x_max_, y_min_, y_max_,
                 service_radius_ch_, comm_radius_ch_,
-                sink_x_, sink_y_);
+                sink_x_, sink_y_,
+                ugv_x_, ugv_y_);
   }
 
 private:
@@ -107,7 +119,7 @@ private:
                 "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
                 n_rows, n_cols, dx, dy);
 
-    double cov_limit = 2.0 * service_radius_ch_;
+    double cov_limit  = 2.0 * service_radius_ch_;
     double conn_limit = comm_radius_ch_;
 
     if (dx > cov_limit || dy > cov_limit) {
@@ -156,8 +168,8 @@ private:
 
     // ---- Build CH + sink graph and compute next_hop_to_sink via BFS ----
 
-    const int sink_idx = num_ch;           // extra node for sink
-    const int num_nodes = num_ch + 1;      // CHs + sink
+    const int sink_idx   = num_ch;      // extra node for sink
+    const int num_nodes  = num_ch + 1;  // CHs + sink
     std::vector<std::vector<int>> adj(num_nodes);
 
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
@@ -319,7 +331,7 @@ private:
     }
   }
 
-  // Parameters
+  // Parameters / state
   std::vector<std::string> uav_ids_;
   int num_ch_;
   double x_min_, x_max_, y_min_, y_max_;
@@ -327,6 +339,7 @@ private:
   double service_radius_ch_;
   double comm_radius_ch_;
   double sink_x_, sink_y_;
+  double ugv_x_, ugv_y_;
 
   bool planned_ = false;
 
