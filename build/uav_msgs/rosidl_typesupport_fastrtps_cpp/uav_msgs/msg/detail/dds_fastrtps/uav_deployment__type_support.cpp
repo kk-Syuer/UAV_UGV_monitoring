@@ -68,6 +68,8 @@ cdr_serialize(
   cdr << ros_message.cluster_id;
   // Member: ch_id
   cdr << ros_message.ch_id;
+  // Member: next_hop_to_sink
+  cdr << ros_message.next_hop_to_sink;
   return true;
 }
 
@@ -92,6 +94,9 @@ cdr_deserialize(
 
   // Member: ch_id
   cdr >> ros_message.ch_id;
+
+  // Member: next_hop_to_sink
+  cdr >> ros_message.next_hop_to_sink;
 
   return true;
 }
@@ -132,6 +137,10 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.ch_id.size() + 1);
+  // Member: next_hop_to_sink
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.next_hop_to_sink.size() + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -222,6 +231,19 @@ max_serialized_size_UavDeployment(
     }
   }
 
+  // Member: next_hop_to_sink
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -230,7 +252,7 @@ max_serialized_size_UavDeployment(
     using DataType = uav_msgs::msg::UavDeployment;
     is_plain =
       (
-      offsetof(DataType, ch_id) +
+      offsetof(DataType, next_hop_to_sink) +
       last_member_size
       ) == ret_val;
   }

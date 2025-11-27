@@ -83,6 +83,45 @@ bool uav_msgs__msg__uav_deployment__convert_from_py(PyObject * _pymsg, void * _r
     }
     Py_DECREF(field);
   }
+  {  // role
+    PyObject * field = PyObject_GetAttrString(_pymsg, "role");
+    if (!field) {
+      return false;
+    }
+    assert(PyLong_Check(field));
+    ros_message->role = (uint8_t)PyLong_AsUnsignedLong(field);
+    Py_DECREF(field);
+  }
+  {  // cluster_id
+    PyObject * field = PyObject_GetAttrString(_pymsg, "cluster_id");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->cluster_id, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // ch_id
+    PyObject * field = PyObject_GetAttrString(_pymsg, "ch_id");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->ch_id, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
 
   return true;
 }
@@ -130,6 +169,51 @@ PyObject * uav_msgs__msg__uav_deployment__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "target_pose", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // role
+    PyObject * field = NULL;
+    field = PyLong_FromUnsignedLong(ros_message->role);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "role", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // cluster_id
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->cluster_id.data,
+      strlen(ros_message->cluster_id.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "cluster_id", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // ch_id
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->ch_id.data,
+      strlen(ros_message->ch_id.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "ch_id", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

@@ -64,6 +64,7 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         '_role',
         '_cluster_id',
         '_ch_id',
+        '_next_hop_to_sink',
     ]
 
     _fields_and_field_types = {
@@ -72,12 +73,14 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         'role': 'uint8',
         'cluster_id': 'string',
         'ch_id': 'string',
+        'next_hop_to_sink': 'string',
     }
 
     SLOT_TYPES = (
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Pose'),  # noqa: E501
         rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
@@ -92,6 +95,7 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         self.role = kwargs.get('role', int())
         self.cluster_id = kwargs.get('cluster_id', str())
         self.ch_id = kwargs.get('ch_id', str())
+        self.next_hop_to_sink = kwargs.get('next_hop_to_sink', str())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -131,6 +135,8 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         if self.cluster_id != other.cluster_id:
             return False
         if self.ch_id != other.ch_id:
+            return False
+        if self.next_hop_to_sink != other.next_hop_to_sink:
             return False
         return True
 
@@ -206,3 +212,16 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
                 isinstance(value, str), \
                 "The 'ch_id' field must be of type 'str'"
         self._ch_id = value
+
+    @builtins.property
+    def next_hop_to_sink(self):
+        """Message field 'next_hop_to_sink'."""
+        return self._next_hop_to_sink
+
+    @next_hop_to_sink.setter
+    def next_hop_to_sink(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'next_hop_to_sink' field must be of type 'str'"
+        self._next_hop_to_sink = value

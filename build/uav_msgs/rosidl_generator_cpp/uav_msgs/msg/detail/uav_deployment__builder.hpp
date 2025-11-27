@@ -21,16 +21,32 @@ namespace msg
 namespace builder
 {
 
+class Init_UavDeployment_next_hop_to_sink
+{
+public:
+  explicit Init_UavDeployment_next_hop_to_sink(::uav_msgs::msg::UavDeployment & msg)
+  : msg_(msg)
+  {}
+  ::uav_msgs::msg::UavDeployment next_hop_to_sink(::uav_msgs::msg::UavDeployment::_next_hop_to_sink_type arg)
+  {
+    msg_.next_hop_to_sink = std::move(arg);
+    return std::move(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavDeployment msg_;
+};
+
 class Init_UavDeployment_ch_id
 {
 public:
   explicit Init_UavDeployment_ch_id(::uav_msgs::msg::UavDeployment & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::UavDeployment ch_id(::uav_msgs::msg::UavDeployment::_ch_id_type arg)
+  Init_UavDeployment_next_hop_to_sink ch_id(::uav_msgs::msg::UavDeployment::_ch_id_type arg)
   {
     msg_.ch_id = std::move(arg);
-    return std::move(msg_);
+    return Init_UavDeployment_next_hop_to_sink(msg_);
   }
 
 private:

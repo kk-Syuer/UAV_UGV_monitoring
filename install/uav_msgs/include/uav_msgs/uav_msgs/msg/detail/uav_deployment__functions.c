@@ -15,6 +15,7 @@
 // Member `uav_id`
 // Member `cluster_id`
 // Member `ch_id`
+// Member `next_hop_to_sink`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `target_pose`
 #include "geometry_msgs/msg/detail/pose__functions.h"
@@ -46,6 +47,11 @@ uav_msgs__msg__UavDeployment__init(uav_msgs__msg__UavDeployment * msg)
     uav_msgs__msg__UavDeployment__fini(msg);
     return false;
   }
+  // next_hop_to_sink
+  if (!rosidl_runtime_c__String__init(&msg->next_hop_to_sink)) {
+    uav_msgs__msg__UavDeployment__fini(msg);
+    return false;
+  }
   return true;
 }
 
@@ -64,6 +70,8 @@ uav_msgs__msg__UavDeployment__fini(uav_msgs__msg__UavDeployment * msg)
   rosidl_runtime_c__String__fini(&msg->cluster_id);
   // ch_id
   rosidl_runtime_c__String__fini(&msg->ch_id);
+  // next_hop_to_sink
+  rosidl_runtime_c__String__fini(&msg->next_hop_to_sink);
 }
 
 bool
@@ -97,6 +105,12 @@ uav_msgs__msg__UavDeployment__are_equal(const uav_msgs__msg__UavDeployment * lhs
   // ch_id
   if (!rosidl_runtime_c__String__are_equal(
       &(lhs->ch_id), &(rhs->ch_id)))
+  {
+    return false;
+  }
+  // next_hop_to_sink
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->next_hop_to_sink), &(rhs->next_hop_to_sink)))
   {
     return false;
   }
@@ -134,6 +148,12 @@ uav_msgs__msg__UavDeployment__copy(
   // ch_id
   if (!rosidl_runtime_c__String__copy(
       &(input->ch_id), &(output->ch_id)))
+  {
+    return false;
+  }
+  // next_hop_to_sink
+  if (!rosidl_runtime_c__String__copy(
+      &(input->next_hop_to_sink), &(output->next_hop_to_sink)))
   {
     return false;
   }

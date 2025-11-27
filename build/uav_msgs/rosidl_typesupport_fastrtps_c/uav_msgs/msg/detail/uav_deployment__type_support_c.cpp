@@ -35,8 +35,8 @@ extern "C"
 #endif
 
 #include "geometry_msgs/msg/detail/pose__functions.h"  // target_pose
-#include "rosidl_runtime_c/string.h"  // ch_id, cluster_id, uav_id
-#include "rosidl_runtime_c/string_functions.h"  // ch_id, cluster_id, uav_id
+#include "rosidl_runtime_c/string.h"  // ch_id, cluster_id, next_hop_to_sink, uav_id
+#include "rosidl_runtime_c/string_functions.h"  // ch_id, cluster_id, next_hop_to_sink, uav_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -127,6 +127,20 @@ static bool _UavDeployment__cdr_serialize(
     cdr << str->data;
   }
 
+  // Field name: next_hop_to_sink
+  {
+    const rosidl_runtime_c__String * str = &ros_message->next_hop_to_sink;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
   return true;
 }
 
@@ -206,6 +220,22 @@ static bool _UavDeployment__cdr_deserialize(
     }
   }
 
+  // Field name: next_hop_to_sink
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->next_hop_to_sink.data) {
+      rosidl_runtime_c__String__init(&ros_message->next_hop_to_sink);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->next_hop_to_sink,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'next_hop_to_sink'\n");
+      return false;
+    }
+  }
+
   return true;
 }  // NOLINT(readability/fn_size)
 
@@ -245,6 +275,10 @@ size_t get_serialized_size_uav_msgs__msg__UavDeployment(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->ch_id.size + 1);
+  // field.name next_hop_to_sink
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->next_hop_to_sink.size + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -336,6 +370,18 @@ size_t max_serialized_size_uav_msgs__msg__UavDeployment(
         1;
     }
   }
+  // member: next_hop_to_sink
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
 
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
@@ -345,7 +391,7 @@ size_t max_serialized_size_uav_msgs__msg__UavDeployment(
     using DataType = uav_msgs__msg__UavDeployment;
     is_plain =
       (
-      offsetof(DataType, ch_id) +
+      offsetof(DataType, next_hop_to_sink) +
       last_member_size
       ) == ret_val;
   }

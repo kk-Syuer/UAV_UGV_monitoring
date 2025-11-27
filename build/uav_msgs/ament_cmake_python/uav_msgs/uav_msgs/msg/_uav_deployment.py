@@ -61,16 +61,25 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
     __slots__ = [
         '_uav_id',
         '_target_pose',
+        '_role',
+        '_cluster_id',
+        '_ch_id',
     ]
 
     _fields_and_field_types = {
         'uav_id': 'string',
         'target_pose': 'geometry_msgs/Pose',
+        'role': 'uint8',
+        'cluster_id': 'string',
+        'ch_id': 'string',
     }
 
     SLOT_TYPES = (
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Pose'),  # noqa: E501
+        rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -80,6 +89,9 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         self.uav_id = kwargs.get('uav_id', str())
         from geometry_msgs.msg import Pose
         self.target_pose = kwargs.get('target_pose', Pose())
+        self.role = kwargs.get('role', int())
+        self.cluster_id = kwargs.get('cluster_id', str())
+        self.ch_id = kwargs.get('ch_id', str())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -114,6 +126,12 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
             return False
         if self.target_pose != other.target_pose:
             return False
+        if self.role != other.role:
+            return False
+        if self.cluster_id != other.cluster_id:
+            return False
+        if self.ch_id != other.ch_id:
+            return False
         return True
 
     @classmethod
@@ -147,3 +165,44 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
                 isinstance(value, Pose), \
                 "The 'target_pose' field must be a sub message of type 'Pose'"
         self._target_pose = value
+
+    @builtins.property
+    def role(self):
+        """Message field 'role'."""
+        return self._role
+
+    @role.setter
+    def role(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, int), \
+                "The 'role' field must be of type 'int'"
+            assert value >= 0 and value < 256, \
+                "The 'role' field must be an unsigned integer in [0, 255]"
+        self._role = value
+
+    @builtins.property
+    def cluster_id(self):
+        """Message field 'cluster_id'."""
+        return self._cluster_id
+
+    @cluster_id.setter
+    def cluster_id(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'cluster_id' field must be of type 'str'"
+        self._cluster_id = value
+
+    @builtins.property
+    def ch_id(self):
+        """Message field 'ch_id'."""
+        return self._ch_id
+
+    @ch_id.setter
+    def ch_id(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'ch_id' field must be of type 'str'"
+        self._ch_id = value

@@ -22,6 +22,12 @@ module uav_msgs {
       @verbatim (language="comment", text=
         "for members: their CH; for CHs: self")
       string ch_id;
+
+      @verbatim (language="comment", text=
+        "Backbone routing: where should this UAV send packets towards the sink?" "\n"
+        "For CHs: usually another CH id or \"sink_gateway\"." "\n"
+        "For members: can be empty.")
+      string next_hop_to_sink;
     };
   };
 };

@@ -122,6 +122,21 @@ bool uav_msgs__msg__uav_deployment__convert_from_py(PyObject * _pymsg, void * _r
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
+  {  // next_hop_to_sink
+    PyObject * field = PyObject_GetAttrString(_pymsg, "next_hop_to_sink");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->next_hop_to_sink, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
 
   return true;
 }
@@ -214,6 +229,23 @@ PyObject * uav_msgs__msg__uav_deployment__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "ch_id", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // next_hop_to_sink
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->next_hop_to_sink.data,
+      strlen(ros_message->next_hop_to_sink.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "next_hop_to_sink", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

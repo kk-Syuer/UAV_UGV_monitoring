@@ -16,6 +16,7 @@
 // Member `uav_id`
 // Member `cluster_id`
 // Member `ch_id`
+// Member `next_hop_to_sink`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `target_pose`
 #include "geometry_msgs/msg/pose.h"
@@ -41,7 +42,7 @@ void uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeploy
   uav_msgs__msg__UavDeployment__fini(message_memory);
 }
 
-static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeployment_message_member_array[5] = {
+static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeployment_message_member_array[6] = {
   {
     "uav_id",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
@@ -126,13 +127,30 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__UavDeplo
     NULL,  // fetch(index, &value) function pointer
     NULL,  // assign(index, value) function pointer
     NULL  // resize(index) function pointer
+  },
+  {
+    "next_hop_to_sink",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs__msg__UavDeployment, next_hop_to_sink),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
   }
 };
 
 static const rosidl_typesupport_introspection_c__MessageMembers uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeployment_message_members = {
   "uav_msgs__msg",  // message namespace
   "UavDeployment",  // message name
-  5,  // number of fields
+  6,  // number of fields
   sizeof(uav_msgs__msg__UavDeployment),
   uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeployment_message_member_array,  // message members
   uav_msgs__msg__UavDeployment__rosidl_typesupport_introspection_c__UavDeployment_init_function,  // function to initialize message memory (memory has to be allocated)

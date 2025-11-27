@@ -32,7 +32,8 @@ public:
     msg_counter_(0),
     waiting_for_charge_response_(false),
     is_charging_(false),
-    has_charge_slot_(false)
+    has_charge_slot_(false),
+    deployment_received_(false)
   {
     // ---- Parameters ----
     uav_id_ = this->declare_parameter<std::string>("uav_id", "uav_1");
@@ -136,6 +137,28 @@ public:
       "/uav_fleet/" + uav_id_ + "/send_debug_text",
       std::bind(&UavNode::handleDebugSendText, this,
                 std::placeholders::_1, std::placeholders::_2));
+    // ---- Auto traffic generation parameter ----
+    auto_traffic_enabled_ =
+      this->declare_parameter<bool>("auto_traffic_enabled", false);
+
+    // Allow toggling at runtime via `ros2 param set`
+    param_cb_handle_ = this->add_on_set_parameters_callback(
+      [this](const std::vector<rclcpp::Parameter> & params)
+      {
+        for (const auto & p : params) {
+          if (p.get_name() == "auto_traffic_enabled") {
+            auto_traffic_enabled_ = p.as_bool();
+            RCLCPP_INFO(this->get_logger(),
+                        "UAV %s: auto_traffic_enabled set to %s",
+                        uav_id_.c_str(),
+                        auto_traffic_enabled_ ? "true" : "false");
+          }
+        }
+        // Always accept parameter changes
+        rcl_interfaces::msg::SetParametersResult result;
+        result.successful = true;
+        return result;
+      });
 
     // Dummy pose
     pose_.position.x = 0.0;
@@ -365,8 +388,9 @@ private:
 
   void publishTraffic()
   {
-    // Do not generate application traffic while charging
-    if (is_charging_ || battery_energy_ <= 0.0f) {
+    // Do not generate application traffic if disabled,
+    // while charging, or if we're "dead".
+    if (!auto_traffic_enabled_ || is_charging_ || battery_energy_ <= 0.0f || !deployment_received_) {
       return;
     }
 
@@ -545,21 +569,30 @@ private:
       // MEMBER: remember our CH
       my_ch_id_ = msg->ch_id;
     } else {
-      // CH: its own CH id is itself; we keep my_ch_id_ unchanged or set to self
+      // CH: its own CH id is itself
       my_ch_id_ = uav_id_;
     }
 
+    // Apply backbone routing info if provided
+    if (!msg->next_hop_to_sink.empty()) {
+      next_hop_to_sink_ = msg->next_hop_to_sink;
+    }
+
+    deployment_received_ = true;
+
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: deployment received. New pose=(%.1f, %.1f, %.1f), "
-                "role=%u, cluster=%s, ch=%s",
+                "role=%u, cluster=%s, ch=%s, next_hop_to_sink=%s",
                 uav_id_.c_str(),
                 pose_.position.x,
                 pose_.position.y,
                 pose_.position.z,
                 role_,
                 cluster_id_.c_str(),
-                my_ch_id_.c_str());
+                my_ch_id_.c_str(),
+                next_hop_to_sink_.c_str());
   }
+
 
   // ---------------- Members ----------------
 
@@ -607,6 +640,11 @@ private:
   float energy_at_charge_start_;
 
   uint64_t msg_counter_;
+  // Auto traffic generation control
+  bool auto_traffic_enabled_;
+  // wait for deployment
+  bool deployment_received_;
+  rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
   rclcpp::Publisher<uav_msgs::msg::Heartbeat>::SharedPtr heartbeat_pub_;
