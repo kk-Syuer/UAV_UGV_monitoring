@@ -10,6 +10,8 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
+#include <limits>
+
 
 using namespace std::chrono_literals;
 
@@ -145,9 +147,6 @@ private:
 
   void computeDeployment()
   {
-    randomizeSinkAndUgv();         // NEW: random positions
-    publishSinkAndUgvDeployment(); // NEW: broadcast them
-
     // Decide CH vs members: first num_ch_ are CHs
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
     std::vector<std::string> ch_ids(uav_ids_.begin(), uav_ids_.begin() + n);
@@ -163,7 +162,7 @@ private:
     double width  = x_max_ - x_min_;
     double height = y_max_ - y_min_;
 
-    // Compute grid layout (still simple grid; later we can move to hex)
+    // ---- 1) Place CHs on a simple grid ----
     int n_rows = static_cast<int>(std::floor(std::sqrt(num_ch)));
     if (n_rows < 1) n_rows = 1;
     int n_cols = (num_ch + n_rows - 1) / n_rows;  // ceil
@@ -175,7 +174,7 @@ private:
                 "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
                 n_rows, n_cols, dx, dy);
 
-    double cov_limit = 2.0 * service_radius_ch_;
+    double cov_limit  = 2.0 * service_radius_ch_;
     double conn_limit = comm_radius_ch_;
 
     if (dx > cov_limit || dy > cov_limit) {
@@ -192,7 +191,7 @@ private:
                   dx, dy, conn_limit);
     }
 
-    // Place CHs on grid centers
+    // Grid centre positions for CHs
     std::vector<geometry_msgs::msg::Pose> ch_poses;
     ch_poses.reserve(ch_ids.size());
 
@@ -222,19 +221,21 @@ private:
       cluster_ids.push_back("cluster_" + std::to_string(i + 1));
     }
 
-    // ---- Build CH + sink graph and compute next_hop_to_sink via BFS ----
+    // ---- 2) Build CH + sink graph (weighted) and run Dijkstra ----
 
-    const int sink_idx = num_ch;           // extra node for sink
-    const int num_nodes = num_ch + 1;      // CHs + sink
-    std::vector<std::vector<int>> adj(num_nodes);
+    const int sink_idx   = num_ch;        // extra node for sink
+    const int num_nodes  = num_ch + 1;    // CHs + sink
+    const double INF     = std::numeric_limits<double>::infinity();
+    const double Rc2     = comm_radius_ch_ * comm_radius_ch_;
 
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
       double dx = x1 - x2;
       double dy = y1 - y2;
-      return dx*dx + dy*dy;
+      return dx * dx + dy * dy;
     };
 
-    double Rc2 = comm_radius_ch_ * comm_radius_ch_;
+    // adjacency list: (neighbor, weight)
+    std::vector<std::vector<std::pair<int, double>>> adj(num_nodes);
 
     // CH-CH edges
     for (int i = 0; i < num_ch; ++i) {
@@ -242,63 +243,83 @@ private:
         double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
                              ch_poses[j].position.x, ch_poses[j].position.y);
         if (d2 <= Rc2) {
-          adj[i].push_back(j);
-          adj[j].push_back(i);
+          double w = std::sqrt(d2);
+          adj[i].push_back({j, w});
+          adj[j].push_back({i, w});
         }
       }
     }
 
-    // CH-sink edges (use randomized sink_x_, sink_y_)
+    // CH-sink edges
     for (int i = 0; i < num_ch; ++i) {
       double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
                            sink_x_, sink_y_);
       if (d2 <= Rc2) {
-        adj[i].push_back(sink_idx);
-        adj[sink_idx].push_back(i);
+        double w = std::sqrt(d2);
+        adj[i].push_back({sink_idx, w});
+        adj[sink_idx].push_back({i, w});
       }
     }
 
-    // BFS from sink_idx
-    std::vector<int> parent(num_nodes, -1);
-    std::vector<int> dist(num_nodes, -1);
+    // Dijkstra from sink_idx
+    std::vector<double> dist(num_nodes, INF);
+    std::vector<int>    prev(num_nodes, -1);
 
-    std::queue<int> q;
-    dist[sink_idx] = 0;
-    parent[sink_idx] = -1;
-    q.push(sink_idx);
+    using QItem = std::pair<double, int>;  // (distance, node)
+    std::priority_queue<QItem, std::vector<QItem>, std::greater<QItem>> pq;
 
-    while (!q.empty()) {
-      int u = q.front();
-      q.pop();
-      for (int v : adj[u]) {
-        if (dist[v] == -1) {
-          dist[v] = dist[u] + 1;
-          parent[v] = u;
-          q.push(v);
+    dist[sink_idx] = 0.0;
+    prev[sink_idx] = -1;
+    pq.push({0.0, sink_idx});
+
+    while (!pq.empty()) {
+      auto [d, u] = pq.top();
+      pq.pop();
+      if (d > dist[u]) continue;  // stale entry
+
+      for (const auto & edge : adj[u]) {
+        int v       = edge.first;
+        double w    = edge.second;
+        double cand = d + w;
+        if (cand < dist[v]) {
+          dist[v] = cand;
+          prev[v] = u;
+          pq.push({cand, v});
         }
       }
     }
 
-    // Compute next_hop_to_sink for each CH
+    // For each CH i, compute its next hop towards the sink
     std::vector<std::string> next_hop_to_sink(num_ch, "");
     int unreachable_count = 0;
 
     for (int i = 0; i < num_ch; ++i) {
-      if (dist[i] == -1) {
-        unreachable_count++;
+      if (!std::isfinite(dist[i])) {
+        ++unreachable_count;
         next_hop_to_sink[i].clear();
         continue;
       }
 
-      int p = parent[i];
+      int parent = prev[i];
 
-      if (p == sink_idx) {
+      if (parent == sink_idx) {
+        // Direct neighbor of sink
         next_hop_to_sink[i] = "sink_gateway";
-      } else if (p >= 0 && p < num_ch) {
-        next_hop_to_sink[i] = ch_ids[static_cast<size_t>(p)];
+      } else if (parent >= 0 && parent < num_ch) {
+        // Next hop is another CH
+        next_hop_to_sink[i] = ch_ids[static_cast<size_t>(parent)];
       } else {
+        // Should not happen, but keep safe
         next_hop_to_sink[i].clear();
       }
+
+      RCLCPP_INFO(this->get_logger(),
+                  "Routing: CH %s -> sink via %s (dist=%.1f m)",
+                  ch_ids[static_cast<size_t>(i)].c_str(),
+                  next_hop_to_sink[i].empty()
+                    ? "<NONE>"
+                    : next_hop_to_sink[i].c_str(),
+                  dist[i]);
     }
 
     if (unreachable_count > 0) {
@@ -308,11 +329,13 @@ private:
                   unreachable_count, comm_radius_ch_);
     }
 
-    // RNG for member positions
+    // ---- 3) RNG for member positions ----
+    std::random_device rd;
+    std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
     std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
 
-    // --- Deploy CHs ---
+    // ---- 4) Publish CH deployments ----
     for (int i = 0; i < num_ch; ++i) {
       uav_msgs::msg::UavDeployment dep;
       dep.uav_id      = ch_ids[static_cast<size_t>(i)];
@@ -330,17 +353,18 @@ private:
                   dep.target_pose.position.x,
                   dep.target_pose.position.y,
                   dep.target_pose.position.z,
-                  dep.next_hop_to_sink.empty() ?
-                    "<UNREACHABLE>" : dep.next_hop_to_sink.c_str());
+                  dep.next_hop_to_sink.empty()
+                    ? "<UNREACHABLE>"
+                    : dep.next_hop_to_sink.c_str());
 
       deployment_pub_->publish(dep);
     }
 
-    // --- Deploy members (random position, assigned to nearest CH) ---
+    // ---- 5) Publish MEMBER deployments (random XY, nearest CH) ----
     for (const auto & id : member_ids) {
       geometry_msgs::msg::Pose pose;
-      pose.position.x = dist_x(rng_);
-      pose.position.y = dist_y(rng_);
+      pose.position.x = dist_x(gen);
+      pose.position.y = dist_y(gen);
       pose.position.z = z_member_;
       pose.orientation.w = 1.0;
 
@@ -350,21 +374,12 @@ private:
 
       for (int i = 0; i < num_ch; ++i) {
         const auto & ch_pose = ch_poses[static_cast<size_t>(i)];
-        double dx = pose.position.x - ch_pose.position.x;
-        double dy = pose.position.y - ch_pose.position.y;
-        double d2 = dx * dx + dy * dy;
+        double dxm = pose.position.x - ch_pose.position.x;
+        double dym = pose.position.y - ch_pose.position.y;
+        double d2  = dxm * dxm + dym * dym;
         if (d2 < best_d2) {
           best_d2 = d2;
           best_ch_idx = i;
-          if (best_dist > service_radius_ch_) {
-            RCLCPP_WARN(this->get_logger(),
-                        "Member %s assigned to CH %s but distance=%.1f > R_s=%.1f "
-                        "(not actually covered).",
-                        id.c_str(),
-                        ch_ids[static_cast<size_t>(best_ch_idx)].c_str(),
-                        best_dist,
-                        service_radius_ch_);
-          }
         }
       }
 
@@ -375,7 +390,7 @@ private:
       dep.role       = 0;  // MEMBER
       dep.cluster_id = cluster_ids[static_cast<size_t>(best_ch_idx)];
       dep.ch_id      = ch_ids[static_cast<size_t>(best_ch_idx)];
-      dep.next_hop_to_sink = "";  // members don't use backbone directly
+      dep.next_hop_to_sink = "";  // members always go via their CH
 
       RCLCPP_INFO(this->get_logger(),
                   "Deploy MEMBER %s -> cluster=%s CH=%s pose=(%.1f, %.1f, %.1f)",
