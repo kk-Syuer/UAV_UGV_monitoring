@@ -356,6 +356,15 @@ private:
         if (d2 < best_d2) {
           best_d2 = d2;
           best_ch_idx = i;
+          if (best_dist > service_radius_ch_) {
+            RCLCPP_WARN(this->get_logger(),
+                        "Member %s assigned to CH %s but distance=%.1f > R_s=%.1f "
+                        "(not actually covered).",
+                        id.c_str(),
+                        ch_ids[static_cast<size_t>(best_ch_idx)].c_str(),
+                        best_dist,
+                        service_radius_ch_);
+          }
         }
       }
 
