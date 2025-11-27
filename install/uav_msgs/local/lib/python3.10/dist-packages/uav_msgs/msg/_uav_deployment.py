@@ -60,27 +60,30 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
 
     __slots__ = [
         '_uav_id',
-        '_target_pose',
         '_role',
         '_cluster_id',
         '_ch_id',
+        '_target_pose',
         '_next_hop_to_sink',
+        '_next_hop_to_ugv',
     ]
 
     _fields_and_field_types = {
         'uav_id': 'string',
-        'target_pose': 'geometry_msgs/Pose',
         'role': 'uint8',
         'cluster_id': 'string',
         'ch_id': 'string',
+        'target_pose': 'geometry_msgs/Pose',
         'next_hop_to_sink': 'string',
+        'next_hop_to_ugv': 'string',
     }
 
     SLOT_TYPES = (
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
-        rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Pose'),  # noqa: E501
         rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Pose'),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
@@ -90,12 +93,13 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
             'Invalid arguments passed to constructor: %s' % \
             ', '.join(sorted(k for k in kwargs.keys() if '_' + k not in self.__slots__))
         self.uav_id = kwargs.get('uav_id', str())
-        from geometry_msgs.msg import Pose
-        self.target_pose = kwargs.get('target_pose', Pose())
         self.role = kwargs.get('role', int())
         self.cluster_id = kwargs.get('cluster_id', str())
         self.ch_id = kwargs.get('ch_id', str())
+        from geometry_msgs.msg import Pose
+        self.target_pose = kwargs.get('target_pose', Pose())
         self.next_hop_to_sink = kwargs.get('next_hop_to_sink', str())
+        self.next_hop_to_ugv = kwargs.get('next_hop_to_ugv', str())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -128,15 +132,17 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
             return False
         if self.uav_id != other.uav_id:
             return False
-        if self.target_pose != other.target_pose:
-            return False
         if self.role != other.role:
             return False
         if self.cluster_id != other.cluster_id:
             return False
         if self.ch_id != other.ch_id:
             return False
+        if self.target_pose != other.target_pose:
+            return False
         if self.next_hop_to_sink != other.next_hop_to_sink:
+            return False
+        if self.next_hop_to_ugv != other.next_hop_to_ugv:
             return False
         return True
 
@@ -157,20 +163,6 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
                 isinstance(value, str), \
                 "The 'uav_id' field must be of type 'str'"
         self._uav_id = value
-
-    @builtins.property
-    def target_pose(self):
-        """Message field 'target_pose'."""
-        return self._target_pose
-
-    @target_pose.setter
-    def target_pose(self, value):
-        if __debug__:
-            from geometry_msgs.msg import Pose
-            assert \
-                isinstance(value, Pose), \
-                "The 'target_pose' field must be a sub message of type 'Pose'"
-        self._target_pose = value
 
     @builtins.property
     def role(self):
@@ -214,6 +206,20 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
         self._ch_id = value
 
     @builtins.property
+    def target_pose(self):
+        """Message field 'target_pose'."""
+        return self._target_pose
+
+    @target_pose.setter
+    def target_pose(self, value):
+        if __debug__:
+            from geometry_msgs.msg import Pose
+            assert \
+                isinstance(value, Pose), \
+                "The 'target_pose' field must be a sub message of type 'Pose'"
+        self._target_pose = value
+
+    @builtins.property
     def next_hop_to_sink(self):
         """Message field 'next_hop_to_sink'."""
         return self._next_hop_to_sink
@@ -225,3 +231,16 @@ class UavDeployment(metaclass=Metaclass_UavDeployment):
                 isinstance(value, str), \
                 "The 'next_hop_to_sink' field must be of type 'str'"
         self._next_hop_to_sink = value
+
+    @builtins.property
+    def next_hop_to_ugv(self):
+        """Message field 'next_hop_to_ugv'."""
+        return self._next_hop_to_ugv
+
+    @next_hop_to_ugv.setter
+    def next_hop_to_ugv(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'next_hop_to_ugv' field must be of type 'str'"
+        self._next_hop_to_ugv = value

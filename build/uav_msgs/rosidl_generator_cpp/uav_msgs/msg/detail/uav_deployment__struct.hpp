@@ -48,15 +48,17 @@ struct UavDeployment_
       this->cluster_id = "";
       this->ch_id = "";
       this->next_hop_to_sink = "";
+      this->next_hop_to_ugv = "";
     }
   }
 
   explicit UavDeployment_(const ContainerAllocator & _alloc, rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
   : uav_id(_alloc),
-    target_pose(_alloc, _init),
     cluster_id(_alloc),
     ch_id(_alloc),
-    next_hop_to_sink(_alloc)
+    target_pose(_alloc, _init),
+    next_hop_to_sink(_alloc),
+    next_hop_to_ugv(_alloc)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
@@ -66,6 +68,7 @@ struct UavDeployment_
       this->cluster_id = "";
       this->ch_id = "";
       this->next_hop_to_sink = "";
+      this->next_hop_to_ugv = "";
     }
   }
 
@@ -73,9 +76,6 @@ struct UavDeployment_
   using _uav_id_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _uav_id_type uav_id;
-  using _target_pose_type =
-    geometry_msgs::msg::Pose_<ContainerAllocator>;
-  _target_pose_type target_pose;
   using _role_type =
     uint8_t;
   _role_type role;
@@ -85,21 +85,21 @@ struct UavDeployment_
   using _ch_id_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _ch_id_type ch_id;
+  using _target_pose_type =
+    geometry_msgs::msg::Pose_<ContainerAllocator>;
+  _target_pose_type target_pose;
   using _next_hop_to_sink_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _next_hop_to_sink_type next_hop_to_sink;
+  using _next_hop_to_ugv_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _next_hop_to_ugv_type next_hop_to_ugv;
 
   // setters for named parameter idiom
   Type & set__uav_id(
     const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
     this->uav_id = _arg;
-    return *this;
-  }
-  Type & set__target_pose(
-    const geometry_msgs::msg::Pose_<ContainerAllocator> & _arg)
-  {
-    this->target_pose = _arg;
     return *this;
   }
   Type & set__role(
@@ -120,10 +120,22 @@ struct UavDeployment_
     this->ch_id = _arg;
     return *this;
   }
+  Type & set__target_pose(
+    const geometry_msgs::msg::Pose_<ContainerAllocator> & _arg)
+  {
+    this->target_pose = _arg;
+    return *this;
+  }
   Type & set__next_hop_to_sink(
     const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
     this->next_hop_to_sink = _arg;
+    return *this;
+  }
+  Type & set__next_hop_to_ugv(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->next_hop_to_ugv = _arg;
     return *this;
   }
 
@@ -172,9 +184,6 @@ struct UavDeployment_
     if (this->uav_id != other.uav_id) {
       return false;
     }
-    if (this->target_pose != other.target_pose) {
-      return false;
-    }
     if (this->role != other.role) {
       return false;
     }
@@ -184,7 +193,13 @@ struct UavDeployment_
     if (this->ch_id != other.ch_id) {
       return false;
     }
+    if (this->target_pose != other.target_pose) {
+      return false;
+    }
     if (this->next_hop_to_sink != other.next_hop_to_sink) {
+      return false;
+    }
+    if (this->next_hop_to_ugv != other.next_hop_to_ugv) {
       return false;
     }
     return true;

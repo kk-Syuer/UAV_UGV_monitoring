@@ -16,6 +16,7 @@
 // Member `cluster_id`
 // Member `ch_id`
 // Member `next_hop_to_sink`
+// Member `next_hop_to_ugv`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `target_pose`
 #include "geometry_msgs/msg/detail/pose__functions.h"
@@ -31,11 +32,6 @@ uav_msgs__msg__UavDeployment__init(uav_msgs__msg__UavDeployment * msg)
     uav_msgs__msg__UavDeployment__fini(msg);
     return false;
   }
-  // target_pose
-  if (!geometry_msgs__msg__Pose__init(&msg->target_pose)) {
-    uav_msgs__msg__UavDeployment__fini(msg);
-    return false;
-  }
   // role
   // cluster_id
   if (!rosidl_runtime_c__String__init(&msg->cluster_id)) {
@@ -47,8 +43,18 @@ uav_msgs__msg__UavDeployment__init(uav_msgs__msg__UavDeployment * msg)
     uav_msgs__msg__UavDeployment__fini(msg);
     return false;
   }
+  // target_pose
+  if (!geometry_msgs__msg__Pose__init(&msg->target_pose)) {
+    uav_msgs__msg__UavDeployment__fini(msg);
+    return false;
+  }
   // next_hop_to_sink
   if (!rosidl_runtime_c__String__init(&msg->next_hop_to_sink)) {
+    uav_msgs__msg__UavDeployment__fini(msg);
+    return false;
+  }
+  // next_hop_to_ugv
+  if (!rosidl_runtime_c__String__init(&msg->next_hop_to_ugv)) {
     uav_msgs__msg__UavDeployment__fini(msg);
     return false;
   }
@@ -63,15 +69,17 @@ uav_msgs__msg__UavDeployment__fini(uav_msgs__msg__UavDeployment * msg)
   }
   // uav_id
   rosidl_runtime_c__String__fini(&msg->uav_id);
-  // target_pose
-  geometry_msgs__msg__Pose__fini(&msg->target_pose);
   // role
   // cluster_id
   rosidl_runtime_c__String__fini(&msg->cluster_id);
   // ch_id
   rosidl_runtime_c__String__fini(&msg->ch_id);
+  // target_pose
+  geometry_msgs__msg__Pose__fini(&msg->target_pose);
   // next_hop_to_sink
   rosidl_runtime_c__String__fini(&msg->next_hop_to_sink);
+  // next_hop_to_ugv
+  rosidl_runtime_c__String__fini(&msg->next_hop_to_ugv);
 }
 
 bool
@@ -83,12 +91,6 @@ uav_msgs__msg__UavDeployment__are_equal(const uav_msgs__msg__UavDeployment * lhs
   // uav_id
   if (!rosidl_runtime_c__String__are_equal(
       &(lhs->uav_id), &(rhs->uav_id)))
-  {
-    return false;
-  }
-  // target_pose
-  if (!geometry_msgs__msg__Pose__are_equal(
-      &(lhs->target_pose), &(rhs->target_pose)))
   {
     return false;
   }
@@ -108,9 +110,21 @@ uav_msgs__msg__UavDeployment__are_equal(const uav_msgs__msg__UavDeployment * lhs
   {
     return false;
   }
+  // target_pose
+  if (!geometry_msgs__msg__Pose__are_equal(
+      &(lhs->target_pose), &(rhs->target_pose)))
+  {
+    return false;
+  }
   // next_hop_to_sink
   if (!rosidl_runtime_c__String__are_equal(
       &(lhs->next_hop_to_sink), &(rhs->next_hop_to_sink)))
+  {
+    return false;
+  }
+  // next_hop_to_ugv
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->next_hop_to_ugv), &(rhs->next_hop_to_ugv)))
   {
     return false;
   }
@@ -131,12 +145,6 @@ uav_msgs__msg__UavDeployment__copy(
   {
     return false;
   }
-  // target_pose
-  if (!geometry_msgs__msg__Pose__copy(
-      &(input->target_pose), &(output->target_pose)))
-  {
-    return false;
-  }
   // role
   output->role = input->role;
   // cluster_id
@@ -151,9 +159,21 @@ uav_msgs__msg__UavDeployment__copy(
   {
     return false;
   }
+  // target_pose
+  if (!geometry_msgs__msg__Pose__copy(
+      &(input->target_pose), &(output->target_pose)))
+  {
+    return false;
+  }
   // next_hop_to_sink
   if (!rosidl_runtime_c__String__copy(
       &(input->next_hop_to_sink), &(output->next_hop_to_sink)))
+  {
+    return false;
+  }
+  // next_hop_to_ugv
+  if (!rosidl_runtime_c__String__copy(
+      &(input->next_hop_to_ugv), &(output->next_hop_to_ugv)))
   {
     return false;
   }

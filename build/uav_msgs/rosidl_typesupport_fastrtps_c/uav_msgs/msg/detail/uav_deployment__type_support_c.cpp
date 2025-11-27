@@ -35,8 +35,8 @@ extern "C"
 #endif
 
 #include "geometry_msgs/msg/detail/pose__functions.h"  // target_pose
-#include "rosidl_runtime_c/string.h"  // ch_id, cluster_id, next_hop_to_sink, uav_id
-#include "rosidl_runtime_c/string_functions.h"  // ch_id, cluster_id, next_hop_to_sink, uav_id
+#include "rosidl_runtime_c/string.h"  // ch_id, cluster_id, next_hop_to_sink, next_hop_to_ugv, uav_id
+#include "rosidl_runtime_c/string_functions.h"  // ch_id, cluster_id, next_hop_to_sink, next_hop_to_ugv, uav_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -80,20 +80,6 @@ static bool _UavDeployment__cdr_serialize(
     cdr << str->data;
   }
 
-  // Field name: target_pose
-  {
-    const message_type_support_callbacks_t * callbacks =
-      static_cast<const message_type_support_callbacks_t *>(
-      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
-        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Pose
-      )()->data);
-    if (!callbacks->cdr_serialize(
-        &ros_message->target_pose, cdr))
-    {
-      return false;
-    }
-  }
-
   // Field name: role
   {
     cdr << ros_message->role;
@@ -127,9 +113,37 @@ static bool _UavDeployment__cdr_serialize(
     cdr << str->data;
   }
 
+  // Field name: target_pose
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Pose
+      )()->data);
+    if (!callbacks->cdr_serialize(
+        &ros_message->target_pose, cdr))
+    {
+      return false;
+    }
+  }
+
   // Field name: next_hop_to_sink
   {
     const rosidl_runtime_c__String * str = &ros_message->next_hop_to_sink;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
+  // Field name: next_hop_to_ugv
+  {
+    const rosidl_runtime_c__String * str = &ros_message->next_hop_to_ugv;
     if (str->capacity == 0 || str->capacity <= str->size) {
       fprintf(stderr, "string capacity not greater than size\n");
       return false;
@@ -165,20 +179,6 @@ static bool _UavDeployment__cdr_deserialize(
       tmp.c_str());
     if (!succeeded) {
       fprintf(stderr, "failed to assign string into field 'uav_id'\n");
-      return false;
-    }
-  }
-
-  // Field name: target_pose
-  {
-    const message_type_support_callbacks_t * callbacks =
-      static_cast<const message_type_support_callbacks_t *>(
-      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
-        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Pose
-      )()->data);
-    if (!callbacks->cdr_deserialize(
-        cdr, &ros_message->target_pose))
-    {
       return false;
     }
   }
@@ -220,6 +220,20 @@ static bool _UavDeployment__cdr_deserialize(
     }
   }
 
+  // Field name: target_pose
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Pose
+      )()->data);
+    if (!callbacks->cdr_deserialize(
+        cdr, &ros_message->target_pose))
+    {
+      return false;
+    }
+  }
+
   // Field name: next_hop_to_sink
   {
     std::string tmp;
@@ -232,6 +246,22 @@ static bool _UavDeployment__cdr_deserialize(
       tmp.c_str());
     if (!succeeded) {
       fprintf(stderr, "failed to assign string into field 'next_hop_to_sink'\n");
+      return false;
+    }
+  }
+
+  // Field name: next_hop_to_ugv
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->next_hop_to_ugv.data) {
+      rosidl_runtime_c__String__init(&ros_message->next_hop_to_ugv);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->next_hop_to_ugv,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'next_hop_to_ugv'\n");
       return false;
     }
   }
@@ -257,10 +287,6 @@ size_t get_serialized_size_uav_msgs__msg__UavDeployment(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->uav_id.size + 1);
-  // field.name target_pose
-
-  current_alignment += get_serialized_size_geometry_msgs__msg__Pose(
-    &(ros_message->target_pose), current_alignment);
   // field.name role
   {
     size_t item_size = sizeof(ros_message->role);
@@ -275,10 +301,18 @@ size_t get_serialized_size_uav_msgs__msg__UavDeployment(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->ch_id.size + 1);
+  // field.name target_pose
+
+  current_alignment += get_serialized_size_geometry_msgs__msg__Pose(
+    &(ros_message->target_pose), current_alignment);
   // field.name next_hop_to_sink
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->next_hop_to_sink.size + 1);
+  // field.name next_hop_to_ugv
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->next_hop_to_ugv.size + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -320,25 +354,6 @@ size_t max_serialized_size_uav_msgs__msg__UavDeployment(
         1;
     }
   }
-  // member: target_pose
-  {
-    size_t array_size = 1;
-
-
-    last_member_size = 0;
-    for (size_t index = 0; index < array_size; ++index) {
-      bool inner_full_bounded;
-      bool inner_is_plain;
-      size_t inner_size;
-      inner_size =
-        max_serialized_size_geometry_msgs__msg__Pose(
-        inner_full_bounded, inner_is_plain, current_alignment);
-      last_member_size += inner_size;
-      current_alignment += inner_size;
-      full_bounded &= inner_full_bounded;
-      is_plain &= inner_is_plain;
-    }
-  }
   // member: role
   {
     size_t array_size = 1;
@@ -370,7 +385,38 @@ size_t max_serialized_size_uav_msgs__msg__UavDeployment(
         1;
     }
   }
+  // member: target_pose
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size;
+      inner_size =
+        max_serialized_size_geometry_msgs__msg__Pose(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
   // member: next_hop_to_sink
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: next_hop_to_ugv
   {
     size_t array_size = 1;
 
@@ -391,7 +437,7 @@ size_t max_serialized_size_uav_msgs__msg__UavDeployment(
     using DataType = uav_msgs__msg__UavDeployment;
     is_plain =
       (
-      offsetof(DataType, next_hop_to_sink) +
+      offsetof(DataType, next_hop_to_ugv) +
       last_member_size
       ) == ret_val;
   }

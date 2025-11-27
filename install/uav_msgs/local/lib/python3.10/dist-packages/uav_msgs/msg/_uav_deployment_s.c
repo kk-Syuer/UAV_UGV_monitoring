@@ -72,17 +72,6 @@ bool uav_msgs__msg__uav_deployment__convert_from_py(PyObject * _pymsg, void * _r
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
-  {  // target_pose
-    PyObject * field = PyObject_GetAttrString(_pymsg, "target_pose");
-    if (!field) {
-      return false;
-    }
-    if (!geometry_msgs__msg__pose__convert_from_py(field, &ros_message->target_pose)) {
-      Py_DECREF(field);
-      return false;
-    }
-    Py_DECREF(field);
-  }
   {  // role
     PyObject * field = PyObject_GetAttrString(_pymsg, "role");
     if (!field) {
@@ -122,6 +111,17 @@ bool uav_msgs__msg__uav_deployment__convert_from_py(PyObject * _pymsg, void * _r
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
+  {  // target_pose
+    PyObject * field = PyObject_GetAttrString(_pymsg, "target_pose");
+    if (!field) {
+      return false;
+    }
+    if (!geometry_msgs__msg__pose__convert_from_py(field, &ros_message->target_pose)) {
+      Py_DECREF(field);
+      return false;
+    }
+    Py_DECREF(field);
+  }
   {  // next_hop_to_sink
     PyObject * field = PyObject_GetAttrString(_pymsg, "next_hop_to_sink");
     if (!field) {
@@ -134,6 +134,21 @@ bool uav_msgs__msg__uav_deployment__convert_from_py(PyObject * _pymsg, void * _r
       return false;
     }
     rosidl_runtime_c__String__assign(&ros_message->next_hop_to_sink, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // next_hop_to_ugv
+    PyObject * field = PyObject_GetAttrString(_pymsg, "next_hop_to_ugv");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->next_hop_to_ugv, PyBytes_AS_STRING(encoded_field));
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
@@ -170,20 +185,6 @@ PyObject * uav_msgs__msg__uav_deployment__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "uav_id", field);
-      Py_DECREF(field);
-      if (rc) {
-        return NULL;
-      }
-    }
-  }
-  {  // target_pose
-    PyObject * field = NULL;
-    field = geometry_msgs__msg__pose__convert_to_py(&ros_message->target_pose);
-    if (!field) {
-      return NULL;
-    }
-    {
-      int rc = PyObject_SetAttrString(_pymessage, "target_pose", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
@@ -235,6 +236,20 @@ PyObject * uav_msgs__msg__uav_deployment__convert_to_py(void * raw_ros_message)
       }
     }
   }
+  {  // target_pose
+    PyObject * field = NULL;
+    field = geometry_msgs__msg__pose__convert_to_py(&ros_message->target_pose);
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "target_pose", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
   {  // next_hop_to_sink
     PyObject * field = NULL;
     field = PyUnicode_DecodeUTF8(
@@ -246,6 +261,23 @@ PyObject * uav_msgs__msg__uav_deployment__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "next_hop_to_sink", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // next_hop_to_ugv
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->next_hop_to_ugv.data,
+      strlen(ros_message->next_hop_to_ugv.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "next_hop_to_ugv", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

@@ -58,18 +58,20 @@ cdr_serialize(
 {
   // Member: uav_id
   cdr << ros_message.uav_id;
-  // Member: target_pose
-  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_serialize(
-    ros_message.target_pose,
-    cdr);
   // Member: role
   cdr << ros_message.role;
   // Member: cluster_id
   cdr << ros_message.cluster_id;
   // Member: ch_id
   cdr << ros_message.ch_id;
+  // Member: target_pose
+  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_serialize(
+    ros_message.target_pose,
+    cdr);
   // Member: next_hop_to_sink
   cdr << ros_message.next_hop_to_sink;
+  // Member: next_hop_to_ugv
+  cdr << ros_message.next_hop_to_ugv;
   return true;
 }
 
@@ -82,10 +84,6 @@ cdr_deserialize(
   // Member: uav_id
   cdr >> ros_message.uav_id;
 
-  // Member: target_pose
-  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_deserialize(
-    cdr, ros_message.target_pose);
-
   // Member: role
   cdr >> ros_message.role;
 
@@ -95,8 +93,15 @@ cdr_deserialize(
   // Member: ch_id
   cdr >> ros_message.ch_id;
 
+  // Member: target_pose
+  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_deserialize(
+    cdr, ros_message.target_pose);
+
   // Member: next_hop_to_sink
   cdr >> ros_message.next_hop_to_sink;
+
+  // Member: next_hop_to_ugv
+  cdr >> ros_message.next_hop_to_ugv;
 
   return true;
 }
@@ -118,11 +123,6 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.uav_id.size() + 1);
-  // Member: target_pose
-
-  current_alignment +=
-    geometry_msgs::msg::typesupport_fastrtps_cpp::get_serialized_size(
-    ros_message.target_pose, current_alignment);
   // Member: role
   {
     size_t item_size = sizeof(ros_message.role);
@@ -137,10 +137,19 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.ch_id.size() + 1);
+  // Member: target_pose
+
+  current_alignment +=
+    geometry_msgs::msg::typesupport_fastrtps_cpp::get_serialized_size(
+    ros_message.target_pose, current_alignment);
   // Member: next_hop_to_sink
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.next_hop_to_sink.size() + 1);
+  // Member: next_hop_to_ugv
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.next_hop_to_ugv.size() + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -178,25 +187,6 @@ max_serialized_size_UavDeployment(
     }
   }
 
-  // Member: target_pose
-  {
-    size_t array_size = 1;
-
-
-    last_member_size = 0;
-    for (size_t index = 0; index < array_size; ++index) {
-      bool inner_full_bounded;
-      bool inner_is_plain;
-      size_t inner_size =
-        geometry_msgs::msg::typesupport_fastrtps_cpp::max_serialized_size_Pose(
-        inner_full_bounded, inner_is_plain, current_alignment);
-      last_member_size += inner_size;
-      current_alignment += inner_size;
-      full_bounded &= inner_full_bounded;
-      is_plain &= inner_is_plain;
-    }
-  }
-
   // Member: role
   {
     size_t array_size = 1;
@@ -231,7 +221,39 @@ max_serialized_size_UavDeployment(
     }
   }
 
+  // Member: target_pose
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size =
+        geometry_msgs::msg::typesupport_fastrtps_cpp::max_serialized_size_Pose(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+
   // Member: next_hop_to_sink
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: next_hop_to_ugv
   {
     size_t array_size = 1;
 
@@ -252,7 +274,7 @@ max_serialized_size_UavDeployment(
     using DataType = uav_msgs::msg::UavDeployment;
     is_plain =
       (
-      offsetof(DataType, next_hop_to_sink) +
+      offsetof(DataType, next_hop_to_ugv) +
       last_member_size
       ) == ret_val;
   }

@@ -37,7 +37,7 @@ void UavDeployment_fini_function(void * message_memory)
   typed_message->~UavDeployment();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember UavDeployment_message_member_array[6] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember UavDeployment_message_member_array[7] = {
   {
     "uav_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
@@ -47,23 +47,6 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavDeployment
     0,  // array size
     false,  // is upper bound
     offsetof(uav_msgs::msg::UavDeployment, uav_id),  // bytes offset in struct
-    nullptr,  // default value
-    nullptr,  // size() function pointer
-    nullptr,  // get_const(index) function pointer
-    nullptr,  // get(index) function pointer
-    nullptr,  // fetch(index, &value) function pointer
-    nullptr,  // assign(index, value) function pointer
-    nullptr  // resize(index) function pointer
-  },
-  {
-    "target_pose",  // name
-    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
-    0,  // upper bound of string
-    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<geometry_msgs::msg::Pose>(),  // members of sub message
-    false,  // is array
-    0,  // array size
-    false,  // is upper bound
-    offsetof(uav_msgs::msg::UavDeployment, target_pose),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -124,6 +107,23 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavDeployment
     nullptr  // resize(index) function pointer
   },
   {
+    "target_pose",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<geometry_msgs::msg::Pose>(),  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavDeployment, target_pose),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
     "next_hop_to_sink",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
     0,  // upper bound of string
@@ -139,13 +139,30 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavDeployment
     nullptr,  // fetch(index, &value) function pointer
     nullptr,  // assign(index, value) function pointer
     nullptr  // resize(index) function pointer
+  },
+  {
+    "next_hop_to_ugv",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavDeployment, next_hop_to_ugv),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   }
 };
 
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers UavDeployment_message_members = {
   "uav_msgs::msg",  // message namespace
   "UavDeployment",  // message name
-  6,  // number of fields
+  7,  // number of fields
   sizeof(uav_msgs::msg::UavDeployment),
   UavDeployment_message_member_array,  // message members
   UavDeployment_init_function,  // function to initialize message memory (memory has to be allocated)

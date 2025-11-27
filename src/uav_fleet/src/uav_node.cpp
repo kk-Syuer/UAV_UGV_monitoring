@@ -582,6 +582,15 @@ private:
       next_hop_to_sink_ = msg->next_hop_to_sink;
     }
 
+    // If this UAV is a CH, also learn the path towards the UGV from the planner
+    if (role_ == 1 && !msg->next_hop_to_ugv.empty()) {
+      // Use the planner's next hop for the UGV destination
+      routing_table_[ugv_id_] = msg->next_hop_to_ugv;
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s (CH): routing to UGV '%s' via '%s' set from deployment.",
+                  uav_id_.c_str(), ugv_id_.c_str(), msg->next_hop_to_ugv.c_str());
+    }
+
     deployment_received_ = true;
 
     RCLCPP_INFO(this->get_logger(),
@@ -595,6 +604,7 @@ private:
                 cluster_id_.c_str(),
                 my_ch_id_.c_str(),
                 next_hop_to_sink_.c_str());
+
   }
 
 

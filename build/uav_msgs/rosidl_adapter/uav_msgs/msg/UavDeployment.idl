@@ -9,25 +9,21 @@ module uav_msgs {
     struct UavDeployment {
       string uav_id;
 
+      uint8 role;
+
+      string cluster_id;
+
+      string ch_id;
+
       geometry_msgs::msg::Pose target_pose;
 
       @verbatim (language="comment", text=
-        "0 = MEMBER, 1 = CH")
-      uint8 role;
-
-      @verbatim (language="comment", text=
-        "e.g. \"cluster_1\"")
-      string cluster_id;
-
-      @verbatim (language="comment", text=
-        "for members: their CH; for CHs: self")
-      string ch_id;
-
-      @verbatim (language="comment", text=
-        "Backbone routing: where should this UAV send packets towards the sink?" "\n"
-        "For CHs: usually another CH id or \"sink_gateway\"." "\n"
-        "For members: can be empty.")
+        "Next hop towards the sink gateway (for CHs)")
       string next_hop_to_sink;
+
+      @verbatim (language="comment", text=
+        "Next hop towards the UGV charger (for CHs)")
+      string next_hop_to_ugv;
     };
   };
 };

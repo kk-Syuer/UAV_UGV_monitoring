@@ -112,6 +112,7 @@ private:
       dep.cluster_id = "";
       dep.ch_id      = "";
       dep.next_hop_to_sink = "";
+      dep.next_hop_to_ugv  = "";   
 
       dep.target_pose.position.x = sink_x_;
       dep.target_pose.position.y = sink_y_;
@@ -132,6 +133,7 @@ private:
       dep.cluster_id = "";
       dep.ch_id      = "";
       dep.next_hop_to_sink = "";
+      dep.next_hop_to_ugv  = "";   
 
       dep.target_pose.position.x = ugv_x_;
       dep.target_pose.position.y = ugv_y_;
@@ -147,6 +149,10 @@ private:
 
   void computeDeployment()
   {
+    // First, ensure sink & UGV have random positions and publish them
+    randomizeSinkAndUgv();
+    publishSinkAndUgvDeployment();
+
     // Decide CH vs members: first num_ch_ are CHs
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
     std::vector<std::string> ch_ids(uav_ids_.begin(), uav_ids_.begin() + n);
@@ -221,12 +227,7 @@ private:
       cluster_ids.push_back("cluster_" + std::to_string(i + 1));
     }
 
-    // ---- 2) Build CH + sink graph (weighted) and run Dijkstra ----
-
-    const int sink_idx   = num_ch;        // extra node for sink
-    const int num_nodes  = num_ch + 1;    // CHs + sink
-    const double INF     = std::numeric_limits<double>::infinity();
-    const double Rc2     = comm_radius_ch_ * comm_radius_ch_;
+    // ---- 2) Helper: build CH + ground-target graph and run Dijkstra ----
 
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
       double dx = x1 - x2;
@@ -234,100 +235,129 @@ private:
       return dx * dx + dy * dy;
     };
 
-    // adjacency list: (neighbor, weight)
-    std::vector<std::vector<std::pair<int, double>>> adj(num_nodes);
+    const double Rc2 = comm_radius_ch_ * comm_radius_ch_;
 
-    // CH-CH edges
-    for (int i = 0; i < num_ch; ++i) {
-      for (int j = i + 1; j < num_ch; ++j) {
+    auto compute_next_hops_to_target =
+      [&](double target_x,
+          double target_y,
+          const std::string &direct_label,
+          const std::string &target_name)
+        -> std::vector<std::string>
+    {
+      const int target_idx  = num_ch;       // extra node for target (sink or UGV)
+      const int num_nodes   = num_ch + 1;   // CHs + target
+      const double INF      = std::numeric_limits<double>::infinity();
+
+      // adjacency list: (neighbor, weight), weights are Euclidean distances
+      std::vector<std::vector<std::pair<int, double>>> adj(num_nodes);
+
+      // CH-CH edges
+      for (int i = 0; i < num_ch; ++i) {
+        for (int j = i + 1; j < num_ch; ++j) {
+          double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
+                               ch_poses[j].position.x, ch_poses[j].position.y);
+          if (d2 <= Rc2) {
+            double w = std::sqrt(d2);   // weight = distance
+            adj[i].push_back({j, w});
+            adj[j].push_back({i, w});
+          }
+        }
+      }
+
+      // CH - target edges
+      for (int i = 0; i < num_ch; ++i) {
         double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
-                             ch_poses[j].position.x, ch_poses[j].position.y);
+                             target_x, target_y);
         if (d2 <= Rc2) {
-          double w = std::sqrt(d2);
-          adj[i].push_back({j, w});
-          adj[j].push_back({i, w});
+          double w = std::sqrt(d2);   // weight = distance
+          adj[i].push_back({target_idx, w});
+          adj[target_idx].push_back({i, w});
         }
       }
-    }
 
-    // CH-sink edges
-    for (int i = 0; i < num_ch; ++i) {
-      double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
-                           sink_x_, sink_y_);
-      if (d2 <= Rc2) {
-        double w = std::sqrt(d2);
-        adj[i].push_back({sink_idx, w});
-        adj[sink_idx].push_back({i, w});
-      }
-    }
+      // Dijkstra from target_idx
+      std::vector<double> dist(num_nodes, INF);
+      std::vector<int>    prev(num_nodes, -1);
 
-    // Dijkstra from sink_idx
-    std::vector<double> dist(num_nodes, INF);
-    std::vector<int>    prev(num_nodes, -1);
+      using QItem = std::pair<double, int>;  // (distance, node)
+      std::priority_queue<QItem,
+                          std::vector<QItem>,
+                          std::greater<QItem>> pq;
 
-    using QItem = std::pair<double, int>;  // (distance, node)
-    std::priority_queue<QItem, std::vector<QItem>, std::greater<QItem>> pq;
+      dist[target_idx] = 0.0;
+      prev[target_idx] = -1;
+      pq.push({0.0, target_idx});
 
-    dist[sink_idx] = 0.0;
-    prev[sink_idx] = -1;
-    pq.push({0.0, sink_idx});
+      while (!pq.empty()) {
+        auto [d, u] = pq.top();
+        pq.pop();
+        if (d > dist[u]) continue;  // stale entry
 
-    while (!pq.empty()) {
-      auto [d, u] = pq.top();
-      pq.pop();
-      if (d > dist[u]) continue;  // stale entry
-
-      for (const auto & edge : adj[u]) {
-        int v       = edge.first;
-        double w    = edge.second;
-        double cand = d + w;
-        if (cand < dist[v]) {
-          dist[v] = cand;
-          prev[v] = u;
-          pq.push({cand, v});
+        for (const auto & edge : adj[u]) {
+          int v       = edge.first;
+          double w    = edge.second;
+          double cand = d + w;
+          if (cand < dist[v]) {
+            dist[v] = cand;
+            prev[v] = u;
+            pq.push({cand, v});
+          }
         }
       }
-    }
 
-    // For each CH i, compute its next hop towards the sink
-    std::vector<std::string> next_hop_to_sink(num_ch, "");
-    int unreachable_count = 0;
+      std::vector<std::string> next_hop(num_ch, "");
+      int unreachable_count = 0;
 
-    for (int i = 0; i < num_ch; ++i) {
-      if (!std::isfinite(dist[i])) {
-        ++unreachable_count;
-        next_hop_to_sink[i].clear();
-        continue;
+      for (int i = 0; i < num_ch; ++i) {
+        if (!std::isfinite(dist[i])) {
+          ++unreachable_count;
+          next_hop[i].clear();
+          continue;
+        }
+
+        int parent = prev[i];
+
+        if (parent == target_idx) {
+          // Direct neighbor of ground target (sink or UGV)
+          next_hop[i] = direct_label;
+        } else if (parent >= 0 && parent < num_ch) {
+          // Next hop is another CH
+          next_hop[i] = ch_ids[static_cast<size_t>(parent)];
+        } else {
+          // Should not happen, but be safe
+          next_hop[i].clear();
+        }
+
+        RCLCPP_INFO(this->get_logger(),
+                    "Routing (%s): CH %s -> %s via %s (dist=%.1f m)",
+                    target_name.c_str(),
+                    ch_ids[static_cast<size_t>(i)].c_str(),
+                    target_name.c_str(),
+                    next_hop[i].empty()
+                      ? "<NONE>"
+                      : next_hop[i].c_str(),
+                    dist[i]);
       }
 
-      int parent = prev[i];
-
-      if (parent == sink_idx) {
-        // Direct neighbor of sink
-        next_hop_to_sink[i] = "sink_gateway";
-      } else if (parent >= 0 && parent < num_ch) {
-        // Next hop is another CH
-        next_hop_to_sink[i] = ch_ids[static_cast<size_t>(parent)];
-      } else {
-        // Should not happen, but keep safe
-        next_hop_to_sink[i].clear();
+      if (unreachable_count > 0) {
+        RCLCPP_WARN(this->get_logger(),
+                    "Routing warning (%s): %d CH(s) unreachable "
+                    "with R_c=%.1f. Their next hop will be empty.",
+                    target_name.c_str(),
+                    unreachable_count, comm_radius_ch_);
       }
 
-      RCLCPP_INFO(this->get_logger(),
-                  "Routing: CH %s -> sink via %s (dist=%.1f m)",
-                  ch_ids[static_cast<size_t>(i)].c_str(),
-                  next_hop_to_sink[i].empty()
-                    ? "<NONE>"
-                    : next_hop_to_sink[i].c_str(),
-                  dist[i]);
-    }
+      return next_hop;
+    };
 
-    if (unreachable_count > 0) {
-      RCLCPP_WARN(this->get_logger(),
-                  "Routing warning: %d CH(s) unreachable from sink "
-                  "with R_c=%.1f. Their next_hop_to_sink will be empty.",
-                  unreachable_count, comm_radius_ch_);
-    }
+    // Compute routing towards sink and UGV (two separate Dijkstra runs)
+    std::vector<std::string> next_hop_to_sink =
+      compute_next_hops_to_target(
+        sink_x_, sink_y_, "sink_gateway", "sink");
+
+    std::vector<std::string> next_hop_to_ugv =
+      compute_next_hops_to_target(
+        ugv_x_, ugv_y_, "ugv", "ugv");
 
     // ---- 3) RNG for member positions ----
     std::random_device rd;
@@ -345,9 +375,11 @@ private:
       dep.cluster_id = cluster_ids[static_cast<size_t>(i)];
       dep.ch_id      = dep.uav_id;  // CH is its own CH
       dep.next_hop_to_sink = next_hop_to_sink[static_cast<size_t>(i)];
+      dep.next_hop_to_ugv  = next_hop_to_ugv[static_cast<size_t>(i)];
 
       RCLCPP_INFO(this->get_logger(),
-                  "Deploy CH %s -> cluster=%s pose=(%.1f, %.1f, %.1f) next_hop_to_sink=%s",
+                  "Deploy CH %s -> cluster=%s pose=(%.1f, %.1f, %.1f) "
+                  "next_hop_to_sink=%s next_hop_to_ugv=%s",
                   dep.uav_id.c_str(),
                   dep.cluster_id.c_str(),
                   dep.target_pose.position.x,
@@ -355,7 +387,11 @@ private:
                   dep.target_pose.position.z,
                   dep.next_hop_to_sink.empty()
                     ? "<UNREACHABLE>"
-                    : dep.next_hop_to_sink.c_str());
+                    : dep.next_hop_to_sink.c_str(),
+                  dep.next_hop_to_ugv.empty()
+                    ? "<UNREACHABLE>"
+                    : dep.next_hop_to_ugv.c_str());
+
 
       deployment_pub_->publish(dep);
     }
@@ -391,6 +427,7 @@ private:
       dep.cluster_id = cluster_ids[static_cast<size_t>(best_ch_idx)];
       dep.ch_id      = ch_ids[static_cast<size_t>(best_ch_idx)];
       dep.next_hop_to_sink = "";  // members always go via their CH
+      dep.next_hop_to_ugv  = "";  // members use CH backbone for UGV too
 
       RCLCPP_INFO(this->get_logger(),
                   "Deploy MEMBER %s -> cluster=%s CH=%s pose=(%.1f, %.1f, %.1f)",

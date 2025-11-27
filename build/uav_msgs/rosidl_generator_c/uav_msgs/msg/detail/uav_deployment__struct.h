@@ -22,6 +22,7 @@ extern "C"
 // Member 'cluster_id'
 // Member 'ch_id'
 // Member 'next_hop_to_sink'
+// Member 'next_hop_to_ugv'
 #include "rosidl_runtime_c/string.h"
 // Member 'target_pose'
 #include "geometry_msgs/msg/detail/pose__struct.h"
@@ -30,17 +31,14 @@ extern "C"
 typedef struct uav_msgs__msg__UavDeployment
 {
   rosidl_runtime_c__String uav_id;
-  geometry_msgs__msg__Pose target_pose;
-  /// 0 = MEMBER, 1 = CH
   uint8_t role;
-  /// e.g. "cluster_1"
   rosidl_runtime_c__String cluster_id;
-  /// for members: their CH; for CHs: self
   rosidl_runtime_c__String ch_id;
-  /// Backbone routing: where should this UAV send packets towards the sink?
-  /// For CHs: usually another CH id or "sink_gateway".
-  /// For members: can be empty.
+  geometry_msgs__msg__Pose target_pose;
+  /// Next hop towards the sink gateway (for CHs)
   rosidl_runtime_c__String next_hop_to_sink;
+  /// Next hop towards the UGV charger (for CHs)
+  rosidl_runtime_c__String next_hop_to_ugv;
 } uav_msgs__msg__UavDeployment;
 
 // Struct for a sequence of uav_msgs__msg__UavDeployment.
