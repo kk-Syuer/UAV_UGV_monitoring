@@ -3,6 +3,7 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
+#include "uav_msgs/msg/uav_deployment.hpp"
 
 using std::placeholders::_1;
 
@@ -15,7 +16,9 @@ public:
   {
     sink_id_ =
       this->declare_parameter<std::string>("sink_id", "sink_gateway");
-
+    deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
+      "/coverage_planner/deployment", 10,
+      std::bind(&SinkGatewayNode::deploymentCallback, this, std::placeholders::_1));
     uplink_ch_id_ =
       this->declare_parameter<std::string>("uplink_ch_id", "uav_3");
 
@@ -100,11 +103,27 @@ private:
     control_pub_->publish(msg);
   }
 
+  void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
+  {
+    if (msg->uav_id != sink_id_) {
+      return;
+    }
+    sink_pose_ = msg->target_pose;
+    RCLCPP_INFO(this->get_logger(),
+                "Sink '%s' updated pose to (%.1f, %.1f, %.1f)",
+                sink_id_.c_str(),
+                sink_pose_.position.x,
+                sink_pose_.position.y,
+                sink_pose_.position.z);
+  }
+
   // Members
   std::string sink_id_;
   std::string uplink_ch_id_;
   std::string target_uav_id_;
   uint64_t msg_counter_;
+  geometry_msgs::msg::Pose sink_pose_;
+  rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;

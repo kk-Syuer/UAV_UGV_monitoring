@@ -7,6 +7,8 @@
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
+#include "uav_msgs/msg/uav_deployment.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 
 using namespace std::chrono_literals;
 
@@ -24,6 +26,9 @@ public:
 
     std::string policy_name =
       this->declare_parameter<std::string>("charging_policy", "fcfs");
+    deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
+      "/coverage_planner/deployment", 10,
+      std::bind(&UgvChargerNode::deploymentCallback, this, std::placeholders::_1));
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -154,6 +159,20 @@ private:
                 "Queue size now: %zu",
                 entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
   }
+  
+  void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
+  {
+    if (msg->uav_id != ugv_id_) {
+      return;
+    }
+    ugv_pose_ = msg->target_pose;
+    RCLCPP_INFO(this->get_logger(),
+                "UGV '%s' updated pose to (%.1f, %.1f, %.1f)",
+                ugv_id_.c_str(),
+                ugv_pose_.position.x,
+                ugv_pose_.position.y,
+                ugv_pose_.position.z);
+  }
 
   // ------------- Scheduler -------------
 
@@ -278,6 +297,8 @@ private:
   // ------------- Members -------------
 
   std::string ugv_id_;
+  geometry_msgs::msg::Pose ugv_pose_;
+  rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;

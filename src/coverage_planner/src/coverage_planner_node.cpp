@@ -40,19 +40,9 @@ public:
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
 
-    // ---- Randomize sink & UGV positions inside the area ----
-    {
-      std::random_device rd;
-      std::mt19937 rng(rd());
-      std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
-      std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
-
-      sink_x_ = dist_x(rng);
-      sink_y_ = dist_y(rng);
-
-      ugv_x_  = dist_x(rng);
-      ugv_y_  = dist_y(rng);
-    }
+    // Random engine (optional seed param to get repeatable runs)
+    int seed = this->declare_parameter<int>("rng_seed", 42);
+    rng_ = std::mt19937(seed);
 
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
@@ -62,13 +52,10 @@ public:
 
     RCLCPP_INFO(this->get_logger(),
                 "Coverage planner started. num_ch=%d, uav_ids=%zu, "
-                "area=[%.1f,%.1f]x[%.1f,%.1f], R_s=%.1f, R_c=%.1f, "
-                "sink=(%.1f,%.1f), ugv=(%.1f,%.1f)",
+                "area=[%.1f,%.1f]x[%.1f,%.1f], R_s=%.1f, R_c=%.1f",
                 num_ch_, uav_ids_.size(),
                 x_min_, x_max_, y_min_, y_max_,
-                service_radius_ch_, comm_radius_ch_,
-                sink_x_, sink_y_,
-                ugv_x_, ugv_y_);
+                service_radius_ch_, comm_radius_ch_);
   }
 
 private:
@@ -90,8 +77,77 @@ private:
     RCLCPP_INFO(this->get_logger(), "Coverage planner: initial deployment sent.");
   }
 
+  void randomizeSinkAndUgv()
+  {
+    // If already placed (e.g. we want deterministic behaviour) do nothing.
+    if (sink_placed_ && ugv_placed_) {
+      return;
+    }
+
+    std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
+    std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
+
+    sink_x_ = dist_x(rng_);
+    sink_y_ = dist_y(rng_);
+    sink_placed_ = true;
+
+    ugv_x_ = dist_x(rng_);
+    ugv_y_ = dist_y(rng_);
+    ugv_placed_ = true;
+
+    RCLCPP_INFO(this->get_logger(),
+                "Randomized sink=(%.1f, %.1f), UGV=(%.1f, %.1f)",
+                sink_x_, sink_y_, ugv_x_, ugv_y_);
+  }
+
+  void publishSinkAndUgvDeployment()
+  {
+    // Sink
+    {
+      uav_msgs::msg::UavDeployment dep;
+      dep.uav_id = "sink_gateway";
+      dep.role   = 2;   // 2 = sink (convention for viz, doesn't matter elsewhere)
+      dep.cluster_id = "";
+      dep.ch_id      = "";
+      dep.next_hop_to_sink = "";
+
+      dep.target_pose.position.x = sink_x_;
+      dep.target_pose.position.y = sink_y_;
+      dep.target_pose.position.z = 0.0;
+      dep.target_pose.orientation.w = 1.0;
+
+      deployment_pub_->publish(dep);
+      RCLCPP_INFO(this->get_logger(),
+                  "Deploy SINK sink_gateway at (%.1f, %.1f)",
+                  sink_x_, sink_y_);
+    }
+
+    // UGV
+    {
+      uav_msgs::msg::UavDeployment dep;
+      dep.uav_id = "ugv";
+      dep.role   = 3;    // 3 = UGV (for viz only)
+      dep.cluster_id = "";
+      dep.ch_id      = "";
+      dep.next_hop_to_sink = "";
+
+      dep.target_pose.position.x = ugv_x_;
+      dep.target_pose.position.y = ugv_y_;
+      dep.target_pose.position.z = 0.0;
+      dep.target_pose.orientation.w = 1.0;
+
+      deployment_pub_->publish(dep);
+      RCLCPP_INFO(this->get_logger(),
+                  "Deploy UGV ugv at (%.1f, %.1f)",
+                  ugv_x_, ugv_y_);
+    }
+  }
+
   void computeDeployment()
   {
+    randomizeSinkAndUgv();         // NEW: random positions
+    publishSinkAndUgvDeployment(); // NEW: broadcast them
+
     // Decide CH vs members: first num_ch_ are CHs
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
     std::vector<std::string> ch_ids(uav_ids_.begin(), uav_ids_.begin() + n);
@@ -119,7 +175,7 @@ private:
                 "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
                 n_rows, n_cols, dx, dy);
 
-    double cov_limit  = 2.0 * service_radius_ch_;
+    double cov_limit = 2.0 * service_radius_ch_;
     double conn_limit = comm_radius_ch_;
 
     if (dx > cov_limit || dy > cov_limit) {
@@ -168,8 +224,8 @@ private:
 
     // ---- Build CH + sink graph and compute next_hop_to_sink via BFS ----
 
-    const int sink_idx   = num_ch;      // extra node for sink
-    const int num_nodes  = num_ch + 1;  // CHs + sink
+    const int sink_idx = num_ch;           // extra node for sink
+    const int num_nodes = num_ch + 1;      // CHs + sink
     std::vector<std::vector<int>> adj(num_nodes);
 
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
@@ -192,7 +248,7 @@ private:
       }
     }
 
-    // CH-sink edges
+    // CH-sink edges (use randomized sink_x_, sink_y_)
     for (int i = 0; i < num_ch; ++i) {
       double d2 = dist2_xy(ch_poses[i].position.x, ch_poses[i].position.y,
                            sink_x_, sink_y_);
@@ -223,13 +279,12 @@ private:
       }
     }
 
-    // Compute next_hop_to_sink for each CH based on BFS tree
+    // Compute next_hop_to_sink for each CH
     std::vector<std::string> next_hop_to_sink(num_ch, "");
     int unreachable_count = 0;
 
     for (int i = 0; i < num_ch; ++i) {
       if (dist[i] == -1) {
-        // Unreachable from sink
         unreachable_count++;
         next_hop_to_sink[i].clear();
         continue;
@@ -238,27 +293,22 @@ private:
       int p = parent[i];
 
       if (p == sink_idx) {
-        // Direct neighbor to sink
         next_hop_to_sink[i] = "sink_gateway";
       } else if (p >= 0 && p < num_ch) {
-        // Next hop is another CH
         next_hop_to_sink[i] = ch_ids[static_cast<size_t>(p)];
       } else {
-        // This is the sink itself (should not happen for CHs) or error
         next_hop_to_sink[i].clear();
       }
     }
 
     if (unreachable_count > 0) {
       RCLCPP_WARN(this->get_logger(),
-                  "Routing warning: %d CH(s) are unreachable from sink "
+                  "Routing warning: %d CH(s) unreachable from sink "
                   "with R_c=%.1f. Their next_hop_to_sink will be empty.",
                   unreachable_count, comm_radius_ch_);
     }
 
     // RNG for member positions
-    std::random_device rd;
-    std::mt19937 gen(rd());
     std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
     std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
 
@@ -289,8 +339,8 @@ private:
     // --- Deploy members (random position, assigned to nearest CH) ---
     for (const auto & id : member_ids) {
       geometry_msgs::msg::Pose pose;
-      pose.position.x = dist_x(gen);
-      pose.position.y = dist_y(gen);
+      pose.position.x = dist_x(rng_);
+      pose.position.y = dist_y(rng_);
       pose.position.z = z_member_;
       pose.orientation.w = 1.0;
 
@@ -331,15 +381,20 @@ private:
     }
   }
 
-  // Parameters / state
+  // Parameters
   std::vector<std::string> uav_ids_;
   int num_ch_;
   double x_min_, x_max_, y_min_, y_max_;
   double z_ch_, z_member_;
   double service_radius_ch_;
   double comm_radius_ch_;
-  double sink_x_, sink_y_;
-  double ugv_x_, ugv_y_;
+
+  // Random sink / UGV
+  double sink_x_ = 0.0, sink_y_ = 0.0;
+  double ugv_x_  = 0.0, ugv_y_  = 0.0;
+  bool sink_placed_ = false;
+  bool ugv_placed_  = false;
+  std::mt19937 rng_;
 
   bool planned_ = false;
 

@@ -322,7 +322,11 @@ private:
     // Let routing decide, as for any other dst:
     // - members will rely on their CH
     // - CHs will use routing_rules / next_hop_to_sink_
-    msg.next_hop_id = resolveNextHop(msg.dst_id);
+    if (role_ == 0) {  // MEMBER
+      msg.next_hop_id = my_ch_id_;
+    } else {           // CH
+      msg.next_hop_id = resolveNextHop(ugv_id_);
+    }
 
     // Optional control metadata
     msg.control_type = "CHARGE_REQUEST";
