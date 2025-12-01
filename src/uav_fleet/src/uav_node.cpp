@@ -18,6 +18,7 @@
 #include "uav_msgs/srv/send_debug_text.hpp"
 #include "uav_msgs/msg/failure_event.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
+#include <unordered_set>
 
 
 
@@ -210,6 +211,35 @@ private:
   {
     auto now = this->now();
 
+    // If we haven't received deployment yet, stay "idle":
+    // - no drain
+    // - no charging logic
+    // - no charge requests
+    if (!deployment_received_) {
+      float battery_percent = 0.0f;
+      if (battery_capacity_ > 0.0f) {
+        battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
+      }
+
+      uav_msgs::msg::UavStatus msg;
+      msg.uav_id = uav_id_;
+      msg.role = role_;
+      msg.cluster_id = cluster_id_;
+      msg.battery_level = battery_percent;
+      msg.battery_capacity = battery_capacity_;
+      msg.pose = pose_;              // dummy pose until deployment
+      msg.service_radius = service_radius_;
+      msg.connected_users = 0;
+      msg.traffic_load = 0.0f;
+      msg.packet_loss_estimate = 0.0f;
+      msg.energy_consumption_rate = 0.0f;
+      msg.stamp = now;
+
+      status_pub_->publish(msg);
+      return;
+    }
+
+    // ---- Normal behaviour AFTER deployment ----
     if (is_charging_) {
       // Charging: interpolate
       if (now >= charge_end_time_) {
@@ -449,15 +479,23 @@ private:
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
-    // 用 control_* 来存调试信息
+    // Use control_* to carry debug info
     msg.control_payload = req->text;
-    msg.control_type = "DEBUG_TEXT:" + uav_id_;  // 初始路径就是自己
+    msg.control_type = "DEBUG_TEXT:" + uav_id_;  // initial path is myself
 
-    // 正常走路由
-    if (role_ == 0) { // MEMBER
+    // ---- NEW ROUTING LOGIC ----
+    if (role_ == 0) {
+      // MEMBER: always send to its CH first
       msg.next_hop_id = my_ch_id_;
-    } else { // CH 也可以发
-      msg.next_hop_id = resolveNextHop(msg.dst_id);
+    } else {
+      // CH:
+      // If destination is one of my cluster members, send directly down to it.
+      if (cluster_members_.find(msg.dst_id) != cluster_members_.end()) {
+        msg.next_hop_id = msg.dst_id;
+      } else {
+        // Otherwise, use normal backbone routing (sink/UGV/etc.)
+        msg.next_hop_id = resolveNextHop(msg.dst_id);
+      }
     }
 
     RCLCPP_INFO(this->get_logger(),
@@ -470,6 +508,7 @@ private:
     res->accepted = true;
     res->info = "sent";
   }
+
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
@@ -524,11 +563,19 @@ private:
     if (role_ == 1) { // CH
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.hop_count = msg->hop_count + 1;
-      fwd.next_hop_id = resolveNextHop(msg->dst_id);
 
-      if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // 以 DEBUG_TEXT: 开头
+      // If the destination is one of my cluster members, send directly down to it.
+      if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
+        fwd.next_hop_id = msg->dst_id;
+      } else {
+        // Otherwise, forward according to backbone routing (sink/UGV/other CHs)
+        fwd.next_hop_id = resolveNextHop(msg->dst_id);
+      }
+
+      if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // starts with DEBUG_TEXT:
         fwd.control_type += "->" + uav_id_;
       }
+
       RCLCPP_INFO(this->get_logger(),
                   "[FWD] CH %s forwarding msg_id=%s src=%s dst=%s next_hop=%s hop=%u",
                   uav_id_.c_str(),
@@ -538,6 +585,7 @@ private:
 
       traffic_pub_->publish(fwd);
     }
+
   }
 
 
@@ -558,10 +606,29 @@ private:
 
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
+    // 1) Every UAV learns the cluster parent of every UAV
+    if (msg->role == 0) {
+        // MEMBER
+        cluster_parent_[msg->uav_id] = msg->ch_id;   // e.g., uav_3 -> uav_2
+    } else if (msg->role == 1) {
+        // CH
+        cluster_parent_[msg->uav_id] = msg->uav_id;  // CH parent is itself
+    }
+    // If this deployment belongs to our cluster (we are the CH),
+    //    record the member. This works even before we receive our own deployment.
+    if (msg->role == 0 && msg->ch_id == uav_id_) {  // MEMBER assigned to this CH
+      cluster_members_.insert(msg->uav_id);
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s (CH): discovered member %s from deployment.",
+                  uav_id_.c_str(), msg->uav_id.c_str());
+    }
+
+    // 2) If this deployment is not for us, we are done.
     if (msg->uav_id != uav_id_) {
       return;
     }
 
+    // 3) This is our own deployment: apply pose + role + cluster config
     // Instant teleport for now – later this becomes a motion goal.
     pose_ = msg->target_pose;
 
@@ -575,6 +642,11 @@ private:
     } else {
       // CH: its own CH id is itself
       my_ch_id_ = uav_id_;
+      // When we become CH and receive a fresh deployment, reset the member set.
+      cluster_members_.clear();
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: now CH of cluster %s. Member set cleared.",
+                  uav_id_.c_str(), cluster_id_.c_str());
     }
 
     // Apply backbone routing info if provided
@@ -604,8 +676,8 @@ private:
                 cluster_id_.c_str(),
                 my_ch_id_.c_str(),
                 next_hop_to_sink_.c_str());
-
   }
+
 
 
   // ---------------- Members ----------------
@@ -620,15 +692,40 @@ private:
   std::unordered_map<std::string, std::string> routing_table_;
   std::string resolveNextHop(const std::string & dst) const
   {
-    // If we have an explicit rule for this destination, use it
-    auto it = routing_table_.find(dst);
-    if (it != routing_table_.end()) {
-      return it->second;
-    }
-    // Fallback: use generic "towards sink" direction
-    return next_hop_to_sink_;
+      // CASE 1: destination is known as member of a CH
+      auto itc = cluster_parent_.find(dst);
+      if (itc != cluster_parent_.end()) {
+          const std::string & parent = itc->second;
+ 
+          // if CH == me → direct downlink
+          if (parent == uav_id_) {
+              return dst; 
+          }
+
+          // otherwise → route toward that CH
+          auto it2 = routing_table_.find(parent);
+          if (it2 != routing_table_.end()) {
+              return it2->second;
+          }
+
+          // fallback: send directly to the parent CH
+          return parent;
+      }
+
+      // CASE 2: explicit route exists
+      auto it = routing_table_.find(dst);
+      if (it != routing_table_.end()) {
+          return it->second;
+      }
+
+      // CASE 3: default route toward sink
+      return next_hop_to_sink_;
   }
+
   std::string ugv_id_;   // logical id of the UGV in the network
+  // For CHs: set of member UAV IDs in this cluster
+  std::unordered_set<std::string> cluster_members_;
+  std::unordered_map<std::string, std::string> cluster_parent_;
 
   geometry_msgs::msg::Pose pose_;
   float service_radius_;

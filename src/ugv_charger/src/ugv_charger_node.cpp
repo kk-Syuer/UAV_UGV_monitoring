@@ -159,20 +159,36 @@ private:
                 "Queue size now: %zu",
                 entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
   }
-  
+
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
-    if (msg->uav_id != ugv_id_) {
-      return;
+    // Always store the pose for possible future use
+    if (msg->role == 1) {
+      // CH
+      ch_poses_[msg->uav_id] = msg->target_pose;
     }
-    ugv_pose_ = msg->target_pose;
-    RCLCPP_INFO(this->get_logger(),
-                "UGV '%s' updated pose to (%.1f, %.1f, %.1f)",
-                ugv_id_.c_str(),
-                ugv_pose_.position.x,
-                ugv_pose_.position.y,
-                ugv_pose_.position.z);
+
+    // Remember each UAV's "home CH":
+    //  - For members (role=0), ch_id is their CH
+    //  - For CHs (role=1), the CH is itself
+    if (msg->role == 0) {
+      uav_to_ch_[msg->uav_id] = msg->ch_id;
+    } else if (msg->role == 1) {
+      uav_to_ch_[msg->uav_id] = msg->uav_id;
+    }
+
+    // If this deployment is for the UGV itself, update its pose and log
+    if (msg->uav_id == ugv_id_) {
+      ugv_pose_ = msg->target_pose;
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV '%s' updated pose to (%.1f, %.1f, %.1f)",
+                  ugv_id_.c_str(),
+                  ugv_pose_.position.x,
+                  ugv_pose_.position.y,
+                  ugv_pose_.position.z);
+    }
   }
+
 
   // ------------- Scheduler -------------
 
@@ -328,6 +344,12 @@ private:
   std::string current_uav_id_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
+
+  // Map each UAV to its CH, based on deployments
+  std::unordered_map<std::string, std::string> uav_to_ch_;
+
+  // Optional: store CH poses if we want geometric reasoning later
+  std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
   void sendDecisionControlMessage(const QueueEntry & job,
                                   const rclcpp::Time & now)
   {
@@ -336,7 +358,18 @@ private:
                  std::to_string(now.nanoseconds());
     msg.src_id = ugv_id_;
     msg.dst_id = job.uav_id;
-    msg.next_hop_id = uplink_ch_id_;
+
+    // Decide first hop:
+    //  - If we know this UAV's CH from deployments:
+    //      * For CHs: CH is itself -> direct (ugv -> uav_i)
+    //      * For members: CH is their cluster head -> ugv -> CH
+    //  - Otherwise: fall back to fixed uplink_ch_id_
+    std::string first_hop = uplink_ch_id_;
+    auto it = uav_to_ch_.find(job.uav_id);
+    if (it != uav_to_ch_.end()) {
+      first_hop = it->second;
+    }
+    msg.next_hop_id = first_hop;
 
     msg.msg_type = 3;              // CONTROL_ALERT
     msg.priority = 2;
@@ -353,6 +386,7 @@ private:
 
     control_pub_->publish(msg);
   }
+
 
 };
 
