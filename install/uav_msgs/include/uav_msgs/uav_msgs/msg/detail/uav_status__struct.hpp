@@ -56,6 +56,7 @@ struct UavStatus_
       this->traffic_load = 0.0f;
       this->packet_loss_estimate = 0.0f;
       this->energy_consumption_rate = 0.0f;
+      this->backbone_active = false;
     }
   }
 
@@ -78,6 +79,7 @@ struct UavStatus_
       this->traffic_load = 0.0f;
       this->packet_loss_estimate = 0.0f;
       this->energy_consumption_rate = 0.0f;
+      this->backbone_active = false;
     }
   }
 
@@ -118,6 +120,9 @@ struct UavStatus_
   using _stamp_type =
     builtin_interfaces::msg::Time_<ContainerAllocator>;
   _stamp_type stamp;
+  using _backbone_active_type =
+    bool;
+  _backbone_active_type backbone_active;
 
   // setters for named parameter idiom
   Type & set__uav_id(
@@ -190,6 +195,12 @@ struct UavStatus_
     const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
   {
     this->stamp = _arg;
+    return *this;
+  }
+  Type & set__backbone_active(
+    const bool & _arg)
+  {
+    this->backbone_active = _arg;
     return *this;
   }
 
@@ -269,6 +280,9 @@ struct UavStatus_
       return false;
     }
     if (this->stamp != other.stamp) {
+      return false;
+    }
+    if (this->backbone_active != other.backbone_active) {
       return false;
     }
     return true;

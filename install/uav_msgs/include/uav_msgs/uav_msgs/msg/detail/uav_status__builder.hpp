@@ -21,16 +21,32 @@ namespace msg
 namespace builder
 {
 
+class Init_UavStatus_backbone_active
+{
+public:
+  explicit Init_UavStatus_backbone_active(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  ::uav_msgs::msg::UavStatus backbone_active(::uav_msgs::msg::UavStatus::_backbone_active_type arg)
+  {
+    msg_.backbone_active = std::move(arg);
+    return std::move(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
 class Init_UavStatus_stamp
 {
 public:
   explicit Init_UavStatus_stamp(::uav_msgs::msg::UavStatus & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::UavStatus stamp(::uav_msgs::msg::UavStatus::_stamp_type arg)
+  Init_UavStatus_backbone_active stamp(::uav_msgs::msg::UavStatus::_stamp_type arg)
   {
     msg_.stamp = std::move(arg);
-    return std::move(msg_);
+    return Init_UavStatus_backbone_active(msg_);
   }
 
 private:

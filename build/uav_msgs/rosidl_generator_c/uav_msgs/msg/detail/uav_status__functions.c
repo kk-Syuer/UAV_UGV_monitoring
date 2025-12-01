@@ -54,6 +54,7 @@ uav_msgs__msg__UavStatus__init(uav_msgs__msg__UavStatus * msg)
     uav_msgs__msg__UavStatus__fini(msg);
     return false;
   }
+  // backbone_active
   return true;
 }
 
@@ -79,6 +80,7 @@ uav_msgs__msg__UavStatus__fini(uav_msgs__msg__UavStatus * msg)
   // energy_consumption_rate
   // stamp
   builtin_interfaces__msg__Time__fini(&msg->stamp);
+  // backbone_active
 }
 
 bool
@@ -143,6 +145,10 @@ uav_msgs__msg__UavStatus__are_equal(const uav_msgs__msg__UavStatus * lhs, const 
   {
     return false;
   }
+  // backbone_active
+  if (lhs->backbone_active != rhs->backbone_active) {
+    return false;
+  }
   return true;
 }
 
@@ -194,6 +200,8 @@ uav_msgs__msg__UavStatus__copy(
   {
     return false;
   }
+  // backbone_active
+  output->backbone_active = input->backbone_active;
   return true;
 }
 

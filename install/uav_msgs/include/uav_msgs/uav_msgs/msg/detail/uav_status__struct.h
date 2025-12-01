@@ -49,6 +49,7 @@ typedef struct uav_msgs__msg__UavStatus
   float packet_loss_estimate;
   float energy_consumption_rate;
   builtin_interfaces__msg__Time stamp;
+  bool backbone_active;
 } uav_msgs__msg__UavStatus;
 
 // Struct for a sequence of uav_msgs__msg__UavStatus.

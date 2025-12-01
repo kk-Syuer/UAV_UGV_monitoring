@@ -185,6 +185,15 @@ bool uav_msgs__msg__uav_status__convert_from_py(PyObject * _pymsg, void * _ros_m
     }
     Py_DECREF(field);
   }
+  {  // backbone_active
+    PyObject * field = PyObject_GetAttrString(_pymsg, "backbone_active");
+    if (!field) {
+      return false;
+    }
+    assert(PyBool_Check(field));
+    ros_message->backbone_active = (Py_True == field);
+    Py_DECREF(field);
+  }
 
   return true;
 }
@@ -351,6 +360,17 @@ PyObject * uav_msgs__msg__uav_status__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "stamp", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // backbone_active
+    PyObject * field = NULL;
+    field = PyBool_FromLong(ros_message->backbone_active ? 1 : 0);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "backbone_active", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

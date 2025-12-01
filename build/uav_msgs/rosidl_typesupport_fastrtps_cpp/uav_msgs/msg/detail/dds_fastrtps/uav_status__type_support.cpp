@@ -108,6 +108,8 @@ cdr_serialize(
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
     ros_message.stamp,
     cdr);
+  // Member: backbone_active
+  cdr << (ros_message.backbone_active ? true : false);
   return true;
 }
 
@@ -154,6 +156,13 @@ cdr_deserialize(
   // Member: stamp
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
     cdr, ros_message.stamp);
+
+  // Member: backbone_active
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message.backbone_active = tmp ? true : false;
+  }
 
   return true;
 }
@@ -237,6 +246,12 @@ get_serialized_size(
   current_alignment +=
     builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
     ros_message.stamp, current_alignment);
+  // Member: backbone_active
+  {
+    size_t item_size = sizeof(ros_message.backbone_active);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
 
   return current_alignment - initial_alignment;
 }
@@ -396,6 +411,14 @@ max_serialized_size_UavStatus(
     }
   }
 
+  // Member: backbone_active
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -404,7 +427,7 @@ max_serialized_size_UavStatus(
     using DataType = uav_msgs::msg::UavStatus;
     is_plain =
       (
-      offsetof(DataType, stamp) +
+      offsetof(DataType, backbone_active) +
       last_member_size
       ) == ret_val;
   }

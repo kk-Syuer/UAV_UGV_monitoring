@@ -16,3 +16,4 @@ float32 packet_loss_estimate
 float32 energy_consumption_rate
 
 builtin_interfaces/Time stamp
+bool backbone_active

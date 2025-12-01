@@ -37,7 +37,7 @@ void UavStatus_fini_function(void * message_memory)
   typed_message->~UavStatus();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_message_member_array[12] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_message_member_array[13] = {
   {
     "uav_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
@@ -241,13 +241,30 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_mes
     nullptr,  // fetch(index, &value) function pointer
     nullptr,  // assign(index, value) function pointer
     nullptr  // resize(index) function pointer
+  },
+  {
+    "backbone_active",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_BOOLEAN,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, backbone_active),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
   }
 };
 
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers UavStatus_message_members = {
   "uav_msgs::msg",  // message namespace
   "UavStatus",  // message name
-  12,  // number of fields
+  13,  // number of fields
   sizeof(uav_msgs::msg::UavStatus),
   UavStatus_message_member_array,  // message members
   UavStatus_init_function,  // function to initialize message memory (memory has to be allocated)

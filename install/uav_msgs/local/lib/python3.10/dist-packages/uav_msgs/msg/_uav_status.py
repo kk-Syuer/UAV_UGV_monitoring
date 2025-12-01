@@ -77,6 +77,7 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         '_packet_loss_estimate',
         '_energy_consumption_rate',
         '_stamp',
+        '_backbone_active',
     ]
 
     _fields_and_field_types = {
@@ -92,6 +93,7 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         'packet_loss_estimate': 'float',
         'energy_consumption_rate': 'float',
         'stamp': 'builtin_interfaces/Time',
+        'backbone_active': 'boolean',
     }
 
     SLOT_TYPES = (
@@ -107,6 +109,7 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
+        rosidl_parser.definition.BasicType('boolean'),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -127,6 +130,7 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         self.energy_consumption_rate = kwargs.get('energy_consumption_rate', float())
         from builtin_interfaces.msg import Time
         self.stamp = kwargs.get('stamp', Time())
+        self.backbone_active = kwargs.get('backbone_active', bool())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -180,6 +184,8 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         if self.energy_consumption_rate != other.energy_consumption_rate:
             return False
         if self.stamp != other.stamp:
+            return False
+        if self.backbone_active != other.backbone_active:
             return False
         return True
 
@@ -361,3 +367,16 @@ class UavStatus(metaclass=Metaclass_UavStatus):
                 isinstance(value, Time), \
                 "The 'stamp' field must be a sub message of type 'Time'"
         self._stamp = value
+
+    @builtins.property
+    def backbone_active(self):
+        """Message field 'backbone_active'."""
+        return self._backbone_active
+
+    @backbone_active.setter
+    def backbone_active(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, bool), \
+                "The 'backbone_active' field must be of type 'bool'"
+        self._backbone_active = value

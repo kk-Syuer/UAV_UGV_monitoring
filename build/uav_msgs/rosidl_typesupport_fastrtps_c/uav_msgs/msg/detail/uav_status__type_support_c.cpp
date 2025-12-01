@@ -177,6 +177,11 @@ static bool _UavStatus__cdr_serialize(
     }
   }
 
+  // Field name: backbone_active
+  {
+    cdr << (ros_message->backbone_active ? true : false);
+  }
+
   return true;
 }
 
@@ -289,6 +294,13 @@ static bool _UavStatus__cdr_deserialize(
     }
   }
 
+  // Field name: backbone_active
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message->backbone_active = tmp ? true : false;
+  }
+
   return true;
 }  // NOLINT(readability/fn_size)
 
@@ -370,6 +382,12 @@ size_t get_serialized_size_uav_msgs__msg__UavStatus(
 
   current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
     &(ros_message->stamp), current_alignment);
+  // field.name backbone_active
+  {
+    size_t item_size = sizeof(ros_message->backbone_active);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
 
   return current_alignment - initial_alignment;
 }
@@ -524,6 +542,13 @@ size_t max_serialized_size_uav_msgs__msg__UavStatus(
       is_plain &= inner_is_plain;
     }
   }
+  // member: backbone_active
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
 
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
@@ -533,7 +558,7 @@ size_t max_serialized_size_uav_msgs__msg__UavStatus(
     using DataType = uav_msgs__msg__UavStatus;
     is_plain =
       (
-      offsetof(DataType, stamp) +
+      offsetof(DataType, backbone_active) +
       last_member_size
       ) == ret_val;
   }

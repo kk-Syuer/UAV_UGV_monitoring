@@ -103,6 +103,7 @@ private:
   {
     uint8_t role;
     float battery_level;
+    bool backbone_active; // whether this UAV is usable as backbone
   };
 
   // ------------- Callbacks -------------
@@ -112,6 +113,7 @@ private:
     UavInfo info;
     info.role = msg->role;
     info.battery_level = msg->battery_level;
+    info.backbone_active = msg->backbone_active;
     uav_status_[msg->uav_id] = info;
   }
 

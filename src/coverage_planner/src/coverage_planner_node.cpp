@@ -10,7 +10,11 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
+#include "uav_msgs/msg/uav_status.hpp"
+
 #include <limits>
+#include <unordered_map>
+
 
 
 using namespace std::chrono_literals;
@@ -50,7 +54,17 @@ public:
       "/coverage_planner/deployment", 10);
 
     timer_ = this->create_wall_timer(
-      2s, std::bind(&CoveragePlannerNode::timerCallback, this));
+      2s, std::bind(&CoveragePlannerNode::periodicUpdate, this));
+    // Initialize backbone_active status for CHs (first num_ch_ UAVs)
+    for (int i = 0; i < num_ch_; ++i) {
+        ch_backbone_active_[uav_ids_[i]] = true;  // assume all CHs active initially
+    }
+
+    status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
+        "/uav_fleet/status",
+        20,
+        std::bind(&CoveragePlannerNode::statusCallback, this, std::placeholders::_1)
+    );
 
     RCLCPP_INFO(this->get_logger(),
                 "Coverage planner started. num_ch=%d, uav_ids=%zu, "
@@ -61,6 +75,25 @@ public:
   }
 
 private:
+  void periodicUpdate()
+  {
+      // Initial deployment still triggered normally
+      if (!first_deployment_done_) {
+          computeDeployment();
+          first_deployment_done_ = true;
+          return;
+      }
+
+      // Later updates:
+      if (need_recompute_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[planner] Backbone state changed — routing recompute needed");
+
+          // For now we only log — routing updates next step
+          need_recompute_ = false;
+      }
+  }
+
   void timerCallback()
   {
     if (planned_) {
@@ -442,6 +475,38 @@ private:
     }
   }
 
+  void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
+  {
+      // Only care about CHs
+      if (msg->role != 1) {
+          return;
+      }
+
+      const std::string & id = msg->uav_id;
+
+      // If this CH is not one of the planned CHs, ignore
+      auto it = ch_backbone_active_.find(id);
+      if (it == ch_backbone_active_.end()) {
+          return;
+      }
+
+      bool old_state = it->second;
+      bool new_state = msg->backbone_active;
+
+      if (old_state != new_state) {
+          it->second = new_state;
+          need_recompute_ = true;
+
+          RCLCPP_WARN(
+              this->get_logger(),
+              "CH %s backbone state changed: %s -> %s",
+              id.c_str(),
+              old_state ? "ACTIVE" : "INACTIVE",
+              new_state ? "ACTIVE" : "INACTIVE"
+          );
+      }
+  }
+
   // Parameters
   std::vector<std::string> uav_ids_;
   int num_ch_;
@@ -458,9 +523,21 @@ private:
   std::mt19937 rng_;
 
   bool planned_ = false;
+  bool first_deployment_done_ = false;
+
 
   rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
+
+  // Map: CH ID -> whether it is active in the backbone
+  std::unordered_map<std::string, bool> ch_backbone_active_;
+
+  // Trigger to recompute routing when CH state changes
+  bool need_recompute_ = false;
+
+  // Subscriber for UAV status messages
+  rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
+  
 };
 
 int main(int argc, char ** argv)

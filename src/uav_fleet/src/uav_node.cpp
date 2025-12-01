@@ -220,7 +220,7 @@ private:
       if (battery_capacity_ > 0.0f) {
         battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
       }
-
+      bool backbone_active = false;
       uav_msgs::msg::UavStatus msg;
       msg.uav_id = uav_id_;
       msg.role = role_;
@@ -234,6 +234,7 @@ private:
       msg.packet_loss_estimate = 0.0f;
       msg.energy_consumption_rate = 0.0f;
       msg.stamp = now;
+      msg.backbone_active = backbone_active;
 
       status_pub_->publish(msg);
       return;
@@ -276,6 +277,9 @@ private:
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
     }
+    // backbone activity flag (CH, deployed, not charging, not dead)
+    bool backbone_active =
+      (role_ == 1) && deployment_received_ && (battery_energy_ > 0.0f) && !is_charging_;
 
     // If we just died from battery, publish a FailureEvent once
     if (battery_energy_ <= 0.0f && !reported_battery_dead_) {
@@ -314,7 +318,7 @@ private:
     msg.packet_loss_estimate = 0.0f;
     msg.energy_consumption_rate = 0.0f;
     msg.stamp = now;
-
+    msg.backbone_active = backbone_active;
     status_pub_->publish(msg);
   }
 
