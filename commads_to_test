@@ -1,0 +1,50 @@
+/* Scenario to verify that (1) members move, (2) battery drain reacts to motion & weather.*/
+
+cd ~/UAV_UGV_netmonitoring
+source install/setup.bash
+
+# Terminal 1
+ros2 run weather_server weather_node
+
+ros2 topic echo /environment/weather
+
+# Terminal 2
+ros2 run coverage_planner coverage_planner_node \
+  --ros-args \
+    -p uav_ids:="[uav_1,uav_2,uav_3]" \
+    -p num_ch:=1 \
+    -p x_min:=-200.0 -p x_max:=200.0 \
+    -p y_min:=-200.0 -p y_max:=200.0 \
+    -p z_ch:=50.0 -p z_member:=30.0 \
+    -p service_radius_ch:=150.0 \
+    -p comm_radius_ch:=200.0
+
+# Terminal 3
+ros2 run planner_viz planner_viz_node
+
+# Terminal 4
+ros2 run uav_fleet uav_node \
+  --ros-args \
+    -p uav_id:=uav_1 \
+    -p role:=1 \
+    -p cluster_id:=cluster_1 \
+    -p auto_traffic_enabled:=true \
+    -p mobility_enabled:=false
+
+# Terminal 5
+ros2 run uav_fleet uav_node \
+  --ros-args \
+    -p uav_id:=uav_2 \
+    -p role:=0 \
+    -p cluster_id:=cluster_1 \
+    -p my_ch_id:=uav_1 \
+    -p auto_traffic_enabled:=true \
+    -p mobility_enabled:=true \
+    -p uav_speed_mps:=5.0 \
+    -p tasks_per_round:=8
+
+# Terminal 6
+ros2 topic echo /uav_fleet/status | grep -A5 "uav_2"
+ros2 topic echo /uav_fleet/status --filter "m.uav_id == 'uav_2'"
+
+

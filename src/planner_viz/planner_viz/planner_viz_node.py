@@ -18,10 +18,12 @@ class PlannerVizNode(Node):
 
         # ---- Parameters ----
         self.x_min = self.declare_parameter("x_min", 0.0).get_parameter_value().double_value
-        self.x_max = self.declare_parameter("x_max", 600.0).get_parameter_value().double_value
+        self.x_max = self.declare_parameter("x_max", 1200.0).get_parameter_value().double_value
         self.y_min = self.declare_parameter("y_min", 0.0).get_parameter_value().double_value
-        self.y_max = self.declare_parameter("y_max", 600.0).get_parameter_value().double_value
+        self.y_max = self.declare_parameter("y_max", 1200.0).get_parameter_value().double_value
         self.service_radius_ch = self.declare_parameter("service_radius_ch", 250.0) \
+            .get_parameter_value().double_value
+        self.comm_radius_ch = self.declare_parameter("comm_radius_ch", 400.0) \
             .get_parameter_value().double_value
 
         # ---- Matplotlib figure ----
@@ -59,7 +61,7 @@ class PlannerVizNode(Node):
 
         self.get_logger().info(
             f"Planner viz started: area=([{self.x_min},{self.x_max}] x "
-            f"[{self.y_min},{self.y_max}]), R_s={self.service_radius_ch}"
+            f"[{self.y_min},{self.y_max}]), R_s={self.service_radius_ch}, R_c={self.comm_radius_ch}"
         )
 
     # ------------------------------------------------------------------
@@ -108,7 +110,7 @@ class PlannerVizNode(Node):
                 # coverage circle
                 circ = Circle(
                     (x, y),
-                    radius=self.service_radius_ch,
+                    radius=self.comm_radius_ch,
                     linewidth=1.0,
                     edgecolor="red",
                     facecolor="none",

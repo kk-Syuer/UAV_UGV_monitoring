@@ -19,6 +19,8 @@
 #include "uav_msgs/msg/failure_event.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include <unordered_set>
+#include <random>
+#include <algorithm>
 
 
 
@@ -90,6 +92,16 @@ public:
 
     current_temperature_c_ = 22.0f;  // default comfy temp
 
+    // Mobility parameters
+    mobility_enabled_ =
+      this->declare_parameter<bool>("mobility_enabled", true);
+    mobility_dt_sec_ =
+      this->declare_parameter<double>("mobility_dt_sec", 0.2);
+    uav_speed_mps_ =
+      this->declare_parameter<double>("uav_speed_mps", 5.0);
+    tasks_per_round_ =
+      this->declare_parameter<int>("tasks_per_round", 8);
+
     RCLCPP_INFO(this->get_logger(),
                 "Starting UAV node id='%s', role=%u, cluster=%s, dst='%s'. "
                 "Batt capacity=%.1f, threshold=%.1f%%, charge_duration=%.1f s",
@@ -133,6 +145,14 @@ public:
       1s, std::bind(&UavNode::publishHeartbeat, this));
     traffic_timer_ = this->create_wall_timer(
       2s, std::bind(&UavNode::publishTraffic, this));
+
+    if (mobility_enabled_) {
+      auto dt = std::chrono::duration<double>(mobility_dt_sec_);
+      mobility_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(dt),
+        std::bind(&UavNode::mobilityStep, this));
+    }
+
     // Debug service: send a one-shot text message from this UAV
     debug_service_ = this->create_service<uav_msgs::srv::SendDebugText>(
       "/uav_fleet/" + uav_id_ + "/send_debug_text",
@@ -181,7 +201,14 @@ private:
   void weatherCallback(const uav_msgs::msg::WeatherStatus::SharedPtr msg)
   {
     current_temperature_c_ = msg->temperature_c;
+
+    // New fields
+    current_wind_speed_mps_ = msg->wind_speed;
+    // assuming wind_direction_deg exists in WeatherStatus
+    current_wind_dir_rad_ = msg->wind_direction_deg * static_cast<float>(M_PI / 180.0f);
+    current_rain_intensity_ = msg->rain_intensity;
   }
+
 
   float temperatureFactor(float temp_c) const
   {
@@ -210,6 +237,7 @@ private:
   void publishStatus()
   {
     auto now = this->now();
+    float energy_consumption_rate = 0.0f;
 
     // If we haven't received deployment yet, stay "idle":
     // - no drain
@@ -264,12 +292,18 @@ private:
       // Not charging: drain battery based on role and temperature
       float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
       float temp_factor = temperatureFactor(current_temperature_c_);
-      float drain_rate = base_drain * temp_factor;
+      float f_motion = motionFactor(current_speed_mps_);
+      float f_wind   = windFactor(current_speed_mps_);
+      float f_rain   = rainFactor();
+
+      float drain_rate = base_drain * temp_factor * f_motion * f_wind * f_rain;
 
       battery_energy_ -= drain_rate;
+
       if (battery_energy_ < 0.0f) {
         battery_energy_ = 0.0f;
       }
+      energy_consumption_rate = drain_rate;
     }
 
     // Percentage
@@ -316,7 +350,8 @@ private:
     msg.connected_users = 0;
     msg.traffic_load = 0.0f;
     msg.packet_loss_estimate = 0.0f;
-    msg.energy_consumption_rate = 0.0f;
+    msg.energy_consumption_rate = energy_consumption_rate;
+
     msg.stamp = now;
     msg.backbone_active = backbone_active;
     status_pub_->publish(msg);
@@ -610,6 +645,7 @@ private:
 
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
+  
     // 1) Every UAV learns the cluster parent of every UAV
     if (msg->role == 0) {
         // MEMBER
@@ -627,6 +663,10 @@ private:
                   uav_id_.c_str(), msg->uav_id.c_str());
     }
 
+    // Store CH pose so members know their CH center later
+    if (msg->role == 1) { // CH
+      ch_poses_[msg->uav_id] = msg->target_pose;
+    }
     // 2) If this deployment is not for us, we are done.
     if (msg->uav_id != uav_id_) {
       return;
@@ -668,6 +708,17 @@ private:
     }
 
     deployment_received_ = true;
+    // Initialize task-based mobility for members
+    if (mobility_enabled_ && role_ == 0) {
+      auto it = ch_poses_.find(my_ch_id_);
+      if (it != ch_poses_.end()) {
+        initTaskMobility(it->second);
+      } else {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: mobility enabled but CH pose for %s not known yet.",
+                    uav_id_.c_str(), my_ch_id_.c_str());
+      }
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: deployment received. New pose=(%.1f, %.1f, %.1f), "
@@ -725,6 +776,169 @@ private:
       // CASE 3: default route toward sink
       return next_hop_to_sink_;
   }
+  void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
+  {
+    // Keep current pose as starting point
+    last_pose_ = pose_;
+    last_pose_time_ = this->now();
+
+    generateTaskRound(ch_pose);
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: task mobility initialized in cluster of CH=%s",
+                uav_id_.c_str(), my_ch_id_.c_str());
+
+  }
+
+  void generateTaskRound(const geometry_msgs::msg::Pose & ch_pose)
+  {
+    task_points_.clear();
+    task_points_.reserve(tasks_per_round_);
+
+    double cx = ch_pose.position.x;
+    double cy = ch_pose.position.y;
+
+    // Radius: use service_radius_ already parsed from parameters
+    double R = static_cast<double>(service_radius_);
+
+    // Random generator
+    std::mt19937 rng(static_cast<unsigned>(
+        this->now().nanoseconds() ^ std::hash<std::string>{}(uav_id_)));
+    std::uniform_real_distribution<double> dist_u(0.0, 1.0);
+    std::uniform_real_distribution<double> dist_theta(0.0, 2 * M_PI);
+
+    for (int i = 0; i < tasks_per_round_; ++i) {
+      double u = dist_u(rng);
+      double r = R * std::sqrt(u);
+      double theta = dist_theta(rng);
+
+      geometry_msgs::msg::Point p;
+      p.x = cx + r * std::cos(theta);
+      p.y = cy + r * std::sin(theta);
+      p.z = pose_.position.z; // Keep altitude constant for now
+
+      task_points_.push_back(p);
+    }
+
+    current_task_index_ = 0;
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: generated %d task points",
+                uav_id_.c_str(), tasks_per_round_);
+  }
+
+  void mobilityStep()
+  {
+    // Only for members with deployment and not charging or dead
+    if (!mobility_enabled_ || !deployment_received_ || role_ != 0)
+      return;
+    if (battery_energy_ <= 0.0f || is_charging_)
+      return;
+    if (task_points_.empty())
+      return;
+
+    rclcpp::Time now = this->now();
+    double dt = (now - last_pose_time_).seconds();
+    if (dt <= 0.0)
+      dt = mobility_dt_sec_;
+
+    geometry_msgs::msg::Point & target = task_points_[current_task_index_];
+
+    double dx = target.x - pose_.position.x;
+    double dy = target.y - pose_.position.y;
+    double dist = std::sqrt(dx*dx + dy*dy);
+    double max_step = uav_speed_mps_ * dt;
+
+    if (dist <= max_step) {
+      // Arrived at task point
+      pose_.position.x = target.x;
+      pose_.position.y = target.y;
+
+      current_task_index_++;
+      if (current_task_index_ >= task_points_.size()) {
+        // Generate new tasks
+        auto it = ch_poses_.find(my_ch_id_);
+        if (it != ch_poses_.end())
+          generateTaskRound(it->second);
+        else
+          current_task_index_ = 0; // Fallback
+      }
+    }
+    else {
+      // Move toward target
+      double ux = dx / dist;
+      double uy = dy / dist;
+
+      pose_.position.x += ux * max_step;
+      pose_.position.y += uy * max_step;
+    }
+
+    // Compute speed
+    double dx_all = pose_.position.x - last_pose_.position.x;
+    double dy_all = pose_.position.y - last_pose_.position.y;
+    double d_all = std::sqrt(dx_all * dx_all + dy_all * dy_all);
+    current_speed_mps_ = static_cast<float>(d_all / dt);
+
+    last_pose_ = pose_;
+    last_pose_time_ = now;
+  }
+
+  float motionFactor(float speed_mps) const
+  {
+    if (speed_mps < 0.1f)
+      return 1.0f;
+
+    const float v_ref = 5.0f;
+    const float k_speed = 0.3f;
+
+    return 1.0f + k_speed * (speed_mps / v_ref);
+  }
+    
+  float windFactor(float speed_mps) const
+  {
+    if (speed_mps <= 0.1f || current_wind_speed_mps_ <= 0.1f)
+      return 1.0f;
+
+    // UAV movement direction
+    double vx = pose_.position.x - last_pose_.position.x;
+    double vy = pose_.position.y - last_pose_.position.y;
+    double vnorm = std::sqrt(vx*vx + vy*vy);
+    if (vnorm < 1e-3)
+      return 1.0f;
+    vx /= vnorm;
+    vy /= vnorm;
+
+    // Wind direction vector (direction the wind blows TOWARD)
+    double wx = std::cos(current_wind_dir_rad_);
+    double wy = std::sin(current_wind_dir_rad_);
+
+    // Opposite = headwind direction
+    double wx_op = -wx;
+    double wy_op = -wy;
+
+    double cos_theta = vx * wx_op + vy * wy_op; // 1 = full headwind
+    if (cos_theta < 0.0) cos_theta = 0.0;
+    if (cos_theta > 1.0) cos_theta = 1.0;
+
+    const float k_wind = 0.5f;
+    const float v_ref = 10.0f;
+
+    return 1.0f + k_wind * cos_theta * (current_wind_speed_mps_ / v_ref);
+  }
+
+  float rainFactor() const
+  {
+    // current_rain_intensity_ is mm/h
+    const float k_rain = 0.4f;  // max +40% drain under heavy rain
+    float r_mm = std::max(0.0f, current_rain_intensity_);
+
+    // Normalize: 0..1 for 0–20 mm/h, clamp above
+    float r_norm = r_mm / 20.0f;
+    if (r_norm > 1.0f) r_norm = 1.0f;
+
+    return 1.0f + k_rain * r_norm;
+  }
+
 
   std::string ugv_id_;   // logical id of the UGV in the network
   // For CHs: set of member UAV IDs in this cluster
@@ -741,6 +955,29 @@ private:
   double charging_duration_sec_;
   bool reported_battery_dead_ = false;
 
+  // === Mobility ===
+  bool mobility_enabled_;
+  double mobility_dt_sec_;
+  double uav_speed_mps_;
+  int tasks_per_round_;
+
+  rclcpp::TimerBase::SharedPtr mobility_timer_;
+
+  std::vector<geometry_msgs::msg::Point> task_points_;
+  size_t current_task_index_ = 0;
+
+  // CH poses so members can know their CH center
+  std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
+
+  // Speed tracking
+  geometry_msgs::msg::Pose last_pose_;
+  rclcpp::Time last_pose_time_;
+  float current_speed_mps_ = 0.0f;
+
+  // === Extended weather ===
+  float current_wind_speed_mps_ = 0.0f;
+  float current_wind_dir_rad_   = 0.0f;
+  float current_rain_intensity_ = 0.0f;
 
   // Drain model
   float drain_rate_member_;
