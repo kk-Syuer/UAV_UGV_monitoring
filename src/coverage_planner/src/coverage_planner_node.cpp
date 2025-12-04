@@ -12,6 +12,9 @@
 #include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
+#include "uav_msgs/msg/traffic_message.hpp"
+#include <sstream>
+
 
 using namespace std::chrono_literals;
 
@@ -37,12 +40,29 @@ public:
 
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
+    planner_id_ = this->declare_parameter<std::string>("planner_id", "coverage_planner");
+    // Bootstrap CH: by default first CH in the list
+    bootstrap_ch_id_ = this->declare_parameter<std::string>("bootstrap_ch_id", "");
+    if (bootstrap_ch_id_.empty()) {
+      if (!uav_ids_.empty()) {
+        bootstrap_ch_id_ = uav_ids_[0];
+      }
+      RCLCPP_INFO(this->get_logger(),
+                  "Bootstrap CH not set explicitly, using %s",
+                  bootstrap_ch_id_.c_str());
+    }
 
     int seed = this->declare_parameter<int>("rng_seed", 42);
     rng_ = std::mt19937(seed);
 
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
+    accept_direct_deployment_ = this->declare_parameter<bool>(
+      "accept_direct_deployment", false);
+
+    traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
+      "/network/traffic", 50);
+
 
     // Timer: handles initial deployment and later routing recomputes
     timer_ = this->create_wall_timer(
@@ -140,6 +160,7 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
+      sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy SINK sink_gateway at (%.1f, %.1f)",
                   sink_x_, sink_y_);
@@ -161,6 +182,7 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
+      sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy UGV ugv at (%.1f, %.1f)",
                   ugv_x_, ugv_y_);
@@ -412,6 +434,7 @@ private:
                     : dep.next_hop_to_ugv.c_str());
 
       deployment_pub_->publish(dep);
+      sendDeploymentTraffic(dep);
     }
 
     // ---- Publish MEMBER deployments (random XY, nearest CH) ----
@@ -457,6 +480,7 @@ private:
                   dep.target_pose.position.z);
 
       deployment_pub_->publish(dep);
+      sendDeploymentTraffic(dep);
     }
   }
 
@@ -614,6 +638,7 @@ private:
       dep.next_hop_to_ugv  = nh_ugv;
 
       deployment_pub_->publish(dep);
+      sendDeploymentTraffic(dep);
 
       RCLCPP_WARN(this->get_logger(),
                   "[planner] Updated routing for CH %s: sink=%s  ugv=%s",
@@ -655,6 +680,79 @@ private:
     }
   }
 
+  void sendDeploymentTraffic(const uav_msgs::msg::UavDeployment & dep)
+  {
+    if (!traffic_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = "DEP_" + dep.uav_id + "_" + std::to_string(deployment_seq_++);
+    msg.src_id = planner_id_;
+    msg.dst_id = dep.uav_id;
+
+    // ----------------------------------------------------
+    // Decide first hop for bootstrapping (no parent_map_)
+    // ----------------------------------------------------
+    std::string next_hop;
+
+    if (dep.uav_id == "sink_gateway" || dep.uav_id == "ugv") {
+      // Infrastructure nodes: inject via bootstrap CH if we have one,
+      // otherwise send directly to them.
+      if (!bootstrap_ch_id_.empty()) {
+        next_hop = bootstrap_ch_id_;
+      } else {
+        next_hop = dep.uav_id;
+      }
+    } else if (dep.role == 1) {
+      // CH deployment: route via bootstrap CH if set, otherwise directly
+      if (!bootstrap_ch_id_.empty()) {
+        next_hop = bootstrap_ch_id_;
+      } else {
+        next_hop = dep.uav_id;
+      }
+    } else {
+      // Member deployment: always first hop to its CH
+      next_hop = dep.ch_id;
+    }
+
+    msg.next_hop_id = next_hop;
+
+    // ----------------------------------------------------
+    // Fill remaining TrafficMessage fields
+    // ----------------------------------------------------
+    msg.msg_type = 3;  // CONTROL_ALERT (see TrafficMessage.msg)
+    msg.priority = 1;
+    msg.size_bytes = 64;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+
+    msg.control_type = "DEPLOYMENT";
+
+    std::ostringstream oss;
+    std::string safe_sink = dep.next_hop_to_sink.empty() ? "-" : dep.next_hop_to_sink;
+    std::string safe_ugv  = dep.next_hop_to_ugv.empty()  ? "-" : dep.next_hop_to_ugv;
+
+    oss << static_cast<int>(dep.role) << ","
+        << dep.cluster_id << ","
+        << dep.ch_id << ","
+        << dep.target_pose.position.x << ","
+        << dep.target_pose.position.y << ","
+        << dep.target_pose.position.z << ","
+        << safe_sink << ","
+        << safe_ugv;
+
+    msg.control_payload = oss.str();
+
+    traffic_pub_->publish(msg);
+
+    RCLCPP_INFO(this->get_logger(),
+                "[NET-DEPLOY] to=%s next_hop=%s payload=\"%s\"",
+                msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(),
+                msg.control_payload.c_str());
+  }
+
   // ------------------------------------------------------------------
   // Members
   // ------------------------------------------------------------------
@@ -674,7 +772,17 @@ private:
   std::mt19937 rng_;
 
   // Deployment state
+  bool planned_ = false;
   bool first_deployment_done_ = false;
+  bool accept_direct_deployment_;
+
+
+  // For network deployment
+  std::string bootstrap_ch_id_;
+
+  std::string planner_id_ = "coverage_planner";
+  uint64_t deployment_seq_ = 0;
+  rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
 
   rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub_;
   rclcpp::TimerBase::SharedPtr timer_;

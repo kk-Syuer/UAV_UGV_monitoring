@@ -21,11 +21,25 @@
 #include <unordered_set>
 #include <random>
 #include <algorithm>
+#include <sstream>
+#include <vector>
 
 
 
 
 using namespace std::chrono_literals;
+
+static std::vector<std::string> splitString(const std::string & s, char delim)
+{
+  std::vector<std::string> out;
+  std::stringstream ss(s);
+  std::string item;
+  while (std::getline(ss, item, delim)) {
+    out.push_back(item);
+  }
+  return out;
+}
+
 
 class UavNode : public rclcpp::Node
 {
@@ -84,6 +98,9 @@ public:
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
 
+    accept_direct_deployment_ =
+      this->declare_parameter<bool>("accept_direct_deployment", false);
+
     // Base drain rates (energy units per second)
     double drain_member = this->declare_parameter<double>("drain_rate_member", 0.5);
     double drain_ch     = this->declare_parameter<double>("drain_rate_ch", 0.5);
@@ -101,6 +118,11 @@ public:
       this->declare_parameter<double>("uav_speed_mps", 5.0);
     tasks_per_round_ =
       this->declare_parameter<int>("tasks_per_round", 8);
+    mobility_phase_ = MobilityPhase::IDLE;
+    deployment_goal_pose_.position.x = 0.0;
+    deployment_goal_pose_.position.y = 0.0;
+    deployment_goal_pose_.position.z = 0.0;
+    deployment_goal_pose_.orientation.w = 1.0;
 
     RCLCPP_INFO(this->get_logger(),
                 "Starting UAV node id='%s', role=%u, cluster=%s, dst='%s'. "
@@ -574,6 +596,11 @@ private:
         return;
       }
 
+      // Deployment via network
+      if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT") {
+        handleDeploymentFromNetwork(msg);
+        return;
+      }
       // 如果是 debug 文本消息
       if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
@@ -600,6 +627,33 @@ private:
 
     // I'm not final destination; if I'm a CH, I may forward
     if (role_ == 1) { // CH
+      // Multi-hop DEPLOYMENT forwarding along CH backbone
+      if (msg->msg_type == 3 &&
+          msg->control_type == "DEPLOYMENT" &&
+          msg->dst_id != uav_id_)
+      {
+          msg->hop_count++;
+
+          // Use backbone routing
+          std::string next_hop = resolveNextHop(msg->dst_id);
+
+          if (next_hop.empty()) {
+              RCLCPP_WARN(this->get_logger(),
+                          "[FWD-DEPLOY] CH %s: no route to %s, dropping msg %s",
+                          uav_id_.c_str(), msg->dst_id.c_str(), msg->msg_id.c_str());
+              return;
+          }
+
+          msg->next_hop_id = next_hop;
+
+          RCLCPP_INFO(this->get_logger(),
+                      "[FWD-DEPLOY] CH %s forwarding DEPLOYMENT to %s via %s",
+                      uav_id_.c_str(), msg->dst_id.c_str(), next_hop.c_str());
+
+          traffic_pub_->publish(*msg);
+          return;
+      }
+
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.hop_count = msg->hop_count + 1;
 
@@ -671,7 +725,13 @@ private:
     if (msg->uav_id != uav_id_) {
       return;
     }
-
+    // ignore direct deployment if flag is false
+    if (!accept_direct_deployment_) {
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: ignoring direct deployment; using network DEPLOYMENT",
+                  uav_id_.c_str());
+      return;
+    }    
     // 3) This is our own deployment: apply pose + role + cluster config
     // Instant teleport for now – later this becomes a motion goal.
     pose_ = msg->target_pose;
@@ -829,51 +889,116 @@ private:
 
   void mobilityStep()
   {
-    // Only for members with deployment and not charging or dead
-    if (!mobility_enabled_ || !deployment_received_ || role_ != 0)
-      return;
-    if (battery_energy_ <= 0.0f || is_charging_)
-      return;
-    if (task_points_.empty())
+    // Mobility only if enabled and we have a deployment
+    if (!mobility_enabled_ || !deployment_received_)
       return;
 
+    // No motion if dead or charging
+    if (battery_energy_ <= 0.0f || is_charging_)
+      return;
+
+    // Time step
     rclcpp::Time now = this->now();
     double dt = (now - last_pose_time_).seconds();
     if (dt <= 0.0)
       dt = mobility_dt_sec_;
 
-    geometry_msgs::msg::Point & target = task_points_[current_task_index_];
+    // Helper: move in 2D towards a goal (keep current z)
+    auto stepTowards2D = [&](double gx, double gy) -> bool {
+      double dx = gx - pose_.position.x;
+      double dy = gy - pose_.position.y;
+      double dist = std::sqrt(dx * dx + dy * dy);
+      double max_step = uav_speed_mps_ * dt;
 
-    double dx = target.x - pose_.position.x;
-    double dy = target.y - pose_.position.y;
-    double dist = std::sqrt(dx*dx + dy*dy);
-    double max_step = uav_speed_mps_ * dt;
-
-    if (dist <= max_step) {
-      // Arrived at task point
-      pose_.position.x = target.x;
-      pose_.position.y = target.y;
-
-      current_task_index_++;
-      if (current_task_index_ >= task_points_.size()) {
-        // Generate new tasks
-        auto it = ch_poses_.find(my_ch_id_);
-        if (it != ch_poses_.end())
-          generateTaskRound(it->second);
-        else
-          current_task_index_ = 0; // Fallback
+      if (dist <= 1e-3) {
+        return true;  // already there
       }
-    }
-    else {
-      // Move toward target
+      if (dist <= max_step) {
+        pose_.position.x = gx;
+        pose_.position.y = gy;
+        return true;
+      }
+
       double ux = dx / dist;
       double uy = dy / dist;
-
       pose_.position.x += ux * max_step;
       pose_.position.y += uy * max_step;
+      return false;
+    };
+
+    switch (mobility_phase_) {
+      case MobilityPhase::IDLE:
+        // Nothing to do
+        break;
+
+      // ---------- PHASE 1: Origin -> Deployment pose ----------
+      case MobilityPhase::GO_TO_DEPLOYMENT:
+      {
+        bool reached = stepTowards2D(
+            deployment_goal_pose_.position.x,
+            deployment_goal_pose_.position.y);
+
+        if (reached) {
+          pose_.position.x = deployment_goal_pose_.position.x;
+          pose_.position.y = deployment_goal_pose_.position.y;
+          pose_.position.z = deployment_goal_pose_.position.z;
+
+          RCLCPP_INFO(this->get_logger(),
+                      "UAV %s: reached deployment pose (%.1f, %.1f, %.1f)",
+                      uav_id_.c_str(),
+                      pose_.position.x,
+                      pose_.position.y,
+                      pose_.position.z);
+
+          if (role_ == 1) {
+            // CH: stop here by default
+            mobility_phase_ = MobilityPhase::IDLE;
+          } else {
+            // MEMBER: start task mobility inside cluster
+            auto it = ch_poses_.find(my_ch_id_);
+            if (it != ch_poses_.end()) {
+              initTaskMobility(it->second);  // this will fill task_points_
+            }
+            mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+          }
+        }
+        break;
+      }
+
+      // ---------- PHASE 2: Task mobility inside cluster ----------
+      case MobilityPhase::TASK_MOBILITY:
+      {
+        // Only members do task mobility
+        if (role_ != 0)
+          break;
+        if (task_points_.empty())
+          break;
+
+        geometry_msgs::msg::Point & target = task_points_[current_task_index_];
+
+        bool reached = stepTowards2D(target.x, target.y);
+
+        if (reached) {
+          // Arrived at task point
+          pose_.position.x = target.x;
+          pose_.position.y = target.y;
+
+          current_task_index_++;
+          if (current_task_index_ >= task_points_.size()) {
+            // Generate new tasks around CH
+            auto it = ch_poses_.find(my_ch_id_);
+            if (it != ch_poses_.end()) {
+              generateTaskRound(it->second);
+            } else {
+              current_task_index_ = 0; // fallback
+            }
+          }
+        }
+        break;
+      }
     }
 
-    // Compute speed
+    // Update speed based on actual motion
     double dx_all = pose_.position.x - last_pose_.position.x;
     double dy_all = pose_.position.y - last_pose_.position.y;
     double d_all = std::sqrt(dx_all * dx_all + dy_all * dy_all);
@@ -882,6 +1007,7 @@ private:
     last_pose_ = pose_;
     last_pose_time_ = now;
   }
+
 
   float motionFactor(float speed_mps) const
   {
@@ -939,6 +1065,95 @@ private:
     return 1.0f + k_rain * r_norm;
   }
 
+  void handleDeploymentFromNetwork(
+    const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    const std::string & payload = msg->control_payload;
+    auto tokens = splitString(payload, ',');
+
+    if (tokens.size() < 8) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: bad DEPLOYMENT payload \"%s\"",
+                  uav_id_.c_str(), payload.c_str());
+      return;
+    }
+
+    try {
+      int role_int = std::stoi(tokens[0]);
+      std::string cluster_id = tokens[1];
+      std::string ch_id      = tokens[2];
+      double x = std::stod(tokens[3]);
+      double y = std::stod(tokens[4]);
+      double z = std::stod(tokens[5]);
+      std::string next_sink = tokens[6];
+      std::string next_ugv  = tokens[7];
+      if (next_sink == "-") next_sink.clear();
+      if (next_ugv  == "-") next_ugv.clear();
+
+      role_       = static_cast<uint8_t>(role_int);
+      cluster_id_ = cluster_id;
+      my_ch_id_   = ch_id;
+
+      // Only update if we really have something
+      if (!next_sink.empty()) {
+        next_hop_to_sink_ = next_sink;
+      }
+
+      // UGV route goes into routing table if present
+      if (!next_ugv.empty()) {
+        routing_table_[ugv_id_] = next_ugv;
+      }
+
+      // Do NOT teleport. Set deployment goal instead.
+      deployment_goal_pose_.position.x = x;
+      deployment_goal_pose_.position.y = y;
+      deployment_goal_pose_.position.z = z;
+      deployment_goal_pose_.orientation.w = 1.0;
+
+      // Start boot movement if mobility is enabled
+      if (mobility_enabled_) {
+        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+      }
+
+      // (Optional) if mobility disabled (e.g. CH), we can still teleport:
+      if (!mobility_enabled_) {
+        pose_ = deployment_goal_pose_;
+      }
+
+
+      deployment_received_ = true;
+
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: DEPLOYMENT via network -> role=%d cluster=%s ch=%s "
+                  "pos=(%.1f,%.1f,%.1f) next_sink=%s",
+                  uav_id_.c_str(), role_,
+                  cluster_id_.c_str(), my_ch_id_.c_str(),
+                  x, y, z,
+                  next_hop_to_sink_.c_str());
+
+      // If this is a member and mobility is enabled, initialise task mobility
+      if (mobility_enabled_ && role_ == 0) {
+        auto it = ch_poses_.find(my_ch_id_);
+        if (it != ch_poses_.end()) {
+          initTaskMobility(it->second);
+        }
+      }
+    }
+    catch (const std::exception & e) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: exception parsing DEPLOYMENT payload \"%s\": %s",
+                  uav_id_.c_str(), payload.c_str(), e.what());
+    }
+  }
+  // --- Mobility state machine ---
+  enum class MobilityPhase {
+    IDLE = 0,              // no movement
+    GO_TO_DEPLOYMENT = 1,  // flying from origin to deployment pose
+    TASK_MOBILITY = 2      // moving between task points in cluster
+  };
+
+  MobilityPhase mobility_phase_;
+  geometry_msgs::msg::Pose deployment_goal_pose_;
 
   std::string ugv_id_;   // logical id of the UGV in the network
   // For CHs: set of member UAV IDs in this cluster
@@ -996,6 +1211,8 @@ private:
   bool auto_traffic_enabled_;
   // wait for deployment
   bool deployment_received_;
+  bool accept_direct_deployment_;
+
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;

@@ -21,6 +21,7 @@ setup(
     entry_points={
         'console_scripts': [
             'planner_viz_node = planner_viz.planner_viz_node:main',
+            'fleet_viz = planner_viz.fleet_viz_node:main',
         ],
     },
 )
