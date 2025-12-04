@@ -31,10 +31,10 @@ class FleetVizNode(Node):
         self.ax.set_title('Fleet live view')
 
         # area limits (can be tuned / parameterised)
-        self.x_min = -250.0
-        self.x_max =  250.0
-        self.y_min = -250.0
-        self.y_max =  250.0
+        self.x_min = -1200.0
+        self.x_max =  1200.0
+        self.y_min = -1200.0
+        self.y_max =  1200.0
 
         # timer to refresh plot
         self.timer = self.create_timer(0.2, self.update_plot)

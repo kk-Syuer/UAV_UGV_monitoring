@@ -838,17 +838,21 @@ private:
   }
   void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
   {
-    // Keep current pose as starting point
-    last_pose_ = pose_;
-    last_pose_time_ = this->now();
-
+    // Generate first round of task points around this CH
     generateTaskRound(ch_pose);
+    current_task_index_ = 0;
+
+    // Switch to task mobility phase (for members)
+    if (role_ == 0 && mobility_enabled_) {
+      mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: task mobility initialized in cluster of CH=%s",
-                uav_id_.c_str(), my_ch_id_.c_str());
-
+                uav_id_.c_str(),
+                my_ch_id_.c_str());
   }
+
 
   void generateTaskRound(const geometry_msgs::msg::Pose & ch_pose)
   {
@@ -889,21 +893,26 @@ private:
 
   void mobilityStep()
   {
-    // Mobility only if enabled and we have a deployment
+    // Do nothing until we actually have a deployment
     if (!mobility_enabled_ || !deployment_received_)
       return;
 
-    // No motion if dead or charging
     if (battery_energy_ <= 0.0f || is_charging_)
       return;
 
-    // Time step
+    // Time step: guard against mixed / uninitialised time sources
     rclcpp::Time now = this->now();
-    double dt = (now - last_pose_time_).seconds();
-    if (dt <= 0.0)
-      dt = mobility_dt_sec_;
+    double dt = mobility_dt_sec_;  // default fallback
 
-    // Helper: move in 2D towards a goal (keep current z)
+    if (last_pose_time_.nanoseconds() > 0 &&
+        last_pose_time_.get_clock_type() == now.get_clock_type())
+    {
+      dt = (now - last_pose_time_).seconds();
+      if (dt <= 0.0) {
+        dt = mobility_dt_sec_;
+      }
+    }
+
     auto stepTowards2D = [&](double gx, double gy) -> bool {
       double dx = gx - pose_.position.x;
       double dy = gy - pose_.position.y;
@@ -911,7 +920,7 @@ private:
       double max_step = uav_speed_mps_ * dt;
 
       if (dist <= 1e-3) {
-        return true;  // already there
+        return true;
       }
       if (dist <= max_step) {
         pose_.position.x = gx;
@@ -928,15 +937,14 @@ private:
 
     switch (mobility_phase_) {
       case MobilityPhase::IDLE:
-        // Nothing to do
+        // nothing to do
         break;
 
-      // ---------- PHASE 1: Origin -> Deployment pose ----------
       case MobilityPhase::GO_TO_DEPLOYMENT:
       {
         bool reached = stepTowards2D(
-            deployment_goal_pose_.position.x,
-            deployment_goal_pose_.position.y);
+          deployment_goal_pose_.position.x,
+          deployment_goal_pose_.position.y);
 
         if (reached) {
           pose_.position.x = deployment_goal_pose_.position.x;
@@ -951,13 +959,12 @@ private:
                       pose_.position.z);
 
           if (role_ == 1) {
-            // CH: stop here by default
             mobility_phase_ = MobilityPhase::IDLE;
           } else {
-            // MEMBER: start task mobility inside cluster
+            // Member: start task mobility inside cluster
             auto it = ch_poses_.find(my_ch_id_);
             if (it != ch_poses_.end()) {
-              initTaskMobility(it->second);  // this will fill task_points_
+              initTaskMobility(it->second);
             }
             mobility_phase_ = MobilityPhase::TASK_MOBILITY;
           }
@@ -965,10 +972,9 @@ private:
         break;
       }
 
-      // ---------- PHASE 2: Task mobility inside cluster ----------
       case MobilityPhase::TASK_MOBILITY:
       {
-        // Only members do task mobility
+        // Only members have task mobility
         if (role_ != 0)
           break;
         if (task_points_.empty())
@@ -979,18 +985,17 @@ private:
         bool reached = stepTowards2D(target.x, target.y);
 
         if (reached) {
-          // Arrived at task point
           pose_.position.x = target.x;
           pose_.position.y = target.y;
 
           current_task_index_++;
           if (current_task_index_ >= task_points_.size()) {
-            // Generate new tasks around CH
+            // Regenerate tasks around CH
             auto it = ch_poses_.find(my_ch_id_);
             if (it != ch_poses_.end()) {
               generateTaskRound(it->second);
             } else {
-              current_task_index_ = 0; // fallback
+              current_task_index_ = 0;
             }
           }
         }
@@ -998,7 +1003,7 @@ private:
       }
     }
 
-    // Update speed based on actual motion
+    // Update speed for drain model
     double dx_all = pose_.position.x - last_pose_.position.x;
     double dy_all = pose_.position.y - last_pose_.position.y;
     double d_all = std::sqrt(dx_all * dx_all + dy_all * dy_all);
@@ -1068,83 +1073,115 @@ private:
   void handleDeploymentFromNetwork(
     const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    // msg->control_payload format:
+    // "role,cluster_id,ch_id,x,y,z,next_sink,next_ugv"
     const std::string & payload = msg->control_payload;
-    auto tokens = splitString(payload, ',');
 
-    if (tokens.size() < 8) {
+    std::stringstream ss(payload);
+    std::string token;
+
+    int role_int = 0;
+    std::string cluster_id, ch_id;
+    double x = 0.0, y = 0.0, z = 0.0;
+    std::string next_sink, next_ugv;
+
+    // role
+    if (!std::getline(ss, token, ',')) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: bad DEPLOYMENT payload \"%s\"",
                   uav_id_.c_str(), payload.c_str());
       return;
     }
+    role_int = std::stoi(token);
 
-    try {
-      int role_int = std::stoi(tokens[0]);
-      std::string cluster_id = tokens[1];
-      std::string ch_id      = tokens[2];
-      double x = std::stod(tokens[3]);
-      double y = std::stod(tokens[4]);
-      double z = std::stod(tokens[5]);
-      std::string next_sink = tokens[6];
-      std::string next_ugv  = tokens[7];
-      if (next_sink == "-") next_sink.clear();
-      if (next_ugv  == "-") next_ugv.clear();
+    // cluster_id
+    std::getline(ss, cluster_id, ',');
+    // ch_id
+    std::getline(ss, ch_id, ',');
 
-      role_       = static_cast<uint8_t>(role_int);
-      cluster_id_ = cluster_id;
-      my_ch_id_   = ch_id;
+    // x
+    std::getline(ss, token, ',');
+    x = std::stod(token);
+    // y
+    std::getline(ss, token, ',');
+    y = std::stod(token);
+    // z
+    std::getline(ss, token, ',');
+    z = std::stod(token);
 
-      // Only update if we really have something
-      if (!next_sink.empty()) {
-        next_hop_to_sink_ = next_sink;
-      }
+    // next_sink
+    std::getline(ss, next_sink, ',');
+    // next_ugv (possibly empty)
+    std::getline(ss, next_ugv, ',');
 
-      // UGV route goes into routing table if present
-      if (!next_ugv.empty()) {
-        routing_table_[ugv_id_] = next_ugv;
-      }
+    // 1) Store CH pose for later task mobility
+    if (role_int == 1) {
+      geometry_msgs::msg::Pose ch_pose;
+      ch_pose.position.x = x;
+      ch_pose.position.y = y;
+      ch_pose.position.z = z;
+      ch_pose.orientation.w = 1.0;
+      ch_poses_[ch_id] = ch_pose;
+    }
 
-      // Do NOT teleport. Set deployment goal instead.
-      deployment_goal_pose_.position.x = x;
-      deployment_goal_pose_.position.y = y;
-      deployment_goal_pose_.position.z = z;
-      deployment_goal_pose_.orientation.w = 1.0;
+    // 2) If this deployment is not for us, we are done (we only forward in trafficCallback)
+    if (msg->dst_id != uav_id_) {
+      return;
+    }
 
-      // Start boot movement if mobility is enabled
-      if (mobility_enabled_) {
+    // 3) This deployment is for this UAV: update role/cluster info
+    role_       = static_cast<uint8_t>(role_int);
+    cluster_id_ = cluster_id;
+    my_ch_id_   = (role_ == 0) ? ch_id : uav_id_;
+
+    // Backbone routing info
+    if (!next_sink.empty() && next_sink != "-") {
+      next_hop_to_sink_ = next_sink;
+    }
+    if (role_ == 1 && !next_ugv.empty() && next_ugv != "-") {
+      routing_table_[ugv_id_] = next_ugv;
+    }
+
+    // 4) Set deployment goal pose and start boot movement
+    deployment_goal_pose_.position.x = x;
+    deployment_goal_pose_.position.y = y;
+    deployment_goal_pose_.position.z = z;
+    deployment_goal_pose_.orientation.w = 1.0;
+
+    deployment_received_ = true;
+
+    // We start from whatever pose_ currently is (usually origin)
+    // and fly to deployment_goal_pose_ in mobilityStep().
+    if (mobility_enabled_) {
+      if (role_ == 0) {
         mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
-      }
-
-      // (Optional) if mobility disabled (e.g. CH), we can still teleport:
-      if (!mobility_enabled_) {
+      } else {
+        // CHs: normally stay static at deployment pose, no mobility
+        mobility_phase_ = MobilityPhase::IDLE;
         pose_ = deployment_goal_pose_;
       }
-
-
-      deployment_received_ = true;
-
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: DEPLOYMENT via network -> role=%d cluster=%s ch=%s "
-                  "pos=(%.1f,%.1f,%.1f) next_sink=%s",
-                  uav_id_.c_str(), role_,
-                  cluster_id_.c_str(), my_ch_id_.c_str(),
-                  x, y, z,
-                  next_hop_to_sink_.c_str());
-
-      // If this is a member and mobility is enabled, initialise task mobility
-      if (mobility_enabled_ && role_ == 0) {
-        auto it = ch_poses_.find(my_ch_id_);
-        if (it != ch_poses_.end()) {
-          initTaskMobility(it->second);
-        }
-      }
+    } else {
+      // Mobility disabled: instant teleport
+      pose_ = deployment_goal_pose_;
     }
-    catch (const std::exception & e) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: exception parsing DEPLOYMENT payload \"%s\": %s",
-                  uav_id_.c_str(), payload.c_str(), e.what());
-    }
+
+    last_pose_      = pose_;
+    last_pose_time_ = this->now();
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: DEPLOYMENT via network -> role=%d cluster=%s ch=%s "
+                "pos=(%.1f,%.1f,%.1f) next_sink=%s next_ugv=%s",
+                uav_id_.c_str(),
+                role_,
+                cluster_id_.c_str(),
+                my_ch_id_.c_str(),
+                deployment_goal_pose_.position.x,
+                deployment_goal_pose_.position.y,
+                deployment_goal_pose_.position.z,
+                next_hop_to_sink_.empty() ? "-" : next_hop_to_sink_.c_str(),
+                routing_table_.count(ugv_id_) ? routing_table_[ugv_id_].c_str() : "-");
   }
+
   // --- Mobility state machine ---
   enum class MobilityPhase {
     IDLE = 0,              // no movement
