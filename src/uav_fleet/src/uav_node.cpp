@@ -209,7 +209,7 @@ public:
     pose_.position.z = 10.0;
     pose_.orientation.w = 1.0;
 
-    service_radius_ = 100.0f;
+    service_radius_ = 400.0f;
 
 
     RCLCPP_INFO(this->get_logger(),
@@ -596,6 +596,18 @@ private:
         return;
       }
 
+      // receive start mobility
+      if (msg->msg_type == 3 &&
+          msg->dst_id == uav_id_ &&
+          msg->control_type == "START_MOBILITY") {
+
+        start_mobility_received_ = true;
+        RCLCPP_INFO(this->get_logger(),
+                    "[MOB-START] %s received START_MOBILITY from %s",
+                    uav_id_.c_str(), msg->src_id.c_str());
+        return;
+      }
+
       // Deployment via network
       if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT") {
         handleDeploymentFromNetwork(msg);
@@ -768,6 +780,8 @@ private:
     }
 
     deployment_received_ = true;
+    sendDeploymentAck();
+
     // Initialize task-based mobility for members
     if (mobility_enabled_ && role_ == 0) {
       auto it = ch_poses_.find(my_ch_id_);
@@ -894,8 +908,9 @@ private:
   void mobilityStep()
   {
     // Do nothing until we actually have a deployment
-    if (!mobility_enabled_ || !deployment_received_)
+    if (!mobility_enabled_ || !deployment_received_ || !start_mobility_received_ )
       return;
+
 
     if (battery_energy_ <= 0.0f || is_charging_)
       return;
@@ -1149,6 +1164,7 @@ private:
     deployment_goal_pose_.orientation.w = 1.0;
 
     deployment_received_ = true;
+    sendDeploymentAck();
 
     // We start from whatever pose_ currently is (usually origin)
     // and fly to deployment_goal_pose_ in mobilityStep().
@@ -1182,12 +1198,62 @@ private:
                 routing_table_.count(ugv_id_) ? routing_table_[ugv_id_].c_str() : "-");
   }
 
+  void sendDeploymentAck()
+  {
+    if (deployment_ack_sent_) {
+      return;
+    }
+    if (!traffic_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage ack;
+    ack.msg_id = "DEP_ACK_" + uav_id_ + "_" +
+                std::to_string(dep_ack_seq_++);
+    ack.src_id = uav_id_;
+    ack.dst_id = default_dst_id_;  // this is your sink id (usually "sink_gateway")
+
+    // First hop into the network
+    if (role_ == 0) {
+      // MEMBER: go to its CH
+      ack.next_hop_id = my_ch_id_;
+    } else {
+      // CH (or other roles): use routing towards sink if known
+      if (!next_hop_to_sink_.empty()) {
+        ack.next_hop_id = next_hop_to_sink_;
+      } else {
+        ack.next_hop_id = default_dst_id_;  // direct if in range
+      }
+    }
+
+    ack.msg_type = 3;
+    ack.priority = 1;
+    ack.size_bytes = 16;
+    ack.creation_time = this->now();
+    ack.hop_count = 0;
+
+    ack.control_type = "DEPLOYMENT_ACK";
+    ack.control_payload = "";  // not needed for now
+
+    traffic_pub_->publish(ack);
+    deployment_ack_sent_ = true;
+
+    RCLCPP_INFO(this->get_logger(),
+                "[DEP-ACK] %s sent DEPLOYMENT_ACK to sink via %s",
+                uav_id_.c_str(), ack.next_hop_id.c_str());
+  }
+
   // --- Mobility state machine ---
   enum class MobilityPhase {
     IDLE = 0,              // no movement
     GO_TO_DEPLOYMENT = 1,  // flying from origin to deployment pose
     TASK_MOBILITY = 2      // moving between task points in cluster
   };
+  // Deployment / mobility barrier
+  bool deployment_ack_sent_ = false;
+  bool start_mobility_received_ = false;
+  uint64_t dep_ack_seq_ = 0;
+
 
   MobilityPhase mobility_phase_;
   geometry_msgs::msg::Pose deployment_goal_pose_;

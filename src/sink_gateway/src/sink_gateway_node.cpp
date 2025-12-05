@@ -1,7 +1,10 @@
 #include <memory>
 #include <string>
+#include <unordered_set>
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
+#include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 
@@ -16,9 +19,11 @@ public:
   {
     sink_id_ =
       this->declare_parameter<std::string>("sink_id", "sink_gateway");
+
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&SinkGatewayNode::deploymentCallback, this, std::placeholders::_1));
+
     uplink_ch_id_ =
       this->declare_parameter<std::string>("uplink_ch_id", "uav_3");
 
@@ -60,13 +65,43 @@ public:
   }
 
 private:
+  // --------------------------------------------------------------------------
   // Receive path: messages whose *final destination* is the sink
+  // --------------------------------------------------------------------------
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     if (msg->dst_id != sink_id_) {
       return;
     }
 
+    // Handle DEPLOYMENT_ACK control messages
+    if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT_ACK") {
+      const std::string & u = msg->src_id;
+
+      if (!all_deployed_) {
+        if (expected_uavs_.count(u) == 0) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[DEP-ACK] from %s but it was not in expected set", u.c_str());
+        } else {
+          acked_uavs_.insert(u);
+          RCLCPP_INFO(this->get_logger(),
+                      "[DEP-ACK] from %s (%zu / %zu)",
+                      u.c_str(),
+                      acked_uavs_.size(),
+                      expected_uavs_.size());
+        }
+
+        if (!expected_uavs_.empty() &&
+            acked_uavs_.size() == expected_uavs_.size()) {
+          all_deployed_ = true;
+          RCLCPP_INFO(this->get_logger(),
+                      "All deployments ACKed – broadcasting START_MOBILITY");
+          broadcastStartMobility();
+        }
+      }
+    }
+
+    // In any case, this message reached the sink – publish to delivered topic
     RCLCPP_INFO(this->get_logger(),
                 "[SINK RX] msg_id=%s src=%s dst=%s hop=%u (delivered to gateway)",
                 msg->msg_id.c_str(), msg->src_id.c_str(),
@@ -75,7 +110,9 @@ private:
     delivered_pub_->publish(*msg);
   }
 
-  // Transmit path: send control messages to a target UAV via backbone
+  // --------------------------------------------------------------------------
+  // Transmit path: periodic control messages (unused in our current tests)
+  // --------------------------------------------------------------------------
   void publishControlToUav()
   {
     if (target_uav_id_.empty()) {
@@ -88,7 +125,7 @@ private:
     msg.dst_id = target_uav_id_;
     msg.next_hop_id = uplink_ch_id_;
 
-    // Let’s treat this as CONTROL_ALERT (just a convention; 3 is arbitrary)
+    // CONTROL_ALERT
     msg.msg_type = 3;
     msg.priority = 1;
     msg.size_bytes = 50;
@@ -103,18 +140,127 @@ private:
     control_pub_->publish(msg);
   }
 
+  // --------------------------------------------------------------------------
+  // Deployment from coverage planner -> encoded as TrafficMessage into network
+  // --------------------------------------------------------------------------
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
-    if (msg->uav_id != sink_id_) {
+    // 1) If the deployment is for the sink itself, just update pose (for viz).
+    if (msg->uav_id == sink_id_) {
+      sink_pose_ = msg->target_pose;
+      RCLCPP_INFO(this->get_logger(),
+                  "Sink '%s' updated pose to (%.1f, %.1f, %.1f)",
+                  sink_id_.c_str(),
+                  sink_pose_.position.x,
+                  sink_pose_.position.y,
+                  sink_pose_.position.z);
+      // No need to send a network message for the sink itself.
       return;
     }
-    sink_pose_ = msg->target_pose;
+
+    // During the initial deployment phase, remember that we expect an ACK
+    if (!all_deployed_) {
+      expected_uavs_.insert(msg->uav_id);
+    }
+
+    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /network/traffic.
+    if (!control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage tm;
+    tm.msg_id = "DEP_" + msg->uav_id + "_" + std::to_string(msg_counter_++);
+    tm.src_id = sink_id_;
+    tm.dst_id = msg->uav_id;
+
+    // Decide the first hop from the sink into the ad-hoc network.
+    // We reuse uplink_ch_id_ as the "bootstrap CH" (typically uav_1).
+    std::string next_hop;
+
+    if (msg->uav_id == "ugv") {
+      // UGV: send via the bootstrap CH near the UGV.
+      next_hop = uplink_ch_id_;
+    } else if (msg->role == 1) {
+      // CH deployment: first packet always goes through the bootstrap CH.
+      // If this CH *is* the bootstrap, it will just receive it directly.
+      next_hop = uplink_ch_id_;
+    } else if (msg->role == 0) {
+      // MEMBER: first hop is its cluster head.
+      next_hop = msg->ch_id;
+    } else {
+      // Any other role: fall back to bootstrap CH.
+      next_hop = uplink_ch_id_;
+    }
+
+    tm.next_hop_id = next_hop;
+
+    // Use msg_type=3 as CONTROL_ALERT (same convention as UAV/UGV nodes).
+    tm.msg_type = 3;
+    tm.priority = 1;
+    tm.size_bytes = 64;
+    tm.creation_time = this->now();
+    tm.hop_count = 0;
+
+    tm.control_type = "DEPLOYMENT";
+
+    // Encode the deployment info into the control payload.
+    std::string safe_sink = msg->next_hop_to_sink.empty() ? "-" : msg->next_hop_to_sink;
+    std::string safe_ugv  = msg->next_hop_to_ugv.empty()  ? "-" : msg->next_hop_to_ugv;
+
+    std::ostringstream oss;
+    oss << static_cast<int>(msg->role) << ","
+        << msg->cluster_id << ","
+        << msg->ch_id << ","
+        << msg->target_pose.position.x << ","
+        << msg->target_pose.position.y << ","
+        << msg->target_pose.position.z << ","
+        << safe_sink << ","
+        << safe_ugv;
+    tm.control_payload = oss.str();
+
+    control_pub_->publish(tm);
+
     RCLCPP_INFO(this->get_logger(),
-                "Sink '%s' updated pose to (%.1f, %.1f, %.1f)",
-                sink_id_.c_str(),
-                sink_pose_.position.x,
-                sink_pose_.position.y,
-                sink_pose_.position.z);
+                "[DEP-TX] sink sending deployment to=%s via first_hop=%s payload=\"%s\"",
+                tm.dst_id.c_str(),
+                tm.next_hop_id.c_str(),
+                tm.control_payload.c_str());
+  }
+
+  // --------------------------------------------------------------------------
+  // Broadcast START_MOBILITY when all DEPLOYMENT_ACKs arrived
+  // --------------------------------------------------------------------------
+  void broadcastStartMobility()
+  {
+    if (!control_pub_) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "Cannot broadcast START_MOBILITY: control_pub_ is null");
+      return;
+    }
+
+    for (const auto & u : expected_uavs_) {
+      uav_msgs::msg::TrafficMessage msg;
+      msg.msg_id = "START_MOB_" + u + "_" +
+                   std::to_string(start_mobility_seq_++);
+      msg.src_id = sink_id_;
+      msg.dst_id = u;
+      // enter backbone via uplink CH
+      msg.next_hop_id = uplink_ch_id_;
+
+      msg.msg_type = 3;  // CONTROL_ALERT
+      msg.priority = 1;
+      msg.size_bytes = 8;
+      msg.creation_time = this->now();
+      msg.hop_count = 0;
+
+      msg.control_type = "START_MOBILITY";
+      msg.control_payload = "";
+
+      control_pub_->publish(msg);
+      RCLCPP_INFO(this->get_logger(),
+                  "[MOB-START] sent START_MOBILITY to %s via %s",
+                  u.c_str(), uplink_ch_id_.c_str());
+    }
   }
 
   // Members
@@ -123,8 +269,14 @@ private:
   std::string target_uav_id_;
   uint64_t msg_counter_;
   geometry_msgs::msg::Pose sink_pose_;
-  rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
 
+  // Deployment tracking
+  std::unordered_set<std::string> expected_uavs_;
+  std::unordered_set<std::string> acked_uavs_;
+  bool all_deployed_ = false;
+  uint64_t start_mobility_seq_ = 0;
+
+  rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;

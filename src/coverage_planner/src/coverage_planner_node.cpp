@@ -118,7 +118,7 @@ private:
   }
 
   // ------------------------------------------------------------------
-  // Random placement of sink & UGV
+  // plcement of sink & UGV
   // ------------------------------------------------------------------
   void randomizeSinkAndUgv()
   {
@@ -126,21 +126,21 @@ private:
       return;
     }
 
-    std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
-    std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
-
-    sink_x_ = dist_x(rng_);
-    sink_y_ = dist_y(rng_);
+    // For now, we conceptually treat the sink & UGV as starting at the origin.
+    // Their "planned" final position is also the origin; later we can change this
+    // to a more sophisticated placement, but we keep it simple and connected.
+    sink_x_ = 0.0;
+    sink_y_ = 0.0;
     sink_placed_ = true;
 
-    ugv_x_ = dist_x(rng_);
-    ugv_y_ = dist_y(rng_);
+    ugv_x_ = 0.0;
+    ugv_y_ = 0.0;
     ugv_placed_ = true;
 
     RCLCPP_INFO(this->get_logger(),
-                "Randomized sink=(%.1f, %.1f), UGV=(%.1f, %.1f)",
-                sink_x_, sink_y_, ugv_x_, ugv_y_);
+                "Sink and UGV planned at origin (0.0, 0.0).");
   }
+
 
   void publishSinkAndUgvDeployment()
   {
@@ -160,7 +160,10 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
-      sendDeploymentTraffic(dep);
+      if (accept_direct_deployment_) {
+        // Legacy mode: planner itself injects deployment TrafficMessages.
+        sendDeploymentTraffic(dep);
+      }
       RCLCPP_INFO(this->get_logger(),
                   "Deploy SINK sink_gateway at (%.1f, %.1f)",
                   sink_x_, sink_y_);
@@ -182,7 +185,10 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
-      sendDeploymentTraffic(dep);
+      if (accept_direct_deployment_) {
+        // Legacy mode: planner itself injects deployment TrafficMessages.
+        sendDeploymentTraffic(dep);
+      }
       RCLCPP_INFO(this->get_logger(),
                   "Deploy UGV ugv at (%.1f, %.1f)",
                   ugv_x_, ugv_y_);
@@ -400,65 +406,30 @@ private:
     std::vector<std::string> next_hop_to_ugv =
       compute_next_hops_to_target(ugv_x_, ugv_y_, "ugv", "ugv");
 
-    // ---- RNG for member positions ----
-    std::random_device rd;
-    std::mt19937 gen(rd());
-    std::uniform_real_distribution<double> dist_x(x_min_, x_max_);
-    std::uniform_real_distribution<double> dist_y(y_min_, y_max_);
-
-    // ---- Publish CH deployments ----
-    for (int i = 0; i < num_ch; ++i) {
-      uav_msgs::msg::UavDeployment dep;
-      dep.uav_id      = ch_ids[static_cast<size_t>(i)];
-      dep.target_pose = ch_poses[static_cast<size_t>(i)];
-
-      dep.role       = 1;  // CH
-      dep.cluster_id = cluster_ids[static_cast<size_t>(i)];
-      dep.ch_id      = dep.uav_id;
-      dep.next_hop_to_sink = next_hop_to_sink[static_cast<size_t>(i)];
-      dep.next_hop_to_ugv  = next_hop_to_ugv[static_cast<size_t>(i)];
-
-      RCLCPP_INFO(this->get_logger(),
-                  "Deploy CH %s -> cluster=%s pose=(%.1f, %.1f, %.1f) "
-                  "next_hop_to_sink=%s next_hop_to_ugv=%s",
-                  dep.uav_id.c_str(),
-                  dep.cluster_id.c_str(),
-                  dep.target_pose.position.x,
-                  dep.target_pose.position.y,
-                  dep.target_pose.position.z,
-                  dep.next_hop_to_sink.empty()
-                    ? "<UNREACHABLE>"
-                    : dep.next_hop_to_sink.c_str(),
-                  dep.next_hop_to_ugv.empty()
-                    ? "<UNREACHABLE>"
-                    : dep.next_hop_to_ugv.c_str());
-
-      deployment_pub_->publish(dep);
-      sendDeploymentTraffic(dep);
-    }
-
-    // ---- Publish MEMBER deployments (random XY, nearest CH) ----
+    // ---- Publish MEMBER deployments (initially at their CH position) ----
     for (const auto & id : member_ids) {
-      geometry_msgs::msg::Pose pose;
-      pose.position.x = dist_x(gen);
-      pose.position.y = dist_y(gen);
-      pose.position.z = z_member_;
-      pose.orientation.w = 1.0;
-
-      // Find nearest CH in XY
+      // Find nearest CH in XY using CH poses
       double best_d2 = std::numeric_limits<double>::infinity();
       int best_ch_idx = 0;
 
       for (int i = 0; i < num_ch; ++i) {
         const auto & ch_pose = ch_poses[static_cast<size_t>(i)];
-        double dxm = pose.position.x - ch_pose.position.x;
-        double dym = pose.position.y - ch_pose.position.y;
+        double dxm = ch_pose.position.x;  // distance from origin doesn't matter here,
+        double dym = ch_pose.position.y;  // we just want the nearest CH in the grid
         double d2  = dxm * dxm + dym * dym;
         if (d2 < best_d2) {
           best_d2 = d2;
           best_ch_idx = i;
         }
       }
+
+      // Member's *deployment target* is exactly its CH position (inside coverage)
+      geometry_msgs::msg::Pose pose;
+      const auto & ch_pose = ch_poses[static_cast<size_t>(best_ch_idx)];
+      pose.position.x = ch_pose.position.x;
+      pose.position.y = ch_pose.position.y;
+      pose.position.z = z_member_;         // members fly a bit lower than CH
+      pose.orientation.w = 1.0;
 
       uav_msgs::msg::UavDeployment dep;
       dep.uav_id      = id;
@@ -480,7 +451,10 @@ private:
                   dep.target_pose.position.z);
 
       deployment_pub_->publish(dep);
-      sendDeploymentTraffic(dep);
+      if (accept_direct_deployment_) {
+        // Legacy mode: planner itself injects deployment TrafficMessages.
+        sendDeploymentTraffic(dep);
+      }
     }
   }
 
@@ -638,8 +612,10 @@ private:
       dep.next_hop_to_ugv  = nh_ugv;
 
       deployment_pub_->publish(dep);
-      sendDeploymentTraffic(dep);
-
+      if (accept_direct_deployment_) {
+        // Legacy mode: planner itself injects deployment TrafficMessages.
+        sendDeploymentTraffic(dep);
+      }
       RCLCPP_WARN(this->get_logger(),
                   "[planner] Updated routing for CH %s: sink=%s  ugv=%s",
                   id.c_str(),

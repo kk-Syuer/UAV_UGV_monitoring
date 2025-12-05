@@ -182,6 +182,38 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /usr/include/x86_64-linux-gnu/bits/types/error_t.h \
   /usr/include/c++/11/bits/charconv.h \
   /usr/include/c++/11/bits/basic_string.tcc \
+  /usr/include/c++/11/unordered_set \
+  /usr/include/c++/11/bits/hashtable.h \
+  /usr/include/c++/11/bits/hashtable_policy.h \
+  /usr/include/c++/11/bits/enable_special_members.h \
+  /usr/include/c++/11/bits/node_handle.h \
+  /usr/include/c++/11/bits/unordered_set.h \
+  /usr/include/c++/11/bits/erase_if.h \
+  /usr/include/c++/11/sstream \
+  /usr/include/c++/11/istream \
+  /usr/include/c++/11/ios \
+  /usr/include/c++/11/bits/ios_base.h \
+  /usr/include/c++/11/bits/locale_classes.h \
+  /usr/include/c++/11/bits/locale_classes.tcc \
+  /usr/include/c++/11/system_error \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
+  /usr/include/c++/11/stdexcept \
+  /usr/include/c++/11/streambuf \
+  /usr/include/c++/11/bits/streambuf.tcc \
+  /usr/include/c++/11/bits/basic_ios.h \
+  /usr/include/c++/11/bits/locale_facets.h \
+  /usr/include/c++/11/cwctype \
+  /usr/include/wctype.h \
+  /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
+  /usr/include/c++/11/bits/streambuf_iterator.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
+  /usr/include/c++/11/bits/locale_facets.tcc \
+  /usr/include/c++/11/bits/basic_ios.tcc \
+  /usr/include/c++/11/ostream \
+  /usr/include/c++/11/bits/ostream.tcc \
+  /usr/include/c++/11/bits/istream.tcc \
+  /usr/include/c++/11/bits/sstream.tcc \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -222,9 +254,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /usr/include/c++/11/limits \
   /usr/include/c++/11/ctime \
   /usr/include/c++/11/bits/parse_numbers.h \
-  /usr/include/c++/11/system_error \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
-  /usr/include/c++/11/stdexcept \
   /usr/include/c++/11/bits/std_mutex.h \
   /usr/include/c++/11/bits/unique_lock.h \
   /usr/include/c++/11/condition_variable \
@@ -235,16 +264,11 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp \
   /usr/include/c++/11/set \
   /usr/include/c++/11/bits/stl_tree.h \
-  /usr/include/c++/11/bits/node_handle.h \
   /usr/include/c++/11/bits/stl_set.h \
   /usr/include/c++/11/bits/stl_multiset.h \
-  /usr/include/c++/11/bits/erase_if.h \
   /usr/include/c++/11/thread \
   /usr/include/c++/11/bits/this_thread_sleep.h \
   /usr/include/c++/11/unordered_map \
-  /usr/include/c++/11/bits/hashtable.h \
-  /usr/include/c++/11/bits/hashtable_policy.h \
-  /usr/include/c++/11/bits/enable_special_members.h \
   /usr/include/c++/11/bits/unordered_map.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp \
   /usr/include/c++/11/algorithm \
@@ -261,26 +285,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /usr/include/c++/11/cassert \
   /usr/include/assert.h \
   /usr/include/c++/11/iostream \
-  /usr/include/c++/11/ostream \
-  /usr/include/c++/11/ios \
-  /usr/include/c++/11/bits/ios_base.h \
-  /usr/include/c++/11/bits/locale_classes.h \
-  /usr/include/c++/11/bits/locale_classes.tcc \
-  /usr/include/c++/11/streambuf \
-  /usr/include/c++/11/bits/streambuf.tcc \
-  /usr/include/c++/11/bits/basic_ios.h \
-  /usr/include/c++/11/bits/locale_facets.h \
-  /usr/include/c++/11/cwctype \
-  /usr/include/wctype.h \
-  /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
-  /usr/include/c++/11/bits/streambuf_iterator.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
-  /usr/include/c++/11/bits/locale_facets.tcc \
-  /usr/include/c++/11/bits/basic_ios.tcc \
-  /usr/include/c++/11/bits/ostream.tcc \
-  /usr/include/c++/11/istream \
-  /usr/include/c++/11/bits/istream.tcc \
   /usr/include/c++/11/list \
   /usr/include/c++/11/bits/stl_list.h \
   /usr/include/c++/11/bits/list.tcc \
@@ -367,8 +371,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /opt/ros/humble/include/rcpputils/rcpputils/scope_exit.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/context.hpp \
   /usr/include/c++/11/typeindex \
-  /usr/include/c++/11/unordered_set \
-  /usr/include/c++/11/bits/unordered_set.h \
   /opt/ros/humble/include/rclcpp/rclcpp/init_options.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/macros.hpp \
@@ -381,8 +383,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
   /usr/include/c++/11/optional \
-  /usr/include/c++/11/sstream \
-  /usr/include/c++/11/bits/sstream.tcc \
   /usr/include/c++/11/variant \
   /opt/ros/humble/include/rcl/rcl/error_handling.h \
   /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp \
@@ -684,6 +684,16 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/write_preferring_read_write_lock.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp \
@@ -692,30 +702,16 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_deployment.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__struct.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__traits.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__type_support.hpp
 
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__type_support.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
-
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__traits.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__builder.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__struct.hpp:
 
@@ -730,6 +726,22 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/thread_safe_synchronization.hpp:
 
@@ -897,73 +909,11 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/collector.hpp:
 
-/usr/include/c++/11/bits/vector.tcc:
-
-/usr/include/c++/11/bits/stl_bvector.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
-
-/usr/include/c++/11/bits/stl_heap.h:
-
-/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
-
-/usr/include/c++/11/bits/std_abs.h:
-
-/usr/include/c++/11/pstl/execution_defs.h:
-
-/usr/include/c++/11/bits/stl_algo.h:
-
-/usr/include/c++/11/bits/move.h:
-
-/usr/include/c++/11/bits/hash_bytes.h:
-
-/usr/include/c++/11/bits/enable_special_members.h:
-
-/usr/include/c++/11/bits/basic_ios.tcc:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_value.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/qos.hpp:
-
-/usr/include/c++/11/bits/hashtable.h:
-
-/usr/include/c++/11/bits/stl_multiset.h:
-
-/usr/include/c++/11/stdexcept:
-
-/usr/include/c++/11/pstl/glue_algorithm_defs.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
-
-/usr/include/c++/11/utility:
-
-/usr/include/c++/11/ios:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_waitables_interface.hpp:
-
-/home/vboxuser/UAV_UGV_netmonitoring/src/sink_gateway/src/sink_gateway_node.cpp:
-
-/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
-
 /usr/include/c++/11/limits:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
 
 /usr/include/c++/11/ratio:
-
-/usr/include/c++/11/future:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__type_support.hpp:
-
-/usr/include/x86_64-linux-gnu/sys/types.h:
 
 /usr/include/c++/11/bits/unique_lock.h:
 
@@ -989,23 +939,9 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
-/usr/include/c++/11/bits/hashtable_policy.h:
-
 /usr/include/x86_64-linux-gnu/sys/ucontext.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
-
-/usr/include/c++/11/bits/erase_if.h:
-
-/usr/include/stdint.h:
-
-/usr/include/c++/11/bits/cpp_type_traits.h:
-
-/usr/include/endian.h:
-
-/usr/include/c++/11/bits/ptr_traits.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
@@ -1027,13 +963,89 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/rmw/rmw/security_options.h:
 
+/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
+
+/usr/include/c++/11/bits/istream.tcc:
+
+/usr/include/c++/11/bits/basic_ios.tcc:
+
+/usr/include/c++/11/bits/enable_special_members.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/parameter_value.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/qos.hpp:
+
+/usr/include/c++/11/future:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/sys/types.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
+
+/usr/include/c++/11/bits/this_thread_sleep.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
+
+/usr/include/c++/11/bits/streambuf_iterator.h:
+
+/usr/include/c++/11/cwctype:
+
+/usr/include/c++/11/bits/exception.h:
+
+/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_services_interface.hpp:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__struct.hpp:
+
+/usr/include/c++/11/bits/uniform_int_dist.h:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
+
+/usr/include/c++/11/stdexcept:
+
+/usr/include/c++/11/pstl/glue_algorithm_defs.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
+
+/usr/include/c++/11/utility:
+
+/usr/include/c++/11/ios:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_waitables_interface.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/src/sink_gateway/src/sink_gateway_node.cpp:
+
+/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
+
+/usr/include/c++/11/ext/aligned_buffer.h:
+
+/usr/include/c++/11/bits/locale_classes.tcc:
+
 /usr/include/c++/11/csignal:
 
 /usr/include/c++/11/pstl/glue_memory_defs.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+/usr/include/c++/11/istream:
 
-/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
+/usr/include/c++/11/sstream:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
+
+/usr/include/c++/11/bits/erase_if.h:
+
+/usr/include/stdint.h:
+
+/usr/include/c++/11/bits/ptr_traits.h:
+
+/usr/include/c++/11/bits/hashtable_policy.h:
+
+/usr/include/c++/11/bits/hashtable.h:
 
 /usr/include/x86_64-linux-gnu/bits/sigaction.h:
 
@@ -1048,6 +1060,8 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/asm-generic/errno.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/context.hpp:
 
 /usr/include/c++/11/cerrno:
 
@@ -1065,13 +1079,23 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
 
+/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
+
+/usr/include/c++/11/bits/std_abs.h:
+
+/usr/include/c++/11/bits/stl_heap.h:
+
+/usr/include/c++/11/bits/locale_facets.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
+
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
 /usr/include/stdlib.h:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp:
 
 /usr/include/c++/11/string_view:
 
@@ -1093,14 +1117,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/locale:
 
-/opt/ros/humble/include/rclcpp/rclcpp/wait_set.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription.hpp:
-
-/usr/include/c++/11/unordered_map:
-
 /usr/include/c++/11/cctype:
 
 /usr/include/c++/11/iomanip:
@@ -1121,14 +1137,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
-
-/usr/include/c++/11/functional:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
-
-/usr/include/linux/errno.h:
-
 /usr/include/asm-generic/errno-base.h:
 
 /opt/ros/humble/include/rmw/rmw/subscription_options.h:
@@ -1137,9 +1145,7 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/string:
 
-/usr/include/c++/11/bits/std_thread.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
+/usr/include/string.h:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
@@ -1163,8 +1169,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
-/usr/include/c++/11/vector:
-
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_value.hpp:
 
 /usr/include/c++/11/bits/align.h:
@@ -1177,17 +1181,17 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/bits/stl_uninitialized.h:
 
-/usr/include/c++/11/bits/exception.h:
+/usr/include/c++/11/bits/streambuf.tcc:
 
-/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
+/usr/include/c++/11/bits/stl_iterator_base_funcs.h:
 
-/usr/include/c++/11/bits/locale_facets.h:
+/usr/include/endian.h:
 
-/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
+/usr/include/c++/11/bits/cpp_type_traits.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_services_interface.hpp:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
 
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__struct.hpp:
+/usr/include/c++/11/bits/std_thread.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__traits.hpp:
 
@@ -1196,10 +1200,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__type_support.hpp:
 
 /usr/include/c++/11/iterator:
-
-/usr/include/c++/11/bits/algorithmfwd.h:
-
-/usr/include/c++/11/bits/cxxabi_forced.h:
 
 /usr/include/c++/11/ext/alloc_traits.h:
 
@@ -1210,12 +1210,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/c++/11/backward/auto_ptr.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
-
-/usr/include/c++/11/bits/atomic_futex.h:
-
-/usr/include/c++/11/cstring:
 
 /opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
 
@@ -1245,6 +1239,8 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/bits/stl_relops.h:
 
+/usr/include/c++/11/ostream:
+
 /usr/include/c++/11/bits/unique_ptr.h:
 
 /usr/include/stdc-predef.h:
@@ -1265,6 +1261,12 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/rcpputils/rcpputils/join.hpp:
 
+/usr/include/c++/11/pstl/execution_defs.h:
+
+/usr/include/c++/11/bits/cxxabi_forced.h:
+
+/usr/include/c++/11/bits/algorithmfwd.h:
+
 /usr/include/c++/11/bits/range_access.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdint-intn.h:
@@ -1274,6 +1276,10 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/c++/11/bits/alloc_traits.h:
 
 /opt/ros/humble/include/rcl/rcl/allocator.h:
+
+/usr/include/c++/11/bits/move.h:
+
+/usr/include/c++/11/bits/hash_bytes.h:
 
 /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
 
@@ -1293,11 +1299,11 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/bits/stl_construct.h:
 
-/usr/include/c++/11/bits/this_thread_sleep.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
-
 /usr/include/c++/11/cstdlib:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
 
 /usr/include/c++/11/memory:
 
@@ -1329,6 +1335,14 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/debug/debug.h:
 
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
+
+/usr/include/linux/errno.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
+
+/usr/include/c++/11/functional:
+
 /usr/include/c++/11/bits/concept_check.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdarg.h:
@@ -1338,6 +1352,12 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/c++/11/debug/assertions.h:
 
 /opt/ros/humble/include/tracetools/tracetools/config.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
+
+/usr/include/c++/11/cstring:
+
+/usr/include/c++/11/bits/atomic_futex.h:
 
 /usr/include/c++/11/bits/charconv.h:
 
@@ -1391,11 +1411,9 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/tr1/beta_function.tcc:
 
+/usr/include/c++/11/streambuf:
+
 /usr/include/c++/11/bits/stl_raw_storage_iter.h:
-
-/usr/include/c++/11/bits/stl_tree.h:
-
-/opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
 
@@ -1406,6 +1424,8 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp:
+
+/usr/include/c++/11/bits/locale_classes.h:
 
 /usr/include/c++/11/atomic:
 
@@ -1420,8 +1440,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/c++/11/bits/memoryfwd.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp:
-
-/usr/include/c++/11/algorithm:
 
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
@@ -1493,6 +1511,8 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/bits/stringfwd.h:
 
+/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
+
 /usr/include/c++/11/system_error:
 
 /usr/include/features-time64.h:
@@ -1521,23 +1541,11 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/bits/shared_ptr_base.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
-
-/usr/include/c++/11/set:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs.h:
-
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
-
-/usr/include/c++/11/bits/unordered_map.h:
 
 /usr/include/x86_64-linux-gnu/bits/cpu-set.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_deleter.hpp:
-
-/usr/include/c++/11/bits/uniform_int_dist.h:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
@@ -1552,6 +1560,16 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/c++/11/ext/atomicity.h:
 
 /opt/ros/humble/include/rcl/rcl/types.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+
+/usr/include/c++/11/bits/stl_bvector.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
 
 /usr/include/c++/11/mutex:
 
@@ -1581,51 +1599,51 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/include/c++/11/ext/concurrence.h:
 
-/usr/include/c++/11/bits/stl_set.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
-
 /usr/include/c++/11/exception:
 
 /opt/ros/humble/include/rclcpp/rclcpp/init_options.hpp:
 
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+/usr/include/c++/11/set:
+
+/usr/include/c++/11/bits/stl_tree.h:
+
+/opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
+
+/usr/include/c++/11/bits/stl_set.h:
+
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp:
+
+/usr/include/c++/11/bits/stl_multiset.h:
+
+/usr/include/c++/11/bits/unordered_map.h:
+
+/usr/include/c++/11/algorithm:
+
+/usr/include/c++/11/bits/stl_algo.h:
+
+/usr/include/c++/11/vector:
+
+/usr/include/c++/11/bits/unordered_set.h:
+
+/usr/include/c++/11/bits/stl_vector.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_set.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
+
+/usr/include/c++/11/unordered_map:
+
+/opt/ros/humble/include/rclcpp/rclcpp/subscription.hpp:
+
+/usr/include/c++/11/bits/vector.tcc:
+
 /usr/include/c++/11/cassert:
-
-/usr/include/c++/11/ostream:
-
-/usr/include/c++/11/bits/locale_classes.h:
-
-/usr/include/c++/11/ext/aligned_buffer.h:
-
-/usr/include/c++/11/bits/locale_classes.tcc:
-
-/usr/include/c++/11/streambuf:
-
-/usr/include/c++/11/bits/stl_iterator_base_funcs.h:
-
-/usr/include/c++/11/bits/streambuf.tcc:
-
-/usr/include/string.h:
-
-/usr/include/c++/11/cwctype:
-
-/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
-
-/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/context.hpp:
-
-/usr/include/c++/11/bits/streambuf_iterator.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
-
-/usr/include/c++/11/istream:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
-
-/usr/include/c++/11/bits/istream.tcc:
 
 /usr/include/c++/11/list:
 
@@ -1649,9 +1667,9 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
-/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp:
+
+/opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp:
 
 /opt/ros/humble/include/rcutils/rcutils/macros.h:
 
@@ -1777,11 +1795,11 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/rclcpp/rclcpp/service.hpp:
 
+/usr/include/c++/11/codecvt:
+
 /usr/include/c++/11/bits/allocated_ptr.h:
 
 /usr/include/assert.h:
-
-/usr/include/c++/11/codecvt:
 
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
 
@@ -1841,10 +1859,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:
 
-/usr/include/c++/11/bits/stl_vector.h:
-
-/usr/include/c++/11/bits/unordered_set.h:
-
 /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp:
 
 /opt/ros/humble/include/rcl/rcl/event_callback.h:
@@ -1880,8 +1894,6 @@ CMakeFiles/sink_gateway_node.dir/src/sink_gateway_node.cpp.o: /home/vboxuser/UAV
 /usr/include/x86_64-linux-gnu/bits/sigstksz.h:
 
 /usr/include/c++/11/optional:
-
-/usr/include/c++/11/sstream:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
 
