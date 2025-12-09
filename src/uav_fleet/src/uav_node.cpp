@@ -168,6 +168,25 @@ public:
     traffic_timer_ = this->create_wall_timer(
       2s, std::bind(&UavNode::publishTraffic, this));
 
+    hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
+    hello_timeout_sec_ = this->declare_parameter<double>("hello_timeout_sec", 3.0);
+    status_period_sec_ = this->declare_parameter<double>("status_ch_period_sec", 5.0);
+    status_ttl_ = static_cast<uint32_t>(
+      this->declare_parameter<int>("status_ch_ttl", 20));
+
+    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
+    hello_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
+      std::bind(&UavNode::publishHello, this));
+    neighbor_timeout_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
+      std::bind(&UavNode::pruneNeighbors, this));
+
+    auto status_period = std::chrono::duration<double>(status_period_sec_);
+    ch_status_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
+      std::bind(&UavNode::publishStatusCh, this));
+
     if (mobility_enabled_) {
       auto dt = std::chrono::duration<double>(mobility_dt_sec_);
       mobility_timer_ = this->create_wall_timer(
@@ -218,6 +237,16 @@ public:
   }
 
 private:
+  struct NeighborInfo
+  {
+    std::string id;
+    std::string role;
+    double last_hello_time;
+    double x;
+    double y;
+    double battery;
+  };
+
   // ---------------- Weather ----------------
 
   void weatherCallback(const uav_msgs::msg::WeatherStatus::SharedPtr msg)
@@ -518,6 +547,149 @@ private:
     traffic_pub_->publish(msg);
   }
 
+  void publishHello()
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_HELLO_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = "broadcast";
+    msg.next_hop_id = "";  // broadcast semantics
+
+    msg.msg_type = 3;       // CONTROL
+    msg.priority = 0;
+    msg.size_bytes = 32;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = 1;            // single-hop broadcast
+    msg.control_type = "HELLO";
+
+    std::ostringstream oss;
+    oss << roleString(role_) << ","
+        << pose_.position.x << ","
+        << pose_.position.y << ","
+        << battery_energy_;
+    msg.control_payload = oss.str();
+
+    traffic_pub_->publish(msg);
+  }
+
+  void handleHelloMessage(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
+  {
+    const auto now = this->now().seconds();
+    NeighborInfo info;
+    info.id = msg->src_id;
+    info.role = "UNKNOWN";
+    info.x = 0.0;
+    info.y = 0.0;
+    info.battery = 0.0;
+    info.last_hello_time = now;
+
+    auto parts = splitString(msg->control_payload, ',');
+    if (parts.size() >= 4) {
+      info.role = parts[0];
+      info.x = std::stod(parts[1]);
+      info.y = std::stod(parts[2]);
+      info.battery = std::stod(parts[3]);
+    }
+
+    bool is_new = neighbor_table_.find(info.id) == neighbor_table_.end();
+    neighbor_table_[info.id] = info;
+
+    if (is_new) {
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: new neighbor detected via HELLO -> %s (%s)",
+                  uav_id_.c_str(), info.id.c_str(), info.role.c_str());
+    }
+  }
+
+  void pruneNeighbors()
+  {
+    if (hello_timeout_sec_ <= 0.0) {
+      return;
+    }
+
+    const auto now = this->now().seconds();
+    for (auto it = neighbor_table_.begin(); it != neighbor_table_.end(); ) {
+      if (now - it->second.last_hello_time > hello_timeout_sec_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: neighbor %s timed out (no HELLO for %.1f s)",
+                    uav_id_.c_str(), it->first.c_str(), now - it->second.last_hello_time);
+
+        dropRoutesThrough(it->first);
+        it = neighbor_table_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  std::string statusStateString() const
+  {
+    if (is_charging_) {
+      return "CHARGING";
+    }
+    if (waiting_for_charge_response_) {
+      return "WAITING_CHARGE_DECISION";
+    }
+    return "ACTIVE";
+  }
+
+  void publishStatusCh()
+  {
+    if (role_ != 1) {
+      return;
+    }
+
+    std::string next_hop = resolveNextHop(default_dst_id_);
+    if (next_hop.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: cannot send STATUS_CH (no next hop to %s)",
+                  uav_id_.c_str(), default_dst_id_.c_str());
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_STATUS_CH_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = default_dst_id_;
+    msg.next_hop_id = next_hop;
+    msg.msg_type = 3;
+    msg.priority = 1;
+    msg.size_bytes = 64;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = status_ttl_;
+    msg.control_type = "STATUS_CH";
+
+    std::ostringstream oss;
+    oss << pose_.position.x << ","
+        << pose_.position.y << ","
+        << battery_energy_ << ","
+        << statusStateString();
+    msg.control_payload = oss.str();
+
+    traffic_pub_->publish(msg);
+  }
+
+  std::string roleString(uint8_t role) const
+  {
+    return role == 1 ? "CH" : "MEMBER";
+  }
+
+  void dropRoutesThrough(const std::string & neighbor_id)
+  {
+    for (auto it = routing_table_.begin(); it != routing_table_.end();) {
+      if (it->second == neighbor_id) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: dropping route dst=%s via stale neighbor %s",
+                    uav_id_.c_str(), it->first.c_str(), neighbor_id.c_str());
+        it = routing_table_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
   void handleDebugSendText(
     const std::shared_ptr<uav_msgs::srv::SendDebugText::Request> req,
     std::shared_ptr<uav_msgs::srv::SendDebugText::Response> res)
@@ -579,6 +751,18 @@ private:
     }
     // Don't route anything while charging (you can relax this if you want later)
     if (is_charging_) {
+      return;
+    }
+
+    if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: dropping msg_id=%s due to TTL expiry (hop=%u ttl=%u)",
+                  uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
+      return;
+    }
+
+    if (msg->control_type == "HELLO") {
+      handleHelloMessage(msg);
       return;
     }
 
@@ -646,6 +830,13 @@ private:
       {
           msg->hop_count++;
 
+          if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
+            RCLCPP_WARN(this->get_logger(),
+                        "[FWD-DEPLOY] CH %s dropping %s due to TTL (hop=%u ttl=%u)",
+                        uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
+            return;
+          }
+
           // Use backbone routing
           std::string next_hop = resolveNextHop(msg->dst_id);
 
@@ -668,6 +859,13 @@ private:
 
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.hop_count = msg->hop_count + 1;
+
+      if (fwd.ttl != 0 && fwd.hop_count >= fwd.ttl) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[FWD] CH %s dropping msg_id=%s due to TTL (hop=%u ttl=%u)",
+                    uav_id_.c_str(), fwd.msg_id.c_str(), fwd.hop_count, fwd.ttl);
+        return;
+      }
 
       // If the destination is one of my cluster members, send directly down to it.
       if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
@@ -1332,10 +1530,19 @@ private:
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
   rclcpp::TimerBase::SharedPtr traffic_timer_;
+  rclcpp::TimerBase::SharedPtr hello_timer_;
+  rclcpp::TimerBase::SharedPtr neighbor_timeout_timer_;
+  rclcpp::TimerBase::SharedPtr ch_status_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
   rclcpp::Publisher<uav_msgs::msg::FailureEvent>::SharedPtr failure_pub_;
+
+  std::unordered_map<std::string, NeighborInfo> neighbor_table_;
+  double hello_period_sec_ = 1.0;
+  double hello_timeout_sec_ = 3.0;
+  double status_period_sec_ = 5.0;
+  uint32_t status_ttl_ = 0;
 
 };
 
