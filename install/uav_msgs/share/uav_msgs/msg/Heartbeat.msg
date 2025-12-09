@@ -1,2 +1,1 @@
-string uav_id
-builtin_interfaces/Time stamp
+/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/Heartbeat.msg

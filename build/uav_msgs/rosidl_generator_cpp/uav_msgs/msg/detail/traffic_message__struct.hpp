@@ -51,6 +51,7 @@ struct TrafficMessage_
       this->priority = 0;
       this->size_bytes = 0ul;
       this->hop_count = 0ul;
+      this->ttl = 0ul;
       this->control_type = "";
       this->control_payload = "";
     }
@@ -76,6 +77,7 @@ struct TrafficMessage_
       this->priority = 0;
       this->size_bytes = 0ul;
       this->hop_count = 0ul;
+      this->ttl = 0ul;
       this->control_type = "";
       this->control_payload = "";
     }
@@ -109,6 +111,9 @@ struct TrafficMessage_
   using _hop_count_type =
     uint32_t;
   _hop_count_type hop_count;
+  using _ttl_type =
+    uint32_t;
+  _ttl_type ttl;
   using _control_type_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _control_type_type control_type;
@@ -169,6 +174,12 @@ struct TrafficMessage_
     const uint32_t & _arg)
   {
     this->hop_count = _arg;
+    return *this;
+  }
+  Type & set__ttl(
+    const uint32_t & _arg)
+  {
+    this->ttl = _arg;
     return *this;
   }
   Type & set__control_type(
@@ -251,6 +262,9 @@ struct TrafficMessage_
       return false;
     }
     if (this->hop_count != other.hop_count) {
+      return false;
+    }
+    if (this->ttl != other.ttl) {
       return false;
     }
     if (this->control_type != other.control_type) {

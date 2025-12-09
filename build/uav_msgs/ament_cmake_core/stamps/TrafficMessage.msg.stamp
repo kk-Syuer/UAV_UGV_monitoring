@@ -9,6 +9,7 @@ uint32 size_bytes
 
 builtin_interfaces/Time creation_time
 uint32 hop_count
+uint32 ttl                  # max hops allowed (0 = unlimited)
 
 string control_type         # optional for CONTROL_ALERT, e.g. "CHARGE_REQUEST"
 string control_payload      # optional free-form payload (e.g. JSON, key=value, etc.)

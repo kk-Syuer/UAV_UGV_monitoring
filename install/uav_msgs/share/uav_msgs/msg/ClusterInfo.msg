@@ -1,3 +1,1 @@
-string cluster_id
-string ch_id
-string[] member_ids
+/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/ClusterInfo.msg

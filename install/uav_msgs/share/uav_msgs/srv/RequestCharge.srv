@@ -1,10 +1,1 @@
-# Request
-string uav_id
-float32 battery_level
-uint8 role                  # 0=MEMBER, 1=CH, 2=BACKUP_CH
-
----
-# Response
-bool accepted
-builtin_interfaces/Time eta # estimated charging start time
-uint8 assigned_priority
+/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/srv/RequestCharge.srv

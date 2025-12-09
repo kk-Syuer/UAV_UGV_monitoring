@@ -37,7 +37,7 @@ void TrafficMessage_fini_function(void * message_memory)
   typed_message->~TrafficMessage();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessage_message_member_array[11] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessage_message_member_array[12] = {
   {
     "msg_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
@@ -192,6 +192,23 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
+    "ttl",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_UINT32,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, ttl),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
     "control_type",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
     0,  // upper bound of string
@@ -230,7 +247,7 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers TrafficMessage_message_members = {
   "uav_msgs::msg",  // message namespace
   "TrafficMessage",  // message name
-  11,  // number of fields
+  12,  // number of fields
   sizeof(uav_msgs::msg::TrafficMessage),
   TrafficMessage_message_member_array,  // message members
   TrafficMessage_init_function,  // function to initialize message memory (memory has to be allocated)

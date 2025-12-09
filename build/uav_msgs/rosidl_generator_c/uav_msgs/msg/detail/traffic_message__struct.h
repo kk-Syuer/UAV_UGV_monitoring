@@ -46,6 +46,8 @@ typedef struct uav_msgs__msg__TrafficMessage
   uint32_t size_bytes;
   builtin_interfaces__msg__Time creation_time;
   uint32_t hop_count;
+  /// max hops allowed (0 = unlimited)
+  uint32_t ttl;
   /// optional for CONTROL_ALERT, e.g. "CHARGE_REQUEST"
   rosidl_runtime_c__String control_type;
   /// optional free-form payload (e.g. JSON, key=value, etc.)

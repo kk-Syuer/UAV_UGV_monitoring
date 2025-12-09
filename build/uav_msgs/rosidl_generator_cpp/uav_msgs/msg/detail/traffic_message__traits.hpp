@@ -92,6 +92,13 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
+  // member: ttl
+  {
+    out << "ttl: ";
+    rosidl_generator_traits::value_to_yaml(msg.ttl, out);
+    out << ", ";
+  }
+
   // member: control_type
   {
     out << "control_type: ";
@@ -197,6 +204,16 @@ inline void to_block_style_yaml(
     }
     out << "hop_count: ";
     rosidl_generator_traits::value_to_yaml(msg.hop_count, out);
+    out << "\n";
+  }
+
+  // member: ttl
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "ttl: ";
+    rosidl_generator_traits::value_to_yaml(msg.ttl, out);
     out << "\n";
   }
 

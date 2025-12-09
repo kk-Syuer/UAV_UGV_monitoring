@@ -156,6 +156,11 @@ static bool _TrafficMessage__cdr_serialize(
     cdr << ros_message->hop_count;
   }
 
+  // Field name: ttl
+  {
+    cdr << ros_message->ttl;
+  }
+
   // Field name: control_type
   {
     const rosidl_runtime_c__String * str = &ros_message->control_type;
@@ -294,6 +299,11 @@ static bool _TrafficMessage__cdr_deserialize(
     cdr >> ros_message->hop_count;
   }
 
+  // Field name: ttl
+  {
+    cdr >> ros_message->ttl;
+  }
+
   // Field name: control_type
   {
     std::string tmp;
@@ -384,6 +394,12 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
   // field.name hop_count
   {
     size_t item_size = sizeof(ros_message->hop_count);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name ttl
+  {
+    size_t item_size = sizeof(ros_message->ttl);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
@@ -514,6 +530,14 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     }
   }
   // member: hop_count
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: ttl
   {
     size_t array_size = 1;
 

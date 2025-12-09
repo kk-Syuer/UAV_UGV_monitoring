@@ -57,6 +57,7 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
     return false;
   }
   // hop_count
+  // ttl
   // control_type
   if (!rosidl_runtime_c__String__init(&msg->control_type)) {
     uav_msgs__msg__TrafficMessage__fini(msg);
@@ -90,6 +91,7 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   // creation_time
   builtin_interfaces__msg__Time__fini(&msg->creation_time);
   // hop_count
+  // ttl
   // control_type
   rosidl_runtime_c__String__fini(&msg->control_type);
   // control_payload
@@ -146,6 +148,10 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   }
   // hop_count
   if (lhs->hop_count != rhs->hop_count) {
+    return false;
+  }
+  // ttl
+  if (lhs->ttl != rhs->ttl) {
     return false;
   }
   // control_type
@@ -209,6 +215,8 @@ uav_msgs__msg__TrafficMessage__copy(
   }
   // hop_count
   output->hop_count = input->hop_count;
+  // ttl
+  output->ttl = input->ttl;
   // control_type
   if (!rosidl_runtime_c__String__copy(
       &(input->control_type), &(output->control_type)))

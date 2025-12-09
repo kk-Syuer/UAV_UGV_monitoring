@@ -1,16 +1,1 @@
-// generated from rosidl_adapter/resource/msg.idl.em
-// with input from uav_msgs/msg/ClusterInfo.msg
-// generated code does not contain a copyright notice
-
-
-module uav_msgs {
-  module msg {
-    struct ClusterInfo {
-      string cluster_id;
-
-      string ch_id;
-
-      sequence<string> member_ids;
-    };
-  };
-};
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_adapter/uav_msgs/msg/ClusterInfo.idl

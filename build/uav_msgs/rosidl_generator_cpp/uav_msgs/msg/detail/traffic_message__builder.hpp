@@ -53,16 +53,32 @@ private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
+class Init_TrafficMessage_ttl
+{
+public:
+  explicit Init_TrafficMessage_ttl(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_control_type ttl(::uav_msgs::msg::TrafficMessage::_ttl_type arg)
+  {
+    msg_.ttl = std::move(arg);
+    return Init_TrafficMessage_control_type(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
 class Init_TrafficMessage_hop_count
 {
 public:
   explicit Init_TrafficMessage_hop_count(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_control_type hop_count(::uav_msgs::msg::TrafficMessage::_hop_count_type arg)
+  Init_TrafficMessage_ttl hop_count(::uav_msgs::msg::TrafficMessage::_hop_count_type arg)
   {
     msg_.hop_count = std::move(arg);
-    return Init_TrafficMessage_control_type(msg_);
+    return Init_TrafficMessage_ttl(msg_);
   }
 
 private:

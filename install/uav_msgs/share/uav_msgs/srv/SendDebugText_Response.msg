@@ -1,3 +1,1 @@
-
-bool accepted
-string info
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_cmake/srv/SendDebugText_Response.msg

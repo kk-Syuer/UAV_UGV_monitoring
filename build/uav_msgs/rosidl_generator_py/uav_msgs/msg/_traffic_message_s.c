@@ -164,6 +164,15 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     ros_message->hop_count = PyLong_AsUnsignedLong(field);
     Py_DECREF(field);
   }
+  {  // ttl
+    PyObject * field = PyObject_GetAttrString(_pymsg, "ttl");
+    if (!field) {
+      return false;
+    }
+    assert(PyLong_Check(field));
+    ros_message->ttl = PyLong_AsUnsignedLong(field);
+    Py_DECREF(field);
+  }
   {  // control_type
     PyObject * field = PyObject_GetAttrString(_pymsg, "control_type");
     if (!field) {
@@ -336,6 +345,17 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
     field = PyLong_FromUnsignedLong(ros_message->hop_count);
     {
       int rc = PyObject_SetAttrString(_pymessage, "hop_count", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // ttl
+    PyObject * field = NULL;
+    field = PyLong_FromUnsignedLong(ros_message->ttl);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "ttl", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

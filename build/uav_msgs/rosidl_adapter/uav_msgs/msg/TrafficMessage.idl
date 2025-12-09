@@ -38,6 +38,10 @@ module uav_msgs {
       uint32 hop_count;
 
       @verbatim (language="comment", text=
+        "max hops allowed (0 = unlimited)")
+      uint32 ttl;
+
+      @verbatim (language="comment", text=
         "optional for CONTROL_ALERT, e.g. \"CHARGE_REQUEST\"")
       string control_type;
 

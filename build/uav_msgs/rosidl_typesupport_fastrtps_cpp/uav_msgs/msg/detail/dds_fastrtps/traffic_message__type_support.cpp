@@ -76,6 +76,8 @@ cdr_serialize(
     cdr);
   // Member: hop_count
   cdr << ros_message.hop_count;
+  // Member: ttl
+  cdr << ros_message.ttl;
   // Member: control_type
   cdr << ros_message.control_type;
   // Member: control_payload
@@ -116,6 +118,9 @@ cdr_deserialize(
 
   // Member: hop_count
   cdr >> ros_message.hop_count;
+
+  // Member: ttl
+  cdr >> ros_message.ttl;
 
   // Member: control_type
   cdr >> ros_message.control_type;
@@ -181,6 +186,12 @@ get_serialized_size(
   // Member: hop_count
   {
     size_t item_size = sizeof(ros_message.hop_count);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: ttl
+  {
+    size_t item_size = sizeof(ros_message.ttl);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
@@ -313,6 +324,15 @@ max_serialized_size_TrafficMessage(
   }
 
   // Member: hop_count
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: ttl
   {
     size_t array_size = 1;
 

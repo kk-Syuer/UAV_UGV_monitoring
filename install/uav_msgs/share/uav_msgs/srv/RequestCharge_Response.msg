@@ -1,5 +1,1 @@
-
-# Response
-bool accepted
-builtin_interfaces/Time eta # estimated charging start time
-uint8 assigned_priority
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_cmake/srv/RequestCharge_Response.msg

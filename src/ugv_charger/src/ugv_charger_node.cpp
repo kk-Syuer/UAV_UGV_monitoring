@@ -439,7 +439,7 @@ private:
     msg.size_bytes = 32;
     msg.creation_time = this->now();
     msg.hop_count = 0;
-    msg.ttl = 1;            // single-hop broadcast
+    // msg.ttl = 1;            // single-hop broadcast
     msg.control_type = "HELLO";
 
     std::ostringstream oss;

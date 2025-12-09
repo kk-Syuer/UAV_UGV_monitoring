@@ -1,2 +1,1 @@
-string dst_id
-string text
+/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_cmake/srv/SendDebugText_Request.msg

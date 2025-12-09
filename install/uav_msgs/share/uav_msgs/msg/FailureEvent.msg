@@ -1,4 +1,1 @@
-string uav_id
-uint8 failure_type   # 0=UNKNOWN, 1=BATTERY_DEAD, 2=OTHER
-string description
-builtin_interfaces/Time stamp
+/home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/FailureEvent.msg
