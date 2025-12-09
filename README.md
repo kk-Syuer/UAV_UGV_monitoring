@@ -234,6 +234,45 @@ ros2 run planner_viz planner_viz_node
 
 ---
 
+# 🎯 Sample 3×CH + 2×Member Deployment
+
+Launch sequence for three cluster heads, two members, one sink, one UGV, the fleet
+visualizer, and the coverage planner:
+
+```bash
+# Terminal 1: weather
+ros2 run weather_server weather_node
+
+# Terminal 2: coverage planner (3 CHs, 2 members)
+ros2 run coverage_planner coverage_planner_node --ros-args \
+  -p uav_ids:="['uav_1','uav_2','uav_3','uav_4','uav_5']" \
+  -p num_ch:=3 \
+  -p x_min:=0 -p x_max:=600 \
+  -p y_min:=0 -p y_max:=600 \
+  -p service_radius_ch:=250 -p comm_radius_ch:=400
+
+# Terminal 3: sink
+ros2 run sink_gateway sink_gateway_node
+
+# Terminal 4: UGV
+ros2 run ugv_charger ugv_charger_node --ros-args \
+  -p ugv_id:=ugv \
+  -p uplink_ch_id:=uav_1 \
+  -p charging_policy:=fcfs
+
+# Terminals 5-9: UAVs
+ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_1 -p role:=1
+ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_2 -p role:=1
+ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_3 -p role:=1
+ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_4 -p role:=0
+ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_5 -p role:=0
+
+# Terminal 10: fleet visualizer
+ros2 run planner_viz fleet_viz_node
+```
+
+---
+
 # 📊 What You Can Study With This Framework
 
 * Packet delivery rate vs. routing quality
