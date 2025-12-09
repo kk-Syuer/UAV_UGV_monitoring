@@ -125,25 +125,91 @@ private:
   // ------------------------------------------------------------------
   // plcement of sink & UGV
   // ------------------------------------------------------------------
-  void randomizeSinkAndUgv()
+  void placeSink()
   {
-    if (sink_placed_ && ugv_placed_) {
+    if (sink_placed_) {
       return;
     }
 
-    // For now, we conceptually treat the sink & UGV as starting at the origin.
-    // Their "planned" final position is also the origin; later we can change this
-    // to a more sophisticated placement, but we keep it simple and connected.
     sink_x_ = 0.0;
     sink_y_ = 0.0;
     sink_placed_ = true;
 
-    ugv_x_ = 0.0;
-    ugv_y_ = 0.0;
+    RCLCPP_INFO(this->get_logger(), "Sink planned at origin (0.0, 0.0).");
+  }
+
+
+  void computeUgvPosition(const std::vector<geometry_msgs::msg::Pose> &ch_poses)
+  {
+    if (ugv_placed_) {
+      return;
+    }
+
+    if (ch_poses.empty()) {
+      ugv_x_ = 0.0;
+      ugv_y_ = 0.0;
+      ugv_placed_ = true;
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV position defaults to origin because no CH poses are available.");
+      return;
+    }
+
+    // Weiszfeld-style geometric median estimate (minimizes sum of distances)
+    double x = 0.0, y = 0.0;
+    for (const auto &pose : ch_poses) {
+      x += pose.position.x;
+      y += pose.position.y;
+    }
+    x /= static_cast<double>(ch_poses.size());
+    y /= static_cast<double>(ch_poses.size());
+
+    const int max_iters = 50;
+    const double eps = 1e-6;
+
+    for (int iter = 0; iter < max_iters; ++iter) {
+      double num_x = 0.0, num_y = 0.0, denom = 0.0;
+      bool coincident = false;
+
+      for (const auto &pose : ch_poses) {
+        double dx = x - pose.position.x;
+        double dy = y - pose.position.y;
+        double d = std::sqrt(dx * dx + dy * dy);
+
+        if (d < eps) {
+          coincident = true;
+          num_x = pose.position.x;
+          num_y = pose.position.y;
+          denom = 1.0;
+          break;
+        }
+
+        double w = 1.0 / d;
+        num_x += w * pose.position.x;
+        num_y += w * pose.position.y;
+        denom += w;
+      }
+
+      double new_x = coincident ? num_x : num_x / denom;
+      double new_y = coincident ? num_y : num_y / denom;
+
+      if (std::sqrt((new_x - x) * (new_x - x) + (new_y - y) * (new_y - y)) < eps) {
+        x = new_x;
+        y = new_y;
+        break;
+      }
+
+      x = new_x;
+      y = new_y;
+    }
+
+    // Keep the UGV inside the covered area bounds
+    ugv_x_ = std::clamp(x, x_min_, x_max_);
+    ugv_y_ = std::clamp(y, y_min_, y_max_);
     ugv_placed_ = true;
 
     RCLCPP_INFO(this->get_logger(),
-                "Sink and UGV planned at origin (0.0, 0.0).");
+                "UGV planned at geometric median (%.2f, %.2f) of CH positions.",
+                ugv_x_, ugv_y_);
   }
 
 
@@ -206,8 +272,7 @@ private:
   void computeDeployment()
   {
     // 1) Place sink & UGV, publish them
-    randomizeSinkAndUgv();
-    publishSinkAndUgvDeployment();
+    placeSink();
 
     // 2) Decide CH vs members: first num_ch_ are CHs
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
@@ -286,6 +351,10 @@ private:
     ch_ids_ = ch_ids;
     ch_poses_ = ch_poses;
     cluster_ids_ = cluster_ids;
+
+    computeUgvPosition(ch_poses);
+
+    publishSinkAndUgvDeployment();
 
     // ---- Helper: Dijkstra towards arbitrary ground target (sink or UGV) ----
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
@@ -412,21 +481,13 @@ private:
       compute_next_hops_to_target(ugv_x_, ugv_y_, "ugv", "ugv");
 
     // ---- Publish MEMBER deployments (initially at their CH position) ----
-    for (const auto & id : member_ids) {
-      // Find nearest CH in XY using CH poses
-      double best_d2 = std::numeric_limits<double>::infinity();
-      int best_ch_idx = 0;
+    for (size_t member_idx = 0; member_idx < member_ids.size(); ++member_idx) {
+      const auto & id = member_ids[member_idx];
 
-      for (int i = 0; i < num_ch; ++i) {
-        const auto & ch_pose = ch_poses[static_cast<size_t>(i)];
-        double dxm = ch_pose.position.x;  // distance from origin doesn't matter here,
-        double dym = ch_pose.position.y;  // we just want the nearest CH in the grid
-        double d2  = dxm * dxm + dym * dym;
-        if (d2 < best_d2) {
-          best_d2 = d2;
-          best_ch_idx = i;
-        }
-      }
+      // Distribute members evenly across CHs to avoid collapsing everyone onto
+      // the closest CH to the origin (which would happen with the old
+      // nearest-origin heuristic).
+      int best_ch_idx = static_cast<int>(member_idx % static_cast<size_t>(num_ch));
 
       // Member's *deployment target* is exactly its CH position (inside coverage)
       geometry_msgs::msg::Pose pose;
