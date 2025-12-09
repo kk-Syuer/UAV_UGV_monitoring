@@ -114,9 +114,39 @@ private:
     // First time: wait for HELLO discovery then compute full deployment
     if (!first_deployment_done_) {
       if (!readyForDeployment()) {
+        std::vector<std::string> missing;
+        for (const auto & id : expected_devices_) {
+          if (discovered_devices_.count(id) == 0) {
+            missing.push_back(id);
+          }
+        }
+
+        std::ostringstream seen_stream;
+        bool first_seen = true;
+        for (const auto & id : discovered_devices_) {
+          if (!first_seen) {
+            seen_stream << ", ";
+          }
+          seen_stream << id;
+          first_seen = false;
+        }
+
+        std::ostringstream missing_stream;
+        bool first_missing = true;
+        for (const auto & id : missing) {
+          if (!first_missing) {
+            missing_stream << ", ";
+          }
+          missing_stream << id;
+          first_missing = false;
+        }
+
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 30000,
-                             "Waiting for HELLO discovery: %zu/%zu devices seen",
-                             discovered_devices_.size(), expected_devices_.size());
+                             "Waiting for HELLO discovery: %zu/%zu devices seen "
+                             "(seen: [%s], missing: [%s])",
+                             discovered_devices_.size(), expected_devices_.size(),
+                             seen_stream.str().c_str(),
+                             missing_stream.str().c_str());
         return;
       }
 
