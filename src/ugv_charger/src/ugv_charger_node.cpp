@@ -1,7 +1,9 @@
+#include <cmath>
 #include <memory>
 #include <string>
 #include <deque>
 #include <unordered_map>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -12,12 +14,49 @@
 
 using namespace std::chrono_literals;
 
+int compute_required_charging_spots(
+    int    num_ch,
+    int    num_members,
+    double flight_time_ch_min,
+    double charge_time_ch_min,
+    double flight_time_mem_min,
+    double charge_time_mem_min,
+    double target_utilization)
+{
+  if (num_ch == 0 && num_members == 0) {
+    return 0;
+  }
+
+  double load_ch = 0.0;
+  if (flight_time_ch_min + charge_time_ch_min > 0.0) {
+    load_ch = charge_time_ch_min / (flight_time_ch_min + charge_time_ch_min);
+  }
+
+  double load_mem = 0.0;
+  if (flight_time_mem_min + charge_time_mem_min > 0.0) {
+    load_mem = charge_time_mem_min / (flight_time_mem_min + charge_time_mem_min);
+  }
+
+  double total_load = num_ch * load_ch + num_members * load_mem;
+
+  double effective_target = target_utilization <= 0.0 ? 0.9 : target_utilization;
+
+  double raw_spots = total_load / effective_target;
+
+  int num_spots = static_cast<int>(std::ceil(raw_spots));
+  if (num_spots < 1 && total_load > 0.0) {
+    num_spots = 1;
+  }
+
+  return num_spots;
+}
+
 class UgvChargerNode : public rclcpp::Node
 {
 public:
   UgvChargerNode()
   : Node("ugv_charger_node"),
-    dock_busy_(false)
+    max_parallel_spots_(1)
   {
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
 
@@ -26,6 +65,11 @@ public:
 
     std::string policy_name =
       this->declare_parameter<std::string>("charging_policy", "fcfs");
+    target_utilization_ = this->declare_parameter<double>("target_utilization", 0.8);
+    flight_time_ch_min_ = this->declare_parameter<double>("flight_time_ch_min", 90.0);
+    charge_time_ch_min_ = this->declare_parameter<double>("charge_time_ch_min", 30.0);
+    flight_time_mem_min_ = this->declare_parameter<double>("flight_time_mem_min", 45.0);
+    charge_time_mem_min_ = this->declare_parameter<double>("charge_time_mem_min", 20.0);
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&UgvChargerNode::deploymentCallback, this, std::placeholders::_1));
@@ -77,6 +121,8 @@ public:
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
 
+    recomputeChargingSpots();
+
     RCLCPP_INFO(this->get_logger(),
                 "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s",
                 ugv_id_.c_str(), policy_name_.c_str(), charging_duration_sec_);
@@ -115,6 +161,7 @@ private:
     info.battery_level = msg->battery_level;
     info.backbone_active = msg->backbone_active;
     uav_status_[msg->uav_id] = info;
+    recomputeChargingSpots();
   }
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
@@ -198,18 +245,23 @@ private:
   {
     auto now = this->now();
 
-    // If dock is busy, check if current session is finished
-    if (dock_busy_) {
-      if (now >= dock_free_time_) {
+    // Remove finished charging sessions
+    auto it = active_sessions_.begin();
+    while (it != active_sessions_.end()) {
+      if (now >= it->end_time) {
         RCLCPP_INFO(this->get_logger(),
                     "Charging session completed for %s at t=%.1f",
-                    current_uav_id_.c_str(),
-                    dock_free_time_.seconds());
-        dock_busy_ = false;
-        current_uav_id_.clear();
+                    it->uav_id.c_str(),
+                    it->end_time.seconds());
+        it = active_sessions_.erase(it);
       } else {
-        return; // still charging
+        ++it;
       }
+    }
+
+    // If no dock capacity, exit early
+    if (max_parallel_spots_ == 0) {
+      return;
     }
 
     // Dock is free; if no one waiting, nothing to do
@@ -217,37 +269,48 @@ private:
       return;
     }
 
-    // Choose according to current policy
-    size_t idx = chooseNextIndex(now);
-    QueueEntry job = queue_[idx];
-    queue_.erase(queue_.begin() + static_cast<long>(idx));
+    size_t available_spots = 0;
+    if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
+      available_spots = static_cast<size_t>(max_parallel_spots_ - active_sessions_.size());
+    }
 
-    // Assign dock now
-    rclcpp::Time slot_start_time = now;
-    dock_busy_ = true;
-    dock_free_time_ = slot_start_time +
-                      rclcpp::Duration::from_seconds(charging_duration_sec_);
-    current_uav_id_ = job.uav_id;
+    while (available_spots > 0 && !queue_.empty()) {
+      size_t idx = chooseNextIndex(now);
+      QueueEntry job = queue_[idx];
+      queue_.erase(queue_.begin() + static_cast<long>(idx));
 
-    // Publish ChargeDecision (direct, not routed yet)
-    uav_msgs::msg::ChargeDecision decision;
-    decision.uav_id = job.uav_id;
-    decision.accepted = true;
-    decision.slot_start_time = slot_start_time;
-    decision.priority = (job.role == 1 ? 1 : 0);
-    decision.policy = policy_name_;
+      rclcpp::Time slot_start_time = now;
+      rclcpp::Time slot_end_time = slot_start_time +
+                                   rclcpp::Duration::from_seconds(charging_duration_sec_);
 
-    charge_decision_pub_->publish(decision);
+      // Publish ChargeDecision (direct, not routed yet)
+      uav_msgs::msg::ChargeDecision decision;
+      decision.uav_id = job.uav_id;
+      decision.accepted = true;
+      decision.slot_start_time = slot_start_time;
+      decision.priority = (job.role == 1 ? 1 : 0);
+      decision.policy = policy_name_;
 
-    RCLCPP_INFO(this->get_logger(),
-                "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
-                "Session: [%.1f, %.1f], queue size now: %zu",
-                job.uav_id.c_str(), job.role, job.battery_level,
-                policy_name_.c_str(),
-                slot_start_time.seconds(), dock_free_time_.seconds(),
-                queue_.size());
-    // Also send the decision through the routed network as a control message
-    sendDecisionControlMessage(job, now);
+      charge_decision_pub_->publish(decision);
+
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
+                  "Session: [%.1f, %.1f], queue size now: %zu, active sessions: %zu/%d",
+                  job.uav_id.c_str(), job.role, job.battery_level,
+                  policy_name_.c_str(),
+                  slot_start_time.seconds(), slot_end_time.seconds(),
+                  queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
+      // Also send the decision through the routed network as a control message
+      sendDecisionControlMessage(job, now);
+
+      active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time});
+
+      if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
+        available_spots = static_cast<size_t>(max_parallel_spots_ - active_sessions_.size());
+      } else {
+        available_spots = 0;
+      }
+    }
 
   }
 
@@ -327,6 +390,11 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
 
   double charging_duration_sec_;
+  double target_utilization_;
+  double flight_time_ch_min_;
+  double charge_time_ch_min_;
+  double flight_time_mem_min_;
+  double charge_time_mem_min_;
   Policy policy_;
   std::string policy_name_;
 
@@ -340,10 +408,15 @@ private:
   double w_wait_;
 
   std::deque<QueueEntry> queue_;
+  int max_parallel_spots_;
+  struct ChargingSession
+  {
+    std::string uav_id;
+    rclcpp::Time start_time;
+    rclcpp::Time end_time;
+  };
 
-  bool dock_busy_;
-  rclcpp::Time dock_free_time_;
-  std::string current_uav_id_;
+  std::vector<ChargingSession> active_sessions_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
 
@@ -387,6 +460,51 @@ private:
                 msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     control_pub_->publish(msg);
+  }
+
+  void recomputeChargingSpots()
+  {
+    int num_ch = 0;
+    int num_members = 0;
+    for (const auto & kv : uav_status_) {
+      if (kv.second.role == 1) {
+        ++num_ch;
+      } else {
+        ++num_members;
+      }
+    }
+
+    double load_ch = 0.0;
+    double load_mem = 0.0;
+    if (flight_time_ch_min_ + charge_time_ch_min_ <= 0.0) {
+      RCLCPP_WARN(this->get_logger(), "Invalid CH flight/charge times; skipping CH load contribution");
+    } else {
+      load_ch = charge_time_ch_min_ / (flight_time_ch_min_ + charge_time_ch_min_);
+    }
+    if (flight_time_mem_min_ + charge_time_mem_min_ <= 0.0) {
+      RCLCPP_WARN(this->get_logger(), "Invalid member flight/charge times; skipping member load contribution");
+    } else {
+      load_mem = charge_time_mem_min_ / (flight_time_mem_min_ + charge_time_mem_min_);
+    }
+
+    double total_load = num_ch * load_ch + num_members * load_mem;
+    double effective_target = target_utilization_ <= 0.0 ? 0.9 : target_utilization_;
+
+    int required_spots = compute_required_charging_spots(
+      num_ch,
+      num_members,
+      flight_time_ch_min_,
+      charge_time_ch_min_,
+      flight_time_mem_min_,
+      charge_time_mem_min_,
+      effective_target);
+
+    if (required_spots != max_parallel_spots_) {
+      RCLCPP_INFO(this->get_logger(),
+                  "Computed required charging spots: %d (total_load=%.3f, target_utilization=%.2f, num_ch=%d, num_members=%d)",
+                  required_spots, total_load, effective_target, num_ch, num_members);
+    }
+    max_parallel_spots_ = required_spots;
   }
 
 
