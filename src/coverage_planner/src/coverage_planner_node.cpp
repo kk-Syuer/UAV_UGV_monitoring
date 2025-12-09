@@ -68,7 +68,8 @@ public:
       "accept_direct_deployment", false);
 
     coverage_planner_ = std::make_unique<CoveragePlanner>(
-      x_min_, x_max_, y_min_, y_max_, this->get_logger(), deployment_pub_);
+      x_min_, x_max_, y_min_, y_max_, comm_radius_ch_, service_radius_ch_,
+      this->get_logger(), deployment_pub_);
     coverage_planner_->initializeIdealLayouts();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
@@ -344,79 +345,46 @@ private:
       return;
     }
 
-    // Guarantee the sink at (sink_x_, sink_y_) is always inside the planned area
-    // even if the user provided bounds do not include the origin.
-    double min_x = std::min(x_min_, sink_x_);
-    double max_x = std::max(x_max_, sink_x_);
-    double min_y = std::min(y_min_, sink_y_);
-    double max_y = std::max(y_max_, sink_y_);
-
-    double width  = max_x - min_x;
-    double height = max_y - min_y;
-
-    // ---- CH grid placement ----
-    int n_rows = static_cast<int>(std::floor(std::sqrt(num_ch)));
-    if (n_rows < 1) n_rows = 1;
-    int n_cols = (num_ch + n_rows - 1) / n_rows;  // ceil
-
-    auto spacing = [&](int rows, int cols) {
-      double dx_local = (cols > 0) ? (width  / static_cast<double>(cols)) : width;
-      double dy_local = (rows > 0) ? (height / static_cast<double>(rows)) : height;
-      return std::pair<double, double>{dx_local, dy_local};
-    };
-
-    // Enforce that CHs are no farther apart than the service radius so that
-    // every CH stays connected with at least one neighbor.
-    auto [dx, dy] = spacing(n_rows, n_cols);
-    while ((dx > service_radius_ch_ || dy > service_radius_ch_)) {
-      if (dx > dy) {
-        ++n_cols;
-      } else {
-        ++n_rows;
-      }
-      std::tie(dx, dy) = spacing(n_rows, n_cols);
-    }
-
-    RCLCPP_INFO(this->get_logger(),
-                "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
-                n_rows, n_cols, dx, dy);
-
-    double cov_limit  = 2.0 * service_radius_ch_;
-    double conn_limit = comm_radius_ch_;
-
-    if (dx > cov_limit || dy > cov_limit) {
-      RCLCPP_WARN(this->get_logger(),
-                  "Coverage warning: spacing (%.1f, %.1f) > 2*R_s=%.1f. "
-                  "Area may not be fully covered.",
-                  dx, dy, cov_limit);
-    }
-
-    if (dx > conn_limit || dy > conn_limit) {
-      RCLCPP_WARN(this->get_logger(),
-                  "Connectivity warning: spacing (%.1f, %.1f) > R_c=%.1f. "
-                  "CH backbone may be disconnected.",
-                  dx, dy, conn_limit);
-    }
-
     std::vector<geometry_msgs::msg::Pose> ch_poses;
     ch_poses.reserve(ch_ids.size());
 
-    int idx = 0;
-    for (int r = 0; r < n_rows; ++r) {
-      for (int c = 0; c < n_cols; ++c) {
-        if (idx >= num_ch) break;
+    // Build hexagonal layout around the origin so coverage expands from the
+    // sink outward while keeping every CH connected.
+    if (coverage_planner_) {
+      std::vector<CoveragePlanner::ClusterHeadInfo> ch_info;
+      ch_info.reserve(ch_ids.size());
+      for (int i = 0; i < num_ch; ++i) {
+        CoveragePlanner::ClusterHeadInfo info;
+        info.id = ch_ids[static_cast<size_t>(i)];
+        info.cluster_id = "cluster_" + std::to_string(i + 1);
+        info.x = 0.0;
+        info.y = 0.0;
+        info.z = z_ch_;
+        ch_info.push_back(info);
+      }
 
-        double fx = (static_cast<double>(c) + 0.5) / static_cast<double>(n_cols);
-        double fy = (static_cast<double>(r) + 0.5) / static_cast<double>(n_rows);
-
+      auto layout = coverage_planner_->computeAssignments(ch_info);
+      for (size_t i = 0; i < layout.size(); ++i) {
         geometry_msgs::msg::Pose pose;
-        pose.position.x = min_x + fx * width;
-        pose.position.y = min_y + fy * height;
+        pose.position.x = layout[i].x;
+        pose.position.y = layout[i].y;
         pose.position.z = z_ch_;
         pose.orientation.w = 1.0;
-
         ch_poses.push_back(pose);
-        idx++;
+      }
+    }
+
+    if (ch_poses.size() != ch_ids.size()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "Coverage planner hex layout unavailable, falling back to origin placement.");
+      ch_poses.clear();
+      for (size_t i = 0; i < ch_ids.size(); ++i) {
+        geometry_msgs::msg::Pose pose;
+        pose.position.x = 0.0;
+        pose.position.y = 0.0;
+        pose.position.z = z_ch_;
+        pose.orientation.w = 1.0;
+        ch_poses.push_back(pose);
       }
     }
 
