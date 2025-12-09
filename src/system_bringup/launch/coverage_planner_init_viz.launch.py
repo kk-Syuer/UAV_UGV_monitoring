@@ -24,42 +24,25 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
     return nodes
 
 
-def create_user_device_nodes(count: int):
-    nodes = []
-    for idx in range(1, count + 1):
-        device_id = f"user_dev_{idx}"
-        nodes.append(
-            Node(
-                package="user_devices_sim",
-                executable="user_device_node",
-                name=device_id,
-                namespace=device_id,
-                output="screen",
-                parameters=[{
-                    "user_id": device_id,
-                }],
-            )
-        )
-    return nodes
-
-
 def generate_launch_description():
     nodes = []
 
-    # Cluster-head UAVs (role 1)
-    nodes.extend(create_uav_nodes("uav_ch", 3, role_value=1))
+    ch_ids = [f"uav_ch_{idx}" for idx in range(1, 4)]
+    mem_ids = [f"uav_mem_{idx}" for idx in range(1, 5)]
+    all_uavs = ch_ids + mem_ids
 
-    # Member UAVs (role 0)
+    # Bring up UAVs used by the planner
+    nodes.extend(create_uav_nodes("uav_ch", len(ch_ids), role_value=1))
     nodes.extend(
         create_uav_nodes(
             "uav_mem",
-            4,
+            len(mem_ids),
             role_value=0,
-            extra_params={"auto_traffic_enabled": True},
+            extra_params={"auto_traffic_enabled": False},
         )
     )
 
-    # Sink node
+    # Sink node to coordinate deployment acknowledgments
     nodes.append(
         Node(
             package="sink_gateway",
@@ -71,18 +54,7 @@ def generate_launch_description():
         )
     )
 
-    # UGV charger node
-    nodes.append(
-        Node(
-            package="ugv_charger",
-            executable="ugv_charger_node",
-            name="ugv_charger",
-            namespace="ugv",
-            output="screen",
-        )
-    )
-
-    # Fleet visualizer
+    # Visualizer to inspect deployment outputs
     nodes.append(
         Node(
             package="planner_viz",
@@ -92,17 +64,7 @@ def generate_launch_description():
         )
     )
 
-    # Weather server
-    nodes.append(
-        Node(
-            package="weather_server",
-            executable="weather_node",
-            name="weather_server",
-            output="screen",
-        )
-    )
-
-    # Network monitor
+    # Network monitor for telemetry
     nodes.append(
         Node(
             package="network_monitor",
@@ -112,7 +74,19 @@ def generate_launch_description():
         )
     )
 
-    # User devices
-    nodes.extend(create_user_device_nodes(3))
+    # Coverage planner to compute initial deployments (launched after UAVs and visualizer)
+    nodes.append(
+        Node(
+            package="coverage_planner",
+            executable="coverage_planner_node",
+            name="coverage_planner",
+            output="screen",
+            parameters=[{
+                "uav_ids": all_uavs,
+                "num_ch": len(ch_ids),
+                "planner_id": "coverage_planner_init_test",
+            }],
+        )
+    )
 
     return LaunchDescription(nodes)
