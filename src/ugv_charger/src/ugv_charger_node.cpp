@@ -133,6 +133,9 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UgvChargerNode::publishHello, this));
 
+    ugv_pose_.position.x = 0.0;
+    ugv_pose_.position.y = 0.0;
+    ugv_pose_.position.z = 0.0;
     ugv_pose_.orientation.w = 1.0;
     deployment_goal_pose_ = ugv_pose_;
     last_pose_time_ = this->now();
@@ -199,6 +202,15 @@ private:
       return;
     }
 
+    if (msg->control_type == "MOTION_START" || msg->control_type == "START_MOBILITY") {
+      motion_start_received_ = true;
+      last_pose_time_ = this->now();
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV %s received %s from %s", ugv_id_.c_str(),
+                  msg->control_type.c_str(), msg->src_id.c_str());
+      return;
+    }
+
     if (msg->control_type == "CHARGE_REQUEST") {
       const std::string & uav_id = msg->src_id;
       auto now = this->now();
@@ -240,6 +252,8 @@ private:
     deployment_goal_pose_ = target;
     has_deployment_goal_ = true;
     ugv_in_motion_ = true;
+    deployment_received_ = true;
+    motion_start_received_ = false;
 
     if (last_pose_time_.nanoseconds() == 0) {
       last_pose_time_ = this->now();
@@ -255,7 +269,8 @@ private:
 
   void mobilityStep()
   {
-    if (!mobility_enabled_ || !has_deployment_goal_) {
+    if (!mobility_enabled_ || !has_deployment_goal_ ||
+        !deployment_received_ || !motion_start_received_) {
       return;
     }
 
@@ -439,7 +454,7 @@ private:
     msg.size_bytes = 32;
     msg.creation_time = this->now();
     msg.hop_count = 0;
-    // msg.ttl = 1;            // single-hop broadcast
+    msg.ttl = 1;            // single-hop broadcast
     msg.control_type = "HELLO";
 
     std::ostringstream oss;
@@ -630,6 +645,8 @@ private:
   geometry_msgs::msg::Pose deployment_goal_pose_;
   bool has_deployment_goal_ = false;
   bool ugv_in_motion_ = false;
+  bool deployment_received_ = false;
+  bool motion_start_received_ = false;
   rclcpp::Time last_pose_time_;
 
   bool deployment_ack_sent_ = false;
