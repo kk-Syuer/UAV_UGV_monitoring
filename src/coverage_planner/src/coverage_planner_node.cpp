@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <algorithm>
 #include <random>
+#include <tuple>
+#include <utility>
 #include <cmath>
 #include <queue>
 #include <limits>
@@ -350,8 +352,23 @@ private:
     if (n_rows < 1) n_rows = 1;
     int n_cols = (num_ch + n_rows - 1) / n_rows;  // ceil
 
-    double dx = (n_cols > 0) ? (width  / static_cast<double>(n_cols)) : 0.0;
-    double dy = (n_rows > 0) ? (height / static_cast<double>(n_rows)) : 0.0;
+    auto spacing = [&](int rows, int cols) {
+      double dx_local = (cols > 0) ? (width  / static_cast<double>(cols)) : width;
+      double dy_local = (rows > 0) ? (height / static_cast<double>(rows)) : height;
+      return std::pair<double, double>{dx_local, dy_local};
+    };
+
+    // Enforce that CHs are no farther apart than the service radius so that
+    // every CH stays connected with at least one neighbor.
+    auto [dx, dy] = spacing(n_rows, n_cols);
+    while ((dx > service_radius_ch_ || dy > service_radius_ch_)) {
+      if (dx > dy) {
+        ++n_cols;
+      } else {
+        ++n_rows;
+      }
+      std::tie(dx, dy) = spacing(n_rows, n_cols);
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
