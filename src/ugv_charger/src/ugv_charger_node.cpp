@@ -4,6 +4,7 @@
 #include <deque>
 #include <unordered_map>
 #include <vector>
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -73,6 +74,7 @@ public:
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&UgvChargerNode::deploymentCallback, this, std::placeholders::_1));
+    sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -101,6 +103,7 @@ public:
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100);
+    hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
                 "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
                 ugv_id_.c_str(), policy_name_.c_str(),
@@ -120,6 +123,11 @@ public:
 
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
+
+    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
+    hello_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
+      std::bind(&UgvChargerNode::publishHello, this));
 
     recomputeChargingSpots();
 
@@ -176,37 +184,40 @@ private:
       return;
     }
 
-    // If control_type is set, check it's a CHARGE_REQUEST
-    if (!msg->control_type.empty() && msg->control_type != "CHARGE_REQUEST") {
+    if (msg->control_type == "CHARGE_REQUEST") {
+      const std::string & uav_id = msg->src_id;
+      auto now = this->now();
+
+      // Lookup last known status for this UAV
+      auto it = uav_status_.find(uav_id);
+      if (it == uav_status_.end()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UGV: received CHARGE_REQUEST from '%s' but no status known. Ignoring.",
+                    uav_id.c_str());
+        return;
+      }
+
+      QueueEntry entry;
+      entry.uav_id = uav_id;
+      entry.role = it->second.role;
+      entry.battery_level = it->second.battery_level;
+      entry.request_time = now;
+
+      queue_.push_back(entry);
+      delivered_pub_->publish(*msg);
+
+
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
+                  "Queue size now: %zu",
+                  entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
       return;
     }
 
-    const std::string & uav_id = msg->src_id;
-    auto now = this->now();
-
-    // Lookup last known status for this UAV
-    auto it = uav_status_.find(uav_id);
-    if (it == uav_status_.end()) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UGV: received CHARGE_REQUEST from '%s' but no status known. Ignoring.",
-                  uav_id.c_str());
+    if (msg->control_type == "DEPLOYMENT_CMD" || msg->control_type == "DEPLOYMENT") {
+      handleDeploymentFromNetwork(msg);
       return;
     }
-
-    QueueEntry entry;
-    entry.uav_id = uav_id;
-    entry.role = it->second.role;
-    entry.battery_level = it->second.battery_level;
-    entry.request_time = now;
-
-    queue_.push_back(entry);
-    delivered_pub_->publish(*msg);
-
-
-    RCLCPP_INFO(this->get_logger(),
-                "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
-                "Queue size now: %zu",
-                entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
   }
 
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
@@ -228,6 +239,7 @@ private:
 
     // If this deployment is for the UGV itself, update its pose and log
     if (msg->uav_id == ugv_id_) {
+      deployment_ack_sent_ = false;
       ugv_pose_ = msg->target_pose;
       RCLCPP_INFO(this->get_logger(),
                   "UGV '%s' updated pose to (%.1f, %.1f, %.1f)",
@@ -235,7 +247,133 @@ private:
                   ugv_pose_.position.x,
                   ugv_pose_.position.y,
                   ugv_pose_.position.z);
+      sendDeploymentAck();
     }
+  }
+
+  void handleDeploymentFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    // msg->control_payload format:
+    // "role,cluster_id,ch_id,x,y,z,next_sink,next_ugv"
+    std::stringstream ss(msg->control_payload);
+    std::string token;
+    std::string cluster_id, ch_id;
+    double x = 0.0, y = 0.0, z = 0.0;
+    std::string next_sink;
+
+    // role (unused beyond validation)
+    if (!std::getline(ss, token, ',')) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: bad DEPLOYMENT payload \"%s\"",
+                  ugv_id_.c_str(), msg->control_payload.c_str());
+      return;
+    }
+
+    // cluster_id
+    std::getline(ss, cluster_id, ',');
+    // ch_id
+    std::getline(ss, ch_id, ',');
+
+    // x
+    std::getline(ss, token, ',');
+    x = std::stod(token);
+    // y
+    std::getline(ss, token, ',');
+    y = std::stod(token);
+    // z
+    std::getline(ss, token, ',');
+    z = std::stod(token);
+
+    // next_sink
+    std::getline(ss, next_sink, ',');
+
+    deployment_ack_sent_ = false;
+
+    ugv_pose_.position.x = x;
+    ugv_pose_.position.y = y;
+    ugv_pose_.position.z = z;
+    ugv_pose_.orientation.w = 1.0;
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV %s: DEPLOYMENT via network -> pos=(%.1f,%.1f,%.1f) next_sink=%s",
+                ugv_id_.c_str(),
+                ugv_pose_.position.x,
+                ugv_pose_.position.y,
+                ugv_pose_.position.z,
+                next_sink.empty() ? "-" : next_sink.c_str());
+
+    delivered_pub_->publish(*msg);
+    sendDeploymentAck(next_sink);
+  }
+
+  void sendDeploymentAck(const std::string & suggested_next_hop = "")
+  {
+    if (deployment_ack_sent_) {
+      return;
+    }
+
+    if (!control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage ack;
+    ack.msg_id = "DEP_ACK_" + ugv_id_ + "_" + std::to_string(dep_ack_seq_++);
+    ack.src_id = ugv_id_;
+    ack.dst_id = sink_id_;
+
+    if (!suggested_next_hop.empty() && suggested_next_hop != "-") {
+      ack.next_hop_id = suggested_next_hop;
+    } else if (!uplink_ch_id_.empty()) {
+      ack.next_hop_id = uplink_ch_id_;
+    } else {
+      ack.next_hop_id = sink_id_;
+    }
+
+    ack.msg_type = 3;
+    ack.priority = 1;
+    ack.size_bytes = 16;
+    ack.creation_time = this->now();
+    ack.hop_count = 0;
+
+    ack.control_type = "DEPLOYMENT_ACK";
+    ack.control_payload = "";
+
+    control_pub_->publish(ack);
+    deployment_ack_sent_ = true;
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV %s sent DEPLOYMENT_ACK to sink via %s",
+                ugv_id_.c_str(), ack.next_hop_id.c_str());
+  }
+
+  void publishHello()
+  {
+    if (!control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = ugv_id_ + "_HELLO_" + std::to_string(msg_counter_++);
+    msg.src_id = ugv_id_;
+    msg.dst_id = "broadcast";
+    msg.next_hop_id = "";  // broadcast semantics
+
+    msg.msg_type = 3;       // CONTROL
+    msg.priority = 0;
+    msg.size_bytes = 32;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = 1;            // single-hop broadcast
+    msg.control_type = "HELLO";
+
+    std::ostringstream oss;
+    oss << "UGV,"
+        << ugv_pose_.position.x << ","
+        << ugv_pose_.position.y << ","
+        << 100.0;
+    msg.control_payload = oss.str();
+
+    control_pub_->publish(msg);
   }
 
 
@@ -378,6 +516,7 @@ private:
   // ------------- Members -------------
 
   std::string ugv_id_;
+  std::string sink_id_;
   geometry_msgs::msg::Pose ugv_pose_;
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
 
@@ -385,9 +524,11 @@ private:
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
+  rclcpp::TimerBase::SharedPtr hello_timer_;
   std::string uplink_ch_id_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
+  uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
   double target_utilization_;
@@ -406,6 +547,10 @@ private:
   double w_role_;
   double w_batt_;
   double w_wait_;
+  double hello_period_sec_ = 1.0;
+
+  bool deployment_ack_sent_ = false;
+  uint64_t dep_ack_seq_ = 0;
 
   std::deque<QueueEntry> queue_;
   int max_parallel_spots_;

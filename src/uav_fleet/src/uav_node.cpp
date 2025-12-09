@@ -222,10 +222,10 @@ public:
         return result;
       });
 
-    // Dummy pose
+    // Dummy pose: everyone starts co-located at the origin
     pose_.position.x = 0.0;
     pose_.position.y = 0.0;
-    pose_.position.z = 10.0;
+    pose_.position.z = 0.0;
     pose_.orientation.w = 1.0;
 
     service_radius_ = 400.0f;
@@ -780,20 +780,21 @@ private:
         return;
       }
 
-      // receive start mobility
+      // receive start mobility / motion start barrier
       if (msg->msg_type == 3 &&
-          msg->dst_id == uav_id_ &&
-          msg->control_type == "START_MOBILITY") {
+          (msg->dst_id == uav_id_ || msg->dst_id == "broadcast") &&
+          (msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START")) {
 
         start_mobility_received_ = true;
         RCLCPP_INFO(this->get_logger(),
-                    "[MOB-START] %s received START_MOBILITY from %s",
-                    uav_id_.c_str(), msg->src_id.c_str());
+                    "[MOB-START] %s received %s from %s",
+                    uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
         return;
       }
 
       // Deployment via network
-      if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT") {
+      if (msg->msg_type == 3 &&
+          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
         handleDeploymentFromNetwork(msg);
         return;
       }
@@ -825,7 +826,7 @@ private:
     if (role_ == 1) { // CH
       // Multi-hop DEPLOYMENT forwarding along CH backbone
       if (msg->msg_type == 3 &&
-          msg->control_type == "DEPLOYMENT" &&
+          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD") &&
           msg->dst_id != uav_id_)
       {
           msg->hop_count++;
@@ -941,12 +942,10 @@ private:
                   "UAV %s: ignoring direct deployment; using network DEPLOYMENT",
                   uav_id_.c_str());
       return;
-    }    
-    // 3) This is our own deployment: apply pose + role + cluster config
-    // Instant teleport for now – later this becomes a motion goal.
-    pose_ = msg->target_pose;
-
-    // Apply role + cluster information from the planner
+    }
+    deployment_ack_sent_ = false;
+    start_mobility_received_ = false;
+    // 3) This is our own deployment: apply role + cluster configuration
     role_ = msg->role;
     cluster_id_ = msg->cluster_id;
 
@@ -977,28 +976,25 @@ private:
                   uav_id_.c_str(), ugv_id_.c_str(), msg->next_hop_to_ugv.c_str());
     }
 
+    deployment_goal_pose_ = msg->target_pose;
+
     deployment_received_ = true;
     sendDeploymentAck();
 
-    // Initialize task-based mobility for members
-    if (mobility_enabled_ && role_ == 0) {
-      auto it = ch_poses_.find(my_ch_id_);
-      if (it != ch_poses_.end()) {
-        initTaskMobility(it->second);
-      } else {
-        RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: mobility enabled but CH pose for %s not known yet.",
-                    uav_id_.c_str(), my_ch_id_.c_str());
-      }
+    // Move toward deployment pose only after MOTION_START
+    if (mobility_enabled_) {
+      mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+    } else {
+      pose_ = deployment_goal_pose_;
     }
 
     RCLCPP_INFO(this->get_logger(),
-                "UAV %s: deployment received. New pose=(%.1f, %.1f, %.1f), "
+                "UAV %s: deployment received. Target pose=(%.1f, %.1f, %.1f), "
                 "role=%u, cluster=%s, ch=%s, next_hop_to_sink=%s",
                 uav_id_.c_str(),
-                pose_.position.x,
-                pose_.position.y,
-                pose_.position.z,
+                deployment_goal_pose_.position.x,
+                deployment_goal_pose_.position.y,
+                deployment_goal_pose_.position.z,
                 role_,
                 cluster_id_.c_str(),
                 my_ch_id_.c_str(),
@@ -1327,6 +1323,10 @@ private:
     // next_ugv (possibly empty)
     std::getline(ss, next_ugv, ',');
 
+    // Reset handshake state for new deployments
+    deployment_ack_sent_ = false;
+    start_mobility_received_ = false;
+
     // 1) Store CH pose for later task mobility
     if (role_int == 1) {
       geometry_msgs::msg::Pose ch_pose;
@@ -1364,16 +1364,10 @@ private:
     deployment_received_ = true;
     sendDeploymentAck();
 
-    // We start from whatever pose_ currently is (usually origin)
-    // and fly to deployment_goal_pose_ in mobilityStep().
+    // We start from whatever pose_ currently is (usually origin) and, after
+    // receiving MOTION_START, fly to deployment_goal_pose_ in mobilityStep().
     if (mobility_enabled_) {
-      if (role_ == 0) {
-        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
-      } else {
-        // CHs: normally stay static at deployment pose, no mobility
-        mobility_phase_ = MobilityPhase::IDLE;
-        pose_ = deployment_goal_pose_;
-      }
+      mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
     } else {
       // Mobility disabled: instant teleport
       pose_ = deployment_goal_pose_;
