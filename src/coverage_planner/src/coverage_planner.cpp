@@ -1,6 +1,7 @@
 #include "coverage_planner.hpp"
 
 #include <algorithm>
+#include <cmath>
 #include <limits>
 #include <utility>
 
@@ -8,47 +9,36 @@ CoveragePlanner::CoveragePlanner(double area_min_x,
                                  double area_max_x,
                                  double area_min_y,
                                  double area_max_y,
+                                 double comm_radius,
+                                 double service_radius,
                                  const rclcpp::Logger & logger,
                                  rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub)
 : area_min_x_(area_min_x),
   area_max_x_(area_max_x),
   area_min_y_(area_min_y),
   area_max_y_(area_max_y),
+  comm_radius_(comm_radius),
+  service_radius_(service_radius),
+  layout_spacing_(0.0),
   logger_(logger),
   deployment_pub_(std::move(deployment_pub))
 {
+  const double base_radius = std::max(1.0, std::min(comm_radius_, service_radius_));
+  layout_spacing_ = base_radius / std::sqrt(3.0);  // neighbor distance <= base_radius
 }
 
 void CoveragePlanner::initializeIdealLayouts()
 {
   ideal_layouts_.clear();
 
-  const double mid_x = (area_min_x_ + area_max_x_) / 2.0;
-  const double mid_y = (area_min_y_ + area_max_y_) / 2.0;
-
-  // 1 CH: center of the rectangle
-  ideal_layouts_[1] = { TargetPosition{mid_x, mid_y} };
-
-  // 2 CH: split along X axis (left/right)
-  ideal_layouts_[2] = {
-    TargetPosition{area_min_x_ + (area_max_x_ - area_min_x_) * 0.25, mid_y},
-    TargetPosition{area_min_x_ + (area_max_x_ - area_min_x_) * 0.75, mid_y}
-  };
-
-  // 3 CH: triangle covering the corners
-  ideal_layouts_[3] = {
-    TargetPosition{mid_x, area_max_y_ - (area_max_y_ - area_min_y_) * 0.2},
-    TargetPosition{area_min_x_ + (area_max_x_ - area_min_x_) * 0.2, area_min_y_ + (area_max_y_ - area_min_y_) * 0.2},
-    TargetPosition{area_max_x_ - (area_max_x_ - area_min_x_) * 0.2, area_min_y_ + (area_max_y_ - area_min_y_) * 0.2}
-  };
-
-  // 4 CH: rectangle / diamond-like layout
-  ideal_layouts_[4] = {
-    TargetPosition{area_min_x_ + (area_max_x_ - area_min_x_) * 0.25, area_min_y_ + (area_max_y_ - area_min_y_) * 0.75},
-    TargetPosition{area_max_x_ - (area_max_x_ - area_min_x_) * 0.25, area_min_y_ + (area_max_y_ - area_min_y_) * 0.75},
-    TargetPosition{area_min_x_ + (area_max_x_ - area_min_x_) * 0.25, area_min_y_ + (area_max_y_ - area_min_y_) * 0.25},
-    TargetPosition{area_max_x_ - (area_max_x_ - area_min_x_) * 0.25, area_min_y_ + (area_max_y_ - area_min_y_) * 0.25}
-  };
+  // Precompute layouts for up to 20 CHs using a hexagonal lattice that expands
+  // outward from the origin. This guarantees connectivity (neighbor distance
+  // <= min(comm_radius, service_radius)) and keeps the sink at the center of
+  // the first Voronoi cell.
+  const int max_layout = 20;
+  for (int n = 1; n <= max_layout; ++n) {
+    ideal_layouts_[n] = generateHexLayout(n);
+  }
 }
 
 void CoveragePlanner::setActiveClusterHeads(const std::vector<ClusterHeadInfo> & active_chs)
@@ -160,5 +150,48 @@ double CoveragePlanner::dist2(double x1, double y1, double x2, double y2)
   const double dx = x1 - x2;
   const double dy = y1 - y2;
   return dx * dx + dy * dy;
+}
+
+CoveragePlanner::TargetPosition CoveragePlanner::axialToCartesian(int q, int r, double spacing)
+{
+  // Pointy-top axial to Cartesian conversion.
+  double x = spacing * (std::sqrt(3.0) * (static_cast<double>(q) + static_cast<double>(r) / 2.0));
+  double y = spacing * (1.5 * static_cast<double>(r));
+  return TargetPosition{x, y};
+}
+
+CoveragePlanner::Layout CoveragePlanner::generateHexLayout(int n) const
+{
+  Layout layout;
+  layout.reserve(static_cast<size_t>(n));
+
+  layout.push_back(TargetPosition{0.0, 0.0});
+  if (n == 1) {
+    return layout;
+  }
+
+  std::vector<std::pair<int, int>> directions = {
+    {1, 0}, {0, 1}, {-1, 1}, {-1, 0}, {0, -1}, {1, -1}
+  };
+
+  int q = 0;
+  int r = 0;
+  int placed = 1;
+
+  for (int radius = 1; placed < n; ++radius) {
+    q = radius;
+    r = 0;
+
+    for (const auto & dir : directions) {
+      for (int step = 0; step < radius && placed < n; ++step) {
+        layout.push_back(axialToCartesian(q, r, layout_spacing_));
+        ++placed;
+        q += dir.first;
+        r += dir.second;
+      }
+    }
+  }
+
+  return layout;
 }
 
