@@ -1,7 +1,9 @@
 #include <memory>
 #include <string>
 #include <unordered_set>
+#include <unordered_map>
 #include <sstream>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
@@ -9,6 +11,18 @@
 #include "uav_msgs/msg/uav_deployment.hpp"
 
 using std::placeholders::_1;
+using namespace std::chrono_literals;
+
+static std::vector<std::string> splitString(const std::string & s, char delim)
+{
+  std::vector<std::string> out;
+  std::stringstream ss(s);
+  std::string item;
+  while (std::getline(ss, item, delim)) {
+    out.push_back(item);
+  }
+  return out;
+}
 
 class SinkGatewayNode : public rclcpp::Node
 {
@@ -32,6 +46,8 @@ public:
 
     double period =
       this->declare_parameter<double>("control_period_sec", 0.0);
+
+    ch_timeout_sec_ = this->declare_parameter<double>("ch_timeout_sec", 15.0);
 
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100,
@@ -62,6 +78,9 @@ public:
       RCLCPP_INFO(this->get_logger(),
                   "Control timer disabled (set target_uav_id and control_period_sec to enable).");
     }
+
+    ch_timeout_timer_ = this->create_wall_timer(
+      1s, std::bind(&SinkGatewayNode::checkChTimeouts, this));
   }
 
 private:
@@ -71,6 +90,12 @@ private:
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     if (msg->dst_id != sink_id_) {
+      return;
+    }
+
+    if (msg->msg_type == 3 && msg->control_type == "STATUS_CH") {
+      handleStatusCh(msg);
+      delivered_pub_->publish(*msg);
       return;
     }
 
@@ -263,12 +288,82 @@ private:
     }
   }
 
+  void handleStatusCh(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
+  {
+    auto parts = splitString(msg->control_payload, ',');
+
+    ChStatus & s = ch_status_table_[msg->src_id];
+    s.id = msg->src_id;
+    s.last_update_time = this->now().seconds();
+
+    if (parts.size() >= 4) {
+      s.x = std::stod(parts[0]);
+      s.y = std::stod(parts[1]);
+      s.battery = std::stod(parts[2]);
+      s.state = parts[3];
+    }
+
+    active_ch_ids_.insert(s.id);
+
+    RCLCPP_INFO(this->get_logger(),
+                "[STATUS_CH] from %s pos=(%.1f, %.1f) batt=%.1f state=%s", s.id.c_str(),
+                s.x, s.y, s.battery, s.state.c_str());
+  }
+
+  void handleChDead(const std::string & ch_id)
+  {
+    RCLCPP_WARN(this->get_logger(),
+                "CH %s timed out at sink – triggering coverage recompute", ch_id.c_str());
+    triggerCoverageRecompute();
+  }
+
+  void checkChTimeouts()
+  {
+    const double now = this->now().seconds();
+    for (auto it = active_ch_ids_.begin(); it != active_ch_ids_.end(); ) {
+      const auto & ch_id = *it;
+      auto st_it = ch_status_table_.find(ch_id);
+      if (st_it == ch_status_table_.end()) {
+        it = active_ch_ids_.erase(it);
+        continue;
+      }
+
+      if (now - st_it->second.last_update_time > ch_timeout_sec_) {
+        handleChDead(ch_id);
+        it = active_ch_ids_.erase(it);
+      } else {
+        ++it;
+      }
+    }
+  }
+
+  void triggerCoverageRecompute()
+  {
+    RCLCPP_INFO(this->get_logger(),
+                "[COVERAGE] requesting planner to recompute layouts after CH loss");
+  }
+
   // Members
   std::string sink_id_;
   std::string uplink_ch_id_;
   std::string target_uav_id_;
   uint64_t msg_counter_;
   geometry_msgs::msg::Pose sink_pose_;
+
+  struct ChStatus
+  {
+    std::string id;
+    double last_update_time = 0.0;
+    double x = 0.0;
+    double y = 0.0;
+    double battery = 0.0;
+    std::string state;
+  };
+
+  std::unordered_map<std::string, ChStatus> ch_status_table_;
+  std::unordered_set<std::string> active_ch_ids_;
+  double ch_timeout_sec_ = 0.0;
+  rclcpp::TimerBase::SharedPtr ch_timeout_timer_;
 
   // Deployment tracking
   std::unordered_set<std::string> expected_uavs_;
