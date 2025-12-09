@@ -1,9 +1,10 @@
 from launch import LaunchDescription
 from launch_ros.actions import Node
 
-
-def create_uav_nodes(prefix: str, count: int, role_value: int):
+def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
     nodes = []
+    extra_params = extra_params or {}
+
     for idx in range(1, count + 1):
         uav_id = f"{prefix}_{idx}"
         nodes.append(
@@ -16,6 +17,8 @@ def create_uav_nodes(prefix: str, count: int, role_value: int):
                 parameters=[{
                     "uav_id": uav_id,
                     "role": role_value,
+                    **extra_params,
+
                 }],
             )
         )
@@ -29,24 +32,16 @@ def generate_launch_description():
     mem_ids = [f"uav_mem_{idx}" for idx in range(1, 5)]
     all_uavs = ch_ids + mem_ids
 
-    # Coverage planner to compute initial deployments
-    nodes.append(
-        Node(
-            package="coverage_planner",
-            executable="coverage_planner_node",
-            name="coverage_planner",
-            output="screen",
-            parameters=[{
-                "uav_ids": all_uavs,
-                "num_ch": len(ch_ids),
-                "planner_id": "coverage_planner_init_test",
-            }],
-        )
-    )
-
     # Bring up UAVs used by the planner
     nodes.extend(create_uav_nodes("uav_ch", len(ch_ids), role_value=1))
-    nodes.extend(create_uav_nodes("uav_mem", len(mem_ids), role_value=0))
+    nodes.extend(
+        create_uav_nodes(
+            "uav_mem",
+            len(mem_ids),
+            role_value=0,
+            extra_params={"auto_traffic_enabled": False},
+        )
+    )
 
     # Sink node to coordinate deployment acknowledgments
     nodes.append(
@@ -77,6 +72,21 @@ def generate_launch_description():
             executable="network_monitor_node",
             name="network_monitor",
             output="screen",
+        )
+    )
+
+    # Coverage planner to compute initial deployments (launched after UAVs and visualizer)
+    nodes.append(
+        Node(
+            package="coverage_planner",
+            executable="coverage_planner_node",
+            name="coverage_planner",
+            output="screen",
+            parameters=[{
+                "uav_ids": all_uavs,
+                "num_ch": len(ch_ids),
+                "planner_id": "coverage_planner_init_test",
+            }],
         )
     )
 
