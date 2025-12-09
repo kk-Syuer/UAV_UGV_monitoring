@@ -5,6 +5,8 @@
 #include <unordered_set>
 #include <algorithm>
 #include <random>
+#include <tuple>
+#include <utility>
 #include <cmath>
 #include <queue>
 #include <limits>
@@ -342,16 +344,38 @@ private:
       return;
     }
 
-    double width  = x_max_ - x_min_;
-    double height = y_max_ - y_min_;
+    // Guarantee the sink at (sink_x_, sink_y_) is always inside the planned area
+    // even if the user provided bounds do not include the origin.
+    double min_x = std::min(x_min_, sink_x_);
+    double max_x = std::max(x_max_, sink_x_);
+    double min_y = std::min(y_min_, sink_y_);
+    double max_y = std::max(y_max_, sink_y_);
+
+    double width  = max_x - min_x;
+    double height = max_y - min_y;
 
     // ---- CH grid placement ----
     int n_rows = static_cast<int>(std::floor(std::sqrt(num_ch)));
     if (n_rows < 1) n_rows = 1;
     int n_cols = (num_ch + n_rows - 1) / n_rows;  // ceil
 
-    double dx = (n_cols > 0) ? (width  / static_cast<double>(n_cols)) : 0.0;
-    double dy = (n_rows > 0) ? (height / static_cast<double>(n_rows)) : 0.0;
+    auto spacing = [&](int rows, int cols) {
+      double dx_local = (cols > 0) ? (width  / static_cast<double>(cols)) : width;
+      double dy_local = (rows > 0) ? (height / static_cast<double>(rows)) : height;
+      return std::pair<double, double>{dx_local, dy_local};
+    };
+
+    // Enforce that CHs are no farther apart than the service radius so that
+    // every CH stays connected with at least one neighbor.
+    auto [dx, dy] = spacing(n_rows, n_cols);
+    while ((dx > service_radius_ch_ || dy > service_radius_ch_)) {
+      if (dx > dy) {
+        ++n_cols;
+      } else {
+        ++n_rows;
+      }
+      std::tie(dx, dy) = spacing(n_rows, n_cols);
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "CH grid: rows=%d cols=%d spacing=(dx=%.1f, dy=%.1f)",
@@ -386,8 +410,8 @@ private:
         double fy = (static_cast<double>(r) + 0.5) / static_cast<double>(n_rows);
 
         geometry_msgs::msg::Pose pose;
-        pose.position.x = x_min_ + fx * width;
-        pose.position.y = y_min_ + fy * height;
+        pose.position.x = min_x + fx * width;
+        pose.position.y = min_y + fy * height;
         pose.position.z = z_ch_;
         pose.orientation.w = 1.0;
 

@@ -76,6 +76,10 @@ public:
       std::bind(&UgvChargerNode::deploymentCallback, this, std::placeholders::_1));
     sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
 
+    mobility_enabled_ = this->declare_parameter<bool>("mobility_enabled", true);
+    mobility_dt_sec_  = this->declare_parameter<double>("mobility_dt_sec", 0.2);
+    ugv_speed_mps_    = this->declare_parameter<double>("ugv_speed_mps", 15.3);
+
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
     } else if (policy_name == "edf") {
@@ -128,6 +132,17 @@ public:
     hello_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UgvChargerNode::publishHello, this));
+
+    ugv_pose_.orientation.w = 1.0;
+    deployment_goal_pose_ = ugv_pose_;
+    last_pose_time_ = this->now();
+
+    if (mobility_enabled_) {
+      auto dt = std::chrono::duration<double>(mobility_dt_sec_);
+      mobility_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(dt),
+        std::bind(&UgvChargerNode::mobilityStep, this));
+    }
 
     recomputeChargingSpots();
 
@@ -220,6 +235,71 @@ private:
     }
   }
 
+  void setDeploymentGoal(const geometry_msgs::msg::Pose & target)
+  {
+    deployment_goal_pose_ = target;
+    has_deployment_goal_ = true;
+    ugv_in_motion_ = true;
+
+    if (last_pose_time_.nanoseconds() == 0) {
+      last_pose_time_ = this->now();
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV %s: received deployment target -> (%.1f, %.1f, %.1f)",
+                ugv_id_.c_str(),
+                deployment_goal_pose_.position.x,
+                deployment_goal_pose_.position.y,
+                deployment_goal_pose_.position.z);
+  }
+
+  void mobilityStep()
+  {
+    if (!mobility_enabled_ || !has_deployment_goal_) {
+      return;
+    }
+
+    auto now = this->now();
+    double dt = mobility_dt_sec_;
+    if (last_pose_time_.nanoseconds() > 0 &&
+        last_pose_time_.get_clock_type() == now.get_clock_type())
+    {
+      dt = (now - last_pose_time_).seconds();
+      if (dt <= 0.0) {
+        dt = mobility_dt_sec_;
+      }
+    }
+    last_pose_time_ = now;
+
+    double dx = deployment_goal_pose_.position.x - ugv_pose_.position.x;
+    double dy = deployment_goal_pose_.position.y - ugv_pose_.position.y;
+    double dist = std::sqrt(dx * dx + dy * dy);
+    double max_step = ugv_speed_mps_ * dt;
+
+    if (dist <= 1e-3) {
+      ugv_in_motion_ = false;
+      return;
+    }
+
+    if (dist <= max_step) {
+      ugv_pose_ = deployment_goal_pose_;
+      ugv_in_motion_ = false;
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV %s reached deployment pose (%.1f, %.1f, %.1f)",
+                  ugv_id_.c_str(),
+                  ugv_pose_.position.x,
+                  ugv_pose_.position.y,
+                  ugv_pose_.position.z);
+      return;
+    }
+
+    double ux = dx / dist;
+    double uy = dy / dist;
+    ugv_pose_.position.x += ux * max_step;
+    ugv_pose_.position.y += uy * max_step;
+    // keep current z (UGV stays on ground unless target dictates otherwise)
+  }
+
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
     // Always store the pose for possible future use
@@ -240,13 +320,7 @@ private:
     // If this deployment is for the UGV itself, update its pose and log
     if (msg->uav_id == ugv_id_) {
       deployment_ack_sent_ = false;
-      ugv_pose_ = msg->target_pose;
-      RCLCPP_INFO(this->get_logger(),
-                  "UGV '%s' updated pose to (%.1f, %.1f, %.1f)",
-                  ugv_id_.c_str(),
-                  ugv_pose_.position.x,
-                  ugv_pose_.position.y,
-                  ugv_pose_.position.z);
+      setDeploymentGoal(msg->target_pose);
       sendDeploymentAck();
     }
   }
@@ -289,17 +363,19 @@ private:
 
     deployment_ack_sent_ = false;
 
-    ugv_pose_.position.x = x;
-    ugv_pose_.position.y = y;
-    ugv_pose_.position.z = z;
-    ugv_pose_.orientation.w = 1.0;
+    geometry_msgs::msg::Pose goal;
+    goal.position.x = x;
+    goal.position.y = y;
+    goal.position.z = z;
+    goal.orientation.w = 1.0;
+    setDeploymentGoal(goal);
 
     RCLCPP_INFO(this->get_logger(),
                 "UGV %s: DEPLOYMENT via network -> pos=(%.1f,%.1f,%.1f) next_sink=%s",
                 ugv_id_.c_str(),
-                ugv_pose_.position.x,
-                ugv_pose_.position.y,
-                ugv_pose_.position.z,
+                deployment_goal_pose_.position.x,
+                deployment_goal_pose_.position.y,
+                deployment_goal_pose_.position.z,
                 next_sink.empty() ? "-" : next_sink.c_str());
 
     delivered_pub_->publish(*msg);
@@ -555,6 +631,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
   rclcpp::TimerBase::SharedPtr hello_timer_;
+  rclcpp::TimerBase::SharedPtr mobility_timer_;
   std::string uplink_ch_id_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
@@ -566,6 +643,9 @@ private:
   double charge_time_ch_min_;
   double flight_time_mem_min_;
   double charge_time_mem_min_;
+  bool mobility_enabled_ = true;
+  double mobility_dt_sec_ = 0.2;
+  double ugv_speed_mps_ = 15.3;
   Policy policy_;
   std::string policy_name_;
 
@@ -578,6 +658,10 @@ private:
   double w_batt_;
   double w_wait_;
   double hello_period_sec_ = 1.0;
+  geometry_msgs::msg::Pose deployment_goal_pose_;
+  bool has_deployment_goal_ = false;
+  bool ugv_in_motion_ = false;
+  rclcpp::Time last_pose_time_;
 
   bool deployment_ack_sent_ = false;
   uint64_t dep_ack_seq_ = 0;
