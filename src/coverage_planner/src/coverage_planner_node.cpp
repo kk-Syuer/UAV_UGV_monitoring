@@ -344,8 +344,15 @@ private:
       return;
     }
 
-    double width  = x_max_ - x_min_;
-    double height = y_max_ - y_min_;
+    // Guarantee the sink at (sink_x_, sink_y_) is always inside the planned area
+    // even if the user provided bounds do not include the origin.
+    double min_x = std::min(x_min_, sink_x_);
+    double max_x = std::max(x_max_, sink_x_);
+    double min_y = std::min(y_min_, sink_y_);
+    double max_y = std::max(y_max_, sink_y_);
+
+    double width  = max_x - min_x;
+    double height = max_y - min_y;
 
     // ---- CH grid placement ----
     int n_rows = static_cast<int>(std::floor(std::sqrt(num_ch)));
@@ -403,8 +410,8 @@ private:
         double fy = (static_cast<double>(r) + 0.5) / static_cast<double>(n_rows);
 
         geometry_msgs::msg::Pose pose;
-        pose.position.x = x_min_ + fx * width;
-        pose.position.y = y_min_ + fy * height;
+        pose.position.x = min_x + fx * width;
+        pose.position.y = min_y + fy * height;
         pose.position.z = z_ch_;
         pose.orientation.w = 1.0;
 

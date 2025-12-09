@@ -114,8 +114,9 @@ public:
       this->declare_parameter<bool>("mobility_enabled", true);
     mobility_dt_sec_ =
       this->declare_parameter<double>("mobility_dt_sec", 0.2);
+    // Default cruise speed ~55 km/h
     uav_speed_mps_ =
-      this->declare_parameter<double>("uav_speed_mps", 5.0);
+      this->declare_parameter<double>("uav_speed_mps", 15.3);
     tasks_per_round_ =
       this->declare_parameter<int>("tasks_per_round", 8);
     mobility_phase_ = MobilityPhase::IDLE;
