@@ -4,6 +4,7 @@
 #include <deque>
 #include <unordered_map>
 #include <vector>
+#include <sstream>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -101,6 +102,7 @@ public:
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100);
+    hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
                 "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
                 ugv_id_.c_str(), policy_name_.c_str(),
@@ -120,6 +122,11 @@ public:
 
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
+
+    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
+    hello_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
+      std::bind(&UgvChargerNode::publishHello, this));
 
     recomputeChargingSpots();
 
@@ -236,6 +243,36 @@ private:
                   ugv_pose_.position.y,
                   ugv_pose_.position.z);
     }
+  }
+
+  void publishHello()
+  {
+    if (!control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = ugv_id_ + "_HELLO_" + std::to_string(msg_counter_++);
+    msg.src_id = ugv_id_;
+    msg.dst_id = "broadcast";
+    msg.next_hop_id = "";  // broadcast semantics
+
+    msg.msg_type = 3;       // CONTROL
+    msg.priority = 0;
+    msg.size_bytes = 32;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = 1;            // single-hop broadcast
+    msg.control_type = "HELLO";
+
+    std::ostringstream oss;
+    oss << "UGV,"
+        << ugv_pose_.position.x << ","
+        << ugv_pose_.position.y << ","
+        << 100.0;
+    msg.control_payload = oss.str();
+
+    control_pub_->publish(msg);
   }
 
 
@@ -385,9 +422,11 @@ private:
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
+  rclcpp::TimerBase::SharedPtr hello_timer_;
   std::string uplink_ch_id_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
+  uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
   double target_utilization_;
@@ -406,6 +445,7 @@ private:
   double w_role_;
   double w_batt_;
   double w_wait_;
+  double hello_period_sec_ = 1.0;
 
   std::deque<QueueEntry> queue_;
   int max_parallel_spots_;
