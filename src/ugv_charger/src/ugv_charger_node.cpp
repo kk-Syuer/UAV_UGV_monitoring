@@ -206,7 +206,7 @@ private:
       motion_start_received_ = true;
       last_pose_time_ = this->now();
       RCLCPP_INFO(this->get_logger(),
-                  "UGV %s received %s from %s", ugv_id_.c_str(),
+                  "[MOB-START] %s received %s from %s", ugv_id_.c_str(),
                   msg->control_type.c_str(), msg->src_id.c_str());
       return;
     }

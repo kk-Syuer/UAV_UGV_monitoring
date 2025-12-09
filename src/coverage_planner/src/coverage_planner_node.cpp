@@ -909,6 +909,18 @@ private:
                        });
   }
 
+  std::string chooseMotionStartNextHop(const uav_msgs::msg::UavDeployment & dep)
+  {
+    // For MOTION_START we prefer a deterministic first hop that always reaches
+    // the destination without depending on bootstrap routing.
+    // - Members: first hop to their CH so cluster can fan out
+    // - Everyone else (CHs, UGV, sink): direct next hop to the destination
+    if (dep.role == 0 && !dep.ch_id.empty()) {
+      return dep.ch_id;
+    }
+    return dep.uav_id;
+  }
+
   void sendMotionStart()
   {
     if (!traffic_pub_) {
@@ -921,7 +933,7 @@ private:
       msg.msg_id = "MOTION_START_" + dep.uav_id + "_" + std::to_string(deployment_seq_++);
       msg.src_id = planner_id_;
       msg.dst_id = dep.uav_id;
-      msg.next_hop_id = chooseBootstrapNextHop(dep);
+      msg.next_hop_id = chooseMotionStartNextHop(dep);
       msg.msg_type = 3;
       msg.priority = 1;
       msg.size_bytes = 16;
