@@ -780,20 +780,21 @@ private:
         return;
       }
 
-      // receive start mobility
+      // receive start mobility / motion start barrier
       if (msg->msg_type == 3 &&
-          msg->dst_id == uav_id_ &&
-          msg->control_type == "START_MOBILITY") {
+          (msg->dst_id == uav_id_ || msg->dst_id == "broadcast") &&
+          (msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START")) {
 
         start_mobility_received_ = true;
         RCLCPP_INFO(this->get_logger(),
-                    "[MOB-START] %s received START_MOBILITY from %s",
-                    uav_id_.c_str(), msg->src_id.c_str());
+                    "[MOB-START] %s received %s from %s",
+                    uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
         return;
       }
 
       // Deployment via network
-      if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT") {
+      if (msg->msg_type == 3 &&
+          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
         handleDeploymentFromNetwork(msg);
         return;
       }
@@ -825,7 +826,7 @@ private:
     if (role_ == 1) { // CH
       // Multi-hop DEPLOYMENT forwarding along CH backbone
       if (msg->msg_type == 3 &&
-          msg->control_type == "DEPLOYMENT" &&
+          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD") &&
           msg->dst_id != uav_id_)
       {
           msg->hop_count++;
@@ -941,7 +942,9 @@ private:
                   "UAV %s: ignoring direct deployment; using network DEPLOYMENT",
                   uav_id_.c_str());
       return;
-    }    
+    }
+    deployment_ack_sent_ = false;
+    start_mobility_received_ = false;
     // 3) This is our own deployment: apply pose + role + cluster config
     // Instant teleport for now – later this becomes a motion goal.
     pose_ = msg->target_pose;
@@ -1326,6 +1329,10 @@ private:
     std::getline(ss, next_sink, ',');
     // next_ugv (possibly empty)
     std::getline(ss, next_ugv, ',');
+
+    // Reset handshake state for new deployments
+    deployment_ack_sent_ = false;
+    start_mobility_received_ = false;
 
     // 1) Store CH pose for later task mobility
     if (role_int == 1) {

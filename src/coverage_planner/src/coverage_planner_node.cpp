@@ -2,6 +2,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 #include <algorithm>
 #include <random>
 #include <cmath>
@@ -28,6 +29,8 @@ public:
     // ---- Parameters ----
     uav_ids_ = this->declare_parameter<std::vector<std::string>>(
       "uav_ids", std::vector<std::string>{});
+    expected_extra_ids_ = this->declare_parameter<std::vector<std::string>>(
+      "expected_extra_ids", std::vector<std::string>{});
 
     num_ch_ = this->declare_parameter<int>("num_ch", 1);
 
@@ -42,6 +45,7 @@ public:
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
     planner_id_ = this->declare_parameter<std::string>("planner_id", "coverage_planner");
+    sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
     // Bootstrap CH: by default first CH in the list
     bootstrap_ch_id_ = this->declare_parameter<std::string>("bootstrap_ch_id", "");
     if (bootstrap_ch_id_.empty()) {
@@ -84,6 +88,15 @@ public:
       "/uav_fleet/status", 20,
       std::bind(&CoveragePlannerNode::statusCallback, this, std::placeholders::_1));
 
+    // Subscribe to HELLO / DEPLOYMENT_ACK traffic for discovery and barriers
+    traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
+      "/network/traffic", 50,
+      std::bind(&CoveragePlannerNode::trafficCallback, this, std::placeholders::_1));
+
+    expected_devices_.insert(uav_ids_.begin(), uav_ids_.end());
+    expected_devices_.insert("ugv");
+    expected_devices_.insert(expected_extra_ids_.begin(), expected_extra_ids_.end());
+
     RCLCPP_INFO(this->get_logger(),
                 "Coverage planner started. num_ch=%d, uav_ids=%zu, "
                 "area=[%.1f,%.1f]x[%.1f,%.1f], R_s=%.1f, R_c=%.1f",
@@ -98,8 +111,45 @@ private:
   // ------------------------------------------------------------------
   void periodicUpdate()
   {
-    // First time: compute full deployment (CHs, members, sink, UGV)
+    // First time: wait for HELLO discovery then compute full deployment
     if (!first_deployment_done_) {
+      if (!readyForDeployment()) {
+        std::vector<std::string> missing;
+        for (const auto & id : expected_devices_) {
+          if (discovered_devices_.count(id) == 0) {
+            missing.push_back(id);
+          }
+        }
+
+        std::ostringstream seen_stream;
+        bool first_seen = true;
+        for (const auto & id : discovered_devices_) {
+          if (!first_seen) {
+            seen_stream << ", ";
+          }
+          seen_stream << id;
+          first_seen = false;
+        }
+
+        std::ostringstream missing_stream;
+        bool first_missing = true;
+        for (const auto & id : missing) {
+          if (!first_missing) {
+            missing_stream << ", ";
+          }
+          missing_stream << id;
+          first_missing = false;
+        }
+
+        RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 30000,
+                             "Waiting for HELLO discovery: %zu/%zu devices seen "
+                             "(seen: [%s], missing: [%s])",
+                             discovered_devices_.size(), expected_devices_.size(),
+                             seen_stream.str().c_str(),
+                             missing_stream.str().c_str());
+        return;
+      }
+
       if (uav_ids_.empty()) {
         RCLCPP_WARN(this->get_logger(),
                     "Coverage planner: no uav_ids provided, nothing to do.");
@@ -109,8 +159,18 @@ private:
 
       computeDeployment();
       first_deployment_done_ = true;
-      RCLCPP_INFO(this->get_logger(), "Coverage planner: initial deployment sent.");
+      waiting_for_acks_ = true;
+      RCLCPP_INFO(this->get_logger(),
+                  "Coverage planner: initial deployment sent (awaiting ACKs).");
       return;
+    }
+
+    if (waiting_for_acks_ && pending_acks_.empty() && !motion_start_sent_) {
+      sendMotionStart();
+      motion_start_sent_ = true;
+      waiting_for_acks_ = false;
+      RCLCPP_INFO(this->get_logger(),
+                  "Coverage planner: all ACKs received, MOTION_START broadcasted.");
     }
 
     // Later: only recompute routing if some CH changed backbone state
@@ -125,25 +185,91 @@ private:
   // ------------------------------------------------------------------
   // plcement of sink & UGV
   // ------------------------------------------------------------------
-  void randomizeSinkAndUgv()
+  void placeSink()
   {
-    if (sink_placed_ && ugv_placed_) {
+    if (sink_placed_) {
       return;
     }
 
-    // For now, we conceptually treat the sink & UGV as starting at the origin.
-    // Their "planned" final position is also the origin; later we can change this
-    // to a more sophisticated placement, but we keep it simple and connected.
     sink_x_ = 0.0;
     sink_y_ = 0.0;
     sink_placed_ = true;
 
-    ugv_x_ = 0.0;
-    ugv_y_ = 0.0;
+    RCLCPP_INFO(this->get_logger(), "Sink planned at origin (0.0, 0.0).");
+  }
+
+
+  void computeUgvPosition(const std::vector<geometry_msgs::msg::Pose> &ch_poses)
+  {
+    if (ugv_placed_) {
+      return;
+    }
+
+    if (ch_poses.empty()) {
+      ugv_x_ = 0.0;
+      ugv_y_ = 0.0;
+      ugv_placed_ = true;
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV position defaults to origin because no CH poses are available.");
+      return;
+    }
+
+    // Weiszfeld-style geometric median estimate (minimizes sum of distances)
+    double x = 0.0, y = 0.0;
+    for (const auto &pose : ch_poses) {
+      x += pose.position.x;
+      y += pose.position.y;
+    }
+    x /= static_cast<double>(ch_poses.size());
+    y /= static_cast<double>(ch_poses.size());
+
+    const int max_iters = 50;
+    const double eps = 1e-6;
+
+    for (int iter = 0; iter < max_iters; ++iter) {
+      double num_x = 0.0, num_y = 0.0, denom = 0.0;
+      bool coincident = false;
+
+      for (const auto &pose : ch_poses) {
+        double dx = x - pose.position.x;
+        double dy = y - pose.position.y;
+        double d = std::sqrt(dx * dx + dy * dy);
+
+        if (d < eps) {
+          coincident = true;
+          num_x = pose.position.x;
+          num_y = pose.position.y;
+          denom = 1.0;
+          break;
+        }
+
+        double w = 1.0 / d;
+        num_x += w * pose.position.x;
+        num_y += w * pose.position.y;
+        denom += w;
+      }
+
+      double new_x = coincident ? num_x : num_x / denom;
+      double new_y = coincident ? num_y : num_y / denom;
+
+      if (std::sqrt((new_x - x) * (new_x - x) + (new_y - y) * (new_y - y)) < eps) {
+        x = new_x;
+        y = new_y;
+        break;
+      }
+
+      x = new_x;
+      y = new_y;
+    }
+
+    // Keep the UGV inside the covered area bounds
+    ugv_x_ = std::clamp(x, x_min_, x_max_);
+    ugv_y_ = std::clamp(y, y_min_, y_max_);
     ugv_placed_ = true;
 
     RCLCPP_INFO(this->get_logger(),
-                "Sink and UGV planned at origin (0.0, 0.0).");
+                "UGV planned at geometric median (%.2f, %.2f) of CH positions.",
+                ugv_x_, ugv_y_);
   }
 
 
@@ -165,10 +291,7 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
-      if (accept_direct_deployment_) {
-        // Legacy mode: planner itself injects deployment TrafficMessages.
-        sendDeploymentTraffic(dep);
-      }
+      sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy SINK sink_gateway at (%.1f, %.1f)",
                   sink_x_, sink_y_);
@@ -190,10 +313,9 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       deployment_pub_->publish(dep);
-      if (accept_direct_deployment_) {
-        // Legacy mode: planner itself injects deployment TrafficMessages.
-        sendDeploymentTraffic(dep);
-      }
+      pending_acks_.insert(dep.uav_id);
+      last_deployments_[dep.uav_id] = dep;
+      sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy UGV ugv at (%.1f, %.1f)",
                   ugv_x_, ugv_y_);
@@ -206,8 +328,7 @@ private:
   void computeDeployment()
   {
     // 1) Place sink & UGV, publish them
-    randomizeSinkAndUgv();
-    publishSinkAndUgvDeployment();
+    placeSink();
 
     // 2) Decide CH vs members: first num_ch_ are CHs
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
@@ -286,6 +407,10 @@ private:
     ch_ids_ = ch_ids;
     ch_poses_ = ch_poses;
     cluster_ids_ = cluster_ids;
+
+    computeUgvPosition(ch_poses);
+
+    publishSinkAndUgvDeployment();
 
     // ---- Helper: Dijkstra towards arbitrary ground target (sink or UGV) ----
     auto dist2_xy = [](double x1, double y1, double x2, double y2) {
@@ -411,22 +536,40 @@ private:
     std::vector<std::string> next_hop_to_ugv =
       compute_next_hops_to_target(ugv_x_, ugv_y_, "ugv", "ugv");
 
-    // ---- Publish MEMBER deployments (initially at their CH position) ----
-    for (const auto & id : member_ids) {
-      // Find nearest CH in XY using CH poses
-      double best_d2 = std::numeric_limits<double>::infinity();
-      int best_ch_idx = 0;
+    // ---- Publish CH deployments ----
+    for (int i = 0; i < num_ch; ++i) {
+      uav_msgs::msg::UavDeployment dep;
+      dep.uav_id      = ch_ids[static_cast<size_t>(i)];
+      dep.role        = 1;  // CH
+      dep.cluster_id  = cluster_ids[static_cast<size_t>(i)];
+      dep.ch_id       = dep.uav_id;
+      dep.target_pose = ch_poses[static_cast<size_t>(i)];
+      dep.next_hop_to_sink = next_hop_to_sink[static_cast<size_t>(i)];
+      dep.next_hop_to_ugv  = next_hop_to_ugv[static_cast<size_t>(i)];
 
-      for (int i = 0; i < num_ch; ++i) {
-        const auto & ch_pose = ch_poses[static_cast<size_t>(i)];
-        double dxm = ch_pose.position.x;  // distance from origin doesn't matter here,
-        double dym = ch_pose.position.y;  // we just want the nearest CH in the grid
-        double d2  = dxm * dxm + dym * dym;
-        if (d2 < best_d2) {
-          best_d2 = d2;
-          best_ch_idx = i;
-        }
-      }
+      RCLCPP_INFO(this->get_logger(),
+                  "Deploy CH %s -> cluster=%s pose=(%.1f, %.1f, %.1f) sink_nh=%s ugv_nh=%s",
+                  dep.uav_id.c_str(), dep.cluster_id.c_str(),
+                  dep.target_pose.position.x,
+                  dep.target_pose.position.y,
+                  dep.target_pose.position.z,
+                  dep.next_hop_to_sink.empty() ? "-" : dep.next_hop_to_sink.c_str(),
+                  dep.next_hop_to_ugv.empty() ? "-" : dep.next_hop_to_ugv.c_str());
+
+      deployment_pub_->publish(dep);
+      pending_acks_.insert(dep.uav_id);
+      last_deployments_[dep.uav_id] = dep;
+      sendDeploymentTraffic(dep);
+    }
+
+    // ---- Publish MEMBER deployments (initially at their CH position) ----
+    for (size_t member_idx = 0; member_idx < member_ids.size(); ++member_idx) {
+      const auto & id = member_ids[member_idx];
+
+      // Distribute members evenly across CHs to avoid collapsing everyone onto
+      // the closest CH to the origin (which would happen with the old
+      // nearest-origin heuristic).
+      int best_ch_idx = static_cast<int>(member_idx % static_cast<size_t>(num_ch));
 
       // Member's *deployment target* is exactly its CH position (inside coverage)
       geometry_msgs::msg::Pose pose;
@@ -456,10 +599,10 @@ private:
                   dep.target_pose.position.z);
 
       deployment_pub_->publish(dep);
-      if (accept_direct_deployment_) {
-        // Legacy mode: planner itself injects deployment TrafficMessages.
-        sendDeploymentTraffic(dep);
-      }
+      pending_acks_.insert(dep.uav_id);
+      last_deployments_[dep.uav_id] = dep;
+      // Network deployment is always injected so members receive commands via the mesh
+      sendDeploymentTraffic(dep);
     }
   }
 
@@ -617,10 +760,7 @@ private:
       dep.next_hop_to_ugv  = nh_ugv;
 
       deployment_pub_->publish(dep);
-      if (accept_direct_deployment_) {
-        // Legacy mode: planner itself injects deployment TrafficMessages.
-        sendDeploymentTraffic(dep);
-      }
+      sendDeploymentTraffic(dep);
       RCLCPP_WARN(this->get_logger(),
                   "[planner] Updated routing for CH %s: sink=%s  ugv=%s",
                   id.c_str(),
@@ -708,32 +848,7 @@ private:
     msg.src_id = planner_id_;
     msg.dst_id = dep.uav_id;
 
-    // ----------------------------------------------------
-    // Decide first hop for bootstrapping (no parent_map_)
-    // ----------------------------------------------------
-    std::string next_hop;
-
-    if (dep.uav_id == "sink_gateway" || dep.uav_id == "ugv") {
-      // Infrastructure nodes: inject via bootstrap CH if we have one,
-      // otherwise send directly to them.
-      if (!bootstrap_ch_id_.empty()) {
-        next_hop = bootstrap_ch_id_;
-      } else {
-        next_hop = dep.uav_id;
-      }
-    } else if (dep.role == 1) {
-      // CH deployment: route via bootstrap CH if set, otherwise directly
-      if (!bootstrap_ch_id_.empty()) {
-        next_hop = bootstrap_ch_id_;
-      } else {
-        next_hop = dep.uav_id;
-      }
-    } else {
-      // Member deployment: always first hop to its CH
-      next_hop = dep.ch_id;
-    }
-
-    msg.next_hop_id = next_hop;
+    msg.next_hop_id = chooseBootstrapNextHop(dep);
 
     // ----------------------------------------------------
     // Fill remaining TrafficMessage fields
@@ -744,7 +859,7 @@ private:
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
-    msg.control_type = "DEPLOYMENT";
+    msg.control_type = "DEPLOYMENT_CMD";
 
     std::ostringstream oss;
     std::string safe_sink = dep.next_hop_to_sink.empty() ? "-" : dep.next_hop_to_sink;
@@ -770,6 +885,84 @@ private:
                 msg.control_payload.c_str());
   }
 
+  std::string chooseBootstrapNextHop(const uav_msgs::msg::UavDeployment & dep)
+  {
+    if (dep.uav_id == "sink_gateway" || dep.uav_id == "ugv") {
+      // Infrastructure nodes: inject via bootstrap CH if we have one,
+      // otherwise send directly to them.
+      if (!bootstrap_ch_id_.empty()) {
+        return bootstrap_ch_id_;
+      }
+      return dep.uav_id;
+    }
+
+    if (dep.role == 1) {
+      // CH deployment: route via bootstrap CH if set, otherwise directly
+      if (!bootstrap_ch_id_.empty()) {
+        return bootstrap_ch_id_;
+      }
+      return dep.uav_id;
+    }
+
+    // Member deployment: always first hop to its CH
+    return dep.ch_id;
+  }
+
+  bool readyForDeployment() const
+  {
+    return discovered_devices_.size() >= expected_devices_.size() &&
+           std::all_of(expected_devices_.begin(), expected_devices_.end(),
+                       [&](const auto & id) {
+                         return discovered_devices_.count(id) > 0;
+                       });
+  }
+
+  void sendMotionStart()
+  {
+    if (!traffic_pub_) {
+      return;
+    }
+
+    for (const auto & kv : last_deployments_) {
+      const auto & dep = kv.second;
+      uav_msgs::msg::TrafficMessage msg;
+      msg.msg_id = "MOTION_START_" + dep.uav_id + "_" + std::to_string(deployment_seq_++);
+      msg.src_id = planner_id_;
+      msg.dst_id = dep.uav_id;
+      msg.next_hop_id = chooseBootstrapNextHop(dep);
+      msg.msg_type = 3;
+      msg.priority = 1;
+      msg.size_bytes = 16;
+      msg.creation_time = this->now();
+      msg.hop_count = 0;
+      msg.control_type = "MOTION_START";
+      msg.control_payload = "";
+
+      traffic_pub_->publish(msg);
+      RCLCPP_INFO(this->get_logger(),
+                  "[NET-MOTION] to=%s next_hop=%s", dep.uav_id.c_str(),
+                  msg.next_hop_id.c_str());
+    }
+  }
+
+  void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    if (msg->control_type == "HELLO") {
+      discovered_devices_.insert(msg->src_id);
+      return;
+    }
+
+    if (msg->control_type == "DEPLOYMENT_ACK" && msg->dst_id == sink_id_) {
+      pending_acks_.erase(msg->src_id);
+      if (!pending_acks_.empty()) {
+        RCLCPP_INFO(this->get_logger(),
+                    "[ACK] Received DEPLOYMENT_ACK from %s (%zu remaining)",
+                    msg->src_id.c_str(), pending_acks_.size());
+      }
+      return;
+    }
+  }
+
   // ------------------------------------------------------------------
   // Members
   // ------------------------------------------------------------------
@@ -792,18 +985,22 @@ private:
   bool planned_ = false;
   bool first_deployment_done_ = false;
   bool accept_direct_deployment_;
+  bool waiting_for_acks_ = false;
+  bool motion_start_sent_ = false;
 
 
   // For network deployment
   std::string bootstrap_ch_id_;
 
   std::string planner_id_ = "coverage_planner";
+  std::string sink_id_ = "sink_gateway";
   uint64_t deployment_seq_ = 0;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
 
   rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
+  rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
 
   // Backbone state: CH id -> active?
   std::unordered_map<std::string, bool> ch_backbone_active_;
@@ -817,6 +1014,13 @@ private:
   std::vector<std::string>             ch_ids_;
   std::vector<geometry_msgs::msg::Pose> ch_poses_;
   std::vector<std::string>             cluster_ids_;
+
+  // Discovery / ACK tracking
+  std::vector<std::string> expected_extra_ids_;
+  std::unordered_set<std::string> expected_devices_;
+  std::unordered_set<std::string> discovered_devices_;
+  std::unordered_set<std::string> pending_acks_;
+  std::unordered_map<std::string, uav_msgs::msg::UavDeployment> last_deployments_;
 };
 
 int main(int argc, char ** argv)

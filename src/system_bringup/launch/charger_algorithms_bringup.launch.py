@@ -1,4 +1,6 @@
 from launch import LaunchDescription
+from launch.actions import DeclareLaunchArgument
+from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -24,26 +26,25 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
     return nodes
 
 
-def create_user_device_nodes(count: int):
-    nodes = []
-    for idx in range(1, count + 1):
-        device_id = f"user_dev_{idx}"
-        nodes.append(
-            Node(
-                package="user_devices_sim",
-                executable="user_device_node",
-                name=device_id,
-                namespace=device_id,
-                output="screen",
-                parameters=[{
-                    "user_id": device_id,
-                }],
-            )
-        )
-    return nodes
-
-
 def generate_launch_description():
+    charging_policy = LaunchConfiguration("charging_policy")
+    charging_duration = LaunchConfiguration("charging_duration_sec")
+
+    declared_arguments = [
+        DeclareLaunchArgument(
+            "charging_policy",
+            default_value="fcfs",
+            description=(
+                "UGV charging policy to exercise (fcfs, role_priority, edf, dynamic)"
+            ),
+        ),
+        DeclareLaunchArgument(
+            "charging_duration_sec",
+            default_value="20.0",
+            description="Simulated charging duration per UAV in seconds",
+        ),
+    ]
+
     nodes = []
 
     # Cluster-head UAVs (role 1)
@@ -55,7 +56,7 @@ def generate_launch_description():
             "uav_mem",
             4,
             role_value=0,
-            extra_params={"auto_traffic_enabled": True},
+            extra_params={"auto_traffic_enabled": False},
         )
     )
 
@@ -71,7 +72,7 @@ def generate_launch_description():
         )
     )
 
-    # UGV charger node
+    # UGV charger node with configurable policy
     nodes.append(
         Node(
             package="ugv_charger",
@@ -79,30 +80,16 @@ def generate_launch_description():
             name="ugv_charger",
             namespace="ugv",
             output="screen",
+            parameters=[
+                {
+                    "charging_policy": charging_policy,
+                    "charging_duration_sec": charging_duration,
+                }
+            ],
         )
     )
 
-    # Fleet visualizer
-    nodes.append(
-        Node(
-            package="planner_viz",
-            executable="fleet_viz",
-            name="fleet_viz",
-            output="screen",
-        )
-    )
-
-    # Weather server
-    nodes.append(
-        Node(
-            package="weather_server",
-            executable="weather_node",
-            name="weather_server",
-            output="screen",
-        )
-    )
-
-    # Network monitor
+    # Network monitor to observe charge requests and assignments
     nodes.append(
         Node(
             package="network_monitor",
@@ -112,7 +99,14 @@ def generate_launch_description():
         )
     )
 
-    # User devices
-    nodes.extend(create_user_device_nodes(3))
+    # Weather server to supply environmental data to UAVs
+    nodes.append(
+        Node(
+            package="weather_server",
+            executable="weather_node",
+            name="weather_server",
+            output="screen",
+        )
+    )
 
-    return LaunchDescription(nodes)
+    return LaunchDescription(declared_arguments + nodes)
