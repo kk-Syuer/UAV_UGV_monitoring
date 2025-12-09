@@ -13,6 +13,7 @@
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
+#include "coverage_planner.hpp"
 #include <sstream>
 
 
@@ -59,6 +60,10 @@ public:
       "/coverage_planner/deployment", 10);
     accept_direct_deployment_ = this->declare_parameter<bool>(
       "accept_direct_deployment", false);
+
+    coverage_planner_ = std::make_unique<CoveragePlanner>(
+      x_min_, x_max_, y_min_, y_max_, this->get_logger(), deployment_pub_);
+    coverage_planner_->initializeIdealLayouts();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 50);
@@ -654,6 +659,42 @@ private:
                   old_state ? "ACTIVE" : "INACTIVE",
                   new_state ? "ACTIVE" : "INACTIVE");
     }
+
+    bool planner_update_needed = false;
+    if (msg->backbone_active) {
+      CoveragePlanner::ClusterHeadInfo info;
+      info.id = msg->uav_id;
+      info.cluster_id = msg->cluster_id;
+      info.x = msg->pose.position.x;
+      info.y = msg->pose.position.y;
+      info.z = msg->pose.position.z;
+
+      auto it_info = active_ch_info_.find(info.id);
+      if (it_info == active_ch_info_.end()) {
+        active_ch_info_[info.id] = info;
+        planner_update_needed = true;
+      } else {
+        const double dx = std::fabs(it_info->second.x - info.x);
+        const double dy = std::fabs(it_info->second.y - info.y);
+        if (dx > 1e-3 || dy > 1e-3) {
+          it_info->second = info;
+          planner_update_needed = true;
+        }
+      }
+    } else {
+      auto erased = active_ch_info_.erase(id);
+      planner_update_needed = planner_update_needed || (erased > 0);
+    }
+
+    if (planner_update_needed && coverage_planner_) {
+      std::vector<CoveragePlanner::ClusterHeadInfo> active_chs;
+      active_chs.reserve(active_ch_info_.size());
+      for (const auto & kv : active_ch_info_) {
+        active_chs.push_back(kv.second);
+      }
+      coverage_planner_->setActiveClusterHeads(active_chs);
+      coverage_planner_->updateClusterHeadTargets();
+    }
   }
 
   void sendDeploymentTraffic(const uav_msgs::msg::UavDeployment & dep)
@@ -767,6 +808,10 @@ private:
   // Backbone state: CH id -> active?
   std::unordered_map<std::string, bool> ch_backbone_active_;
   bool need_recompute_ = false;
+
+  // Planner for CH global coverage layout
+  std::unique_ptr<CoveragePlanner> coverage_planner_;
+  std::unordered_map<std::string, CoveragePlanner::ClusterHeadInfo> active_ch_info_;
 
   // Persistent CH info for routing recompute
   std::vector<std::string>             ch_ids_;

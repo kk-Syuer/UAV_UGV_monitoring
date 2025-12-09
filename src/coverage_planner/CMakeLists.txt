@@ -6,7 +6,9 @@ find_package(rclcpp REQUIRED)
 find_package(uav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
-add_executable(coverage_planner_node src/coverage_planner_node.cpp)
+add_executable(coverage_planner_node
+  src/coverage_planner_node.cpp
+  src/coverage_planner.cpp)
 ament_target_dependencies(coverage_planner_node
   rclcpp
   uav_msgs
