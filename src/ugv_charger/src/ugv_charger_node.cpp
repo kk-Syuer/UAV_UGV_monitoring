@@ -376,6 +376,36 @@ private:
     control_pub_->publish(msg);
   }
 
+  void publishHello()
+  {
+    if (!control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = ugv_id_ + "_HELLO_" + std::to_string(msg_counter_++);
+    msg.src_id = ugv_id_;
+    msg.dst_id = "broadcast";
+    msg.next_hop_id = "";  // broadcast semantics
+
+    msg.msg_type = 3;       // CONTROL
+    msg.priority = 0;
+    msg.size_bytes = 32;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = 1;            // single-hop broadcast
+    msg.control_type = "HELLO";
+
+    std::ostringstream oss;
+    oss << "UGV,"
+        << ugv_pose_.position.x << ","
+        << ugv_pose_.position.y << ","
+        << 100.0;
+    msg.control_payload = oss.str();
+
+    control_pub_->publish(msg);
+  }
+
 
   // ------------- Scheduler -------------
 
