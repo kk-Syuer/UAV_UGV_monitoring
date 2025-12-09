@@ -5,7 +5,6 @@ from launch_ros.actions import Node
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
     nodes = []
     extra_params = extra_params or {}
-
     for idx in range(1, count + 1):
         uav_id = f"{prefix}_{idx}"
         nodes.append(
