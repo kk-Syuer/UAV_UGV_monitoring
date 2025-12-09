@@ -786,6 +786,10 @@ private:
           (msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START")) {
 
         start_mobility_received_ = true;
+        // Reset timing so the first mobility step after the barrier uses the
+        // configured dt instead of a huge elapsed time since deployment.
+        last_pose_time_ = this->now();
+        last_pose_ = pose_;
         RCLCPP_INFO(this->get_logger(),
                     "[MOB-START] %s received %s from %s",
                     uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
@@ -980,6 +984,10 @@ private:
 
     deployment_received_ = true;
     sendDeploymentAck();
+
+    // Avoid a huge first dt() when the motion barrier is released.
+    last_pose_time_ = this->now();
+    last_pose_ = pose_;
 
     // Move toward deployment pose only after MOTION_START
     mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
