@@ -17,7 +17,7 @@ target_include_directories(coverage_planner_lib PRIVATE src)
 
 add_executable(coverage_planner_node
   src/coverage_planner_node.cpp)
-target_link_libraries(coverage_planner_node PRIVATE coverage_planner_lib)
+target_link_libraries(coverage_planner_node coverage_planner_lib)
 ament_target_dependencies(coverage_planner_node
   rclcpp
   uav_msgs

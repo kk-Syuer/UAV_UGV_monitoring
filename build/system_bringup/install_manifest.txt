@@ -13,3 +13,8 @@
 /home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/cmake/system_bringupConfig.cmake
 /home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/cmake/system_bringupConfig-version.cmake
 /home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/package.xml
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/launch/charger_algorithms_bringup.launch.py
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/launch/full_system_bringup.launch.py
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/launch/multi_hop_network_bringup.launch.py
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/launch/liveness_flow_bringup.launch.py
+/home/vboxuser/UAV_UGV_netmonitoring/install/system_bringup/share/system_bringup/launch/coverage_planner_init_viz.launch.py

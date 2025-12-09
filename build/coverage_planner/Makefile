@@ -198,6 +198,19 @@ coverage_planner_uninstall/fast:
 .PHONY : coverage_planner_uninstall/fast
 
 #=============================================================================
+# Target rules for targets named coverage_planner_lib
+
+# Build rule for target.
+coverage_planner_lib: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 coverage_planner_lib
+.PHONY : coverage_planner_lib
+
+# fast build rule for target.
+coverage_planner_lib/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_lib.dir/build.make CMakeFiles/coverage_planner_lib.dir/build
+.PHONY : coverage_planner_lib/fast
+
+#=============================================================================
 # Target rules for targets named coverage_planner_node
 
 # Build rule for target.
@@ -209,6 +222,30 @@ coverage_planner_node: cmake_check_build_system
 coverage_planner_node/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_node.dir/build.make CMakeFiles/coverage_planner_node.dir/build
 .PHONY : coverage_planner_node/fast
+
+src/coverage_planner.o: src/coverage_planner.cpp.o
+.PHONY : src/coverage_planner.o
+
+# target to build an object file
+src/coverage_planner.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_lib.dir/build.make CMakeFiles/coverage_planner_lib.dir/src/coverage_planner.cpp.o
+.PHONY : src/coverage_planner.cpp.o
+
+src/coverage_planner.i: src/coverage_planner.cpp.i
+.PHONY : src/coverage_planner.i
+
+# target to preprocess a source file
+src/coverage_planner.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_lib.dir/build.make CMakeFiles/coverage_planner_lib.dir/src/coverage_planner.cpp.i
+.PHONY : src/coverage_planner.cpp.i
+
+src/coverage_planner.s: src/coverage_planner.cpp.s
+.PHONY : src/coverage_planner.s
+
+# target to generate assembly for a file
+src/coverage_planner.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/coverage_planner_lib.dir/build.make CMakeFiles/coverage_planner_lib.dir/src/coverage_planner.cpp.s
+.PHONY : src/coverage_planner.cpp.s
 
 src/coverage_planner_node.o: src/coverage_planner_node.cpp.o
 .PHONY : src/coverage_planner_node.o
@@ -249,7 +286,11 @@ help:
 	@echo "... test"
 	@echo "... coverage_planner_uninstall"
 	@echo "... uninstall"
+	@echo "... coverage_planner_lib"
 	@echo "... coverage_planner_node"
+	@echo "... src/coverage_planner.o"
+	@echo "... src/coverage_planner.i"
+	@echo "... src/coverage_planner.s"
 	@echo "... src/coverage_planner_node.o"
 	@echo "... src/coverage_planner_node.i"
 	@echo "... src/coverage_planner_node.s"

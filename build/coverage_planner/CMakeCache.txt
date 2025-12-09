@@ -340,6 +340,9 @@ coverage_planner_IS_TOP_LEVEL:STATIC=ON
 //Value Computed by CMake
 coverage_planner_SOURCE_DIR:STATIC=/home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner
 
+//Dependencies for the target
+coverage_planner_lib_LIB_DEPENDS:STATIC=general;rclcpp::rclcpp;general;uav_msgs::uav_msgs__rosidl_generator_c;general;uav_msgs::uav_msgs__rosidl_typesupport_fastrtps_c;general;uav_msgs::uav_msgs__rosidl_typesupport_introspection_c;general;uav_msgs::uav_msgs__rosidl_typesupport_c;general;uav_msgs::uav_msgs__rosidl_typesupport_fastrtps_cpp;general;uav_msgs::uav_msgs__rosidl_typesupport_introspection_cpp;general;uav_msgs::uav_msgs__rosidl_typesupport_cpp;general;uav_msgs::uav_msgs__rosidl_generator_py;general;geometry_msgs::geometry_msgs__rosidl_generator_c;general;geometry_msgs::geometry_msgs__rosidl_typesupport_fastrtps_c;general;geometry_msgs::geometry_msgs__rosidl_typesupport_introspection_c;general;geometry_msgs::geometry_msgs__rosidl_typesupport_c;general;geometry_msgs::geometry_msgs__rosidl_typesupport_fastrtps_cpp;general;geometry_msgs::geometry_msgs__rosidl_typesupport_introspection_cpp;general;geometry_msgs::geometry_msgs__rosidl_typesupport_cpp;general;geometry_msgs::geometry_msgs__rosidl_generator_py;
+
 //The directory containing a CMake configuration file for fastcdr.
 fastcdr_DIR:PATH=/opt/ros/humble/lib/cmake/fastcdr
 
