@@ -7,6 +7,7 @@ import matplotlib.pyplot as plt
 
 from uav_msgs.msg import ChargeDecision
 from uav_msgs.msg import ChargeRequest
+from uav_msgs.msg import TaskPointArray
 from uav_msgs.msg import UavDeployment
 from uav_msgs.msg import UavStatus
 from uav_msgs.msg import WeatherStatus
@@ -30,12 +31,19 @@ class FleetVizNode(Node):
 
         self.charge_decision_sub = self.create_subscription(
             ChargeDecision, '/ugv/charge_decisions', self.charge_decision_cb, 50)
+        self.task_point_sub = self.create_subscription(
+            TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
 
         # state
         self.uav_states = {}   # id -> last UavStatus
         self.sink_pose = None
         self.ugv_pose = None
         self.weather = None
+        self.task_points = []
+        self.cluster_colors = {}
+        self.cluster_palette = [
+            'cyan', 'magenta', 'orange', 'lime', 'yellow', 'plum', 'deepskyblue', 'white'
+        ]
 
         # queue + scheduling summary
         self.pending_charges: Dict[str, float] = {}
@@ -96,6 +104,17 @@ class FleetVizNode(Node):
         if msg.uav_id in self.pending_charges:
             self.pending_charges.pop(msg.uav_id)
 
+    def task_point_cb(self, msg: TaskPointArray):
+        self.task_points = list(msg.tasks)
+
+    def color_for_cluster(self, cluster_id: str) -> str:
+        if not cluster_id:
+            return 'white'
+        if cluster_id not in self.cluster_colors:
+            color = self.cluster_palette[len(self.cluster_colors) % len(self.cluster_palette)]
+            self.cluster_colors[cluster_id] = color
+        return self.cluster_colors[cluster_id]
+
     # --- plotting ---
 
     def update_plot(self):
@@ -128,25 +147,34 @@ class FleetVizNode(Node):
                          self.ugv_pose.position.y + 5,
                          'ugv', color='yellow', fontsize=8)
 
+        # draw task points first so UAVs appear above
+        for tp in self.task_points:
+            color = self.color_for_cluster(tp.cluster_id)
+            self.ax.scatter(tp.position.x, tp.position.y,
+                            marker='x', s=40, color=color, alpha=0.9)
+            self.ax.text(tp.position.x, tp.position.y - 5,
+                         tp.id, color=color, fontsize=7)
+
         # draw UAVs
         for uav_id, st in self.uav_states.items():
             x = st.pose.position.x
             y = st.pose.position.y
+            color = self.color_for_cluster(st.cluster_id)
 
             if st.role == 1:
                 # CH: red + service radius
-                self.ax.scatter(x, y, c='red', s=30)
-                self.ax.text(x, y + 3, uav_id, color='red', fontsize=8)
+                self.ax.scatter(x, y, c=color, s=30)
+                self.ax.text(x, y + 3, uav_id, color=color, fontsize=8)
 
                 # service_radius is in the status
                 R = st.service_radius
                 circle = plt.Circle((x, y), R, linestyle='--',
-                                    fill=False, edgecolor='red', alpha=0.4)
+                                    fill=False, edgecolor=color, alpha=0.4)
                 self.ax.add_patch(circle)
             else:
                 # member: green
-                self.ax.scatter(x, y, c='lime', s=20)
-                self.ax.text(x, y + 3, uav_id, color='lime', fontsize=8)
+                self.ax.scatter(x, y, c=color, s=20)
+                self.ax.text(x, y + 3, uav_id, color=color, fontsize=8)
 
         self.ax.set_aspect('equal', adjustable='box')
 

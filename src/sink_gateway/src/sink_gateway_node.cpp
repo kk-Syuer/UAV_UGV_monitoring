@@ -93,14 +93,14 @@ private:
       return;
     }
 
-    if (msg->msg_type == 3 && msg->control_type == "STATUS_CH") {
+    if (msg->flow_type == 1 && msg->control_type == "STATUS_CH") {
       handleStatusCh(msg);
       delivered_pub_->publish(*msg);
       return;
     }
 
     // Handle DEPLOYMENT_ACK control messages
-    if (msg->msg_type == 3 && msg->control_type == "DEPLOYMENT_ACK") {
+    if (msg->flow_type == 1 && msg->control_type == "DEPLOYMENT_ACK") {
       const std::string & u = msg->src_id;
 
       if (!all_deployed_) {
@@ -151,9 +151,7 @@ private:
     msg.next_hop_id = uplink_ch_id_;
 
     // CONTROL_ALERT
-    msg.msg_type = 3;
-    msg.priority = 1;
-    msg.size_bytes = 50;
+    msg.flow_type = 1;
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
@@ -220,9 +218,7 @@ private:
     tm.next_hop_id = next_hop;
 
     // Use msg_type=3 as CONTROL_ALERT (same convention as UAV/UGV nodes).
-    tm.msg_type = 3;
-    tm.priority = 1;
-    tm.size_bytes = 64;
+    tm.flow_type = 1;
     tm.creation_time = this->now();
     tm.hop_count = 0;
 
@@ -241,7 +237,7 @@ private:
         << msg->target_pose.position.z << ","
         << safe_sink << ","
         << safe_ugv;
-    tm.control_payload = oss.str();
+    tm.payload = oss.str();
 
     control_pub_->publish(tm);
 
@@ -249,7 +245,7 @@ private:
                 "[DEP-TX] sink sending deployment to=%s via first_hop=%s payload=\"%s\"",
                 tm.dst_id.c_str(),
                 tm.next_hop_id.c_str(),
-                tm.control_payload.c_str());
+                tm.payload.c_str());
   }
 
   // --------------------------------------------------------------------------
@@ -272,14 +268,12 @@ private:
       // enter backbone via uplink CH
       msg.next_hop_id = uplink_ch_id_;
 
-      msg.msg_type = 3;  // CONTROL_ALERT
-      msg.priority = 1;
-      msg.size_bytes = 8;
+      msg.flow_type = 1;  // CONTROL_ALERT
       msg.creation_time = this->now();
       msg.hop_count = 0;
 
       msg.control_type = "START_MOBILITY";
-      msg.control_payload = "";
+      msg.payload = "";
 
       control_pub_->publish(msg);
       RCLCPP_INFO(this->get_logger(),
@@ -290,7 +284,7 @@ private:
 
   void handleStatusCh(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
   {
-    auto parts = splitString(msg->control_payload, ',');
+    auto parts = splitString(msg->payload, ',');
 
     ChStatus & s = ch_status_table_[msg->src_id];
     s.id = msg->src_id;

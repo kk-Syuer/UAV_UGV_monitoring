@@ -198,7 +198,7 @@ private:
     }
 
     // Only consider CONTROL_ALERT messages
-    if (msg->msg_type != 3) { // 3 = CONTROL_ALERT
+    if (msg->flow_type != 3) { // 3 = CONTROL_ALERT
       return;
     }
 
@@ -342,9 +342,9 @@ private:
 
   void handleDeploymentFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    // msg->control_payload format:
+    // msg->payload format:
     // "role,cluster_id,ch_id,x,y,z,next_sink,next_ugv"
-    std::stringstream ss(msg->control_payload);
+    std::stringstream ss(msg->payload);
     std::string token;
     std::string cluster_id, ch_id;
     double x = 0.0, y = 0.0, z = 0.0;
@@ -354,7 +354,7 @@ private:
     if (!std::getline(ss, token, ',')) {
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: bad DEPLOYMENT payload \"%s\"",
-                  ugv_id_.c_str(), msg->control_payload.c_str());
+                  ugv_id_.c_str(), msg->payload.c_str());
       return;
     }
 
@@ -420,14 +420,12 @@ private:
       ack.next_hop_id = sink_id_;
     }
 
-    ack.msg_type = 3;
-    ack.priority = 1;
-    ack.size_bytes = 16;
+    ack.flow_type = 1;
     ack.creation_time = this->now();
     ack.hop_count = 0;
 
     ack.control_type = "DEPLOYMENT_ACK";
-    ack.control_payload = "";
+    ack.payload = "";
 
     control_pub_->publish(ack);
     deployment_ack_sent_ = true;
@@ -449,9 +447,7 @@ private:
     msg.dst_id = "broadcast";
     msg.next_hop_id = "";  // broadcast semantics
 
-    msg.msg_type = 3;       // CONTROL
-    msg.priority = 0;
-    msg.size_bytes = 32;
+    msg.flow_type = 1;       // CONTROL
     msg.creation_time = this->now();
     msg.hop_count = 0;
     msg.ttl = 1;            // single-hop broadcast
@@ -462,7 +458,7 @@ private:
         << ugv_pose_.position.x << ","
         << ugv_pose_.position.y << ","
         << 100.0;
-    msg.control_payload = oss.str();
+    msg.payload = oss.str();
 
     control_pub_->publish(msg);
   }
@@ -516,7 +512,6 @@ private:
       decision.uav_id = job.uav_id;
       decision.accepted = true;
       decision.slot_start_time = slot_start_time;
-      decision.priority = (job.role == 1 ? 1 : 0);
       decision.policy = policy_name_;
 
       charge_decision_pub_->publish(decision);
@@ -691,14 +686,12 @@ private:
     }
     msg.next_hop_id = first_hop;
 
-    msg.msg_type = 3;              // CONTROL_ALERT
-    msg.priority = 2;
-    msg.size_bytes = 40;
+    msg.flow_type = 1;              // CONTROL_ALERT
     msg.creation_time = now;
     msg.hop_count = 0;
 
     msg.control_type = "CHARGE_DECISION";
-    msg.control_payload = "";      // we start immediately, so no schedule needed
+    msg.payload = "";      // we start immediately, so no schedule needed
 
     RCLCPP_INFO(this->get_logger(),
                 "UGV: sending CHARGE_DECISION msg_id=%s to %s via %s",

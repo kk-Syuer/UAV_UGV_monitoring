@@ -16,6 +16,8 @@
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
+#include "uav_msgs/msg/task_point.hpp"
+#include "uav_msgs/msg/task_point_array.hpp"
 #include "coverage_planner.hpp"
 #include <sstream>
 
@@ -45,6 +47,7 @@ public:
     z_member_ = this->declare_parameter<double>("z_member", 60.0);
 
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
+    service_radius_member_ = this->declare_parameter<double>("service_radius_member", 120.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
     planner_id_ = this->declare_parameter<std::string>("planner_id", "coverage_planner");
     sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
@@ -62,8 +65,14 @@ public:
     int seed = this->declare_parameter<int>("rng_seed", 42);
     rng_ = std::mt19937(seed);
 
+    auto task_strings = this->declare_parameter<std::vector<std::string>>(
+      "task_points", std::vector<std::string>{});
+    parseTaskPoints(task_strings);
+
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
+    task_point_pub_ = this->create_publisher<uav_msgs::msg::TaskPointArray>(
+      "/coverage_planner/task_points", 10);
     accept_direct_deployment_ = this->declare_parameter<bool>(
       "accept_direct_deployment", false);
 
@@ -109,6 +118,309 @@ public:
   }
 
 private:
+  struct TaskPoint
+  {
+    std::string id;
+    double x{};
+    double y{};
+    int cluster_index{-1};
+  };
+
+  struct ClusterPlan
+  {
+    std::string id;
+    geometry_msgs::msg::Pose ch_pose;
+    std::vector<size_t> task_indices;
+  };
+
+  static double clamp(double v, double lo, double hi)
+  {
+    return std::max(lo, std::min(v, hi));
+  }
+
+  void parseTaskPoints(const std::vector<std::string> & task_strings)
+  {
+    task_points_.clear();
+
+    for (size_t i = 0; i < task_strings.size(); ++i) {
+      const auto & entry = task_strings[i];
+      auto p1 = entry.find(':');
+      auto p2 = entry.rfind(':');
+
+      if (p1 == std::string::npos || p1 == p2) {
+        RCLCPP_WARN(this->get_logger(),
+                    "Task point entry '%s' is invalid (expected id:x:y).", entry.c_str());
+        continue;
+      }
+
+      TaskPoint tp;
+      tp.id = entry.substr(0, p1);
+      try {
+        tp.x = std::stod(entry.substr(p1 + 1, p2 - p1 - 1));
+        tp.y = std::stod(entry.substr(p2 + 1));
+      } catch (const std::exception & e) {
+        RCLCPP_WARN(this->get_logger(),
+                    "Failed to parse task point '%s': %s", entry.c_str(), e.what());
+        continue;
+      }
+
+      tp.x = clamp(tp.x, x_min_, x_max_);
+      tp.y = clamp(tp.y, y_min_, y_max_);
+      tp.cluster_index = -1;
+      task_points_.push_back(tp);
+    }
+
+    if (task_points_.empty()) {
+      // Default: 3x3 grid centered in the area
+      const int grid = 3;
+      double cx = 0.5 * (x_min_ + x_max_);
+      double cy = 0.5 * (y_min_ + y_max_);
+      double span_x = (x_max_ - x_min_) * 0.4;
+      double span_y = (y_max_ - y_min_) * 0.4;
+      for (int ix = 0; ix < grid; ++ix) {
+        for (int iy = 0; iy < grid; ++iy) {
+          TaskPoint tp;
+          tp.id = "task_" + std::to_string(static_cast<int>(task_points_.size() + 1));
+          tp.x = cx + span_x * (static_cast<double>(ix) / (grid - 1) - 0.5);
+          tp.y = cy + span_y * (static_cast<double>(iy) / (grid - 1) - 0.5);
+          task_points_.push_back(tp);
+        }
+      }
+      RCLCPP_WARN(this->get_logger(),
+                  "No task_points provided; generated %zu default points in a grid.",
+                  task_points_.size());
+    }
+  }
+
+  geometry_msgs::msg::Pose computeServicePose(const std::vector<size_t> & indices,
+                                              const std::vector<TaskPoint> & tasks) const
+  {
+    geometry_msgs::msg::Pose pose;
+    pose.orientation.w = 1.0;
+
+    if (indices.empty()) {
+      pose.position.x = 0.0;
+      pose.position.y = 0.0;
+      return pose;
+    }
+
+    double cx = 0.0, cy = 0.0;
+    for (auto idx : indices) {
+      cx += tasks[idx].x;
+      cy += tasks[idx].y;
+    }
+    cx /= static_cast<double>(indices.size());
+    cy /= static_cast<double>(indices.size());
+
+    // Iteratively move the center toward the farthest task until all fit in R_CH
+    const int max_iters = 25;
+    const double eps = 1e-3;
+    for (int iter = 0; iter < max_iters; ++iter) {
+      double worst_d = -1.0;
+      size_t worst_idx = indices[0];
+      for (auto idx : indices) {
+        double dx = cx - tasks[idx].x;
+        double dy = cy - tasks[idx].y;
+        double d = std::sqrt(dx * dx + dy * dy);
+        if (d > worst_d) {
+          worst_d = d;
+          worst_idx = idx;
+        }
+      }
+
+      if (worst_d <= service_radius_ch_ + eps) {
+        break;
+      }
+
+      double dx = tasks[worst_idx].x - cx;
+      double dy = tasks[worst_idx].y - cy;
+      double norm = std::sqrt(dx * dx + dy * dy);
+      if (norm < eps) {
+        break;
+      }
+
+      double step = worst_d - service_radius_ch_;
+      cx += dx / norm * step;
+      cy += dy / norm * step;
+      cx = clamp(cx, x_min_, x_max_);
+      cy = clamp(cy, y_min_, y_max_);
+    }
+
+    pose.position.x = cx;
+    pose.position.y = cy;
+    return pose;
+  }
+
+  std::vector<ClusterPlan> buildTaskDrivenClusters(int num_clusters)
+  {
+    std::vector<ClusterPlan> clusters;
+    if (num_clusters <= 0) {
+      return clusters;
+    }
+
+    const int T = static_cast<int>(task_points_.size());
+    clusters.resize(static_cast<size_t>(num_clusters));
+
+    // --- K-means like clustering on task points ---
+    std::vector<int> assignment(static_cast<size_t>(T), 0);
+    std::vector<std::pair<double, double>> centers(static_cast<size_t>(num_clusters));
+
+    // Init centers using the first tasks (or wrap around)
+    for (int c = 0; c < num_clusters; ++c) {
+      int idx = (T == 0) ? 0 : (c % T);
+      centers[static_cast<size_t>(c)] = {task_points_[static_cast<size_t>(idx)].x,
+                                         task_points_[static_cast<size_t>(idx)].y};
+    }
+
+    const int max_iters = 15;
+    for (int iter = 0; iter < max_iters; ++iter) {
+      // Assign tasks
+      for (int t = 0; t < T; ++t) {
+        double best_d2 = std::numeric_limits<double>::infinity();
+        int best_c = 0;
+        for (int c = 0; c < num_clusters; ++c) {
+          double dx = task_points_[static_cast<size_t>(t)].x - centers[static_cast<size_t>(c)].first;
+          double dy = task_points_[static_cast<size_t>(t)].y - centers[static_cast<size_t>(c)].second;
+          double d2 = dx * dx + dy * dy;
+          if (d2 < best_d2) {
+            best_d2 = d2;
+            best_c = c;
+          }
+        }
+        assignment[static_cast<size_t>(t)] = best_c;
+      }
+
+      // Recompute centers
+      std::vector<double> sumx(static_cast<size_t>(num_clusters), 0.0);
+      std::vector<double> sumy(static_cast<size_t>(num_clusters), 0.0);
+      std::vector<int> count(static_cast<size_t>(num_clusters), 0);
+
+      for (int t = 0; t < T; ++t) {
+        int c = assignment[static_cast<size_t>(t)];
+        sumx[static_cast<size_t>(c)] += task_points_[static_cast<size_t>(t)].x;
+        sumy[static_cast<size_t>(c)] += task_points_[static_cast<size_t>(t)].y;
+        count[static_cast<size_t>(c)] += 1;
+      }
+
+      for (int c = 0; c < num_clusters; ++c) {
+        if (count[static_cast<size_t>(c)] == 0) {
+          continue;
+        }
+        centers[static_cast<size_t>(c)].first  = sumx[static_cast<size_t>(c)] / count[static_cast<size_t>(c)];
+        centers[static_cast<size_t>(c)].second = sumy[static_cast<size_t>(c)] / count[static_cast<size_t>(c)];
+        centers[static_cast<size_t>(c)].first = clamp(centers[static_cast<size_t>(c)].first, x_min_, x_max_);
+        centers[static_cast<size_t>(c)].second = clamp(centers[static_cast<size_t>(c)].second, y_min_, y_max_);
+      }
+    }
+
+    // Build clusters and compute service pose per cluster
+    for (int c = 0; c < num_clusters; ++c) {
+      ClusterPlan plan;
+      plan.id = "cluster_" + std::to_string(c + 1);
+
+      for (int t = 0; t < T; ++t) {
+        if (assignment[static_cast<size_t>(t)] == c) {
+          plan.task_indices.push_back(static_cast<size_t>(t));
+          task_points_[static_cast<size_t>(t)].cluster_index = c;
+        }
+      }
+
+      plan.ch_pose = computeServicePose(plan.task_indices, task_points_);
+      clusters[static_cast<size_t>(c)] = plan;
+    }
+
+    publishTaskPoints();
+    return clusters;
+  }
+
+  std::vector<int> allocateMembersForClusters(const std::vector<size_t> & task_counts,
+                                              int total_members) const
+  {
+    int K = static_cast<int>(task_counts.size());
+    std::vector<int> result(static_cast<size_t>(K), 0);
+    if (K == 0 || total_members <= 0) {
+      return result;
+    }
+
+    size_t total_tasks = 0;
+    for (auto c : task_counts) {
+      total_tasks += c;
+    }
+    total_tasks = std::max<size_t>(1, total_tasks);
+
+    for (int i = 0; i < K; ++i) {
+      double share = static_cast<double>(total_members) *
+        static_cast<double>(task_counts[static_cast<size_t>(i)]) /
+        static_cast<double>(total_tasks);
+      int m_i = static_cast<int>(std::round(share));
+      if (total_members >= K) {
+        m_i = std::max(1, m_i);
+      }
+      result[static_cast<size_t>(i)] = m_i;
+    }
+
+    auto idx_by_tasks = [&](bool ascending) {
+      std::vector<int> idx(K);
+      for (int i = 0; i < K; ++i) idx[static_cast<size_t>(i)] = i;
+      std::sort(idx.begin(), idx.end(), [&](int a, int b) {
+        if (task_counts[static_cast<size_t>(a)] == task_counts[static_cast<size_t>(b)]) {
+          return ascending ? a < b : a > b;
+        }
+        return ascending
+          ? task_counts[static_cast<size_t>(a)] < task_counts[static_cast<size_t>(b)]
+          : task_counts[static_cast<size_t>(a)] > task_counts[static_cast<size_t>(b)];
+      });
+      return idx;
+    };
+
+    int sum = 0;
+    for (auto v : result) sum += v;
+
+    if (sum > total_members) {
+      auto order = idx_by_tasks(true);  // remove from smallest
+      size_t idx = 0;
+      while (sum > total_members && idx < order.size()) {
+        int c = order[idx++];
+        if (total_members >= K && result[static_cast<size_t>(c)] <= 1) continue;
+        result[static_cast<size_t>(c)] -= 1;
+        --sum;
+      }
+    } else if (sum < total_members) {
+      auto order = idx_by_tasks(false);  // add to largest clusters first
+      size_t idx = 0;
+      while (sum < total_members && !order.empty()) {
+        int c = order[idx % order.size()];
+        result[static_cast<size_t>(c)] += 1;
+        ++sum;
+        ++idx;
+      }
+    }
+
+    return result;
+  }
+
+  void publishTaskPoints()
+  {
+    if (!task_point_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TaskPointArray msg;
+    msg.tasks.reserve(task_points_.size());
+    for (const auto & tp : task_points_) {
+      uav_msgs::msg::TaskPoint tmsg;
+      tmsg.id = tp.id;
+      tmsg.cluster_id = (tp.cluster_index >= 0)
+        ? ("cluster_" + std::to_string(tp.cluster_index + 1))
+        : std::string("");
+      tmsg.position.x = tp.x;
+      tmsg.position.y = tp.y;
+      tmsg.position.z = 0.0;
+      msg.tasks.push_back(tmsg);
+    }
+    task_point_pub_->publish(msg);
+  }
+
   // ------------------------------------------------------------------
   // Periodic timer: initial deployment + later routing recompute
   // ------------------------------------------------------------------
@@ -346,38 +658,61 @@ private:
     }
 
     std::vector<geometry_msgs::msg::Pose> ch_poses;
-    ch_poses.reserve(ch_ids.size());
+    std::vector<std::string> cluster_ids;
 
-    // Build hexagonal layout around the origin so coverage expands from the
-    // sink outward while keeping every CH connected.
-    if (coverage_planner_) {
-      std::vector<CoveragePlanner::ClusterHeadInfo> ch_info;
-      ch_info.reserve(ch_ids.size());
+    auto clusters = buildTaskDrivenClusters(num_ch);
+    if (!clusters.empty()) {
       for (int i = 0; i < num_ch; ++i) {
-        CoveragePlanner::ClusterHeadInfo info;
-        info.id = ch_ids[static_cast<size_t>(i)];
-        info.cluster_id = "cluster_" + std::to_string(i + 1);
-        info.x = 0.0;
-        info.y = 0.0;
-        info.z = z_ch_;
-        ch_info.push_back(info);
-      }
-
-      auto layout = coverage_planner_->computeAssignments(ch_info);
-      for (size_t i = 0; i < layout.size(); ++i) {
-        geometry_msgs::msg::Pose pose;
-        pose.position.x = layout[i].x;
-        pose.position.y = layout[i].y;
+        geometry_msgs::msg::Pose pose = clusters[static_cast<size_t>(i)].ch_pose;
         pose.position.z = z_ch_;
         pose.orientation.w = 1.0;
         ch_poses.push_back(pose);
+        cluster_ids.push_back(clusters[static_cast<size_t>(i)].id);
+
+        RCLCPP_INFO(this->get_logger(),
+                    "Cluster %s: %zu task(s) -> CH at (%.1f, %.1f)",
+                    clusters[static_cast<size_t>(i)].id.c_str(),
+                    clusters[static_cast<size_t>(i)].task_indices.size(),
+                    pose.position.x, pose.position.y);
+      }
+    }
+
+    if (ch_poses.size() != ch_ids.size()) {
+      // Fall back to the original hexagonal layout
+      ch_poses.clear();
+      cluster_ids.clear();
+
+      if (coverage_planner_) {
+        std::vector<CoveragePlanner::ClusterHeadInfo> ch_info;
+        ch_info.reserve(ch_ids.size());
+        for (int i = 0; i < num_ch; ++i) {
+          CoveragePlanner::ClusterHeadInfo info;
+          info.id = ch_ids[static_cast<size_t>(i)];
+          info.cluster_id = "cluster_" + std::to_string(i + 1);
+          info.x = 0.0;
+          info.y = 0.0;
+          info.z = z_ch_;
+          ch_info.push_back(info);
+        }
+
+        auto layout = coverage_planner_->computeAssignments(ch_info);
+        for (size_t i = 0; i < layout.size(); ++i) {
+          geometry_msgs::msg::Pose pose;
+          pose.position.x = layout[i].x;
+          pose.position.y = layout[i].y;
+          pose.position.z = z_ch_;
+          pose.orientation.w = 1.0;
+          ch_poses.push_back(pose);
+          cluster_ids.push_back("cluster_" + std::to_string(static_cast<int>(i) + 1));
+        }
       }
     }
 
     if (ch_poses.size() != ch_ids.size()) {
       RCLCPP_WARN(this->get_logger(),
-                  "Coverage planner hex layout unavailable, falling back to origin placement.");
+                  "Coverage planner layout unavailable, falling back to origin placement.");
       ch_poses.clear();
+      cluster_ids.clear();
       for (size_t i = 0; i < ch_ids.size(); ++i) {
         geometry_msgs::msg::Pose pose;
         pose.position.x = 0.0;
@@ -385,14 +720,8 @@ private:
         pose.position.z = z_ch_;
         pose.orientation.w = 1.0;
         ch_poses.push_back(pose);
+        cluster_ids.push_back("cluster_" + std::to_string(static_cast<int>(i) + 1));
       }
-    }
-
-    // Build cluster IDs: cluster_1, cluster_2, ...
-    std::vector<std::string> cluster_ids;
-    cluster_ids.reserve(num_ch);
-    for (int i = 0; i < num_ch; ++i) {
-      cluster_ids.push_back("cluster_" + std::to_string(i + 1));
     }
 
     // Store for later dynamic routing recompute
@@ -528,6 +857,23 @@ private:
     std::vector<std::string> next_hop_to_ugv =
       compute_next_hops_to_target(ugv_x_, ugv_y_, "ugv", "ugv");
 
+    if (clusters.size() != static_cast<size_t>(num_ch)) {
+      clusters.clear();
+      clusters.resize(static_cast<size_t>(num_ch));
+      for (int i = 0; i < num_ch; ++i) {
+        clusters[static_cast<size_t>(i)].id = cluster_ids[static_cast<size_t>(i)];
+      }
+    }
+
+    std::vector<size_t> task_counts;
+    task_counts.reserve(clusters.size());
+    for (const auto & c : clusters) {
+      task_counts.push_back(c.task_indices.size());
+    }
+
+    auto members_per_cluster = allocateMembersForClusters(task_counts,
+      static_cast<int>(member_ids.size()));
+
     // ---- Publish CH deployments ----
     for (int i = 0; i < num_ch; ++i) {
       uav_msgs::msg::UavDeployment dep;
@@ -554,47 +900,51 @@ private:
       sendDeploymentTraffic(dep);
     }
 
-    // ---- Publish MEMBER deployments (initially at their CH position) ----
-    for (size_t member_idx = 0; member_idx < member_ids.size(); ++member_idx) {
-      const auto & id = member_ids[member_idx];
+    // ---- Publish MEMBER deployments (near their CH position) ----
+    const double member_radius = std::min(service_radius_member_, service_radius_ch_ * 0.8);
+    const double two_pi = 6.283185307179586;
+    std::uniform_real_distribution<double> angle_dist(0.0, two_pi);
+    std::uniform_real_distribution<double> radius_dist(0.0, member_radius);
 
-      // Distribute members evenly across CHs to avoid collapsing everyone onto
-      // the closest CH to the origin (which would happen with the old
-      // nearest-origin heuristic).
-      int best_ch_idx = static_cast<int>(member_idx % static_cast<size_t>(num_ch));
+    size_t member_cursor = 0;
+    for (size_t c = 0; c < cluster_ids.size(); ++c) {
+      int to_assign = (c < members_per_cluster.size()) ? members_per_cluster[c] : 0;
+      for (int j = 0; j < to_assign && member_cursor < member_ids.size(); ++j, ++member_cursor) {
+        const auto & id = member_ids[member_cursor];
+        double angle = angle_dist(rng_);
+        double r = radius_dist(rng_);
 
-      // Member's *deployment target* is exactly its CH position (inside coverage)
-      geometry_msgs::msg::Pose pose;
-      const auto & ch_pose = ch_poses[static_cast<size_t>(best_ch_idx)];
-      pose.position.x = ch_pose.position.x;
-      pose.position.y = ch_pose.position.y;
-      pose.position.z = z_member_;         // members fly a bit lower than CH
-      pose.orientation.w = 1.0;
+        geometry_msgs::msg::Pose pose;
+        pose.position.x = clamp(ch_poses[c].position.x + r * std::cos(angle), x_min_, x_max_);
+        pose.position.y = clamp(ch_poses[c].position.y + r * std::sin(angle), y_min_, y_max_);
+        pose.position.z = z_member_;
+        pose.orientation.w = 1.0;
 
-      uav_msgs::msg::UavDeployment dep;
-      dep.uav_id      = id;
-      dep.target_pose = pose;
+        uav_msgs::msg::UavDeployment dep;
+        dep.uav_id      = id;
+        dep.target_pose = pose;
 
-      dep.role       = 0;  // MEMBER
-      dep.cluster_id = cluster_ids[static_cast<size_t>(best_ch_idx)];
-      dep.ch_id      = ch_ids[static_cast<size_t>(best_ch_idx)];
-      dep.next_hop_to_sink = "";  // members use their CH
-      dep.next_hop_to_ugv  = "";  // members use CH backbone
+        dep.role       = 0;  // MEMBER
+        dep.cluster_id = cluster_ids[c];
+        dep.ch_id      = ch_ids[static_cast<size_t>(c)];
+        dep.next_hop_to_sink = "";  // members use their CH
+        dep.next_hop_to_ugv  = "";  // members use CH backbone
 
-      RCLCPP_INFO(this->get_logger(),
-                  "Deploy MEMBER %s -> cluster=%s CH=%s pose=(%.1f, %.1f, %.1f)",
-                  dep.uav_id.c_str(),
-                  dep.cluster_id.c_str(),
-                  dep.ch_id.c_str(),
-                  dep.target_pose.position.x,
-                  dep.target_pose.position.y,
-                  dep.target_pose.position.z);
+        RCLCPP_INFO(this->get_logger(),
+                    "Deploy MEMBER %s -> cluster=%s CH=%s pose=(%.1f, %.1f, %.1f)",
+                    dep.uav_id.c_str(),
+                    dep.cluster_id.c_str(),
+                    dep.ch_id.c_str(),
+                    dep.target_pose.position.x,
+                    dep.target_pose.position.y,
+                    dep.target_pose.position.z);
 
-      deployment_pub_->publish(dep);
-      pending_acks_.insert(dep.uav_id);
-      last_deployments_[dep.uav_id] = dep;
-      // Network deployment is always injected so members receive commands via the mesh
-      sendDeploymentTraffic(dep);
+        deployment_pub_->publish(dep);
+        pending_acks_.insert(dep.uav_id);
+        last_deployments_[dep.uav_id] = dep;
+        // Network deployment is always injected so members receive commands via the mesh
+        sendDeploymentTraffic(dep);
+      }
     }
   }
 
@@ -845,9 +1195,7 @@ private:
     // ----------------------------------------------------
     // Fill remaining TrafficMessage fields
     // ----------------------------------------------------
-    msg.msg_type = 3;  // CONTROL_ALERT (see TrafficMessage.msg)
-    msg.priority = 1;
-    msg.size_bytes = 64;
+    msg.flow_type = 1;  // CONTROL_ALERT (see TrafficMessage.msg)
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
@@ -866,7 +1214,7 @@ private:
         << safe_sink << ","
         << safe_ugv;
 
-    msg.control_payload = oss.str();
+    msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
 
@@ -874,7 +1222,7 @@ private:
                 "[NET-DEPLOY] to=%s next_hop=%s payload=\"%s\"",
                 msg.dst_id.c_str(),
                 msg.next_hop_id.c_str(),
-                msg.control_payload.c_str());
+                msg.payload.c_str());
   }
 
   std::string chooseBootstrapNextHop(const uav_msgs::msg::UavDeployment & dep)
@@ -934,13 +1282,11 @@ private:
       msg.src_id = planner_id_;
       msg.dst_id = dep.uav_id;
       msg.next_hop_id = chooseMotionStartNextHop(dep);
-      msg.msg_type = 3;
-      msg.priority = 1;
-      msg.size_bytes = 16;
+      msg.flow_type = 1;
       msg.creation_time = this->now();
       msg.hop_count = 0;
       msg.control_type = "MOTION_START";
-      msg.control_payload = "";
+      msg.payload = "";
 
       traffic_pub_->publish(msg);
       RCLCPP_INFO(this->get_logger(),
@@ -976,7 +1322,9 @@ private:
   double x_min_, x_max_, y_min_, y_max_;
   double z_ch_, z_member_;
   double service_radius_ch_;
+  double service_radius_member_;
   double comm_radius_ch_;
+  std::vector<TaskPoint> task_points_;
 
   // Random sink / UGV
   double sink_x_ = 0.0, sink_y_ = 0.0;
@@ -1002,6 +1350,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
 
   rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub_;
+  rclcpp::Publisher<uav_msgs::msg::TaskPointArray>::SharedPtr task_point_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
