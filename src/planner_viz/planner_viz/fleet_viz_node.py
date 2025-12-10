@@ -58,6 +58,9 @@ class FleetVizNode(Node):
         for panel in (self.info_ax, self.queue_ax):
             panel.axis('off')
 
+        # dark background for consistent contrast with white text
+        self.fig.patch.set_facecolor("#000000")
+
         # area limits (can be tuned / parameterised)
         self.x_min = -1200.0
         self.x_max =  1200.0
@@ -98,12 +101,15 @@ class FleetVizNode(Node):
     def update_plot(self):
         self.ax.cla()
         self.ax.set_facecolor('black')
-        self.ax.set_xlabel('X [m]')
-        self.ax.set_ylabel('Y [m]')
-        self.ax.set_title('Fleet live view')
+        self.ax.set_xlabel('X [m]', color='white')
+        self.ax.set_ylabel('Y [m]', color='white')
+        self.ax.set_title('Fleet live view', color='white')
         self.ax.set_xlim(self.x_min, self.x_max)
         self.ax.set_ylim(self.y_min, self.y_max)
         self.ax.grid(False)
+        self.ax.tick_params(colors='white')
+        for spine in self.ax.spines.values():
+            spine.set_color('white')
 
         # draw sink and ugv
         if self.sink_pose is not None:
