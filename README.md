@@ -57,7 +57,7 @@ The UGV tracks UAV status, queues requests, assigns slots, and emulates charging
 * Assigns member UAVs to nearest CH
 * Computes **CH backbone connectivity graph**
 * Runs **Dijkstra from sink** to compute `next_hop_to_sink`
-* Publishes `UavDeployment` messages with:
+* Publishes `UavDeployment` messages on `/coverage_planner/deployment` with:
 
   * Position
   * Role
@@ -73,6 +73,7 @@ Fully working multi-hop routing:
 * CH → next CH → … → sink
 * CH used as routing hubs
 * Supports control traffic (charging decisions)
+* Sink gateway mirrors deployments onto `/network/traffic` as `TrafficMessage` frames so deployments and acknowledgements traverse the same simulated multi-hop path as data packets
 
 ### ✔ Network Monitor
 
@@ -180,6 +181,33 @@ If battery < threshold:
 ### 6. **Network monitor gathers statistics**
 
 Per-packet and per-session metrics.
+
+---
+
+## ℹ️ Operational Notes
+
+### Deployment delivery and acknowledgements
+
+* The coverage planner publishes `UavDeployment` directly on `/coverage_planner/deployment`; UAVs consume it immediately when `accept_direct_deployment:=true`.
+* The sink gateway also mirrors each deployment into a `TrafficMessage` on `/network/traffic`, letting deployments and acknowledgement packets follow the same multi-hop route as normal traffic.
+* Deployment acknowledgements are sent as control packets via the backbone; enabling direct deployments on each UAV avoids the need to rerun nodes to trigger the first acknowledgement.
+
+### Liveness and failure monitoring
+
+* Every UAV publishes periodic heartbeats on `/uav_fleet/heartbeat` and prunes neighbors using configurable hello timers (default 1 s), providing liveness detection for routing and monitoring.
+* Battery or node-failure events are emitted on `/uav_fleet/failure_events`, where the cluster-head manager and network monitor subscribe to log the outage and update topology-aware metrics.
+
+### Multi-hop network simulation
+
+* All control and data traffic uses `/network/traffic` (`uav_msgs/TrafficMessage`) with destination IDs, TTL, and hop counts; frames are forwarded hop by hop based on `next_hop_id` and dropped if TTL expires or the next hop does not match.
+* Cluster heads relay member traffic toward the sink using their `next_hop_to_sink`, while also forwarding deployments, charging commands, and other control packets along the same simulated backbone.
+* Delivered packets are reported on `/network/traffic_delivered` so the sink gateway and metrics nodes can track end-to-end performance.
+
+### Weather model and Markov chain
+
+* The weather server evolves a three-state Markov chain (SUNNY, WINDY, STORMY) each tick: SUNNY usually persists (≈85%), WINDY persists ≈65%, and STORMY persists ≈40%, with the remaining probability split across transitions to the other states.
+* For the chosen state, the node samples temperature, wind speed, rain rate, and a slowly drifting wind direction from regime-specific normal distributions, clamps negatives to zero, and publishes `WeatherStatus` on `/environment/weather`.
+* UAVs subscribe to `/environment/weather`, cache the latest conditions, and apply temperature-dependent scaling to their battery consumption.
 
 ---
 
