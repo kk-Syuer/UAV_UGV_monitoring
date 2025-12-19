@@ -467,8 +467,8 @@ private:
       return;
     }
 
-    // Must be a CHARGE_DECISION control alert
-    if (msg->flow_type != 3 || msg->control_type != "CHARGE_DECISION") {
+    // Must be a CHARGE_DECISION control message
+    if (msg->flow_type != 1 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
@@ -794,10 +794,8 @@ private:
         handleDeploymentFromNetwork(msg);
         return;
       }
-      // 如果是 debug 文本消息
-      if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
       // Debug text messages are routed with a control_type prefix.
-      if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
+      if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
         std::string text = msg->payload;
 
