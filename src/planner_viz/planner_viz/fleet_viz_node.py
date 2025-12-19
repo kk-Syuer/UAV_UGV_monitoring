@@ -227,6 +227,8 @@ class FleetVizNode(Node):
 
                 if self.comm_radius_ch > 0.0:
                     comm_circle = plt.Circle((x, y), self.comm_radius_ch, linestyle=':',
+                                             linewidth=1.2, fill=False,
+                                             edgecolor='white', alpha=0.35)
                                              fill=False, edgecolor='white', alpha=0.2)
                     self.ax.add_patch(comm_circle)
             else:
@@ -258,8 +260,11 @@ class FleetVizNode(Node):
                 st = self.uav_states[uid]
                 px = st.pose.position.x
                 py = st.pose.position.y
+                comm_label = f"{self.comm_radius_ch:.1f}" if st.role == 1 else "n/a"
                 info_lines.append(
-                    f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | {st.battery_level:.1f}%")
+                    f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | "
+                    f"{st.battery_level:.1f}% | cap {st.battery_capacity:.1f} | "
+                    f"comm {comm_label}")
                 if len(info_lines) > 12:
                     info_lines.append('  ...')
                     break
