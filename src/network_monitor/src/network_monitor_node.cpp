@@ -11,6 +11,7 @@
 
 using std::placeholders::_1;
 
+// Aggregates network telemetry for traffic, charging, and failures.
 class NetworkMonitorNode : public rclcpp::Node
 {
 public:
@@ -22,6 +23,7 @@ public:
     total_charging_sessions_(0),
     avg_charge_wait_sec_(0.0)
   {
+    // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100,
       std::bind(&NetworkMonitorNode::trafficCallback, this, _1));
@@ -30,6 +32,7 @@ public:
       "/network/traffic_delivered", 100,
       std::bind(&NetworkMonitorNode::deliveredCallback, this, _1));
 
+    // Charging request/decision streams for queue statistics.
     charge_request_sub_ = this->create_subscription<uav_msgs::msg::ChargeRequest>(
       "/uav_fleet/charge_requests", 100,
       std::bind(&NetworkMonitorNode::chargeRequestCallback, this, _1));
@@ -38,6 +41,7 @@ public:
       "/ugv/charge_decisions", 100,
       std::bind(&NetworkMonitorNode::chargeDecisionCallback, this, _1));
 
+    // Failure events for simple fault counters.
     failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
       "/uav_fleet/failure_events", 100,
       std::bind(&NetworkMonitorNode::failureCallback, this, _1));
@@ -47,6 +51,7 @@ public:
 
 private:
   // ---- Traffic monitoring ----
+  // Track first-seen messages to compute end-to-end delay.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     auto it = creation_times_.find(msg->msg_id);
@@ -63,6 +68,7 @@ private:
     // If we've already seen this msg_id, we don't log again; it's just forwarding/duplicates
   }
 
+  // Compute delivery delay when messages arrive at final destination.
   void deliveredCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     auto now = this->now();
@@ -92,6 +98,7 @@ private:
 
   // ---- Charging monitoring ----
 
+  // Record request time for charge wait calculations.
   void chargeRequestCallback(const uav_msgs::msg::ChargeRequest::SharedPtr msg)
   {
     rclcpp::Time t(msg->stamp);
@@ -103,6 +110,7 @@ private:
                 t.seconds());
   }
 
+  // Measure wait time between request and accepted slot.
   void chargeDecisionCallback(const uav_msgs::msg::ChargeDecision::SharedPtr msg)
   {
     if (!msg->accepted) {
@@ -144,6 +152,7 @@ private:
     request_times_.erase(it);
   }
   
+  // Log failures, tracking battery-dead events separately.
   void failureCallback(const uav_msgs::msg::FailureEvent::SharedPtr msg)
   {
     // Convert builtin_interfaces/Time -> rclcpp::Time so we can use .seconds()

@@ -7,6 +7,7 @@ from rclpy.node import Node
 from uav_msgs.msg import UavDeployment
 
 import matplotlib
+# Use an interactive backend suitable for local GUI sessions.
 matplotlib.use("TkAgg")  # or Qt5Agg; TkAgg tends to work everywhere
 import matplotlib.pyplot as plt
 from matplotlib.patches import Circle
@@ -36,7 +37,7 @@ class PlannerVizNode(Node):
         self.ax.set_ylabel("Y [m]")
         self.ax.set_facecolor("black")
 
-        # Store artists
+        # Store artists so we can update positions without redrawing everything.
         self.sink_artist = None
         self.ugv_artist = None
         self.ch_artists: Dict[str, any] = {}
@@ -56,7 +57,7 @@ class PlannerVizNode(Node):
             10,
         )
 
-        # small timer to regularly refresh the plot
+        # Small timer to regularly refresh the plot.
         self.timer = self.create_timer(0.2, self.redraw)
 
         self.get_logger().info(
@@ -67,6 +68,7 @@ class PlannerVizNode(Node):
     # ------------------------------------------------------------------
 
     def deployment_callback(self, msg: UavDeployment):
+        """Update plot elements when a deployment message arrives."""
         uid = msg.uav_id
         x = msg.target_pose.position.x
         y = msg.target_pose.position.y
@@ -147,7 +149,7 @@ class PlannerVizNode(Node):
     # ------------------------------------------------------------------
 
     def redraw(self):
-        # Just refresh
+        """Refresh the matplotlib canvas without altering data."""
         self.fig.canvas.draw()
         self.fig.canvas.flush_events()
 

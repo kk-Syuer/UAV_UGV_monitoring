@@ -7,6 +7,7 @@
 
 using namespace std::chrono_literals;
 
+// Simulated user device that injects traffic into the mesh.
 class UserDeviceNode : public rclcpp::Node
 {
 public:
@@ -22,12 +23,14 @@ public:
                 "User device %s started, cluster=%s, attached to CH %s",
                 user_id_.c_str(), cluster_id_.c_str(), ch_id_.c_str());
 
+    // Publish application traffic into the network.
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 10);
 
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic_delivered", 10);
 
+    // Listen for delivered messages addressed to this user device.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 10,
       std::bind(&UserDeviceNode::trafficCallback, this, std::placeholders::_1));
@@ -37,6 +40,7 @@ public:
   }
 
 private:
+  // Emit a periodic text message towards the sink.
   void publishTraffic()
   {
     uav_msgs::msg::TrafficMessage msg;
@@ -64,6 +68,7 @@ private:
     traffic_pub_->publish(msg);
   }
 
+  // Handle messages that have reached this device.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     if (msg->dst_id != user_id_) {

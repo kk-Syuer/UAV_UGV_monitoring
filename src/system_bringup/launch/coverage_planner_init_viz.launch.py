@@ -3,6 +3,7 @@ from launch_ros.actions import Node
 
 
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
+    """Create UAV nodes used by the coverage planner."""
     nodes = []
     extra_params = extra_params or {}
     for idx in range(1, count + 1):
@@ -25,8 +26,10 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
 
 
 def generate_launch_description():
+    """Launch planner + visualization stack for initial deployment."""
     nodes = []
 
+    # Three CHs with four members for a starter layout.
     ch_ids = [f"uav_ch_{idx}" for idx in range(1, 4)]
     mem_ids = [f"uav_mem_{idx}" for idx in range(1, 5)]
     all_uavs = ch_ids + mem_ids

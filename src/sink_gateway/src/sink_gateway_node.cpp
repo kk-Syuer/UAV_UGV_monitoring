@@ -13,6 +13,7 @@
 using std::placeholders::_1;
 using namespace std::chrono_literals;
 
+// Simple delimiter-based split used for STATUS_CH payloads.
 static std::vector<std::string> splitString(const std::string & s, char delim)
 {
   std::vector<std::string> out;
@@ -24,6 +25,7 @@ static std::vector<std::string> splitString(const std::string & s, char delim)
   return out;
 }
 
+// Sink gateway terminates traffic, injects deployments, and starts mobility.
 class SinkGatewayNode : public rclcpp::Node
 {
 public:
@@ -34,6 +36,7 @@ public:
     sink_id_ =
       this->declare_parameter<std::string>("sink_id", "sink_gateway");
 
+    // Subscribe to planner deployments and re-encode as network messages.
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&SinkGatewayNode::deploymentCallback, this, std::placeholders::_1));
@@ -49,6 +52,7 @@ public:
 
     ch_timeout_sec_ = this->declare_parameter<double>("ch_timeout_sec", 15.0);
 
+    // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100,
       std::bind(&SinkGatewayNode::trafficCallback, this, _1));
@@ -56,6 +60,7 @@ public:
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic_delivered", 100);
 
+    // Control messages are injected into /network/traffic.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 100);
 
@@ -138,6 +143,7 @@ private:
   // --------------------------------------------------------------------------
   // Transmit path: periodic control messages (unused in our current tests)
   // --------------------------------------------------------------------------
+  // Periodic control/diagnostic message to a target UAV.
   void publishControlToUav()
   {
     if (target_uav_id_.empty()) {
@@ -168,6 +174,7 @@ private:
   // --------------------------------------------------------------------------
   // Deployment from coverage planner -> encoded as TrafficMessage into network
   // --------------------------------------------------------------------------
+  // Convert planner deployment messages into network control traffic.
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
     // 1) If the deployment is for the sink itself, just update pose (for viz).
@@ -255,6 +262,7 @@ private:
   // --------------------------------------------------------------------------
   // Broadcast START_MOBILITY when all DEPLOYMENT_ACKs arrived
   // --------------------------------------------------------------------------
+  // Send motion start signal after all deployments are acknowledged.
   void broadcastStartMobility()
   {
     if (!control_pub_) {
@@ -288,6 +296,7 @@ private:
     }
   }
 
+  // Parse STATUS_CH updates from CHs to track liveness.
   void handleStatusCh(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
   {
     auto parts = splitString(msg->control_payload, ',');
@@ -317,6 +326,7 @@ private:
     triggerCoverageRecompute();
   }
 
+  // Periodically verify CH status updates have not timed out.
   void checkChTimeouts()
   {
     const double now = this->now().seconds();
