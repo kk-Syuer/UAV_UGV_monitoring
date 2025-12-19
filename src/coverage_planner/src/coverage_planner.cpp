@@ -23,6 +23,7 @@ CoveragePlanner::CoveragePlanner(double area_min_x,
   logger_(logger),
   deployment_pub_(std::move(deployment_pub))
 {
+  // Use the tighter of comm/service radii to keep neighbors connected.
   const double base_radius = std::max(1.0, std::min(comm_radius_, service_radius_));
   layout_spacing_ = base_radius / std::sqrt(3.0);  // neighbor distance <= base_radius
 }
@@ -68,7 +69,7 @@ std::vector<CoveragePlanner::TargetPosition> CoveragePlanner::computeAssignments
 
   const Layout & layout = it->second;
 
-  // Track which indices are still available
+  // Track which indices are still available for greedy assignment.
   std::vector<int> ch_indices(n);
   std::vector<int> pos_indices(n);
   for (int i = 0; i < n; ++i) {
@@ -110,6 +111,7 @@ std::vector<CoveragePlanner::TargetPosition> CoveragePlanner::computeAssignments
   return assignments;
 }
 
+// Publish target positions for each active CH.
 void CoveragePlanner::updateClusterHeadTargets()
 {
   if (!deployment_pub_) {
@@ -152,6 +154,7 @@ double CoveragePlanner::dist2(double x1, double y1, double x2, double y2)
   return dx * dx + dy * dy;
 }
 
+// Pointy-top axial coordinates to Cartesian coordinates conversion.
 CoveragePlanner::TargetPosition CoveragePlanner::axialToCartesian(int q, int r, double spacing)
 {
   // Pointy-top axial to Cartesian conversion.
@@ -160,6 +163,7 @@ CoveragePlanner::TargetPosition CoveragePlanner::axialToCartesian(int q, int r, 
   return TargetPosition{x, y};
 }
 
+// Build an expanding hexagonal ring layout with the sink at the origin.
 CoveragePlanner::Layout CoveragePlanner::generateHexLayout(int n) const
 {
   Layout layout;
@@ -194,4 +198,3 @@ CoveragePlanner::Layout CoveragePlanner::generateHexLayout(int n) const
 
   return layout;
 }
-

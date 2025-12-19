@@ -3,6 +3,7 @@ from launch_ros.actions import Node
 
 
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
+    """Create a batch of UAV nodes with a shared role and parameter set."""
     nodes = []
     extra_params = extra_params or {}
     for idx in range(1, count + 1):
@@ -25,6 +26,7 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
 
 
 def create_ch_managers(cluster_configs):
+    """Spin up CH manager nodes per cluster configuration."""
     nodes = []
     for cfg in cluster_configs:
         nodes.append(
@@ -44,8 +46,10 @@ def create_ch_managers(cluster_configs):
 
 
 def generate_launch_description():
+    """Launch a liveness flow with CHs, members, and monitoring nodes."""
     nodes = []
 
+    # Two CHs with four members split across clusters.
     ch_ids = [f"uav_ch_{idx}" for idx in range(1, 3)]
     mem_ids = [f"uav_mem_{idx}" for idx in range(1, 5)]
     all_uavs = ch_ids + mem_ids

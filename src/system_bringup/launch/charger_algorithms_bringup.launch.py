@@ -5,6 +5,7 @@ from launch_ros.actions import Node
 
 
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
+    """Spawn UAV nodes with a specific role for charging policy tests."""
     nodes = []
     extra_params = extra_params or {}
     for idx in range(1, count + 1):
@@ -27,6 +28,8 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
 
 
 def generate_launch_description():
+    """Launch a scenario to compare UGV charging policies."""
+    # Launch args allow quick policy comparisons without code changes.
     charging_policy = LaunchConfiguration("charging_policy")
     charging_duration = LaunchConfiguration("charging_duration_sec")
 

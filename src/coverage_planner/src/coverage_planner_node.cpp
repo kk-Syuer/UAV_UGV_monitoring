@@ -24,6 +24,7 @@
 
 using namespace std::chrono_literals;
 
+// Orchestrates deployment planning, routing, and task point clustering.
 class CoveragePlannerNode : public rclcpp::Node
 {
 public:
@@ -65,6 +66,7 @@ public:
     int seed = this->declare_parameter<int>("rng_seed", 42);
     rng_ = std::mt19937(seed);
 
+    // Parse task points from parameter strings.
     auto task_strings = this->declare_parameter<std::vector<std::string>>(
       "task_points", std::vector<std::string>{});
     parseTaskPoints(task_strings);
@@ -85,7 +87,7 @@ public:
       "/network/traffic", 50);
 
 
-    // Timer: handles initial deployment and later routing recomputes
+    // Timer: handles initial deployment and later routing recomputes.
     timer_ = this->create_wall_timer(
       2s, std::bind(&CoveragePlannerNode::periodicUpdate, this));
 
@@ -100,7 +102,7 @@ public:
       "/uav_fleet/status", 20,
       std::bind(&CoveragePlannerNode::statusCallback, this, std::placeholders::_1));
 
-    // Subscribe to HELLO / DEPLOYMENT_ACK traffic for discovery and barriers
+    // Subscribe to HELLO / DEPLOYMENT_ACK traffic for discovery and barriers.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 50,
       std::bind(&CoveragePlannerNode::trafficCallback, this, std::placeholders::_1));
@@ -138,6 +140,7 @@ private:
     return std::max(lo, std::min(v, hi));
   }
 
+  // Parse id:x:y strings into TaskPoint entries.
   void parseTaskPoints(const std::vector<std::string> & task_strings)
   {
     task_points_.clear();
@@ -192,6 +195,7 @@ private:
     }
   }
 
+  // Compute CH placement that covers a cluster of tasks within service radius.
   geometry_msgs::msg::Pose computeServicePose(const std::vector<size_t> & indices,
                                               const std::vector<TaskPoint> & tasks) const
   {
@@ -251,6 +255,7 @@ private:
     return pose;
   }
 
+  // Build clusters using task point positions (k-means style).
   std::vector<ClusterPlan> buildTaskDrivenClusters(int num_clusters)
   {
     std::vector<ClusterPlan> clusters;
@@ -333,6 +338,7 @@ private:
     return clusters;
   }
 
+  // Allocate member UAV counts roughly proportional to task load.
   std::vector<int> allocateMembersForClusters(const std::vector<size_t> & task_counts,
                                               int total_members) const
   {
@@ -424,6 +430,7 @@ private:
   // ------------------------------------------------------------------
   // Periodic timer: initial deployment + later routing recompute
   // ------------------------------------------------------------------
+  // Main timer: deploy once and later react to routing changes.
   void periodicUpdate()
   {
     // First time: wait for HELLO discovery then compute full deployment
@@ -500,6 +507,7 @@ private:
   // ------------------------------------------------------------------
   // plcement of sink & UGV
   // ------------------------------------------------------------------
+  // Place the sink (currently fixed to origin).
   void placeSink()
   {
     if (sink_placed_) {
@@ -514,6 +522,7 @@ private:
   }
 
 
+  // Compute a UGV target based on current CH positions.
   void computeUgvPosition(const std::vector<geometry_msgs::msg::Pose> &ch_poses)
   {
     if (ugv_placed_) {
@@ -640,6 +649,7 @@ private:
   // ------------------------------------------------------------------
   // Initial deployment (CHs, members, routing to sink & UGV)
   // ------------------------------------------------------------------
+  // Compute initial deployment for CHs and members plus routing.
   void computeDeployment()
   {
     // 1) Place sink & UGV, publish them
@@ -951,6 +961,7 @@ private:
   // ------------------------------------------------------------------
   // Dynamic routing recompute when CH backbone_active changes
   // ------------------------------------------------------------------
+  // Recompute CH backbone routing when active set changes.
   void recomputeRouting()
   {
     RCLCPP_WARN(this->get_logger(), "[planner] Recomputing routing...");
@@ -1114,6 +1125,7 @@ private:
   // ------------------------------------------------------------------
   // Status callback: watch CH backbone_active flag
   // ------------------------------------------------------------------
+  // Track CH backbone activity and refresh planner when needed.
   void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
   {
     if (msg->role != 1) {
@@ -1179,6 +1191,7 @@ private:
     }
   }
 
+  // Convert a UavDeployment into a routed control message.
   void sendDeploymentTraffic(const uav_msgs::msg::UavDeployment & dep)
   {
     if (!traffic_pub_) {
@@ -1227,6 +1240,7 @@ private:
                 msg.control_payload.c_str());
   }
 
+  // Decide the initial hop used to inject deployments into the mesh.
   std::string chooseBootstrapNextHop(const uav_msgs::msg::UavDeployment & dep)
   {
     if (dep.uav_id == "sink_gateway" || dep.uav_id == "ugv") {
@@ -1271,6 +1285,7 @@ private:
     return dep.uav_id;
   }
 
+  // Broadcast motion start after all deployments are acknowledged.
   void sendMotionStart()
   {
     if (!traffic_pub_) {

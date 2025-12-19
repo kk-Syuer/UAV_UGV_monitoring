@@ -7,6 +7,7 @@
 
 using namespace std::chrono_literals;
 
+// Publishes a synthetic weather stream with a simple regime model.
 class WeatherNode : public rclcpp::Node
 {
 public:
@@ -21,6 +22,7 @@ public:
     current_regime_ = Regime::SUNNY;
     wind_direction_deg_ = 0.0;
 
+    // Broadcast weather updates to interested nodes (UAVs, viz, etc.).
     weather_pub_ = this->create_publisher<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10);
 
@@ -35,6 +37,7 @@ public:
 private:
   enum class Regime { SUNNY = 0, WINDY = 1, STORMY = 2 };
 
+  // Periodically step the regime model and publish the resulting weather.
   void timerCallback()
   {
     stepRegime();
@@ -84,6 +87,7 @@ private:
     weather_pub_->publish(msg);
   }
 
+  // Markov-like regime transition: tends to stay in same regime.
   void stepRegime()
   {
     // Simple Markov chain: regimes tend to persist, but can change
@@ -108,6 +112,7 @@ private:
     }
   }
 
+  // Sample a normal distribution using the node's RNG.
   double sampleNormal(double mean, double stddev)
   {
     std::normal_distribution<double> dist(mean, stddev);
