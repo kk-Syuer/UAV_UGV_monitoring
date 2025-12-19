@@ -467,8 +467,8 @@ private:
       return;
     }
 
-    // Must be a CHARGE_DECISION control alert
-    if (msg->flow_type != 3 || msg->control_type != "CHARGE_DECISION") {
+    // Must be a CHARGE_DECISION control message
+    if (msg->flow_type != 1 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
@@ -758,6 +758,17 @@ private:
       return;
     }
 
+    if ((msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START") &&
+        msg->dst_id == "broadcast") {
+      start_mobility_received_ = true;
+      last_pose_time_ = this->now();
+      last_pose_ = pose_;
+      RCLCPP_INFO(this->get_logger(),
+                  "[MOB-START] %s received broadcast %s from %s",
+                  uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
+      return;
+    }
+
     // If I'm not the next hop, ignore.
     if (msg->next_hop_id != uav_id_) {
       return;
@@ -794,10 +805,8 @@ private:
         handleDeploymentFromNetwork(msg);
         return;
       }
-      // 如果是 debug 文本消息
-      if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
       // Debug text messages are routed with a control_type prefix.
-      if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
+      if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
         std::string text = msg->payload;
 
@@ -866,8 +875,10 @@ private:
         return;
       }
 
-      // If the destination is one of my cluster members, send directly down to it.
-      if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
+      if (fwd.control_type == "START_MOBILITY" || fwd.control_type == "MOTION_START") {
+        fwd.next_hop_id = msg->dst_id;
+      } else if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
+        // If the destination is one of my cluster members, send directly down to it.
         fwd.next_hop_id = msg->dst_id;
       } else {
         // Otherwise, forward according to backbone routing (sink/UGV/other CHs)

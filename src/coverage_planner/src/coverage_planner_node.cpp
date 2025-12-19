@@ -139,6 +139,117 @@ private:
     return std::max(lo, std::min(v, hi));
   }
 
+  static double dist2(double x1, double y1, double x2, double y2)
+  {
+    double dx = x1 - x2;
+    double dy = y1 - y2;
+    return dx * dx + dy * dy;
+  }
+
+  bool chGraphConnected(const std::vector<geometry_msgs::msg::Pose> & poses) const
+  {
+    if (poses.empty()) {
+      return true;
+    }
+
+    const double r2 = comm_radius_ch_ * comm_radius_ch_;
+    std::vector<bool> visited(poses.size(), false);
+    std::vector<size_t> stack;
+    stack.push_back(0);
+    visited[0] = true;
+
+    while (!stack.empty()) {
+      size_t i = stack.back();
+      stack.pop_back();
+      for (size_t j = 0; j < poses.size(); ++j) {
+        if (visited[j]) {
+          continue;
+        }
+        if (dist2(poses[i].position.x, poses[i].position.y,
+                  poses[j].position.x, poses[j].position.y) <= r2) {
+          visited[j] = true;
+          stack.push_back(j);
+        }
+      }
+    }
+
+    return std::all_of(visited.begin(), visited.end(), [](bool v) { return v; });
+  }
+
+  double minDistToPoint(const std::vector<geometry_msgs::msg::Pose> & poses,
+                        double x, double y) const
+  {
+    if (poses.empty()) {
+      return std::numeric_limits<double>::infinity();
+    }
+    double best = std::numeric_limits<double>::infinity();
+    for (const auto & pose : poses) {
+      double d2 = dist2(pose.position.x, pose.position.y, x, y);
+      best = std::min(best, std::sqrt(d2));
+    }
+    return best;
+  }
+
+  double maxPairDistance(const std::vector<geometry_msgs::msg::Pose> & poses) const
+  {
+    double max_d2 = 0.0;
+    for (size_t i = 0; i < poses.size(); ++i) {
+      for (size_t j = i + 1; j < poses.size(); ++j) {
+        double d2 = dist2(poses[i].position.x, poses[i].position.y,
+                          poses[j].position.x, poses[j].position.y);
+        max_d2 = std::max(max_d2, d2);
+      }
+    }
+    return std::sqrt(max_d2);
+  }
+
+  void tightenChConnectivity(std::vector<geometry_msgs::msg::Pose> & poses)
+  {
+    if (poses.size() < 2) {
+      return;
+    }
+
+    double cx = 0.0;
+    double cy = 0.0;
+    for (const auto & pose : poses) {
+      cx += pose.position.x;
+      cy += pose.position.y;
+    }
+    cx /= static_cast<double>(poses.size());
+    cy /= static_cast<double>(poses.size());
+
+    const double max_pair_target = comm_radius_ch_ * 2.0 * 0.95;
+    const double min_scale = 0.3;
+    const double step = 0.05;
+    bool adjusted = false;
+
+    for (double scale = 1.0; scale >= min_scale; scale -= step) {
+      std::vector<geometry_msgs::msg::Pose> candidate = poses;
+      for (auto & pose : candidate) {
+        double x = cx + scale * (pose.position.x - cx);
+        double y = cy + scale * (pose.position.y - cy);
+        pose.position.x = clamp(x, x_min_, x_max_);
+        pose.position.y = clamp(y, y_min_, y_max_);
+      }
+
+      bool connected = chGraphConnected(candidate);
+      bool sink_in_range = minDistToPoint(candidate, sink_x_, sink_y_) <= comm_radius_ch_;
+      bool overlap_ok = maxPairDistance(candidate) <= max_pair_target;
+      if (connected && sink_in_range && overlap_ok) {
+        if (scale < 0.999) {
+          poses = std::move(candidate);
+          adjusted = true;
+        }
+        break;
+      }
+    }
+
+    if (adjusted) {
+      RCLCPP_WARN(this->get_logger(),
+                  "Adjusted CH positions to keep comms connected, overlapping, and sink within coverage.");
+    }
+  }
+
   // Parse id:x:y strings into TaskPoint entries.
   void parseTaskPoints(const std::vector<std::string> & task_strings)
   {
@@ -173,23 +284,33 @@ private:
     }
 
     if (task_points_.empty()) {
-      // Default: 3x3 grid centered in the area
-      const int grid = 3;
-      double cx = 0.5 * (x_min_ + x_max_);
-      double cy = 0.5 * (y_min_ + y_max_);
-      double span_x = (x_max_ - x_min_) * 0.4;
-      double span_y = (y_max_ - y_min_) * 0.4;
-      for (int ix = 0; ix < grid; ++ix) {
-        for (int iy = 0; iy < grid; ++iy) {
-          TaskPoint tp;
-          tp.id = "task_" + std::to_string(static_cast<int>(task_points_.size() + 1));
-          tp.x = cx + span_x * (static_cast<double>(ix) / (grid - 1) - 0.5);
-          tp.y = cy + span_y * (static_cast<double>(iy) / (grid - 1) - 0.5);
-          task_points_.push_back(tp);
-        }
+      // Default: generate clustered random points within the area.
+      const int num_points = 9;
+      const int num_clusters = 3;
+      std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
+      std::uniform_real_distribution<double> y_dist(y_min_, y_max_);
+      const double sigma_x = (x_max_ - x_min_) * 0.12;
+      const double sigma_y = (y_max_ - y_min_) * 0.12;
+      std::normal_distribution<double> jitter_x(0.0, sigma_x);
+      std::normal_distribution<double> jitter_y(0.0, sigma_y);
+
+      std::vector<std::pair<double, double>> centers;
+      centers.reserve(static_cast<size_t>(num_clusters));
+      for (int c = 0; c < num_clusters; ++c) {
+        centers.emplace_back(x_dist(rng_), y_dist(rng_));
+      }
+
+      for (int i = 0; i < num_points; ++i) {
+        const auto & center = centers[static_cast<size_t>(i % num_clusters)];
+        TaskPoint tp;
+        tp.id = "task_" + std::to_string(i + 1);
+        tp.x = clamp(center.first + jitter_x(rng_), x_min_, x_max_);
+        tp.y = clamp(center.second + jitter_y(rng_), y_min_, y_max_);
+        tp.cluster_index = -1;
+        task_points_.push_back(tp);
       }
       RCLCPP_WARN(this->get_logger(),
-                  "No task_points provided; generated %zu default points in a grid.",
+                  "No task_points provided; generated %zu clustered random task points.",
                   task_points_.size());
     }
   }
@@ -593,6 +714,35 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "UGV planned at geometric median (%.2f, %.2f) of CH positions.",
                 ugv_x_, ugv_y_);
+
+    double ugv_dist = minDistToPoint(ch_poses, ugv_x_, ugv_y_);
+    if (ugv_dist > comm_radius_ch_) {
+      double best = std::numeric_limits<double>::infinity();
+      geometry_msgs::msg::Pose closest;
+      for (const auto & pose : ch_poses) {
+        double d2 = dist2(pose.position.x, pose.position.y, ugv_x_, ugv_y_);
+        if (d2 < best) {
+          best = d2;
+          closest = pose;
+        }
+      }
+
+      double dx = ugv_x_ - closest.position.x;
+      double dy = ugv_y_ - closest.position.y;
+      double d = std::sqrt(dx * dx + dy * dy);
+      if (d > 1e-6) {
+        double scale = (comm_radius_ch_ * 0.9) / d;
+        ugv_x_ = clamp(closest.position.x + dx * scale, x_min_, x_max_);
+        ugv_y_ = clamp(closest.position.y + dy * scale, y_min_, y_max_);
+      } else {
+        ugv_x_ = clamp(closest.position.x, x_min_, x_max_);
+        ugv_y_ = clamp(closest.position.y, y_min_, y_max_);
+      }
+
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV moved closer to CH to remain within comms (%.2f, %.2f).",
+                  ugv_x_, ugv_y_);
+    }
   }
 
 
@@ -732,6 +882,8 @@ private:
         cluster_ids.push_back("cluster_" + std::to_string(static_cast<int>(i) + 1));
       }
     }
+
+    tightenChConnectivity(ch_poses);
 
     // Store for later dynamic routing recompute
     ch_ids_ = ch_ids;
@@ -1275,9 +1427,13 @@ private:
     // For MOTION_START we prefer a deterministic first hop that always reaches
     // the destination without depending on bootstrap routing.
     // - Members: first hop to their CH so cluster can fan out
-    // - Everyone else (CHs, UGV, sink): direct next hop to the destination
+    // - UGV/sink: inject via bootstrap CH if available
+    // - Everyone else (CHs): direct next hop to the destination
     if (dep.role == 0 && !dep.ch_id.empty()) {
       return dep.ch_id;
+    }
+    if ((dep.uav_id == "ugv" || dep.uav_id == "sink_gateway") && !bootstrap_ch_id_.empty()) {
+      return bootstrap_ch_id_;
     }
     return dep.uav_id;
   }
