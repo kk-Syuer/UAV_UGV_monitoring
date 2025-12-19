@@ -8,11 +8,11 @@ module uav_msgs {
   module msg {
     struct TrafficMessage {
       @verbatim (language="comment", text=
-        "unique per message")
+        "optional human-readable id for logging")
       string msg_id;
 
       @verbatim (language="comment", text=
-        "\"uav_1\", \"user_3\", \"ugv\", \"sink_gateway\"")
+        "\"uav_1\", \"user_3\", \"ugv_1\", \"sink\"")
       string src_id;
 
       @verbatim (language="comment", text=
@@ -20,20 +20,20 @@ module uav_msgs {
       string dst_id;
 
       @verbatim (language="comment", text=
-        "for this hop, who we are sending to")
+        "for this hop, who we are sending to (empty for broadcast)")
       string next_hop_id;
 
       @verbatim (language="comment", text=
-        "0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT")
-      uint8 msg_type;
+        "0=DATA, 1=CONTROL")
+      uint8 flow_type;
 
       @verbatim (language="comment", text=
-        "0=low ... 3=emergency (you decide later)")
-      uint8 priority;
+        "NONE, HELLO, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, etc.")
+      string control_type;
 
-      uint32 size_bytes;
-
-      builtin_interfaces::msg::Time creation_time;
+      @verbatim (language="comment", text=
+        "sequence number (per src + control_type)")
+      uint32 seq;
 
       uint32 hop_count;
 
@@ -42,12 +42,14 @@ module uav_msgs {
       uint32 ttl;
 
       @verbatim (language="comment", text=
-        "optional for CONTROL_ALERT, e.g. \"CHARGE_REQUEST\"")
-      string control_type;
+        "whether the receiver should ACK this control message")
+      boolean requires_ack;
 
       @verbatim (language="comment", text=
-        "optional free-form payload (e.g. JSON, key=value, etc.)")
-      string control_payload;
+        "serialized application payload (JSON, CSV, plain text, ...)")
+      string payload;
+
+      builtin_interfaces::msg::Time creation_time;
     };
   };
 };

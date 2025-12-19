@@ -47,13 +47,13 @@ struct TrafficMessage_
       this->src_id = "";
       this->dst_id = "";
       this->next_hop_id = "";
-      this->msg_type = 0;
-      this->priority = 0;
-      this->size_bytes = 0ul;
+      this->flow_type = 0;
+      this->control_type = "";
+      this->seq = 0ul;
       this->hop_count = 0ul;
       this->ttl = 0ul;
-      this->control_type = "";
-      this->control_payload = "";
+      this->requires_ack = false;
+      this->payload = "";
     }
   }
 
@@ -62,9 +62,9 @@ struct TrafficMessage_
     src_id(_alloc),
     dst_id(_alloc),
     next_hop_id(_alloc),
-    creation_time(_alloc, _init),
     control_type(_alloc),
-    control_payload(_alloc)
+    payload(_alloc),
+    creation_time(_alloc, _init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
@@ -73,13 +73,13 @@ struct TrafficMessage_
       this->src_id = "";
       this->dst_id = "";
       this->next_hop_id = "";
-      this->msg_type = 0;
-      this->priority = 0;
-      this->size_bytes = 0ul;
+      this->flow_type = 0;
+      this->control_type = "";
+      this->seq = 0ul;
       this->hop_count = 0ul;
       this->ttl = 0ul;
-      this->control_type = "";
-      this->control_payload = "";
+      this->requires_ack = false;
+      this->payload = "";
     }
   }
 
@@ -96,30 +96,30 @@ struct TrafficMessage_
   using _next_hop_id_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _next_hop_id_type next_hop_id;
-  using _msg_type_type =
+  using _flow_type_type =
     uint8_t;
-  _msg_type_type msg_type;
-  using _priority_type =
-    uint8_t;
-  _priority_type priority;
-  using _size_bytes_type =
+  _flow_type_type flow_type;
+  using _control_type_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _control_type_type control_type;
+  using _seq_type =
     uint32_t;
-  _size_bytes_type size_bytes;
-  using _creation_time_type =
-    builtin_interfaces::msg::Time_<ContainerAllocator>;
-  _creation_time_type creation_time;
+  _seq_type seq;
   using _hop_count_type =
     uint32_t;
   _hop_count_type hop_count;
   using _ttl_type =
     uint32_t;
   _ttl_type ttl;
-  using _control_type_type =
+  using _requires_ack_type =
+    bool;
+  _requires_ack_type requires_ack;
+  using _payload_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
-  _control_type_type control_type;
-  using _control_payload_type =
-    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
-  _control_payload_type control_payload;
+  _payload_type payload;
+  using _creation_time_type =
+    builtin_interfaces::msg::Time_<ContainerAllocator>;
+  _creation_time_type creation_time;
 
   // setters for named parameter idiom
   Type & set__msg_id(
@@ -146,28 +146,22 @@ struct TrafficMessage_
     this->next_hop_id = _arg;
     return *this;
   }
-  Type & set__msg_type(
+  Type & set__flow_type(
     const uint8_t & _arg)
   {
-    this->msg_type = _arg;
+    this->flow_type = _arg;
     return *this;
   }
-  Type & set__priority(
-    const uint8_t & _arg)
+  Type & set__control_type(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
-    this->priority = _arg;
+    this->control_type = _arg;
     return *this;
   }
-  Type & set__size_bytes(
+  Type & set__seq(
     const uint32_t & _arg)
   {
-    this->size_bytes = _arg;
-    return *this;
-  }
-  Type & set__creation_time(
-    const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
-  {
-    this->creation_time = _arg;
+    this->seq = _arg;
     return *this;
   }
   Type & set__hop_count(
@@ -182,16 +176,22 @@ struct TrafficMessage_
     this->ttl = _arg;
     return *this;
   }
-  Type & set__control_type(
-    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  Type & set__requires_ack(
+    const bool & _arg)
   {
-    this->control_type = _arg;
+    this->requires_ack = _arg;
     return *this;
   }
-  Type & set__control_payload(
+  Type & set__payload(
     const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
-    this->control_payload = _arg;
+    this->payload = _arg;
+    return *this;
+  }
+  Type & set__creation_time(
+    const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
+  {
+    this->creation_time = _arg;
     return *this;
   }
 
@@ -249,16 +249,13 @@ struct TrafficMessage_
     if (this->next_hop_id != other.next_hop_id) {
       return false;
     }
-    if (this->msg_type != other.msg_type) {
+    if (this->flow_type != other.flow_type) {
       return false;
     }
-    if (this->priority != other.priority) {
+    if (this->control_type != other.control_type) {
       return false;
     }
-    if (this->size_bytes != other.size_bytes) {
-      return false;
-    }
-    if (this->creation_time != other.creation_time) {
+    if (this->seq != other.seq) {
       return false;
     }
     if (this->hop_count != other.hop_count) {
@@ -267,10 +264,13 @@ struct TrafficMessage_
     if (this->ttl != other.ttl) {
       return false;
     }
-    if (this->control_type != other.control_type) {
+    if (this->requires_ack != other.requires_ack) {
       return false;
     }
-    if (this->control_payload != other.control_payload) {
+    if (this->payload != other.payload) {
+      return false;
+    }
+    if (this->creation_time != other.creation_time) {
       return false;
     }
     return true;

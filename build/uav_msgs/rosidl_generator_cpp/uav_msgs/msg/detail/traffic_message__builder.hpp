@@ -21,15 +21,15 @@ namespace msg
 namespace builder
 {
 
-class Init_TrafficMessage_control_payload
+class Init_TrafficMessage_creation_time
 {
 public:
-  explicit Init_TrafficMessage_control_payload(::uav_msgs::msg::TrafficMessage & msg)
+  explicit Init_TrafficMessage_creation_time(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::TrafficMessage control_payload(::uav_msgs::msg::TrafficMessage::_control_payload_type arg)
+  ::uav_msgs::msg::TrafficMessage creation_time(::uav_msgs::msg::TrafficMessage::_creation_time_type arg)
   {
-    msg_.control_payload = std::move(arg);
+    msg_.creation_time = std::move(arg);
     return std::move(msg_);
   }
 
@@ -37,16 +37,32 @@ private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
-class Init_TrafficMessage_control_type
+class Init_TrafficMessage_payload
 {
 public:
-  explicit Init_TrafficMessage_control_type(::uav_msgs::msg::TrafficMessage & msg)
+  explicit Init_TrafficMessage_payload(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_control_payload control_type(::uav_msgs::msg::TrafficMessage::_control_type_type arg)
+  Init_TrafficMessage_creation_time payload(::uav_msgs::msg::TrafficMessage::_payload_type arg)
   {
-    msg_.control_type = std::move(arg);
-    return Init_TrafficMessage_control_payload(msg_);
+    msg_.payload = std::move(arg);
+    return Init_TrafficMessage_creation_time(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_requires_ack
+{
+public:
+  explicit Init_TrafficMessage_requires_ack(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_payload requires_ack(::uav_msgs::msg::TrafficMessage::_requires_ack_type arg)
+  {
+    msg_.requires_ack = std::move(arg);
+    return Init_TrafficMessage_payload(msg_);
   }
 
 private:
@@ -59,10 +75,10 @@ public:
   explicit Init_TrafficMessage_ttl(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_control_type ttl(::uav_msgs::msg::TrafficMessage::_ttl_type arg)
+  Init_TrafficMessage_requires_ack ttl(::uav_msgs::msg::TrafficMessage::_ttl_type arg)
   {
     msg_.ttl = std::move(arg);
-    return Init_TrafficMessage_control_type(msg_);
+    return Init_TrafficMessage_requires_ack(msg_);
   }
 
 private:
@@ -85,15 +101,15 @@ private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
-class Init_TrafficMessage_creation_time
+class Init_TrafficMessage_seq
 {
 public:
-  explicit Init_TrafficMessage_creation_time(::uav_msgs::msg::TrafficMessage & msg)
+  explicit Init_TrafficMessage_seq(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_hop_count creation_time(::uav_msgs::msg::TrafficMessage::_creation_time_type arg)
+  Init_TrafficMessage_hop_count seq(::uav_msgs::msg::TrafficMessage::_seq_type arg)
   {
-    msg_.creation_time = std::move(arg);
+    msg_.seq = std::move(arg);
     return Init_TrafficMessage_hop_count(msg_);
   }
 
@@ -101,48 +117,32 @@ private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
-class Init_TrafficMessage_size_bytes
+class Init_TrafficMessage_control_type
 {
 public:
-  explicit Init_TrafficMessage_size_bytes(::uav_msgs::msg::TrafficMessage & msg)
+  explicit Init_TrafficMessage_control_type(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_creation_time size_bytes(::uav_msgs::msg::TrafficMessage::_size_bytes_type arg)
+  Init_TrafficMessage_seq control_type(::uav_msgs::msg::TrafficMessage::_control_type_type arg)
   {
-    msg_.size_bytes = std::move(arg);
-    return Init_TrafficMessage_creation_time(msg_);
+    msg_.control_type = std::move(arg);
+    return Init_TrafficMessage_seq(msg_);
   }
 
 private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
-class Init_TrafficMessage_priority
+class Init_TrafficMessage_flow_type
 {
 public:
-  explicit Init_TrafficMessage_priority(::uav_msgs::msg::TrafficMessage & msg)
+  explicit Init_TrafficMessage_flow_type(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_size_bytes priority(::uav_msgs::msg::TrafficMessage::_priority_type arg)
+  Init_TrafficMessage_control_type flow_type(::uav_msgs::msg::TrafficMessage::_flow_type_type arg)
   {
-    msg_.priority = std::move(arg);
-    return Init_TrafficMessage_size_bytes(msg_);
-  }
-
-private:
-  ::uav_msgs::msg::TrafficMessage msg_;
-};
-
-class Init_TrafficMessage_msg_type
-{
-public:
-  explicit Init_TrafficMessage_msg_type(::uav_msgs::msg::TrafficMessage & msg)
-  : msg_(msg)
-  {}
-  Init_TrafficMessage_priority msg_type(::uav_msgs::msg::TrafficMessage::_msg_type_type arg)
-  {
-    msg_.msg_type = std::move(arg);
-    return Init_TrafficMessage_priority(msg_);
+    msg_.flow_type = std::move(arg);
+    return Init_TrafficMessage_control_type(msg_);
   }
 
 private:
@@ -155,10 +155,10 @@ public:
   explicit Init_TrafficMessage_next_hop_id(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_msg_type next_hop_id(::uav_msgs::msg::TrafficMessage::_next_hop_id_type arg)
+  Init_TrafficMessage_flow_type next_hop_id(::uav_msgs::msg::TrafficMessage::_next_hop_id_type arg)
   {
     msg_.next_hop_id = std::move(arg);
-    return Init_TrafficMessage_msg_type(msg_);
+    return Init_TrafficMessage_flow_type(msg_);
   }
 
 private:

@@ -23,7 +23,7 @@ extern "C"
 // Member 'dst_id'
 // Member 'next_hop_id'
 // Member 'control_type'
-// Member 'control_payload'
+// Member 'payload'
 #include "rosidl_runtime_c/string.h"
 // Member 'creation_time'
 #include "builtin_interfaces/msg/detail/time__struct.h"
@@ -31,27 +31,28 @@ extern "C"
 /// Struct defined in msg/TrafficMessage in the package uav_msgs.
 typedef struct uav_msgs__msg__TrafficMessage
 {
-  /// unique per message
+  /// optional human-readable id for logging
   rosidl_runtime_c__String msg_id;
-  /// "uav_1", "user_3", "ugv", "sink_gateway"
+  /// "uav_1", "user_3", "ugv_1", "sink"
   rosidl_runtime_c__String src_id;
   /// final destination (who should ultimately receive it)
   rosidl_runtime_c__String dst_id;
-  /// for this hop, who we are sending to
+  /// for this hop, who we are sending to (empty for broadcast)
   rosidl_runtime_c__String next_hop_id;
-  /// 0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT
-  uint8_t msg_type;
-  /// 0=low ... 3=emergency (you decide later)
-  uint8_t priority;
-  uint32_t size_bytes;
-  builtin_interfaces__msg__Time creation_time;
+  /// 0=DATA, 1=CONTROL
+  uint8_t flow_type;
+  /// NONE, HELLO, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, etc.
+  rosidl_runtime_c__String control_type;
+  /// sequence number (per src + control_type)
+  uint32_t seq;
   uint32_t hop_count;
   /// max hops allowed (0 = unlimited)
   uint32_t ttl;
-  /// optional for CONTROL_ALERT, e.g. "CHARGE_REQUEST"
-  rosidl_runtime_c__String control_type;
-  /// optional free-form payload (e.g. JSON, key=value, etc.)
-  rosidl_runtime_c__String control_payload;
+  /// whether the receiver should ACK this control message
+  bool requires_ack;
+  /// serialized application payload (JSON, CSV, plain text, ...)
+  rosidl_runtime_c__String payload;
+  builtin_interfaces__msg__Time creation_time;
 } uav_msgs__msg__TrafficMessage;
 
 // Struct for a sequence of uav_msgs__msg__TrafficMessage.
