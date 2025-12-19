@@ -435,9 +435,7 @@ private:
     msg.msg_id = uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
     msg.src_id = uav_id_;
     msg.dst_id = ugv_id_;       // final destination: UGV
-    msg.msg_type = 3;           // CONTROL_ALERT
-    msg.priority = 2;
-    msg.size_bytes = 50;
+    msg.flow_type = 1;           // CONTROL_ALERT
     msg.creation_time = now;
     msg.hop_count = 0;
 
@@ -470,7 +468,7 @@ private:
     }
 
     // Must be a CHARGE_DECISION control alert
-    if (msg->msg_type != 3 || msg->control_type != "CHARGE_DECISION") {
+    if (msg->flow_type != 3 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
@@ -535,9 +533,7 @@ private:
       msg.next_hop_id = next_hop_to_sink_;
     }
 
-    msg.msg_type = 0;       // TEXT
-    msg.priority = 0;
-    msg.size_bytes = 100;
+    msg.flow_type = 0;       // TEXT
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
@@ -557,9 +553,7 @@ private:
     msg.dst_id = "broadcast";
     msg.next_hop_id = "";  // broadcast semantics
 
-    msg.msg_type = 3;       // CONTROL
-    msg.priority = 0;
-    msg.size_bytes = 32;
+    msg.flow_type = 1;       // CONTROL
     msg.creation_time = this->now();
     msg.hop_count = 0;
     msg.ttl = 1;            // single-hop broadcast
@@ -570,7 +564,7 @@ private:
         << pose_.position.x << ","
         << pose_.position.y << ","
         << battery_energy_;
-    msg.control_payload = oss.str();
+    msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
   }
@@ -586,7 +580,7 @@ private:
     info.battery = 0.0;
     info.last_hello_time = now;
 
-    auto parts = splitString(msg->control_payload, ',');
+    auto parts = splitString(msg->payload, ',');
     if (parts.size() >= 4) {
       info.role = parts[0];
       info.x = std::stod(parts[1]);
@@ -655,9 +649,7 @@ private:
     msg.src_id = uav_id_;
     msg.dst_id = default_dst_id_;
     msg.next_hop_id = next_hop;
-    msg.msg_type = 3;
-    msg.priority = 1;
-    msg.size_bytes = 64;
+    msg.flow_type = 1;
     msg.creation_time = this->now();
     msg.hop_count = 0;
     msg.ttl = status_ttl_;
@@ -668,7 +660,7 @@ private:
         << pose_.position.y << ","
         << battery_energy_ << ","
         << statusStateString();
-    msg.control_payload = oss.str();
+    msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
   }
@@ -708,14 +700,12 @@ private:
     msg.msg_id = uav_id_ + "_dbg_" + std::to_string(msg_counter_++);
     msg.src_id = uav_id_;
     msg.dst_id = req->dst_id;
-    msg.msg_type = 0; // TEXT
-    msg.priority = 1;
-    msg.size_bytes = static_cast<uint32_t>(req->text.size());
+    msg.flow_type = 0; // TEXT
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
     // Use control_* to carry debug info
-    msg.control_payload = req->text;
+    msg.payload = req->text;
     msg.control_type = "DEBUG_TEXT:" + uav_id_;  // initial path is myself
 
     // ---- NEW ROUTING LOGIC ----
@@ -736,7 +726,7 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "[DEBUG TX] msg_id=%s src=%s dst=%s next_hop=%s text=\"%s\"",
                 msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
-                msg.next_hop_id.c_str(), msg.control_payload.c_str());
+                msg.next_hop_id.c_str(), msg.payload.c_str());
 
     traffic_pub_->publish(msg);
 
@@ -777,13 +767,13 @@ private:
     if (msg->dst_id == uav_id_) {
 
       // First, see if this is a control message for charging
-      if (msg->msg_type == 3 && msg->control_type == "CHARGE_DECISION") {
+      if (msg->flow_type == 1 && msg->control_type == "CHARGE_DECISION") {
         handleChargeDecisionFromNetwork(msg);
         return;
       }
 
       // receive start mobility / motion start barrier
-      if (msg->msg_type == 3 &&
+      if (msg->flow_type == 1 &&
           (msg->dst_id == uav_id_ || msg->dst_id == "broadcast") &&
           (msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START")) {
 
@@ -799,15 +789,17 @@ private:
       }
 
       // Deployment via network
-      if (msg->msg_type == 3 &&
+      if (msg->flow_type == 1 &&
           (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
         handleDeploymentFromNetwork(msg);
         return;
       }
+      // 如果是 debug 文本消息
+      if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
       // Debug text messages are routed with a control_type prefix.
       if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
-        std::string text = msg->control_payload;
+        std::string text = msg->payload;
 
         RCLCPP_INFO(this->get_logger(),
                     "[DEBUG RX] msg_id=%s src=%s dst=%s hops=%u path=%s text=\"%s\"",
@@ -831,7 +823,7 @@ private:
     // I'm not final destination; if I'm a CH, I may forward
     if (role_ == 1) { // CH
       // Multi-hop DEPLOYMENT forwarding along CH backbone
-      if (msg->msg_type == 3 &&
+      if (msg->flow_type == 1 &&
           (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD") &&
           msg->dst_id != uav_id_)
       {
@@ -1295,9 +1287,9 @@ private:
   void handleDeploymentFromNetwork(
     const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    // msg->control_payload format:
+    // msg->payload format:
     // "role,cluster_id,ch_id,x,y,z,next_sink,next_ugv"
-    const std::string & payload = msg->control_payload;
+    const std::string & payload = msg->payload;
 
     std::stringstream ss(payload);
     std::string token;
@@ -1431,14 +1423,12 @@ private:
       }
     }
 
-    ack.msg_type = 3;
-    ack.priority = 1;
-    ack.size_bytes = 16;
+    ack.flow_type = 1;
     ack.creation_time = this->now();
     ack.hop_count = 0;
 
     ack.control_type = "DEPLOYMENT_ACK";
-    ack.control_payload = "";  // not needed for now
+    ack.payload = "";  // not needed for now
 
     traffic_pub_->publish(ack);
     deployment_ack_sent_ = true;

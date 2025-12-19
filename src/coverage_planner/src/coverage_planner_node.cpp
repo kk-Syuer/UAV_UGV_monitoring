@@ -66,7 +66,6 @@ public:
     int seed = this->declare_parameter<int>("rng_seed", 42);
     rng_ = std::mt19937(seed);
 
-    // Parse task points from parameter strings.
     auto task_strings = this->declare_parameter<std::vector<std::string>>(
       "task_points", std::vector<std::string>{});
     parseTaskPoints(task_strings);
@@ -1208,9 +1207,7 @@ private:
     // ----------------------------------------------------
     // Fill remaining TrafficMessage fields
     // ----------------------------------------------------
-    msg.msg_type = 3;  // CONTROL_ALERT (see TrafficMessage.msg)
-    msg.priority = 1;
-    msg.size_bytes = 64;
+    msg.flow_type = 1;  // CONTROL_ALERT (see TrafficMessage.msg)
     msg.creation_time = this->now();
     msg.hop_count = 0;
 
@@ -1229,7 +1226,7 @@ private:
         << safe_sink << ","
         << safe_ugv;
 
-    msg.control_payload = oss.str();
+    msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
 
@@ -1237,7 +1234,7 @@ private:
                 "[NET-DEPLOY] to=%s next_hop=%s payload=\"%s\"",
                 msg.dst_id.c_str(),
                 msg.next_hop_id.c_str(),
-                msg.control_payload.c_str());
+                msg.payload.c_str());
   }
 
   // Decide the initial hop used to inject deployments into the mesh.
@@ -1299,13 +1296,11 @@ private:
       msg.src_id = planner_id_;
       msg.dst_id = dep.uav_id;
       msg.next_hop_id = chooseMotionStartNextHop(dep);
-      msg.msg_type = 3;
-      msg.priority = 1;
-      msg.size_bytes = 16;
+      msg.flow_type = 1;
       msg.creation_time = this->now();
       msg.hop_count = 0;
       msg.control_type = "MOTION_START";
-      msg.control_payload = "";
+      msg.payload = "";
 
       traffic_pub_->publish(msg);
       RCLCPP_INFO(this->get_logger(),

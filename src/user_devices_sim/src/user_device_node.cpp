@@ -54,9 +54,7 @@ private:
     // First hop is my attached CH
     msg.next_hop_id = ch_id_;
 
-    msg.msg_type = 0;       // TEXT
-    msg.priority = 0;
-    msg.size_bytes = 200;
+    msg.flow_type = 0;       // TEXT
     msg.creation_time = this->now();
     msg.hop_count = 0;
 

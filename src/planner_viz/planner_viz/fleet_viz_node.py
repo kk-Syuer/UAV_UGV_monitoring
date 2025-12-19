@@ -111,6 +111,9 @@ class FleetVizNode(Node):
             self.pending_charges.pop(msg.uav_id)
 
     def task_point_cb(self, msg: TaskPointArray):
+        self.task_points = list(msg.tasks)
+
+    def color_for_cluster(self, cluster_id: str) -> str:
         """Capture task point positions for cluster overlays."""
         self.task_points = list(msg.tasks)
 
