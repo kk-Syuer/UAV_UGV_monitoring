@@ -5,9 +5,11 @@ from rclpy.node import Node
 
 import matplotlib.pyplot as plt
 
+from geometry_msgs.msg import Pose
 from uav_msgs.msg import ChargeDecision
 from uav_msgs.msg import ChargeRequest
 from uav_msgs.msg import TaskPointArray
+from uav_msgs.msg import TrafficMessage
 from uav_msgs.msg import UavDeployment
 from uav_msgs.msg import UavStatus
 from uav_msgs.msg import WeatherStatus
@@ -34,6 +36,8 @@ class FleetVizNode(Node):
             ChargeDecision, '/ugv/charge_decisions', self.charge_decision_cb, 50)
         self.task_point_sub = self.create_subscription(
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
+        self.traffic_sub = self.create_subscription(
+            TrafficMessage, '/network/traffic', self.traffic_cb, 50)
 
         # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
@@ -72,9 +76,11 @@ class FleetVizNode(Node):
 
         # area limits (can be tuned / parameterised)
         self.x_min = -1200.0
-        self.x_max =  1200.0
+        self.x_max = 1200.0
         self.y_min = -1200.0
-        self.y_max =  1200.0
+        self.y_max = 1200.0
+
+        self.comm_radius_ch = float(self.declare_parameter('comm_radius_ch', 400.0).value)
 
         # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
@@ -126,6 +132,41 @@ class FleetVizNode(Node):
             self.cluster_colors[cluster_id] = color
         return self.cluster_colors[cluster_id]
 
+    def traffic_cb(self, msg: TrafficMessage):
+        """Track UGV pose from HELLO traffic so we can show motion."""
+        if msg.control_type != 'HELLO':
+            return
+        if not msg.payload.startswith('UGV,'):
+            return
+        parts = msg.payload.split(',')
+        if len(parts) < 3:
+            return
+        try:
+            x = float(parts[1])
+            y = float(parts[2])
+        except ValueError:
+            return
+        if self.ugv_pose is None:
+            self.ugv_pose = Pose()
+        self.ugv_pose.position.x = x
+        self.ugv_pose.position.y = y
+
+    @staticmethod
+    def role_label(role: int) -> str:
+        if role == 1:
+            return 'CH'
+        if role == 0:
+            return 'MEM'
+        return 'UNK'
+
+    @staticmethod
+    def weather_state(weather: WeatherStatus) -> str:
+        if weather.rain_intensity >= 5.0 or weather.wind_speed >= 12.0:
+            return 'Stormy'
+        if weather.rain_intensity >= 1.0 or weather.wind_speed >= 6.0:
+            return 'Windy'
+        return 'Sunny'
+
     # --- plotting ---
 
     def update_plot(self):
@@ -172,21 +213,26 @@ class FleetVizNode(Node):
             x = st.pose.position.x
             y = st.pose.position.y
             color = self.color_for_cluster(st.cluster_id)
+            role_tag = self.role_label(st.role)
 
             if st.role == 1:
                 # CH: red + service radius
                 self.ax.scatter(x, y, c=color, s=30)
-                self.ax.text(x, y + 3, uav_id, color=color, fontsize=8)
+                self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
 
-                # service_radius is in the status
-                R = st.service_radius
-                circle = plt.Circle((x, y), R, linestyle='--',
-                                    fill=False, edgecolor=color, alpha=0.4)
-                self.ax.add_patch(circle)
+                # service_radius is in the status; comm radius is a viz parameter
+                service_circle = plt.Circle((x, y), st.service_radius, linestyle='--',
+                                            fill=False, edgecolor=color, alpha=0.4)
+                self.ax.add_patch(service_circle)
+
+                if self.comm_radius_ch > 0.0:
+                    comm_circle = plt.Circle((x, y), self.comm_radius_ch, linestyle=':',
+                                             fill=False, edgecolor='white', alpha=0.2)
+                    self.ax.add_patch(comm_circle)
             else:
                 # member: green
                 self.ax.scatter(x, y, c=color, s=20)
-                self.ax.text(x, y + 3, uav_id, color=color, fontsize=8)
+                self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
 
         self.ax.set_aspect('equal', adjustable='box')
 
@@ -200,6 +246,7 @@ class FleetVizNode(Node):
             info_lines.append(f"  Rain: {self.weather.rain_intensity:.1f} mm/h")
             info_lines.append(f"  Wind: {self.weather.wind_speed:.1f} m/s @ {self.weather.wind_direction_deg:.0f}°")
             info_lines.append(f"  Temp: {self.weather.temperature_c:.1f} °C")
+            info_lines.append(f"  State: {self.weather_state(self.weather)}")
         else:
             info_lines.append('Weather: (no data)')
 
@@ -211,7 +258,8 @@ class FleetVizNode(Node):
                 st = self.uav_states[uid]
                 px = st.pose.position.x
                 py = st.pose.position.y
-                info_lines.append(f"  {uid}: ({px:.1f}, {py:.1f}) | {st.battery_level:.1f}%")
+                info_lines.append(
+                    f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | {st.battery_level:.1f}%")
                 if len(info_lines) > 12:
                     info_lines.append('  ...')
                     break
