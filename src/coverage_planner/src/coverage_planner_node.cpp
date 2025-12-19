@@ -173,23 +173,33 @@ private:
     }
 
     if (task_points_.empty()) {
-      // Default: 3x3 grid centered in the area
-      const int grid = 3;
-      double cx = 0.5 * (x_min_ + x_max_);
-      double cy = 0.5 * (y_min_ + y_max_);
-      double span_x = (x_max_ - x_min_) * 0.4;
-      double span_y = (y_max_ - y_min_) * 0.4;
-      for (int ix = 0; ix < grid; ++ix) {
-        for (int iy = 0; iy < grid; ++iy) {
-          TaskPoint tp;
-          tp.id = "task_" + std::to_string(static_cast<int>(task_points_.size() + 1));
-          tp.x = cx + span_x * (static_cast<double>(ix) / (grid - 1) - 0.5);
-          tp.y = cy + span_y * (static_cast<double>(iy) / (grid - 1) - 0.5);
-          task_points_.push_back(tp);
-        }
+      // Default: generate clustered random points within the area.
+      const int num_points = 9;
+      const int num_clusters = 3;
+      std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
+      std::uniform_real_distribution<double> y_dist(y_min_, y_max_);
+      const double sigma_x = (x_max_ - x_min_) * 0.12;
+      const double sigma_y = (y_max_ - y_min_) * 0.12;
+      std::normal_distribution<double> jitter_x(0.0, sigma_x);
+      std::normal_distribution<double> jitter_y(0.0, sigma_y);
+
+      std::vector<std::pair<double, double>> centers;
+      centers.reserve(static_cast<size_t>(num_clusters));
+      for (int c = 0; c < num_clusters; ++c) {
+        centers.emplace_back(x_dist(rng_), y_dist(rng_));
+      }
+
+      for (int i = 0; i < num_points; ++i) {
+        const auto & center = centers[static_cast<size_t>(i % num_clusters)];
+        TaskPoint tp;
+        tp.id = "task_" + std::to_string(i + 1);
+        tp.x = clamp(center.first + jitter_x(rng_), x_min_, x_max_);
+        tp.y = clamp(center.second + jitter_y(rng_), y_min_, y_max_);
+        tp.cluster_index = -1;
+        task_points_.push_back(tp);
       }
       RCLCPP_WARN(this->get_logger(),
-                  "No task_points provided; generated %zu default points in a grid.",
+                  "No task_points provided; generated %zu clustered random task points.",
                   task_points_.size());
     }
   }

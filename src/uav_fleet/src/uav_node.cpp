@@ -758,6 +758,17 @@ private:
       return;
     }
 
+    if ((msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START") &&
+        msg->dst_id == "broadcast") {
+      start_mobility_received_ = true;
+      last_pose_time_ = this->now();
+      last_pose_ = pose_;
+      RCLCPP_INFO(this->get_logger(),
+                  "[MOB-START] %s received broadcast %s from %s",
+                  uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
+      return;
+    }
+
     // If I'm not the next hop, ignore.
     if (msg->next_hop_id != uav_id_) {
       return;
@@ -864,8 +875,10 @@ private:
         return;
       }
 
-      // If the destination is one of my cluster members, send directly down to it.
-      if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
+      if (fwd.control_type == "START_MOBILITY" || fwd.control_type == "MOTION_START") {
+        fwd.next_hop_id = msg->dst_id;
+      } else if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
+        // If the destination is one of my cluster members, send directly down to it.
         fwd.next_hop_id = msg->dst_id;
       } else {
         // Otherwise, forward according to backbone routing (sink/UGV/other CHs)
