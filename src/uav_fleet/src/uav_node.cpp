@@ -467,8 +467,8 @@ private:
       return;
     }
 
-    // Must be a CHARGE_DECISION control alert
-    if (msg->flow_type != 3 || msg->control_type != "CHARGE_DECISION") {
+    // Must be a CHARGE_DECISION control message
+    if (msg->flow_type != 1 || msg->control_type != "CHARGE_DECISION") {
       return;
     }
 
