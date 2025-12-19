@@ -190,6 +190,19 @@ private:
     return best;
   }
 
+  double maxPairDistance(const std::vector<geometry_msgs::msg::Pose> & poses) const
+  {
+    double max_d2 = 0.0;
+    for (size_t i = 0; i < poses.size(); ++i) {
+      for (size_t j = i + 1; j < poses.size(); ++j) {
+        double d2 = dist2(poses[i].position.x, poses[i].position.y,
+                          poses[j].position.x, poses[j].position.y);
+        max_d2 = std::max(max_d2, d2);
+      }
+    }
+    return std::sqrt(max_d2);
+  }
+
   void tightenChConnectivity(std::vector<geometry_msgs::msg::Pose> & poses)
   {
     if (poses.size() < 2) {
@@ -205,6 +218,7 @@ private:
     cx /= static_cast<double>(poses.size());
     cy /= static_cast<double>(poses.size());
 
+    const double max_pair_target = comm_radius_ch_ * 2.0 * 0.95;
     const double min_scale = 0.3;
     const double step = 0.05;
     bool adjusted = false;
@@ -220,7 +234,8 @@ private:
 
       bool connected = chGraphConnected(candidate);
       bool sink_in_range = minDistToPoint(candidate, sink_x_, sink_y_) <= comm_radius_ch_;
-      if (connected && sink_in_range) {
+      bool overlap_ok = maxPairDistance(candidate) <= max_pair_target;
+      if (connected && sink_in_range && overlap_ok) {
         if (scale < 0.999) {
           poses = std::move(candidate);
           adjusted = true;
@@ -231,7 +246,7 @@ private:
 
     if (adjusted) {
       RCLCPP_WARN(this->get_logger(),
-                  "Adjusted CH positions to keep network connected and sink within coverage.");
+                  "Adjusted CH positions to keep comms connected, overlapping, and sink within coverage.");
     }
   }
 
