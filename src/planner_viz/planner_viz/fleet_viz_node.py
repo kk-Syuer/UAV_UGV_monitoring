@@ -229,6 +229,7 @@ class FleetVizNode(Node):
                     comm_circle = plt.Circle((x, y), self.comm_radius_ch, linestyle=':',
                                              linewidth=1.2, fill=False,
                                              edgecolor='white', alpha=0.35)
+                                             fill=False, edgecolor='white', alpha=0.2)
                     self.ax.add_patch(comm_circle)
             else:
                 # member: green
