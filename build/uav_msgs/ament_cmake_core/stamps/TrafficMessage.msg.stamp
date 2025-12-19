@@ -1,15 +1,14 @@
-string msg_id               # unique per message
-string src_id               # "uav_1", "user_3", "ugv", "sink_gateway"
+string msg_id               # optional human-readable id for logging
+string src_id               # "uav_1", "user_3", "ugv_1", "sink"
 string dst_id               # final destination (who should ultimately receive it)
-string next_hop_id          # for this hop, who we are sending to
+string next_hop_id          # for this hop, who we are sending to (empty for broadcast)
 
-uint8 msg_type              # 0=TEXT, 1=IMAGE, 2=VIDEO_CHUNK, 3=CONTROL_ALERT
-uint8 priority              # 0=low ... 3=emergency (you decide later)
-uint32 size_bytes
-
-builtin_interfaces/Time creation_time
+uint8 flow_type             # 0=DATA, 1=CONTROL
+string control_type         # NONE, HELLO, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, etc.
+uint32 seq                  # sequence number (per src + control_type)
 uint32 hop_count
 uint32 ttl                  # max hops allowed (0 = unlimited)
+bool requires_ack           # whether the receiver should ACK this control message
 
-string control_type         # optional for CONTROL_ALERT, e.g. "CHARGE_REQUEST"
-string control_payload      # optional free-form payload (e.g. JSON, key=value, etc.)
+string payload              # serialized application payload (JSON, CSV, plain text, ...)
+builtin_interfaces/Time creation_time

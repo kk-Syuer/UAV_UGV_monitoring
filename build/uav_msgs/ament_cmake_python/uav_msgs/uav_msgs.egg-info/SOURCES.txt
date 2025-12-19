@@ -12,6 +12,8 @@ uav_msgs/msg/_charge_request.py
 uav_msgs/msg/_cluster_info.py
 uav_msgs/msg/_failure_event.py
 uav_msgs/msg/_heartbeat.py
+uav_msgs/msg/_task_point.py
+uav_msgs/msg/_task_point_array.py
 uav_msgs/msg/_traffic_message.py
 uav_msgs/msg/_uav_deployment.py
 uav_msgs/msg/_uav_status.py

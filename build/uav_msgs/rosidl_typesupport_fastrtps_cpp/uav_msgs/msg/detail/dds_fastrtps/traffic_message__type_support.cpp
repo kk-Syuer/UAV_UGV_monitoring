@@ -64,24 +64,24 @@ cdr_serialize(
   cdr << ros_message.dst_id;
   // Member: next_hop_id
   cdr << ros_message.next_hop_id;
-  // Member: msg_type
-  cdr << ros_message.msg_type;
-  // Member: priority
-  cdr << ros_message.priority;
-  // Member: size_bytes
-  cdr << ros_message.size_bytes;
-  // Member: creation_time
-  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
-    ros_message.creation_time,
-    cdr);
+  // Member: flow_type
+  cdr << ros_message.flow_type;
+  // Member: control_type
+  cdr << ros_message.control_type;
+  // Member: seq
+  cdr << ros_message.seq;
   // Member: hop_count
   cdr << ros_message.hop_count;
   // Member: ttl
   cdr << ros_message.ttl;
-  // Member: control_type
-  cdr << ros_message.control_type;
-  // Member: control_payload
-  cdr << ros_message.control_payload;
+  // Member: requires_ack
+  cdr << (ros_message.requires_ack ? true : false);
+  // Member: payload
+  cdr << ros_message.payload;
+  // Member: creation_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
+    ros_message.creation_time,
+    cdr);
   return true;
 }
 
@@ -103,18 +103,14 @@ cdr_deserialize(
   // Member: next_hop_id
   cdr >> ros_message.next_hop_id;
 
-  // Member: msg_type
-  cdr >> ros_message.msg_type;
+  // Member: flow_type
+  cdr >> ros_message.flow_type;
 
-  // Member: priority
-  cdr >> ros_message.priority;
+  // Member: control_type
+  cdr >> ros_message.control_type;
 
-  // Member: size_bytes
-  cdr >> ros_message.size_bytes;
-
-  // Member: creation_time
-  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
-    cdr, ros_message.creation_time);
+  // Member: seq
+  cdr >> ros_message.seq;
 
   // Member: hop_count
   cdr >> ros_message.hop_count;
@@ -122,11 +118,19 @@ cdr_deserialize(
   // Member: ttl
   cdr >> ros_message.ttl;
 
-  // Member: control_type
-  cdr >> ros_message.control_type;
+  // Member: requires_ack
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message.requires_ack = tmp ? true : false;
+  }
 
-  // Member: control_payload
-  cdr >> ros_message.control_payload;
+  // Member: payload
+  cdr >> ros_message.payload;
+
+  // Member: creation_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
+    cdr, ros_message.creation_time);
 
   return true;
 }
@@ -160,29 +164,22 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.next_hop_id.size() + 1);
-  // Member: msg_type
+  // Member: flow_type
   {
-    size_t item_size = sizeof(ros_message.msg_type);
+    size_t item_size = sizeof(ros_message.flow_type);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // Member: priority
+  // Member: control_type
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.control_type.size() + 1);
+  // Member: seq
   {
-    size_t item_size = sizeof(ros_message.priority);
+    size_t item_size = sizeof(ros_message.seq);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // Member: size_bytes
-  {
-    size_t item_size = sizeof(ros_message.size_bytes);
-    current_alignment += item_size +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
-  }
-  // Member: creation_time
-
-  current_alignment +=
-    builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
-    ros_message.creation_time, current_alignment);
   // Member: hop_count
   {
     size_t item_size = sizeof(ros_message.hop_count);
@@ -195,14 +192,21 @@ get_serialized_size(
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // Member: control_type
+  // Member: requires_ack
+  {
+    size_t item_size = sizeof(ros_message.requires_ack);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: payload
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-    (ros_message.control_type.size() + 1);
-  // Member: control_payload
-  current_alignment += padding +
-    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-    (ros_message.control_payload.size() + 1);
+    (ros_message.payload.size() + 1);
+  // Member: creation_time
+
+  current_alignment +=
+    builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
+    ros_message.creation_time, current_alignment);
 
   return current_alignment - initial_alignment;
 }
@@ -279,7 +283,7 @@ max_serialized_size_TrafficMessage(
     }
   }
 
-  // Member: msg_type
+  // Member: flow_type
   {
     size_t array_size = 1;
 
@@ -287,21 +291,65 @@ max_serialized_size_TrafficMessage(
     current_alignment += array_size * sizeof(uint8_t);
   }
 
-  // Member: priority
+  // Member: control_type
   {
     size_t array_size = 1;
 
-    last_member_size = array_size * sizeof(uint8_t);
-    current_alignment += array_size * sizeof(uint8_t);
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
   }
 
-  // Member: size_bytes
+  // Member: seq
   {
     size_t array_size = 1;
 
     last_member_size = array_size * sizeof(uint32_t);
     current_alignment += array_size * sizeof(uint32_t) +
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: hop_count
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: ttl
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: requires_ack
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+
+  // Member: payload
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
   }
 
   // Member: creation_time
@@ -323,50 +371,6 @@ max_serialized_size_TrafficMessage(
     }
   }
 
-  // Member: hop_count
-  {
-    size_t array_size = 1;
-
-    last_member_size = array_size * sizeof(uint32_t);
-    current_alignment += array_size * sizeof(uint32_t) +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
-  }
-
-  // Member: ttl
-  {
-    size_t array_size = 1;
-
-    last_member_size = array_size * sizeof(uint32_t);
-    current_alignment += array_size * sizeof(uint32_t) +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
-  }
-
-  // Member: control_type
-  {
-    size_t array_size = 1;
-
-    full_bounded = false;
-    is_plain = false;
-    for (size_t index = 0; index < array_size; ++index) {
-      current_alignment += padding +
-        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-        1;
-    }
-  }
-
-  // Member: control_payload
-  {
-    size_t array_size = 1;
-
-    full_bounded = false;
-    is_plain = false;
-    for (size_t index = 0; index < array_size; ++index) {
-      current_alignment += padding +
-        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-        1;
-    }
-  }
-
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -375,7 +379,7 @@ max_serialized_size_TrafficMessage(
     using DataType = uav_msgs::msg::TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, control_payload) +
+      offsetof(DataType, creation_time) +
       last_member_size
       ) == ret_val;
   }

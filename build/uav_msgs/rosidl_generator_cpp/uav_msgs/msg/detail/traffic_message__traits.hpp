@@ -57,31 +57,24 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
-  // member: msg_type
+  // member: flow_type
   {
-    out << "msg_type: ";
-    rosidl_generator_traits::value_to_yaml(msg.msg_type, out);
+    out << "flow_type: ";
+    rosidl_generator_traits::value_to_yaml(msg.flow_type, out);
     out << ", ";
   }
 
-  // member: priority
+  // member: control_type
   {
-    out << "priority: ";
-    rosidl_generator_traits::value_to_yaml(msg.priority, out);
+    out << "control_type: ";
+    rosidl_generator_traits::value_to_yaml(msg.control_type, out);
     out << ", ";
   }
 
-  // member: size_bytes
+  // member: seq
   {
-    out << "size_bytes: ";
-    rosidl_generator_traits::value_to_yaml(msg.size_bytes, out);
-    out << ", ";
-  }
-
-  // member: creation_time
-  {
-    out << "creation_time: ";
-    to_flow_style_yaml(msg.creation_time, out);
+    out << "seq: ";
+    rosidl_generator_traits::value_to_yaml(msg.seq, out);
     out << ", ";
   }
 
@@ -99,17 +92,24 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
-  // member: control_type
+  // member: requires_ack
   {
-    out << "control_type: ";
-    rosidl_generator_traits::value_to_yaml(msg.control_type, out);
+    out << "requires_ack: ";
+    rosidl_generator_traits::value_to_yaml(msg.requires_ack, out);
     out << ", ";
   }
 
-  // member: control_payload
+  // member: payload
   {
-    out << "control_payload: ";
-    rosidl_generator_traits::value_to_yaml(msg.control_payload, out);
+    out << "payload: ";
+    rosidl_generator_traits::value_to_yaml(msg.payload, out);
+    out << ", ";
+  }
+
+  // member: creation_time
+  {
+    out << "creation_time: ";
+    to_flow_style_yaml(msg.creation_time, out);
   }
   out << "}";
 }  // NOLINT(readability/fn_size)
@@ -158,43 +158,34 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
-  // member: msg_type
+  // member: flow_type
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    out << "msg_type: ";
-    rosidl_generator_traits::value_to_yaml(msg.msg_type, out);
+    out << "flow_type: ";
+    rosidl_generator_traits::value_to_yaml(msg.flow_type, out);
     out << "\n";
   }
 
-  // member: priority
+  // member: control_type
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    out << "priority: ";
-    rosidl_generator_traits::value_to_yaml(msg.priority, out);
+    out << "control_type: ";
+    rosidl_generator_traits::value_to_yaml(msg.control_type, out);
     out << "\n";
   }
 
-  // member: size_bytes
+  // member: seq
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    out << "size_bytes: ";
-    rosidl_generator_traits::value_to_yaml(msg.size_bytes, out);
+    out << "seq: ";
+    rosidl_generator_traits::value_to_yaml(msg.seq, out);
     out << "\n";
-  }
-
-  // member: creation_time
-  {
-    if (indentation > 0) {
-      out << std::string(indentation, ' ');
-    }
-    out << "creation_time:\n";
-    to_block_style_yaml(msg.creation_time, out, indentation + 2);
   }
 
   // member: hop_count
@@ -217,24 +208,33 @@ inline void to_block_style_yaml(
     out << "\n";
   }
 
-  // member: control_type
+  // member: requires_ack
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    out << "control_type: ";
-    rosidl_generator_traits::value_to_yaml(msg.control_type, out);
+    out << "requires_ack: ";
+    rosidl_generator_traits::value_to_yaml(msg.requires_ack, out);
     out << "\n";
   }
 
-  // member: control_payload
+  // member: payload
   {
     if (indentation > 0) {
       out << std::string(indentation, ' ');
     }
-    out << "control_payload: ";
-    rosidl_generator_traits::value_to_yaml(msg.control_payload, out);
+    out << "payload: ";
+    rosidl_generator_traits::value_to_yaml(msg.payload, out);
     out << "\n";
+  }
+
+  // member: creation_time
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "creation_time:\n";
+    to_block_style_yaml(msg.creation_time, out, indentation + 2);
   }
 }  // NOLINT(readability/fn_size)
 

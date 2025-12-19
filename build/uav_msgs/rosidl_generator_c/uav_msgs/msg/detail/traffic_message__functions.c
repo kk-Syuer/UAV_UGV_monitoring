@@ -17,7 +17,7 @@
 // Member `dst_id`
 // Member `next_hop_id`
 // Member `control_type`
-// Member `control_payload`
+// Member `payload`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `creation_time`
 #include "builtin_interfaces/msg/detail/time__functions.h"
@@ -48,23 +48,23 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
-  // msg_type
-  // priority
-  // size_bytes
-  // creation_time
-  if (!builtin_interfaces__msg__Time__init(&msg->creation_time)) {
-    uav_msgs__msg__TrafficMessage__fini(msg);
-    return false;
-  }
-  // hop_count
-  // ttl
+  // flow_type
   // control_type
   if (!rosidl_runtime_c__String__init(&msg->control_type)) {
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
-  // control_payload
-  if (!rosidl_runtime_c__String__init(&msg->control_payload)) {
+  // seq
+  // hop_count
+  // ttl
+  // requires_ack
+  // payload
+  if (!rosidl_runtime_c__String__init(&msg->payload)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // creation_time
+  if (!builtin_interfaces__msg__Time__init(&msg->creation_time)) {
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
@@ -85,17 +85,17 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   rosidl_runtime_c__String__fini(&msg->dst_id);
   // next_hop_id
   rosidl_runtime_c__String__fini(&msg->next_hop_id);
-  // msg_type
-  // priority
-  // size_bytes
-  // creation_time
-  builtin_interfaces__msg__Time__fini(&msg->creation_time);
-  // hop_count
-  // ttl
+  // flow_type
   // control_type
   rosidl_runtime_c__String__fini(&msg->control_type);
-  // control_payload
-  rosidl_runtime_c__String__fini(&msg->control_payload);
+  // seq
+  // hop_count
+  // ttl
+  // requires_ack
+  // payload
+  rosidl_runtime_c__String__fini(&msg->payload);
+  // creation_time
+  builtin_interfaces__msg__Time__fini(&msg->creation_time);
 }
 
 bool
@@ -128,22 +128,18 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   {
     return false;
   }
-  // msg_type
-  if (lhs->msg_type != rhs->msg_type) {
+  // flow_type
+  if (lhs->flow_type != rhs->flow_type) {
     return false;
   }
-  // priority
-  if (lhs->priority != rhs->priority) {
-    return false;
-  }
-  // size_bytes
-  if (lhs->size_bytes != rhs->size_bytes) {
-    return false;
-  }
-  // creation_time
-  if (!builtin_interfaces__msg__Time__are_equal(
-      &(lhs->creation_time), &(rhs->creation_time)))
+  // control_type
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->control_type), &(rhs->control_type)))
   {
+    return false;
+  }
+  // seq
+  if (lhs->seq != rhs->seq) {
     return false;
   }
   // hop_count
@@ -154,15 +150,19 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   if (lhs->ttl != rhs->ttl) {
     return false;
   }
-  // control_type
+  // requires_ack
+  if (lhs->requires_ack != rhs->requires_ack) {
+    return false;
+  }
+  // payload
   if (!rosidl_runtime_c__String__are_equal(
-      &(lhs->control_type), &(rhs->control_type)))
+      &(lhs->payload), &(rhs->payload)))
   {
     return false;
   }
-  // control_payload
-  if (!rosidl_runtime_c__String__are_equal(
-      &(lhs->control_payload), &(rhs->control_payload)))
+  // creation_time
+  if (!builtin_interfaces__msg__Time__are_equal(
+      &(lhs->creation_time), &(rhs->creation_time)))
   {
     return false;
   }
@@ -201,31 +201,31 @@ uav_msgs__msg__TrafficMessage__copy(
   {
     return false;
   }
-  // msg_type
-  output->msg_type = input->msg_type;
-  // priority
-  output->priority = input->priority;
-  // size_bytes
-  output->size_bytes = input->size_bytes;
-  // creation_time
-  if (!builtin_interfaces__msg__Time__copy(
-      &(input->creation_time), &(output->creation_time)))
-  {
-    return false;
-  }
-  // hop_count
-  output->hop_count = input->hop_count;
-  // ttl
-  output->ttl = input->ttl;
+  // flow_type
+  output->flow_type = input->flow_type;
   // control_type
   if (!rosidl_runtime_c__String__copy(
       &(input->control_type), &(output->control_type)))
   {
     return false;
   }
-  // control_payload
+  // seq
+  output->seq = input->seq;
+  // hop_count
+  output->hop_count = input->hop_count;
+  // ttl
+  output->ttl = input->ttl;
+  // requires_ack
+  output->requires_ack = input->requires_ack;
+  // payload
   if (!rosidl_runtime_c__String__copy(
-      &(input->control_payload), &(output->control_payload)))
+      &(input->payload), &(output->payload)))
+  {
+    return false;
+  }
+  // creation_time
+  if (!builtin_interfaces__msg__Time__copy(
+      &(input->creation_time), &(output->creation_time)))
   {
     return false;
   }

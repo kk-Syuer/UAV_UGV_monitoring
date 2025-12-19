@@ -120,10 +120,6 @@ class FleetVizNode(Node):
         self.task_points = list(msg.tasks)
 
     def color_for_cluster(self, cluster_id: str) -> str:
-        """Capture task point positions for cluster overlays."""
-        self.task_points = list(msg.tasks)
-
-    def color_for_cluster(self, cluster_id: str) -> str:
         """Deterministic color mapping for cluster IDs."""
         if not cluster_id:
             return 'white'
@@ -229,7 +225,6 @@ class FleetVizNode(Node):
                     comm_circle = plt.Circle((x, y), self.comm_radius_ch, linestyle=':',
                                              linewidth=1.2, fill=False,
                                              edgecolor='white', alpha=0.35)
-                                             fill=False, edgecolor='white', alpha=0.2)
                     self.ax.add_patch(comm_circle)
             else:
                 # member: green

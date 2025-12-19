@@ -10,6 +10,10 @@ msg/FailureEvent.idl
 msg/FailureEvent.msg
 msg/Heartbeat.idl
 msg/Heartbeat.msg
+msg/TaskPoint.idl
+msg/TaskPoint.msg
+msg/TaskPointArray.idl
+msg/TaskPointArray.msg
 msg/TrafficMessage.idl
 msg/TrafficMessage.msg
 msg/UavDeployment.idl

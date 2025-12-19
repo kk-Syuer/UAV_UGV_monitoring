@@ -117,42 +117,37 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
-  {  // msg_type
-    PyObject * field = PyObject_GetAttrString(_pymsg, "msg_type");
+  {  // flow_type
+    PyObject * field = PyObject_GetAttrString(_pymsg, "flow_type");
     if (!field) {
       return false;
     }
     assert(PyLong_Check(field));
-    ros_message->msg_type = (uint8_t)PyLong_AsUnsignedLong(field);
+    ros_message->flow_type = (uint8_t)PyLong_AsUnsignedLong(field);
     Py_DECREF(field);
   }
-  {  // priority
-    PyObject * field = PyObject_GetAttrString(_pymsg, "priority");
+  {  // control_type
+    PyObject * field = PyObject_GetAttrString(_pymsg, "control_type");
     if (!field) {
       return false;
     }
-    assert(PyLong_Check(field));
-    ros_message->priority = (uint8_t)PyLong_AsUnsignedLong(field);
-    Py_DECREF(field);
-  }
-  {  // size_bytes
-    PyObject * field = PyObject_GetAttrString(_pymsg, "size_bytes");
-    if (!field) {
-      return false;
-    }
-    assert(PyLong_Check(field));
-    ros_message->size_bytes = PyLong_AsUnsignedLong(field);
-    Py_DECREF(field);
-  }
-  {  // creation_time
-    PyObject * field = PyObject_GetAttrString(_pymsg, "creation_time");
-    if (!field) {
-      return false;
-    }
-    if (!builtin_interfaces__msg__time__convert_from_py(field, &ros_message->creation_time)) {
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
       Py_DECREF(field);
       return false;
     }
+    rosidl_runtime_c__String__assign(&ros_message->control_type, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // seq
+    PyObject * field = PyObject_GetAttrString(_pymsg, "seq");
+    if (!field) {
+      return false;
+    }
+    assert(PyLong_Check(field));
+    ros_message->seq = PyLong_AsUnsignedLong(field);
     Py_DECREF(field);
   }
   {  // hop_count
@@ -173,8 +168,17 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     ros_message->ttl = PyLong_AsUnsignedLong(field);
     Py_DECREF(field);
   }
-  {  // control_type
-    PyObject * field = PyObject_GetAttrString(_pymsg, "control_type");
+  {  // requires_ack
+    PyObject * field = PyObject_GetAttrString(_pymsg, "requires_ack");
+    if (!field) {
+      return false;
+    }
+    assert(PyBool_Check(field));
+    ros_message->requires_ack = (Py_True == field);
+    Py_DECREF(field);
+  }
+  {  // payload
+    PyObject * field = PyObject_GetAttrString(_pymsg, "payload");
     if (!field) {
       return false;
     }
@@ -184,23 +188,19 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
       Py_DECREF(field);
       return false;
     }
-    rosidl_runtime_c__String__assign(&ros_message->control_type, PyBytes_AS_STRING(encoded_field));
+    rosidl_runtime_c__String__assign(&ros_message->payload, PyBytes_AS_STRING(encoded_field));
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
-  {  // control_payload
-    PyObject * field = PyObject_GetAttrString(_pymsg, "control_payload");
+  {  // creation_time
+    PyObject * field = PyObject_GetAttrString(_pymsg, "creation_time");
     if (!field) {
       return false;
     }
-    assert(PyUnicode_Check(field));
-    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
-    if (!encoded_field) {
+    if (!builtin_interfaces__msg__time__convert_from_py(field, &ros_message->creation_time)) {
       Py_DECREF(field);
       return false;
     }
-    rosidl_runtime_c__String__assign(&ros_message->control_payload, PyBytes_AS_STRING(encoded_field));
-    Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
 
@@ -293,47 +293,39 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
       }
     }
   }
-  {  // msg_type
+  {  // flow_type
     PyObject * field = NULL;
-    field = PyLong_FromUnsignedLong(ros_message->msg_type);
+    field = PyLong_FromUnsignedLong(ros_message->flow_type);
     {
-      int rc = PyObject_SetAttrString(_pymessage, "msg_type", field);
+      int rc = PyObject_SetAttrString(_pymessage, "flow_type", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
       }
     }
   }
-  {  // priority
+  {  // control_type
     PyObject * field = NULL;
-    field = PyLong_FromUnsignedLong(ros_message->priority);
-    {
-      int rc = PyObject_SetAttrString(_pymessage, "priority", field);
-      Py_DECREF(field);
-      if (rc) {
-        return NULL;
-      }
-    }
-  }
-  {  // size_bytes
-    PyObject * field = NULL;
-    field = PyLong_FromUnsignedLong(ros_message->size_bytes);
-    {
-      int rc = PyObject_SetAttrString(_pymessage, "size_bytes", field);
-      Py_DECREF(field);
-      if (rc) {
-        return NULL;
-      }
-    }
-  }
-  {  // creation_time
-    PyObject * field = NULL;
-    field = builtin_interfaces__msg__time__convert_to_py(&ros_message->creation_time);
+    field = PyUnicode_DecodeUTF8(
+      ros_message->control_type.data,
+      strlen(ros_message->control_type.data),
+      "replace");
     if (!field) {
       return NULL;
     }
     {
-      int rc = PyObject_SetAttrString(_pymessage, "creation_time", field);
+      int rc = PyObject_SetAttrString(_pymessage, "control_type", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // seq
+    PyObject * field = NULL;
+    field = PyLong_FromUnsignedLong(ros_message->seq);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "seq", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
@@ -362,34 +354,42 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
       }
     }
   }
-  {  // control_type
+  {  // requires_ack
     PyObject * field = NULL;
-    field = PyUnicode_DecodeUTF8(
-      ros_message->control_type.data,
-      strlen(ros_message->control_type.data),
-      "replace");
-    if (!field) {
-      return NULL;
-    }
+    field = PyBool_FromLong(ros_message->requires_ack ? 1 : 0);
     {
-      int rc = PyObject_SetAttrString(_pymessage, "control_type", field);
+      int rc = PyObject_SetAttrString(_pymessage, "requires_ack", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
       }
     }
   }
-  {  // control_payload
+  {  // payload
     PyObject * field = NULL;
     field = PyUnicode_DecodeUTF8(
-      ros_message->control_payload.data,
-      strlen(ros_message->control_payload.data),
+      ros_message->payload.data,
+      strlen(ros_message->payload.data),
       "replace");
     if (!field) {
       return NULL;
     }
     {
-      int rc = PyObject_SetAttrString(_pymessage, "control_payload", field);
+      int rc = PyObject_SetAttrString(_pymessage, "payload", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // creation_time
+    PyObject * field = NULL;
+    field = builtin_interfaces__msg__time__convert_to_py(&ros_message->creation_time);
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "creation_time", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
