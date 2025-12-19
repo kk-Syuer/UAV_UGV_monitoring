@@ -29,6 +29,7 @@
 
 using namespace std::chrono_literals;
 
+// Lightweight CSV splitter for control payloads.
 static std::vector<std::string> splitString(const std::string & s, char delim)
 {
   std::vector<std::string> out;
@@ -109,7 +110,7 @@ public:
 
     current_temperature_c_ = 22.0f;  // default comfy temp
 
-    // Mobility parameters
+    // Mobility parameters governing simulated kinematics.
     mobility_enabled_ =
       this->declare_parameter<bool>("mobility_enabled", true);
     mobility_dt_sec_ =
@@ -383,7 +384,7 @@ private:
       failure_pub_->publish(fe);
     }
 
-    // If low and not waiting or scheduled, request a charge slot
+    // If low and not waiting or scheduled, request a charge slot.
     if (!is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
         battery_percent <= battery_threshold_percent_)
     {
@@ -447,7 +448,7 @@ private:
       msg.next_hop_id = resolveNextHop(ugv_id_);
     }
 
-    // Optional control metadata
+    // Optional control metadata to describe the control alert type.
     msg.control_type = "CHARGE_REQUEST";
     // For now payload is empty; UGV will look up status from /uav_fleet/status
 
@@ -757,7 +758,7 @@ private:
       return;
     }
 
-    // If I'm not the next hop, ignore
+    // If I'm not the next hop, ignore.
     if (msg->next_hop_id != uav_id_) {
       return;
     }
@@ -795,6 +796,8 @@ private:
       }
       // 如果是 debug 文本消息
       if (msg->flow_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
+      // Debug text messages are routed with a control_type prefix.
+      if (msg->msg_type == 0 && msg->control_type.rfind("DEBUG_TEXT:", 0) == 0) {
         std::string path = msg->control_type.substr(std::string("DEBUG_TEXT:").size());
         std::string text = msg->payload;
 
@@ -1013,6 +1016,7 @@ private:
   std::string next_hop_to_sink_;
   // New: simple per-destination routing table for CHs
   std::unordered_map<std::string, std::string> routing_table_;
+  // Resolve a destination into the next hop using cluster membership and routing table.
   std::string resolveNextHop(const std::string & dst) const
   {
       // CASE 1: destination is known as member of a CH
@@ -1122,6 +1126,7 @@ private:
       }
     }
 
+    // Returns true when the target is reached within one step.
     auto stepTowards2D = [&](double gx, double gy) -> bool {
       double dx = gx - pose_.position.x;
       double dy = gy - pose_.position.y;

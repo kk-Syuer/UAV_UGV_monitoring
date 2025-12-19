@@ -4,6 +4,7 @@ from launch_ros.actions import Node
 
 
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
+    """Helper to spawn UAV nodes with consistent naming and parameters."""
     nodes = []
     extra_params = extra_params or {}
     for idx in range(1, count + 1):
@@ -26,6 +27,7 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
 
 
 def create_user_devices(count: int):
+    """Spawn simulated user devices that generate traffic."""
     nodes = []
     for idx in range(1, count + 1):
         dev_id = f"user_dev_{idx}"
@@ -43,8 +45,10 @@ def create_user_devices(count: int):
 
 
 def generate_launch_description():
+    """Launch a multi-hop networking test with UAVs, UGV, and users."""
     nodes = []
 
+    # Four CHs form a backbone with members and user devices.
     ch_ids = [f"uav_ch_{idx}" for idx in range(1, 5)]
     mem_ids = [f"uav_mem_{idx}" for idx in range(1, 7)]
     all_uavs = ch_ids + mem_ids

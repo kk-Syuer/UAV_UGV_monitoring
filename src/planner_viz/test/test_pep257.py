@@ -19,5 +19,6 @@ import pytest
 @pytest.mark.linter
 @pytest.mark.pep257
 def test_pep257():
+    # Run docstring linter against the package and tests.
     rc = main(argv=['.', 'test'])
     assert rc == 0, 'Found code style errors / warnings'

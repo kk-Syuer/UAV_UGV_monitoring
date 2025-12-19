@@ -9,6 +9,7 @@
 
 using namespace std::chrono_literals;
 
+// Cluster head manager: publishes cluster membership and reacts to failures.
 class ChManagerNode : public rclcpp::Node
 {
 public:
@@ -21,15 +22,15 @@ public:
     member_ids_ = this->declare_parameter<std::vector<std::string>>(
       "member_ids", std::vector<std::string>({"uav_1"}));
 
-    // ---- Publisher ----
+    // Publisher periodically shares cluster membership for discovery.
     pub_ = this->create_publisher<uav_msgs::msg::ClusterInfo>(
       "/ch_manager/cluster_info", 10);
 
-    // ---- Timer: periodically publish cluster info ----
+    // Timer drives periodic cluster-info broadcasts.
     timer_ = this->create_wall_timer(
       1s, std::bind(&ChManagerNode::publishClusterInfo, this));
 
-    // ---- NEW: subscribe to failure events ----
+    // Listen for failure events to log CH/member battery deaths.
     failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
       "/uav_fleet/failure_events", 100,
       std::bind(&ChManagerNode::failureCallback, this, std::placeholders::_1));
@@ -40,7 +41,7 @@ public:
   }
 
 private:
-  // ----- Publish cluster info -----
+  // Publish cluster info snapshot used by members and observers.
   void publishClusterInfo()
   {
     uav_msgs::msg::ClusterInfo msg;
@@ -50,7 +51,7 @@ private:
     pub_->publish(msg);
   }
 
-  // ----- NEW: detect CH or member failure -----
+  // Detect CH/member battery failures and log for operators.
   void failureCallback(const uav_msgs::msg::FailureEvent::SharedPtr msg)
   {
     if (msg->failure_type != 1)  // 1 = BATTERY_DEAD

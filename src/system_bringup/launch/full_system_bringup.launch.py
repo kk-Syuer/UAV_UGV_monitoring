@@ -3,6 +3,7 @@ from launch_ros.actions import Node
 
 
 def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None):
+    """Create a named set of UAV nodes with shared parameters."""
     nodes = []
     extra_params = extra_params or {}
     for idx in range(1, count + 1):
@@ -25,6 +26,7 @@ def create_uav_nodes(prefix: str, count: int, role_value: int, extra_params=None
 
 
 def create_user_device_nodes(count: int):
+    """Create user device simulators that inject network traffic."""
     nodes = []
     for idx in range(1, count + 1):
         device_id = f"user_dev_{idx}"
@@ -44,9 +46,10 @@ def create_user_device_nodes(count: int):
 
 
 def generate_launch_description():
+    """Launch the full system demo stack."""
     nodes = []
 
-    # Cluster-head UAVs (role 1)
+    # Cluster-head UAVs (role 1) forming the backbone.
     nodes.extend(create_uav_nodes("uav_ch", 3, role_value=1))
 
     # Member UAVs (role 0)

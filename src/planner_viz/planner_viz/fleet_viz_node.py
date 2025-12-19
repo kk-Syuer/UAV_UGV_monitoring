@@ -17,6 +17,7 @@ class FleetVizNode(Node):
     def __init__(self):
         super().__init__('fleet_viz_node')
 
+        # Subscriptions provide live data for the visualization panels.
         self.status_sub = self.create_subscription(
             UavStatus, '/uav_fleet/status', self.status_cb, 50)
 
@@ -34,7 +35,7 @@ class FleetVizNode(Node):
         self.task_point_sub = self.create_subscription(
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
 
-        # state
+        # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
         self.sink_pose = None
         self.ugv_pose = None
@@ -45,11 +46,11 @@ class FleetVizNode(Node):
             'cyan', 'magenta', 'orange', 'lime', 'yellow', 'plum', 'deepskyblue', 'white'
         ]
 
-        # queue + scheduling summary
+        # Queue + scheduling summary.
         self.pending_charges: Dict[str, float] = {}
         self.latest_policy = 'n/a'
 
-        # plot setup
+        # Plot setup for the main canvas and info panels.
         plt.ion()
         self.fig = plt.figure(figsize=(12, 7))
         gs = self.fig.add_gridspec(2, 2, width_ratios=[3.0, 1.1], height_ratios=[2.2, 1.0])
@@ -75,7 +76,7 @@ class FleetVizNode(Node):
         self.y_min = -1200.0
         self.y_max =  1200.0
 
-        # timer to refresh plot
+        # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
 
         self.get_logger().info("FleetVizNode started.")
@@ -83,22 +84,27 @@ class FleetVizNode(Node):
     # --- callbacks ---
 
     def status_cb(self, msg: UavStatus):
+        """Cache latest UAV status for plotting."""
         self.uav_states[msg.uav_id] = msg
 
     def deployment_cb(self, msg: UavDeployment):
+        """Capture sink/UGV deployments for map anchors."""
         if msg.uav_id == 'sink_gateway':
             self.sink_pose = msg.target_pose
         elif msg.uav_id == 'ugv':
             self.ugv_pose = msg.target_pose
 
     def weather_cb(self, msg: WeatherStatus):
+        """Cache current weather for the info panel."""
         self.weather = msg
 
     def charge_request_cb(self, msg: ChargeRequest):
+        """Track outstanding charging requests."""
         # track outstanding charging requests to approximate queue size
         self.pending_charges[msg.uav_id] = self.get_clock().now().seconds_nanoseconds()[0]
 
     def charge_decision_cb(self, msg: ChargeDecision):
+        """Update scheduling policy and clear completed requests."""
         self.latest_policy = msg.policy if msg.policy else 'n/a'
         # once a decision is made, remove from pending queue
         if msg.uav_id in self.pending_charges:
@@ -108,6 +114,11 @@ class FleetVizNode(Node):
         self.task_points = list(msg.tasks)
 
     def color_for_cluster(self, cluster_id: str) -> str:
+        """Capture task point positions for cluster overlays."""
+        self.task_points = list(msg.tasks)
+
+    def color_for_cluster(self, cluster_id: str) -> str:
+        """Deterministic color mapping for cluster IDs."""
         if not cluster_id:
             return 'white'
         if cluster_id not in self.cluster_colors:
@@ -118,6 +129,7 @@ class FleetVizNode(Node):
     # --- plotting ---
 
     def update_plot(self):
+        """Redraw the full figure from cached state."""
         self.ax.cla()
         self.ax.set_facecolor('black')
         self.ax.set_xlabel('X [m]', color='white')

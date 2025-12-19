@@ -21,5 +21,6 @@ import pytest
 @pytest.mark.copyright
 @pytest.mark.linter
 def test_copyright():
+    # Verify copyright headers once enabled.
     rc = main(argv=['.', 'test'])
     assert rc == 0, 'Found errors'

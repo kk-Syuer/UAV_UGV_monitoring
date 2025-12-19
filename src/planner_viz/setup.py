@@ -2,6 +2,7 @@ from setuptools import setup
 
 package_name = 'planner_viz'
 
+# Package metadata for ROS 2 Python entry points.
 setup(
     name=package_name,
     version='0.0.0',

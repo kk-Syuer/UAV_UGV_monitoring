@@ -15,6 +15,7 @@
 
 using namespace std::chrono_literals;
 
+// Compute number of charging docks to reach target utilization.
 int compute_required_charging_spots(
     int    num_ch,
     int    num_members,
@@ -52,6 +53,7 @@ int compute_required_charging_spots(
   return num_spots;
 }
 
+// UGV charger node schedules charge sessions and routes control messages.
 class UgvChargerNode : public rclcpp::Node
 {
 public:
@@ -71,6 +73,7 @@ public:
     charge_time_ch_min_ = this->declare_parameter<double>("charge_time_ch_min", 30.0);
     flight_time_mem_min_ = this->declare_parameter<double>("flight_time_mem_min", 45.0);
     charge_time_mem_min_ = this->declare_parameter<double>("charge_time_mem_min", 20.0);
+    // Track deployments to learn CH/member relations for routing.
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&UgvChargerNode::deploymentCallback, this, std::placeholders::_1));
@@ -103,6 +106,7 @@ public:
     w_batt_ = this->declare_parameter<double>("w_batt", 1.0);
     w_wait_ = this->declare_parameter<double>("w_wait", 0.1);
 
+    // Charge decisions are published both directly and via routed control messages.
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
@@ -125,6 +129,7 @@ public:
       "/uav_fleet/status", 100,
       std::bind(&UgvChargerNode::statusCallback, this, std::placeholders::_1));
 
+    // Scheduler loop assigns charging slots at a steady cadence.
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
 
@@ -180,6 +185,7 @@ private:
 
   // ------------- Callbacks -------------
 
+  // Cache latest UAV status for policy scoring and dock sizing.
   void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
   {
     UavInfo info;
@@ -190,6 +196,7 @@ private:
     recomputeChargingSpots();
   }
 
+  // Handle control messages routed through the mesh.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     // Only consider messages whose final destination is this UGV
@@ -247,6 +254,7 @@ private:
     }
   }
 
+  // Update target pose and reset motion bookkeeping.
   void setDeploymentGoal(const geometry_msgs::msg::Pose & target)
   {
     deployment_goal_pose_ = target;
@@ -267,6 +275,7 @@ private:
                 deployment_goal_pose_.position.z);
   }
 
+  // Move the UGV toward its deployment goal at a fixed speed.
   void mobilityStep()
   {
     if (!mobility_enabled_ || !has_deployment_goal_ ||
@@ -315,6 +324,7 @@ private:
     // keep current z (UGV stays on ground unless target dictates otherwise)
   }
 
+  // Observe deployments to learn topology and update UGV pose.
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
     // Always store the pose for possible future use
@@ -340,6 +350,7 @@ private:
     }
   }
 
+  // Decode deployment commands injected through the network layer.
   void handleDeploymentFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
     // msg->payload format:
@@ -397,6 +408,7 @@ private:
     sendDeploymentAck(next_sink);
   }
 
+  // Ack deployment so the sink can release the motion barrier.
   void sendDeploymentAck(const std::string & suggested_next_hop = "")
   {
     if (deployment_ack_sent_) {
@@ -435,6 +447,7 @@ private:
                 ugv_id_.c_str(), ack.next_hop_id.c_str());
   }
 
+  // Broadcast HELLO for discovery and timing tests.
   void publishHello()
   {
     if (!control_pub_) {
@@ -465,6 +478,7 @@ private:
 
   // ------------- Scheduler -------------
 
+  // Assign charging sessions based on the active policy.
   void schedulerLoop()
   {
     auto now = this->now();
@@ -539,6 +553,7 @@ private:
 
   // ------------- Policy-specific selection -------------
 
+  // Select the next queue entry according to the configured policy.
   size_t chooseNextIndex(const rclcpp::Time & now)
   {
     if (policy_ == Policy::FCFS) {
@@ -665,6 +680,7 @@ private:
 
   // Optional: store CH poses if we want geometric reasoning later
   std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
+  // Send a routed control message so the UAV receives its decision.
   void sendDecisionControlMessage(const QueueEntry & job,
                                   const rclcpp::Time & now)
   {
@@ -700,6 +716,7 @@ private:
     control_pub_->publish(msg);
   }
 
+  // Recompute dock capacity based on fleet mix and utilization target.
   void recomputeChargingSpots()
   {
     int num_ch = 0;
