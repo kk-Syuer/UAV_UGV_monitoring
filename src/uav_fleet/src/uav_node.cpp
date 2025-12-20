@@ -298,7 +298,11 @@ private:
     // - no drain
     // - no charging logic
     // - no charge requests
-    if (!ready_for_battery) {
+    if (!ready_for_battery && deployment_received_) {
+      // Keep reporting status (and backbone activity for CHs),
+      // but skip any drain/charge logic until motion is allowed.
+      energy_consumption_rate = 0.0f;
+    } else if (!deployment_received_) {
       float battery_percent = 0.0f;
       if (battery_capacity_ > 0.0f) {
         battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
@@ -324,7 +328,7 @@ private:
     }
 
     // ---- Normal behaviour AFTER deployment ----
-    if (is_charging_) {
+    if (deployment_received_ && ready_for_battery && is_charging_) {
       // Charging: interpolate
       if (now >= charge_end_time_) {
         battery_energy_ = battery_capacity_;
@@ -343,7 +347,7 @@ private:
             static_cast<float>((battery_capacity_ - energy_at_charge_start_) * frac);
         }
       }
-    } else {
+    } else if (deployment_received_ && ready_for_battery) {
       // Not charging: drain battery based on role and temperature
       float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
       float temp_factor = temperatureFactor(current_temperature_c_);
@@ -388,7 +392,7 @@ private:
     }
 
     // If low and not waiting or scheduled, request a charge slot.
-    if (!is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
+    if (ready_for_battery && !is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
         battery_percent <= battery_threshold_percent_)
     {
       requestCharge(battery_percent);
