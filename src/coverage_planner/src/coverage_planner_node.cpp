@@ -228,52 +228,93 @@ private:
     return worst;
   }
 
-  void tightenChConnectivity(std::vector<geometry_msgs::msg::Pose> & poses)
+  void tightenChConnectivity(std::vector<geometry_msgs::msg::Pose> & poses,
+                             const std::vector<geometry_msgs::msg::Pose> & anchors)
   {
     if (poses.size() < 2) {
       return;
     }
 
-    double cx = 0.0;
-    double cy = 0.0;
-    for (const auto & pose : poses) {
-      cx += pose.position.x;
-      cy += pose.position.y;
-    }
-    cx /= static_cast<double>(poses.size());
-    cy /= static_cast<double>(poses.size());
+    const bool use_anchor = anchors.size() == poses.size();
+    const double max_pair_target = comm_radius_ch_ * 2.0 * 0.98;
+    const int max_iters = 60;
+    const double pull_gain = 0.08;
+    const double pair_gain = 0.5;
 
-    const double max_pair_target = comm_radius_ch_ * 2.0 * 0.95;
-    const double overlap_target = comm_radius_ch_ * 2.0 * 0.95;
-    const double min_scale = 0.3;
-    const double step = 0.05;
     bool adjusted = false;
+    for (int iter = 0; iter < max_iters; ++iter) {
+      bool any_update = false;
 
-    for (double scale = 1.0; scale >= min_scale; scale -= step) {
-      std::vector<geometry_msgs::msg::Pose> candidate = poses;
-      for (auto & pose : candidate) {
-        double x = cx + scale * (pose.position.x - cx);
-        double y = cy + scale * (pose.position.y - cy);
-        pose.position.x = clamp(x, x_min_, x_max_);
-        pose.position.y = clamp(y, y_min_, y_max_);
+      // Pull toward anchor positions to stay near task-driven centers.
+      if (use_anchor) {
+        for (size_t i = 0; i < poses.size(); ++i) {
+          double dx = anchors[i].position.x - poses[i].position.x;
+          double dy = anchors[i].position.y - poses[i].position.y;
+          poses[i].position.x += pull_gain * dx;
+          poses[i].position.y += pull_gain * dy;
+        }
       }
 
-      bool connected = chGraphConnected(candidate);
-      bool sink_in_range = minDistToPoint(candidate, sink_x_, sink_y_) <= comm_radius_ch_;
-      bool overlap_ok = maxPairDistance(candidate) <= max_pair_target;
-      bool neighbor_overlap_ok = maxNearestNeighborDistance(candidate) <= overlap_target;
-      if (connected && sink_in_range && overlap_ok && neighbor_overlap_ok) {
-        if (scale < 0.999) {
-          poses = std::move(candidate);
-          adjusted = true;
+      // Ensure all CH pairs are within the overlap target.
+      for (size_t i = 0; i < poses.size(); ++i) {
+        for (size_t j = i + 1; j < poses.size(); ++j) {
+          double dx = poses[j].position.x - poses[i].position.x;
+          double dy = poses[j].position.y - poses[i].position.y;
+          double dist = std::sqrt(dx * dx + dy * dy);
+          if (dist > max_pair_target) {
+            double excess = dist - max_pair_target;
+            if (dist > 1e-6) {
+              double shift = (excess * pair_gain) / dist;
+              poses[i].position.x += dx * shift;
+              poses[i].position.y += dy * shift;
+              poses[j].position.x -= dx * shift;
+              poses[j].position.y -= dy * shift;
+              any_update = true;
+            }
+          }
         }
+      }
+
+      // Keep the sink inside at least one CH coverage radius.
+      double sink_dist = minDistToPoint(poses, sink_x_, sink_y_);
+      if (sink_dist > comm_radius_ch_) {
+        size_t closest_idx = 0;
+        double best = std::numeric_limits<double>::infinity();
+        for (size_t i = 0; i < poses.size(); ++i) {
+          double d2 = dist2(poses[i].position.x, poses[i].position.y, sink_x_, sink_y_);
+          if (d2 < best) {
+            best = d2;
+            closest_idx = i;
+          }
+        }
+        double dx = sink_x_ - poses[closest_idx].position.x;
+        double dy = sink_y_ - poses[closest_idx].position.y;
+        double dist = std::sqrt(dx * dx + dy * dy);
+        if (dist > 1e-6) {
+          double step = (dist - comm_radius_ch_) / dist;
+          poses[closest_idx].position.x += dx * step;
+          poses[closest_idx].position.y += dy * step;
+          any_update = true;
+        }
+      }
+
+      for (auto & pose : poses) {
+        pose.position.x = clamp(pose.position.x, x_min_, x_max_);
+        pose.position.y = clamp(pose.position.y, y_min_, y_max_);
+      }
+
+      double max_pair = maxPairDistance(poses);
+      sink_dist = minDistToPoint(poses, sink_x_, sink_y_);
+      if (max_pair <= max_pair_target && sink_dist <= comm_radius_ch_) {
         break;
       }
+
+      adjusted = adjusted || any_update;
     }
 
     if (adjusted) {
       RCLCPP_WARN(this->get_logger(),
-                  "Adjusted CH positions to keep comms connected, overlapping, and sink within coverage.");
+                  "Adjusted CH positions to keep overlaps, task proximity, and sink coverage.");
     }
   }
 
@@ -948,10 +989,11 @@ private:
       }
     }
 
+    std::vector<geometry_msgs::msg::Pose> ch_anchor_poses = ch_poses;
     if (task_layout_used) {
       stretchChPositionsDiagonal(ch_poses, diag_stretch_factor_);
     }
-    tightenChConnectivity(ch_poses);
+    tightenChConnectivity(ch_poses, ch_anchor_poses);
 
     // Store for later dynamic routing recompute
     ch_ids_ = ch_ids;
