@@ -206,6 +206,28 @@ private:
     return std::sqrt(max_d2);
   }
 
+  double maxNearestNeighborDistance(const std::vector<geometry_msgs::msg::Pose> & poses) const
+  {
+    if (poses.size() < 2) {
+      return 0.0;
+    }
+
+    double worst = 0.0;
+    for (size_t i = 0; i < poses.size(); ++i) {
+      double best = std::numeric_limits<double>::infinity();
+      for (size_t j = 0; j < poses.size(); ++j) {
+        if (i == j) {
+          continue;
+        }
+        double d2 = dist2(poses[i].position.x, poses[i].position.y,
+                          poses[j].position.x, poses[j].position.y);
+        best = std::min(best, std::sqrt(d2));
+      }
+      worst = std::max(worst, best);
+    }
+    return worst;
+  }
+
   void tightenChConnectivity(std::vector<geometry_msgs::msg::Pose> & poses)
   {
     if (poses.size() < 2) {
@@ -222,6 +244,7 @@ private:
     cy /= static_cast<double>(poses.size());
 
     const double max_pair_target = comm_radius_ch_ * 2.0 * 0.95;
+    const double overlap_target = comm_radius_ch_ * 2.0 * 0.95;
     const double min_scale = 0.3;
     const double step = 0.05;
     bool adjusted = false;
@@ -238,7 +261,8 @@ private:
       bool connected = chGraphConnected(candidate);
       bool sink_in_range = minDistToPoint(candidate, sink_x_, sink_y_) <= comm_radius_ch_;
       bool overlap_ok = maxPairDistance(candidate) <= max_pair_target;
-      if (connected && sink_in_range && overlap_ok) {
+      bool neighbor_overlap_ok = maxNearestNeighborDistance(candidate) <= overlap_target;
+      if (connected && sink_in_range && overlap_ok && neighbor_overlap_ok) {
         if (scale < 0.999) {
           poses = std::move(candidate);
           adjusted = true;
