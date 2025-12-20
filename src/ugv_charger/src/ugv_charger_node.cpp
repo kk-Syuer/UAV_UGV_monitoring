@@ -328,27 +328,25 @@ private:
   // Observe deployments to learn topology and update UGV pose.
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
-    // Always store the pose for possible future use
-    if (msg->role == 1) {
-      // CH
-      ch_poses_[msg->uav_id] = msg->target_pose;
-    }
-
-    // Remember each UAV's "home CH":
-    //  - For members (role=0), ch_id is their CH
-    //  - For CHs (role=1), the CH is itself
-    if (msg->role == 0) {
-      uav_to_ch_[msg->uav_id] = msg->ch_id;
-    } else if (msg->role == 1) {
-      uav_to_ch_[msg->uav_id] = msg->uav_id;
-    }
-
-    // If this deployment is for the UGV itself, update its pose and log
-    if (msg->uav_id == ugv_id_) {
-      deployment_ack_sent_ = false;
-      setDeploymentGoal(msg->target_pose);
-      sendDeploymentAck();
-    }
+    uav_msgs::msg::TrafficMessage tm;
+    tm.msg_id = "DEPLOYMENT_DIRECT_" + msg->uav_id + "_" + std::to_string(msg_counter_++);
+    tm.src_id = "coverage_planner";
+    tm.dst_id = msg->uav_id;
+    tm.flow_type = 1;
+    tm.creation_time = this->now();
+    tm.hop_count = 0;
+    tm.control_type = "DEPLOYMENT";
+    std::ostringstream oss;
+    oss << static_cast<int>(msg->role) << ","
+        << msg->cluster_id << ","
+        << msg->ch_id << ","
+        << msg->target_pose.position.x << ","
+        << msg->target_pose.position.y << ","
+        << msg->target_pose.position.z << ","
+        << msg->next_hop_to_sink << ","
+        << msg->next_hop_to_ugv;
+    tm.payload = oss.str();
+    handleDeploymentFromNetwork(std::make_shared<uav_msgs::msg::TrafficMessage>(tm));
   }
 
   // Decode deployment commands injected through the network layer.
@@ -410,6 +408,10 @@ private:
       ch_pose.position.z = z;
       ch_pose.orientation.w = 1.0;
       ch_poses_[msg->dst_id] = ch_pose;
+    }
+
+    if (msg->dst_id != ugv_id_) {
+      return;
     }
 
     deployment_ack_sent_ = false;
@@ -719,11 +721,22 @@ private:
     //  - If we know this UAV's CH from deployments:
     //      * For CHs: CH is itself -> direct (ugv -> uav_i)
     //      * For members: CH is their cluster head -> ugv -> CH
-    //  - Otherwise: fall back to fixed uplink_ch_id_
-    std::string first_hop = uplink_ch_id_;
+    //  - Otherwise: if status says CH, try direct to dst
+    //  - Fallback: fixed uplink_ch_id_ (best-effort backbone entry)
+    std::string first_hop;
     auto it = uav_to_ch_.find(job.uav_id);
     if (it != uav_to_ch_.end()) {
       first_hop = it->second;
+    } else {
+      auto it_status = uav_status_.find(job.uav_id);
+      if (it_status != uav_status_.end() && it_status->second.role == 1) {
+        first_hop = job.uav_id;
+      } else {
+        first_hop = uplink_ch_id_;
+      }
+    }
+    if (first_hop.empty()) {
+      first_hop = job.uav_id;
     }
     msg.next_hop_id = first_hop;
 

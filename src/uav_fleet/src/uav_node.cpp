@@ -992,101 +992,31 @@ private:
 
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
-  
-    // 1) Every UAV learns the cluster parent of every UAV
-    if (msg->role == 0) {
-        // MEMBER
-        cluster_parent_[msg->uav_id] = msg->ch_id;   // e.g., uav_3 -> uav_2
-    } else if (msg->role == 1) {
-        // CH
-        cluster_parent_[msg->uav_id] = msg->uav_id;  // CH parent is itself
-    }
-    // If this deployment belongs to our cluster (we are the CH),
-    //    record the member. This works even before we receive our own deployment.
-    if (msg->role == 0 && msg->ch_id == uav_id_) {  // MEMBER assigned to this CH
-      cluster_members_.insert(msg->uav_id);
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s (CH): discovered member %s from deployment.",
-                  uav_id_.c_str(), msg->uav_id.c_str());
-    }
-
-    // Store CH pose so members know their CH center later
-    if (msg->role == 1) { // CH
-      ch_poses_[msg->uav_id] = msg->target_pose;
-    }
-    // 2) If this deployment is not for us, we are done.
-    if (msg->uav_id != uav_id_) {
-      return;
-    }
-    // ignore direct deployment if flag is false
     if (!accept_direct_deployment_) {
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: ignoring direct deployment; using network DEPLOYMENT",
                   uav_id_.c_str());
       return;
     }
-    deployment_ack_sent_ = false;
-    start_mobility_received_ = false;
-    ch_deployment_reached_ = false;
-    // 3) This is our own deployment: apply role + cluster configuration
-    role_ = msg->role;
-    cluster_id_ = msg->cluster_id;
-
-    if (role_ == 0) {
-      // MEMBER: remember our CH
-      my_ch_id_ = msg->ch_id;
-    } else {
-      // CH: its own CH id is itself
-      my_ch_id_ = uav_id_;
-      // When we become CH and receive a fresh deployment, reset the member set.
-      cluster_members_.clear();
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: now CH of cluster %s. Member set cleared.",
-                  uav_id_.c_str(), cluster_id_.c_str());
-    }
-
-    // Apply backbone routing info if provided
-    if (!msg->next_hop_to_sink.empty()) {
-      next_hop_to_sink_ = msg->next_hop_to_sink;
-    }
-
-    // If this UAV is a CH, also learn the path towards the UGV from the planner
-    if (role_ == 1 && !msg->next_hop_to_ugv.empty()) {
-      // Use the planner's next hop for the UGV destination
-      routing_table_[ugv_id_] = msg->next_hop_to_ugv;
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s (CH): routing to UGV '%s' via '%s' set from deployment.",
-                  uav_id_.c_str(), ugv_id_.c_str(), msg->next_hop_to_ugv.c_str());
-    }
-
-    deployment_goal_pose_ = msg->target_pose;
-
-    deployment_received_ = true;
-    sendDeploymentAck();
-
-    // Avoid a huge first dt() when the motion barrier is released.
-    last_pose_time_ = this->now();
-    last_pose_ = pose_;
-
-    // Move toward deployment pose only after MOTION_START
-    mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
-    if (!mobility_enabled_) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: mobility disabled, will wait for MOTION_START without teleporting.",
-                  uav_id_.c_str());
-    }
-
-    RCLCPP_INFO(this->get_logger(),
-                "UAV %s: deployment received. Target pose=(%.1f, %.1f, %.1f), "
-                "role=%u, cluster=%s, ch=%s, next_hop_to_sink=%s",
-                uav_id_.c_str(),
-                deployment_goal_pose_.position.x,
-                deployment_goal_pose_.position.y,
-                deployment_goal_pose_.position.z,
-                role_,
-                cluster_id_.c_str(),
-                my_ch_id_.c_str(),
-                next_hop_to_sink_.c_str());
+    uav_msgs::msg::TrafficMessage tm;
+    tm.msg_id = "DEPLOYMENT_DIRECT_" + msg->uav_id + "_" + std::to_string(msg_counter_++);
+    tm.src_id = "coverage_planner";
+    tm.dst_id = msg->uav_id;
+    tm.flow_type = 1;
+    tm.creation_time = this->now();
+    tm.hop_count = 0;
+    tm.control_type = "DEPLOYMENT";
+    std::ostringstream oss;
+    oss << static_cast<int>(msg->role) << ","
+        << msg->cluster_id << ","
+        << msg->ch_id << ","
+        << msg->target_pose.position.x << ","
+        << msg->target_pose.position.y << ","
+        << msg->target_pose.position.z << ","
+        << msg->next_hop_to_sink << ","
+        << msg->next_hop_to_ugv;
+    tm.payload = oss.str();
+    handleDeploymentFromNetwork(std::make_shared<uav_msgs::msg::TrafficMessage>(tm));
   }
 
 
@@ -1511,10 +1441,28 @@ private:
     // next_ugv (possibly empty)
     std::getline(ss, next_ugv, ',');
 
+    bool is_self_deployment = (msg->dst_id == uav_id_);
+    bool is_duplicate = false;
+    if (is_self_deployment && deployment_received_) {
+      double dx = deployment_goal_pose_.position.x - x;
+      double dy = deployment_goal_pose_.position.y - y;
+      double dz = deployment_goal_pose_.position.z - z;
+      double dist = std::sqrt(dx * dx + dy * dy + dz * dz);
+      std::string expected_ch = (role_ == 0) ? my_ch_id_ : uav_id_;
+      if (role_int == role_ &&
+          cluster_id == cluster_id_ &&
+          ch_id == expected_ch &&
+          dist <= 1e-3) {
+        is_duplicate = true;
+      }
+    }
+
     // Reset handshake state for new deployments
-    deployment_ack_sent_ = false;
-    start_mobility_received_ = false;
-    ch_deployment_reached_ = false;
+    if (!is_duplicate) {
+      deployment_ack_sent_ = false;
+      start_mobility_received_ = false;
+      ch_deployment_reached_ = false;
+    }
 
     // 1) Store CH pose for later task mobility
     if (role_int == 1) {
@@ -1527,7 +1475,7 @@ private:
     }
 
     // 2) If this deployment is not for us, we are done (we only forward in trafficCallback)
-    if (msg->dst_id != uav_id_) {
+    if (!is_self_deployment) {
       return;
     }
 
@@ -1545,25 +1493,29 @@ private:
     }
 
     // 4) Set deployment goal pose and start boot movement
-    deployment_goal_pose_.position.x = x;
-    deployment_goal_pose_.position.y = y;
-    deployment_goal_pose_.position.z = z;
-    deployment_goal_pose_.orientation.w = 1.0;
+    if (!is_duplicate) {
+      deployment_goal_pose_.position.x = x;
+      deployment_goal_pose_.position.y = y;
+      deployment_goal_pose_.position.z = z;
+      deployment_goal_pose_.orientation.w = 1.0;
+    }
 
     deployment_received_ = true;
     sendDeploymentAck();
 
     // We start from whatever pose_ currently is (usually origin) and, after
     // receiving MOTION_START, fly to deployment_goal_pose_ in mobilityStep().
-    mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
-    if (!mobility_enabled_) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: mobility disabled, will wait for MOTION_START without teleporting.",
-                  uav_id_.c_str());
-    }
+    if (!is_duplicate) {
+      mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+      if (!mobility_enabled_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: mobility disabled, will wait for MOTION_START without teleporting.",
+                    uav_id_.c_str());
+      }
 
-    last_pose_      = pose_;
-    last_pose_time_ = this->now();
+      last_pose_      = pose_;
+      last_pose_time_ = this->now();
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: DEPLOYMENT via network -> role=%d cluster=%s ch=%s "
