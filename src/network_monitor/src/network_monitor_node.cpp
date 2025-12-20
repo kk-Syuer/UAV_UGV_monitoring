@@ -1,13 +1,14 @@
 #include <chrono>
+#include <exception>
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
-#include "uav_msgs/msg/failure_event.hpp"
 
 using std::placeholders::_1;
 
@@ -41,11 +42,6 @@ public:
       "/ugv/charge_decisions", 100,
       std::bind(&NetworkMonitorNode::chargeDecisionCallback, this, _1));
 
-    // Failure events for simple fault counters.
-    failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
-      "/uav_fleet/failure_events", 100,
-      std::bind(&NetworkMonitorNode::failureCallback, this, _1));
-
     RCLCPP_INFO(this->get_logger(), "Network monitor started.");
   }
 
@@ -66,6 +62,10 @@ private:
                   total_generated_);
     }
     // If we've already seen this msg_id, we don't log again; it's just forwarding/duplicates
+
+    if (msg->flow_type == 1 && msg->control_type == "FAILURE_EVENT") {
+      handleFailureFromTraffic(*msg);
+    }
   }
 
   // Compute delivery delay when messages arrive at final destination.
@@ -153,27 +153,47 @@ private:
   }
   
   // Log failures, tracking battery-dead events separately.
-  void failureCallback(const uav_msgs::msg::FailureEvent::SharedPtr msg)
+  void handleFailureFromTraffic(const uav_msgs::msg::TrafficMessage & msg)
   {
-    // Convert builtin_interfaces/Time -> rclcpp::Time so we can use .seconds()
-    rclcpp::Time t(msg->stamp);
+    if (seen_failure_ids_.find(msg.msg_id) != seen_failure_ids_.end()) {
+      return;
+    }
+    seen_failure_ids_.insert(msg.msg_id);
 
-    if (msg->failure_type == 1)  // BATTERY_DEAD
-    {
+    int failure_type = 0;
+    std::string description = msg.payload;
+    rclcpp::Time t(msg.creation_time);
+
+    if (!msg.payload.empty()) {
+      auto first = msg.payload.find(',');
+      auto second = msg.payload.find(',', first == std::string::npos ? first : first + 1);
+      if (first != std::string::npos) {
+        try {
+          failure_type = std::stoi(msg.payload.substr(0, first));
+        } catch (const std::exception & e) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[FAIL] unable to parse failure type from payload='%s' (%s)",
+                      msg.payload.c_str(), e.what());
+        }
+        if (second != std::string::npos) {
+          description = msg.payload.substr(second + 1);
+        }
+      }
+    }
+
+    if (failure_type == 1) {  // BATTERY_DEAD
       battery_dead_count_++;
       RCLCPP_WARN(this->get_logger(),
                   "[FAIL] BATTERY_DEAD from %s at t=%.3f (total=%zu)",
-                  msg->uav_id.c_str(),
+                  msg.src_id.c_str(),
                   t.seconds(),
                   battery_dead_count_);
-    }
-    else
-    {
+    } else {
       RCLCPP_WARN(this->get_logger(),
                   "[FAIL] failure from %s type=%u desc=%s",
-                  msg->uav_id.c_str(),
-                  msg->failure_type,
-                  msg->description.c_str());
+                  msg.src_id.c_str(),
+                  failure_type,
+                  description.c_str());
     }
   }
 
@@ -190,7 +210,7 @@ private:
 
   // Failures
   size_t battery_dead_count_ = 0;
-  rclcpp::Subscription<uav_msgs::msg::FailureEvent>::SharedPtr failure_sub_;
+  std::unordered_set<std::string> seen_failure_ids_;
 
   // Charging
   std::unordered_map<std::string, rclcpp::Time> request_times_;

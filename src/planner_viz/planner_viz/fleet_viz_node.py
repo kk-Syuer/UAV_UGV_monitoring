@@ -112,7 +112,7 @@ class FleetVizNode(Node):
     def charge_request_cb(self, msg: ChargeRequest):
         """Track outstanding charging requests."""
         # track outstanding charging requests to approximate queue size
-        self.pending_charges[msg.uav_id] = self.get_clock().now().seconds_nanoseconds()[0]
+        self.pending_charges[msg.uav_id] = msg.stamp.sec + msg.stamp.nanosec * 1e-9
 
     def charge_decision_cb(self, msg: ChargeDecision):
         """Update scheduling policy and clear completed requests."""
@@ -135,6 +135,15 @@ class FleetVizNode(Node):
 
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
+        if msg.control_type == 'CHARGE_REQUEST':
+            self.pending_charges[msg.src_id] = (
+                msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
+            )
+            return
+        if msg.control_type == 'CHARGE_DECISION':
+            if msg.dst_id in self.pending_charges:
+                self.pending_charges.pop(msg.dst_id)
+            return
         if msg.control_type in ('DEPLOYMENT', 'DEPLOYMENT_CMD'):
             parts = msg.payload.split(',')
             if len(parts) >= 6:
@@ -347,7 +356,8 @@ class FleetVizNode(Node):
         ]
         if self.pending_charges:
             queue_lines.append('  waiting:')
-            for uid in sorted(self.pending_charges.keys()):
+            ordered = sorted(self.pending_charges.items(), key=lambda item: item[1])
+            for uid, _ in ordered:
                 queue_lines.append(f"    - {uid}")
         self.queue_ax.text(0.02, 0.98, '\n'.join(queue_lines),
                            va='top', ha='left', color='white', fontsize=10,
