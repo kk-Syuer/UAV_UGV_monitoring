@@ -35,8 +35,8 @@ extern "C"
 #endif
 
 #include "builtin_interfaces/msg/detail/time__functions.h"  // creation_time
-#include "rosidl_runtime_c/string.h"  // control_payload, control_type, dst_id, msg_id, next_hop_id, src_id
-#include "rosidl_runtime_c/string_functions.h"  // control_payload, control_type, dst_id, msg_id, next_hop_id, src_id
+#include "rosidl_runtime_c/string.h"  // control_type, dst_id, msg_id, next_hop_id, payload, src_id
+#include "rosidl_runtime_c/string_functions.h"  // control_type, dst_id, msg_id, next_hop_id, payload, src_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -122,43 +122,9 @@ static bool _TrafficMessage__cdr_serialize(
     cdr << str->data;
   }
 
-  // Field name: msg_type
+  // Field name: flow_type
   {
-    cdr << ros_message->msg_type;
-  }
-
-  // Field name: priority
-  {
-    cdr << ros_message->priority;
-  }
-
-  // Field name: size_bytes
-  {
-    cdr << ros_message->size_bytes;
-  }
-
-  // Field name: creation_time
-  {
-    const message_type_support_callbacks_t * callbacks =
-      static_cast<const message_type_support_callbacks_t *>(
-      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
-        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
-      )()->data);
-    if (!callbacks->cdr_serialize(
-        &ros_message->creation_time, cdr))
-    {
-      return false;
-    }
-  }
-
-  // Field name: hop_count
-  {
-    cdr << ros_message->hop_count;
-  }
-
-  // Field name: ttl
-  {
-    cdr << ros_message->ttl;
+    cdr << ros_message->flow_type;
   }
 
   // Field name: control_type
@@ -175,9 +141,29 @@ static bool _TrafficMessage__cdr_serialize(
     cdr << str->data;
   }
 
-  // Field name: control_payload
+  // Field name: seq
   {
-    const rosidl_runtime_c__String * str = &ros_message->control_payload;
+    cdr << ros_message->seq;
+  }
+
+  // Field name: hop_count
+  {
+    cdr << ros_message->hop_count;
+  }
+
+  // Field name: ttl
+  {
+    cdr << ros_message->ttl;
+  }
+
+  // Field name: requires_ack
+  {
+    cdr << (ros_message->requires_ack ? true : false);
+  }
+
+  // Field name: payload
+  {
+    const rosidl_runtime_c__String * str = &ros_message->payload;
     if (str->capacity == 0 || str->capacity <= str->size) {
       fprintf(stderr, "string capacity not greater than size\n");
       return false;
@@ -187,6 +173,20 @@ static bool _TrafficMessage__cdr_serialize(
       return false;
     }
     cdr << str->data;
+  }
+
+  // Field name: creation_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_serialize(
+        &ros_message->creation_time, cdr))
+    {
+      return false;
+    }
   }
 
   return true;
@@ -265,43 +265,9 @@ static bool _TrafficMessage__cdr_deserialize(
     }
   }
 
-  // Field name: msg_type
+  // Field name: flow_type
   {
-    cdr >> ros_message->msg_type;
-  }
-
-  // Field name: priority
-  {
-    cdr >> ros_message->priority;
-  }
-
-  // Field name: size_bytes
-  {
-    cdr >> ros_message->size_bytes;
-  }
-
-  // Field name: creation_time
-  {
-    const message_type_support_callbacks_t * callbacks =
-      static_cast<const message_type_support_callbacks_t *>(
-      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
-        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
-      )()->data);
-    if (!callbacks->cdr_deserialize(
-        cdr, &ros_message->creation_time))
-    {
-      return false;
-    }
-  }
-
-  // Field name: hop_count
-  {
-    cdr >> ros_message->hop_count;
-  }
-
-  // Field name: ttl
-  {
-    cdr >> ros_message->ttl;
+    cdr >> ros_message->flow_type;
   }
 
   // Field name: control_type
@@ -320,18 +286,54 @@ static bool _TrafficMessage__cdr_deserialize(
     }
   }
 
-  // Field name: control_payload
+  // Field name: seq
+  {
+    cdr >> ros_message->seq;
+  }
+
+  // Field name: hop_count
+  {
+    cdr >> ros_message->hop_count;
+  }
+
+  // Field name: ttl
+  {
+    cdr >> ros_message->ttl;
+  }
+
+  // Field name: requires_ack
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message->requires_ack = tmp ? true : false;
+  }
+
+  // Field name: payload
   {
     std::string tmp;
     cdr >> tmp;
-    if (!ros_message->control_payload.data) {
-      rosidl_runtime_c__String__init(&ros_message->control_payload);
+    if (!ros_message->payload.data) {
+      rosidl_runtime_c__String__init(&ros_message->payload);
     }
     bool succeeded = rosidl_runtime_c__String__assign(
-      &ros_message->control_payload,
+      &ros_message->payload,
       tmp.c_str());
     if (!succeeded) {
-      fprintf(stderr, "failed to assign string into field 'control_payload'\n");
+      fprintf(stderr, "failed to assign string into field 'payload'\n");
+      return false;
+    }
+  }
+
+  // Field name: creation_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_deserialize(
+        cdr, &ros_message->creation_time))
+    {
       return false;
     }
   }
@@ -369,28 +371,22 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->next_hop_id.size + 1);
-  // field.name msg_type
+  // field.name flow_type
   {
-    size_t item_size = sizeof(ros_message->msg_type);
+    size_t item_size = sizeof(ros_message->flow_type);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // field.name priority
+  // field.name control_type
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->control_type.size + 1);
+  // field.name seq
   {
-    size_t item_size = sizeof(ros_message->priority);
+    size_t item_size = sizeof(ros_message->seq);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // field.name size_bytes
-  {
-    size_t item_size = sizeof(ros_message->size_bytes);
-    current_alignment += item_size +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
-  }
-  // field.name creation_time
-
-  current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
-    &(ros_message->creation_time), current_alignment);
   // field.name hop_count
   {
     size_t item_size = sizeof(ros_message->hop_count);
@@ -403,14 +399,20 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
-  // field.name control_type
+  // field.name requires_ack
+  {
+    size_t item_size = sizeof(ros_message->requires_ack);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name payload
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-    (ros_message->control_type.size + 1);
-  // field.name control_payload
-  current_alignment += padding +
-    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-    (ros_message->control_payload.size + 1);
+    (ros_message->payload.size + 1);
+  // field.name creation_time
+
+  current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
+    &(ros_message->creation_time), current_alignment);
 
   return current_alignment - initial_alignment;
 }
@@ -488,27 +490,67 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
         1;
     }
   }
-  // member: msg_type
+  // member: flow_type
   {
     size_t array_size = 1;
 
     last_member_size = array_size * sizeof(uint8_t);
     current_alignment += array_size * sizeof(uint8_t);
   }
-  // member: priority
+  // member: control_type
   {
     size_t array_size = 1;
 
-    last_member_size = array_size * sizeof(uint8_t);
-    current_alignment += array_size * sizeof(uint8_t);
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
   }
-  // member: size_bytes
+  // member: seq
   {
     size_t array_size = 1;
 
     last_member_size = array_size * sizeof(uint32_t);
     current_alignment += array_size * sizeof(uint32_t) +
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: hop_count
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: ttl
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: requires_ack
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+  // member: payload
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
   }
   // member: creation_time
   {
@@ -529,46 +571,6 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
       is_plain &= inner_is_plain;
     }
   }
-  // member: hop_count
-  {
-    size_t array_size = 1;
-
-    last_member_size = array_size * sizeof(uint32_t);
-    current_alignment += array_size * sizeof(uint32_t) +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
-  }
-  // member: ttl
-  {
-    size_t array_size = 1;
-
-    last_member_size = array_size * sizeof(uint32_t);
-    current_alignment += array_size * sizeof(uint32_t) +
-      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
-  }
-  // member: control_type
-  {
-    size_t array_size = 1;
-
-    full_bounded = false;
-    is_plain = false;
-    for (size_t index = 0; index < array_size; ++index) {
-      current_alignment += padding +
-        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-        1;
-    }
-  }
-  // member: control_payload
-  {
-    size_t array_size = 1;
-
-    full_bounded = false;
-    is_plain = false;
-    for (size_t index = 0; index < array_size; ++index) {
-      current_alignment += padding +
-        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
-        1;
-    }
-  }
 
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
@@ -578,7 +580,7 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     using DataType = uav_msgs__msg__TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, control_payload) +
+      offsetof(DataType, creation_time) +
       last_member_size
       ) == ret_val;
   }

@@ -63,14 +63,14 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         '_src_id',
         '_dst_id',
         '_next_hop_id',
-        '_msg_type',
-        '_priority',
-        '_size_bytes',
-        '_creation_time',
+        '_flow_type',
+        '_control_type',
+        '_seq',
         '_hop_count',
         '_ttl',
-        '_control_type',
-        '_control_payload',
+        '_requires_ack',
+        '_payload',
+        '_creation_time',
     ]
 
     _fields_and_field_types = {
@@ -78,14 +78,14 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         'src_id': 'string',
         'dst_id': 'string',
         'next_hop_id': 'string',
-        'msg_type': 'uint8',
-        'priority': 'uint8',
-        'size_bytes': 'uint32',
-        'creation_time': 'builtin_interfaces/Time',
+        'flow_type': 'uint8',
+        'control_type': 'string',
+        'seq': 'uint32',
         'hop_count': 'uint32',
         'ttl': 'uint32',
-        'control_type': 'string',
-        'control_payload': 'string',
+        'requires_ack': 'boolean',
+        'payload': 'string',
+        'creation_time': 'builtin_interfaces/Time',
     }
 
     SLOT_TYPES = (
@@ -94,13 +94,13 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
-        rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
+        rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
+        rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
+        rosidl_parser.definition.BasicType('boolean'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
-        rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
-        rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
-        rosidl_parser.definition.UnboundedString(),  # noqa: E501
-        rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -111,15 +111,15 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self.src_id = kwargs.get('src_id', str())
         self.dst_id = kwargs.get('dst_id', str())
         self.next_hop_id = kwargs.get('next_hop_id', str())
-        self.msg_type = kwargs.get('msg_type', int())
-        self.priority = kwargs.get('priority', int())
-        self.size_bytes = kwargs.get('size_bytes', int())
-        from builtin_interfaces.msg import Time
-        self.creation_time = kwargs.get('creation_time', Time())
+        self.flow_type = kwargs.get('flow_type', int())
+        self.control_type = kwargs.get('control_type', str())
+        self.seq = kwargs.get('seq', int())
         self.hop_count = kwargs.get('hop_count', int())
         self.ttl = kwargs.get('ttl', int())
-        self.control_type = kwargs.get('control_type', str())
-        self.control_payload = kwargs.get('control_payload', str())
+        self.requires_ack = kwargs.get('requires_ack', bool())
+        self.payload = kwargs.get('payload', str())
+        from builtin_interfaces.msg import Time
+        self.creation_time = kwargs.get('creation_time', Time())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -158,21 +158,21 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
             return False
         if self.next_hop_id != other.next_hop_id:
             return False
-        if self.msg_type != other.msg_type:
+        if self.flow_type != other.flow_type:
             return False
-        if self.priority != other.priority:
+        if self.control_type != other.control_type:
             return False
-        if self.size_bytes != other.size_bytes:
-            return False
-        if self.creation_time != other.creation_time:
+        if self.seq != other.seq:
             return False
         if self.hop_count != other.hop_count:
             return False
         if self.ttl != other.ttl:
             return False
-        if self.control_type != other.control_type:
+        if self.requires_ack != other.requires_ack:
             return False
-        if self.control_payload != other.control_payload:
+        if self.payload != other.payload:
+            return False
+        if self.creation_time != other.creation_time:
             return False
         return True
 
@@ -234,63 +234,47 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self._next_hop_id = value
 
     @builtins.property
-    def msg_type(self):
-        """Message field 'msg_type'."""
-        return self._msg_type
+    def flow_type(self):
+        """Message field 'flow_type'."""
+        return self._flow_type
 
-    @msg_type.setter
-    def msg_type(self, value):
+    @flow_type.setter
+    def flow_type(self, value):
         if __debug__:
             assert \
                 isinstance(value, int), \
-                "The 'msg_type' field must be of type 'int'"
+                "The 'flow_type' field must be of type 'int'"
             assert value >= 0 and value < 256, \
-                "The 'msg_type' field must be an unsigned integer in [0, 255]"
-        self._msg_type = value
+                "The 'flow_type' field must be an unsigned integer in [0, 255]"
+        self._flow_type = value
 
     @builtins.property
-    def priority(self):
-        """Message field 'priority'."""
-        return self._priority
+    def control_type(self):
+        """Message field 'control_type'."""
+        return self._control_type
 
-    @priority.setter
-    def priority(self, value):
+    @control_type.setter
+    def control_type(self, value):
         if __debug__:
             assert \
-                isinstance(value, int), \
-                "The 'priority' field must be of type 'int'"
-            assert value >= 0 and value < 256, \
-                "The 'priority' field must be an unsigned integer in [0, 255]"
-        self._priority = value
+                isinstance(value, str), \
+                "The 'control_type' field must be of type 'str'"
+        self._control_type = value
 
     @builtins.property
-    def size_bytes(self):
-        """Message field 'size_bytes'."""
-        return self._size_bytes
+    def seq(self):
+        """Message field 'seq'."""
+        return self._seq
 
-    @size_bytes.setter
-    def size_bytes(self, value):
+    @seq.setter
+    def seq(self, value):
         if __debug__:
             assert \
                 isinstance(value, int), \
-                "The 'size_bytes' field must be of type 'int'"
+                "The 'seq' field must be of type 'int'"
             assert value >= 0 and value < 4294967296, \
-                "The 'size_bytes' field must be an unsigned integer in [0, 4294967295]"
-        self._size_bytes = value
-
-    @builtins.property
-    def creation_time(self):
-        """Message field 'creation_time'."""
-        return self._creation_time
-
-    @creation_time.setter
-    def creation_time(self, value):
-        if __debug__:
-            from builtin_interfaces.msg import Time
-            assert \
-                isinstance(value, Time), \
-                "The 'creation_time' field must be a sub message of type 'Time'"
-        self._creation_time = value
+                "The 'seq' field must be an unsigned integer in [0, 4294967295]"
+        self._seq = value
 
     @builtins.property
     def hop_count(self):
@@ -323,27 +307,41 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self._ttl = value
 
     @builtins.property
-    def control_type(self):
-        """Message field 'control_type'."""
-        return self._control_type
+    def requires_ack(self):
+        """Message field 'requires_ack'."""
+        return self._requires_ack
 
-    @control_type.setter
-    def control_type(self, value):
+    @requires_ack.setter
+    def requires_ack(self, value):
         if __debug__:
             assert \
-                isinstance(value, str), \
-                "The 'control_type' field must be of type 'str'"
-        self._control_type = value
+                isinstance(value, bool), \
+                "The 'requires_ack' field must be of type 'bool'"
+        self._requires_ack = value
 
     @builtins.property
-    def control_payload(self):
-        """Message field 'control_payload'."""
-        return self._control_payload
+    def payload(self):
+        """Message field 'payload'."""
+        return self._payload
 
-    @control_payload.setter
-    def control_payload(self, value):
+    @payload.setter
+    def payload(self, value):
         if __debug__:
             assert \
                 isinstance(value, str), \
-                "The 'control_payload' field must be of type 'str'"
-        self._control_payload = value
+                "The 'payload' field must be of type 'str'"
+        self._payload = value
+
+    @builtins.property
+    def creation_time(self):
+        """Message field 'creation_time'."""
+        return self._creation_time
+
+    @creation_time.setter
+    def creation_time(self, value):
+        if __debug__:
+            from builtin_interfaces.msg import Time
+            assert \
+                isinstance(value, Time), \
+                "The 'creation_time' field must be a sub message of type 'Time'"
+        self._creation_time = value

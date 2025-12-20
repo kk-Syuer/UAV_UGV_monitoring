@@ -86,6 +86,16 @@ CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info_
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__struct.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__traits.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__type_support.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/task_point.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__builder.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__struct.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__traits.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__type_support.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/task_point_array.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__builder.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__struct.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__traits.hpp
+CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__type_support.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/charge_decision.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/charge_decision__builder.hpp
 CMakeFiles/uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/charge_decision__struct.hpp
@@ -147,6 +157,8 @@ rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/Ua
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/Heartbeat.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/TrafficMessage.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ClusterInfo.idl
+rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/TaskPoint.idl
+rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/TaskPointArray.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ChargeDecision.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/msg/ChargeRequest.idl
 rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp: rosidl_adapter/uav_msgs/srv/RequestCharge.idl
@@ -283,6 +295,36 @@ rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__traits.hpp: rosidl_genera
 
 rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/cluster_info__type_support.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/task_point.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/task_point.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point__builder.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point__builder.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point__struct.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point__struct.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point__traits.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point__traits.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point__type_support.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/task_point_array.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/task_point_array.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__builder.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__builder.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__struct.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__struct.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__traits.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__traits.hpp
+
+rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__type_support.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__type_support.hpp
 
 rosidl_generator_cpp/uav_msgs/msg/charge_decision.hpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_cpp/uav_msgs/msg/charge_decision.hpp
@@ -433,6 +475,14 @@ uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__builder.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__struct.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__traits.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/heartbeat__type_support.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__builder.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__struct.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__traits.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point__type_support.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__builder.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__struct.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__traits.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/task_point_array__type_support.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__builder.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__struct.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/traffic_message__traits.hpp
@@ -451,6 +501,8 @@ uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__traits.h
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/detail/weather_status__type_support.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/failure_event.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/heartbeat.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/task_point.hpp
+uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/task_point_array.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/traffic_message.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/uav_deployment.hpp
 uav_msgs__cpp: rosidl_generator_cpp/uav_msgs/msg/uav_status.hpp

@@ -261,6 +261,12 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/uav_msg
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point_array__type_support.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point_array__struct.h \
+  rosidl_generator_c/uav_msgs/msg/detail/task_point_array__functions.h \
   rosidl_generator_c/uav_msgs/msg/detail/charge_decision__type_support.h \
   rosidl_generator_c/uav_msgs/msg/detail/charge_decision__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.h \
@@ -317,6 +323,10 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__type_support.h:
 rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/charge_decision__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/task_point_array__type_support.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 
@@ -401,6 +411,8 @@ rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 /usr/include/python3.10/cpython/compile.h:
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/task_point__struct.h:
 
 /usr/include/x86_64-linux-gnu/bits/environments.h:
 
@@ -508,6 +520,8 @@ rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
+rosidl_generator_c/uav_msgs/msg/detail/task_point_array__functions.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
 /usr/include/stdlib.h:
@@ -547,6 +561,8 @@ rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
 /usr/include/python3.10/cpython/pyerrors.h:
 
 rosidl_generator_py/uav_msgs/_uav_msgs_s.ep.rosidl_typesupport_c.c:
+
+rosidl_generator_c/uav_msgs/msg/detail/task_point__type_support.h:
 
 /usr/include/asm-generic/int-ll64.h:
 
@@ -757,6 +773,8 @@ rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.h:
 /usr/include/python3.10/pystate.h:
 
 /usr/include/python3.10/cpython/pylifecycle.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/task_point_array__struct.h:
 
 /usr/include/python3.10/floatobject.h:
 

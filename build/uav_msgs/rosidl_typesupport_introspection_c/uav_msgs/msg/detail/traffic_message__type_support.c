@@ -18,7 +18,7 @@
 // Member `dst_id`
 // Member `next_hop_id`
 // Member `control_type`
-// Member `control_payload`
+// Member `payload`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `creation_time`
 #include "builtin_interfaces/msg/time.h"
@@ -114,14 +114,14 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__TrafficM
     NULL  // resize(index) function pointer
   },
   {
-    "msg_type",  // name
+    "flow_type",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_UINT8,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, msg_type),  // bytes offset in struct
+    offsetof(uav_msgs__msg__TrafficMessage, flow_type),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -131,14 +131,14 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__TrafficM
     NULL  // resize(index) function pointer
   },
   {
-    "priority",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_UINT8,  // type
+    "control_type",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, priority),  // bytes offset in struct
+    offsetof(uav_msgs__msg__TrafficMessage, control_type),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -148,31 +148,14 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__TrafficM
     NULL  // resize(index) function pointer
   },
   {
-    "size_bytes",  // name
+    "seq",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_UINT32,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, size_bytes),  // bytes offset in struct
-    NULL,  // default value
-    NULL,  // size() function pointer
-    NULL,  // get_const(index) function pointer
-    NULL,  // get(index) function pointer
-    NULL,  // fetch(index, &value) function pointer
-    NULL,  // assign(index, value) function pointer
-    NULL  // resize(index) function pointer
-  },
-  {
-    "creation_time",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_MESSAGE,  // type
-    0,  // upper bound of string
-    NULL,  // members of sub message (initialized later)
-    false,  // is array
-    0,  // array size
-    false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, creation_time),  // bytes offset in struct
+    offsetof(uav_msgs__msg__TrafficMessage, seq),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -216,14 +199,14 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__TrafficM
     NULL  // resize(index) function pointer
   },
   {
-    "control_type",  // name
-    rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
+    "requires_ack",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_BOOLEAN,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, control_type),  // bytes offset in struct
+    offsetof(uav_msgs__msg__TrafficMessage, requires_ack),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -233,14 +216,31 @@ static rosidl_typesupport_introspection_c__MessageMember uav_msgs__msg__TrafficM
     NULL  // resize(index) function pointer
   },
   {
-    "control_payload",  // name
+    "payload",  // name
     rosidl_typesupport_introspection_c__ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     NULL,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs__msg__TrafficMessage, control_payload),  // bytes offset in struct
+    offsetof(uav_msgs__msg__TrafficMessage, payload),  // bytes offset in struct
+    NULL,  // default value
+    NULL,  // size() function pointer
+    NULL,  // get_const(index) function pointer
+    NULL,  // get(index) function pointer
+    NULL,  // fetch(index, &value) function pointer
+    NULL,  // assign(index, value) function pointer
+    NULL  // resize(index) function pointer
+  },
+  {
+    "creation_time",  // name
+    rosidl_typesupport_introspection_c__ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    NULL,  // members of sub message (initialized later)
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs__msg__TrafficMessage, creation_time),  // bytes offset in struct
     NULL,  // default value
     NULL,  // size() function pointer
     NULL,  // get_const(index) function pointer
@@ -272,7 +272,7 @@ static rosidl_message_type_support_t uav_msgs__msg__TrafficMessage__rosidl_types
 ROSIDL_TYPESUPPORT_INTROSPECTION_C_EXPORT_uav_msgs
 const rosidl_message_type_support_t *
 ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, uav_msgs, msg, TrafficMessage)() {
-  uav_msgs__msg__TrafficMessage__rosidl_typesupport_introspection_c__TrafficMessage_message_member_array[7].members_ =
+  uav_msgs__msg__TrafficMessage__rosidl_typesupport_introspection_c__TrafficMessage_message_member_array[11].members_ =
     ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_introspection_c, builtin_interfaces, msg, Time)();
   if (!uav_msgs__msg__TrafficMessage__rosidl_typesupport_introspection_c__TrafficMessage_message_type_support_handle.typesupport_identifier) {
     uav_msgs__msg__TrafficMessage__rosidl_typesupport_introspection_c__TrafficMessage_message_type_support_handle.typesupport_identifier =

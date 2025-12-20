@@ -107,14 +107,14 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
-    "msg_type",  // name
+    "flow_type",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_UINT8,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, msg_type),  // bytes offset in struct
+    offsetof(uav_msgs::msg::TrafficMessage, flow_type),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -124,14 +124,14 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
-    "priority",  // name
-    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_UINT8,  // type
+    "control_type",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, priority),  // bytes offset in struct
+    offsetof(uav_msgs::msg::TrafficMessage, control_type),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -141,31 +141,14 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
-    "size_bytes",  // name
+    "seq",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_UINT32,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, size_bytes),  // bytes offset in struct
-    nullptr,  // default value
-    nullptr,  // size() function pointer
-    nullptr,  // get_const(index) function pointer
-    nullptr,  // get(index) function pointer
-    nullptr,  // fetch(index, &value) function pointer
-    nullptr,  // assign(index, value) function pointer
-    nullptr  // resize(index) function pointer
-  },
-  {
-    "creation_time",  // name
-    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
-    0,  // upper bound of string
-    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<builtin_interfaces::msg::Time>(),  // members of sub message
-    false,  // is array
-    0,  // array size
-    false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, creation_time),  // bytes offset in struct
+    offsetof(uav_msgs::msg::TrafficMessage, seq),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -209,14 +192,14 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
-    "control_type",  // name
-    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    "requires_ack",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_BOOLEAN,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, control_type),  // bytes offset in struct
+    offsetof(uav_msgs::msg::TrafficMessage, requires_ack),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -226,14 +209,31 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr  // resize(index) function pointer
   },
   {
-    "control_payload",  // name
+    "payload",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
     0,  // upper bound of string
     nullptr,  // members of sub message
     false,  // is array
     0,  // array size
     false,  // is upper bound
-    offsetof(uav_msgs::msg::TrafficMessage, control_payload),  // bytes offset in struct
+    offsetof(uav_msgs::msg::TrafficMessage, payload),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "creation_time",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<builtin_interfaces::msg::Time>(),  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, creation_time),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
