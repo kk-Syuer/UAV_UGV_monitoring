@@ -81,6 +81,11 @@ class FleetVizNode(Node):
         self.y_max = 1200.0
 
         self.comm_radius_ch = float(self.declare_parameter('comm_radius_ch', 400.0).value)
+        self.target_utilization = float(self.declare_parameter('target_utilization', 0.8).value)
+        self.flight_time_ch_min = float(self.declare_parameter('flight_time_ch_min', 90.0).value)
+        self.charge_time_ch_min = float(self.declare_parameter('charge_time_ch_min', 30.0).value)
+        self.flight_time_mem_min = float(self.declare_parameter('flight_time_mem_min', 45.0).value)
+        self.charge_time_mem_min = float(self.declare_parameter('charge_time_mem_min', 20.0).value)
 
         # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
@@ -186,6 +191,26 @@ class FleetVizNode(Node):
         if weather.rain_intensity >= 1.0 or weather.wind_speed >= 6.0:
             return 'Windy'
         return 'Sunny'
+
+    def compute_required_spots(self) -> int:
+        num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
+        num_members = sum(1 for st in self.uav_states.values() if st.role == 0)
+
+        load_ch = 0.0
+        if (self.flight_time_ch_min + self.charge_time_ch_min) > 0.0:
+            load_ch = self.charge_time_ch_min / (self.flight_time_ch_min + self.charge_time_ch_min)
+
+        load_mem = 0.0
+        if (self.flight_time_mem_min + self.charge_time_mem_min) > 0.0:
+            load_mem = self.charge_time_mem_min / (self.flight_time_mem_min + self.charge_time_mem_min)
+
+        total_load = num_ch * load_ch + num_members * load_mem
+        effective_target = self.target_utilization if self.target_utilization > 0.0 else 0.9
+        raw_spots = total_load / effective_target if effective_target > 0.0 else 0.0
+        num_spots = int(raw_spots + 0.999999)
+        if num_spots < 1 and total_load > 0.0:
+            num_spots = 1
+        return num_spots
 
     # --- plotting ---
 
@@ -306,11 +331,19 @@ class FleetVizNode(Node):
         # queue / scheduling panel -------------------------------------
         self.queue_ax.cla()
         self.queue_ax.axis('off')
+        spots_now = self.compute_required_spots()
+        load_ch_den = self.flight_time_ch_min + self.charge_time_ch_min
+        load_mem_den = self.flight_time_mem_min + self.charge_time_mem_min
+        load_ch = (self.charge_time_ch_min / load_ch_den) if load_ch_den > 0.0 else 0.0
+        load_mem = (self.charge_time_mem_min / load_mem_den) if load_mem_den > 0.0 else 0.0
         queue_lines = [
             'Charging queue',
             f"  pending requests: {len(self.pending_charges)}",
             '',
-            f"Scheduling: {self.latest_policy}"
+            f"Scheduling: {self.latest_policy}",
+            '',
+            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f}) / {self.target_utilization:.2f})",
+            f"  spots now: {spots_now}"
         ]
         if self.pending_charges:
             queue_lines.append('  waiting:')
