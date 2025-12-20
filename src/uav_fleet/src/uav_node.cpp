@@ -1523,7 +1523,7 @@ private:
       ch_pose.position.y = y;
       ch_pose.position.z = z;
       ch_pose.orientation.w = 1.0;
-      ch_poses_[ch_id] = ch_pose;
+      ch_poses_[msg->dst_id] = ch_pose;
     }
 
     // 2) If this deployment is not for us, we are done (we only forward in trafficCallback)
