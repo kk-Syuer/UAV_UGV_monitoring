@@ -2,6 +2,7 @@
 #include <memory>
 #include <string>
 #include <deque>
+#include <exception>
 #include <unordered_map>
 #include <vector>
 #include <sstream>
@@ -361,10 +362,19 @@ private:
     double x = 0.0, y = 0.0, z = 0.0;
     std::string next_sink;
 
-    // role (unused beyond validation)
+    // role (used to update routing metadata)
     if (!std::getline(ss, token, ',')) {
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: bad DEPLOYMENT payload \"%s\"",
+                  ugv_id_.c_str(), msg->payload.c_str());
+      return;
+    }
+    int role = -1;
+    try {
+      role = std::stoi(token);
+    } catch (const std::exception &) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: invalid role in DEPLOYMENT payload \"%s\"",
                   ugv_id_.c_str(), msg->payload.c_str());
       return;
     }
@@ -386,6 +396,21 @@ private:
 
     // next_sink
     std::getline(ss, next_sink, ',');
+
+    // Update routing metadata even when deployments arrive over the network.
+    if (role == 0) {
+      if (!ch_id.empty()) {
+        uav_to_ch_[msg->dst_id] = ch_id;
+      }
+    } else if (role == 1) {
+      uav_to_ch_[msg->dst_id] = msg->dst_id;
+      geometry_msgs::msg::Pose ch_pose;
+      ch_pose.position.x = x;
+      ch_pose.position.y = y;
+      ch_pose.position.z = z;
+      ch_pose.orientation.w = 1.0;
+      ch_poses_[msg->dst_id] = ch_pose;
+    }
 
     deployment_ack_sent_ = false;
 
