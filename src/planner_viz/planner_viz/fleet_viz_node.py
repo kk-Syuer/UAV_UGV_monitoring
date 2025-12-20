@@ -130,6 +130,30 @@ class FleetVizNode(Node):
 
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
+        if msg.control_type in ('DEPLOYMENT', 'DEPLOYMENT_CMD'):
+            parts = msg.payload.split(',')
+            if len(parts) >= 6:
+                try:
+                    x = float(parts[3])
+                    y = float(parts[4])
+                    z = float(parts[5])
+                except ValueError:
+                    return
+                if msg.dst_id == 'sink_gateway':
+                    if self.sink_pose is None:
+                        self.sink_pose = Pose()
+                    self.sink_pose.position.x = x
+                    self.sink_pose.position.y = y
+                    self.sink_pose.position.z = z
+                    self.sink_pose.orientation.w = 1.0
+                elif msg.dst_id == 'ugv':
+                    if self.ugv_pose is None:
+                        self.ugv_pose = Pose()
+                    self.ugv_pose.position.x = x
+                    self.ugv_pose.position.y = y
+                    self.ugv_pose.position.z = z
+                    self.ugv_pose.orientation.w = 1.0
+            return
         if msg.control_type != 'HELLO':
             return
         if not msg.payload.startswith('UGV,'):

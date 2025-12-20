@@ -764,7 +764,11 @@ private:
       dep.target_pose.position.z = 0.0;
       dep.target_pose.orientation.w = 1.0;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
+      }
       sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy SINK sink_gateway at (%.1f, %.1f)",
@@ -786,7 +790,9 @@ private:
       dep.target_pose.position.z = 0.0;
       dep.target_pose.orientation.w = 1.0;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       pending_acks_.insert(dep.uav_id);
       last_deployments_[dep.uav_id] = dep;
       sendDeploymentTraffic(dep);
@@ -1056,7 +1062,9 @@ private:
                   dep.next_hop_to_sink.empty() ? "-" : dep.next_hop_to_sink.c_str(),
                   dep.next_hop_to_ugv.empty() ? "-" : dep.next_hop_to_ugv.c_str());
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       pending_acks_.insert(dep.uav_id);
       last_deployments_[dep.uav_id] = dep;
       sendDeploymentTraffic(dep);
@@ -1101,7 +1109,9 @@ private:
                     dep.target_pose.position.y,
                     dep.target_pose.position.z);
 
-        deployment_pub_->publish(dep);
+        if (accept_direct_deployment_) {
+          deployment_pub_->publish(dep);
+        }
         pending_acks_.insert(dep.uav_id);
         last_deployments_[dep.uav_id] = dep;
         // Network deployment is always injected so members receive commands via the mesh
@@ -1264,7 +1274,9 @@ private:
       dep.next_hop_to_sink = nh_sink;
       dep.next_hop_to_ugv  = nh_ugv;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       sendDeploymentTraffic(dep);
       RCLCPP_WARN(this->get_logger(),
                   "[planner] Updated routing for CH %s: sink=%s  ugv=%s",
@@ -1333,6 +1345,9 @@ private:
     }
 
     if (planner_update_needed && coverage_planner_) {
+      if (!accept_direct_deployment_) {
+        return;
+      }
       if (task_driven_layout_) {
         return;
       }

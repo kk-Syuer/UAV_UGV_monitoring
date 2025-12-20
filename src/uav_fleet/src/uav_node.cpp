@@ -774,6 +774,14 @@ private:
       return;
     }
 
+    if (msg->flow_type == 1 &&
+        (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
+      DeploymentInfo info;
+      if (parseDeploymentPayload(msg->payload, info)) {
+        updateClusterMetadata(info, msg->dst_id);
+      }
+    }
+
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
 
@@ -1293,6 +1301,60 @@ private:
     if (r_norm > 1.0f) r_norm = 1.0f;
 
     return 1.0f + k_rain * r_norm;
+  }
+
+  struct DeploymentInfo
+  {
+    int role = 0;
+    std::string cluster_id;
+    std::string ch_id;
+    double x = 0.0;
+    double y = 0.0;
+    double z = 0.0;
+    std::string next_sink;
+    std::string next_ugv;
+  };
+
+  bool parseDeploymentPayload(const std::string & payload, DeploymentInfo & out) const
+  {
+    std::stringstream ss(payload);
+    std::string token;
+
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    out.role = std::stoi(token);
+    std::getline(ss, out.cluster_id, ',');
+    std::getline(ss, out.ch_id, ',');
+
+    std::getline(ss, token, ',');
+    out.x = std::stod(token);
+    std::getline(ss, token, ',');
+    out.y = std::stod(token);
+    std::getline(ss, token, ',');
+    out.z = std::stod(token);
+
+    std::getline(ss, out.next_sink, ',');
+    std::getline(ss, out.next_ugv, ',');
+    return true;
+  }
+
+  void updateClusterMetadata(const DeploymentInfo & info, const std::string & dst_id)
+  {
+    if (info.role == 0) {
+      cluster_parent_[dst_id] = info.ch_id;
+      if (info.ch_id == uav_id_) {
+        cluster_members_.insert(dst_id);
+      }
+    } else if (info.role == 1) {
+      cluster_parent_[dst_id] = dst_id;
+      geometry_msgs::msg::Pose ch_pose;
+      ch_pose.position.x = info.x;
+      ch_pose.position.y = info.y;
+      ch_pose.position.z = info.z;
+      ch_pose.orientation.w = 1.0;
+      ch_poses_[dst_id] = ch_pose;
+    }
   }
 
   void handleDeploymentFromNetwork(
