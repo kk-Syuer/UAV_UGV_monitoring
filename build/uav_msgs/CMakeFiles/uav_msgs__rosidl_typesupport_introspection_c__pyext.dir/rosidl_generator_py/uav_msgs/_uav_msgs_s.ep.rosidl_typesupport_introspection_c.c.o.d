@@ -220,6 +220,12 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c__pyext.dir/rosidl_genera
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/cluster_info__struct.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point__type_support.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point__struct.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point_array__type_support.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point_array__struct.h \
+ /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/task_point_array__functions.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__type_support.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__struct.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/charge_decision__functions.h \

@@ -719,10 +719,32 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/task_point.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__struct.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__builder.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__traits.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__type_support.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/task_point_array.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__struct.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__traits.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp
 
 
 /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__type_support.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__struct.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__traits.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__builder.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__struct.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/task_point.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__type_support.hpp:
 
@@ -831,6 +853,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__type_support.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_timers_interface.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/task_point_array.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_subscription.hpp:
 
@@ -1284,6 +1308,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/allocator.h:
 
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__traits.hpp:
+
 /usr/include/c++/11/bits/stl_tempbuf.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
@@ -1375,6 +1401,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/tr1/poly_laguerre.tcc:
 
 /usr/include/c++/11/bits/std_mutex.h:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point__type_support.hpp:
 
 /usr/include/c++/11/cstdlib:
 
@@ -1691,6 +1719,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
 
 /usr/include/c++/11/system_error:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp:
 
