@@ -331,20 +331,19 @@ class FleetVizNode(Node):
         # queue / scheduling panel -------------------------------------
         self.queue_ax.cla()
         self.queue_ax.axis('off')
+        spots_now = self.compute_required_spots()
+        load_ch_den = self.flight_time_ch_min + self.charge_time_ch_min
+        load_mem_den = self.flight_time_mem_min + self.charge_time_mem_min
+        load_ch = (self.charge_time_ch_min / load_ch_den) if load_ch_den > 0.0 else 0.0
+        load_mem = (self.charge_time_mem_min / load_mem_den) if load_mem_den > 0.0 else 0.0
         queue_lines = [
             'Charging queue',
             f"  pending requests: {len(self.pending_charges)}",
             '',
             f"Scheduling: {self.latest_policy}",
             '',
-            "Spots formula:",
-            "  ceil((Nch*Lch + Nmem*Lmem) / U)",
-            f"  Lch={self.charge_time_ch_min:.0f}/"
-            f"({self.flight_time_ch_min:.0f}+{self.charge_time_ch_min:.0f})",
-            f"  Lmem={self.charge_time_mem_min:.0f}/"
-            f"({self.flight_time_mem_min:.0f}+{self.charge_time_mem_min:.0f})",
-            f"  U={self.target_utilization:.2f}",
-            f"  spots now: {self.compute_required_spots()}"
+            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f}) / {self.target_utilization:.2f})",
+            f"  spots now: {spots_now}"
         ]
         if self.pending_charges:
             queue_lines.append('  waiting:')

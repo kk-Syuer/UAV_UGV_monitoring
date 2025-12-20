@@ -50,6 +50,8 @@ public:
     service_radius_ch_ = this->declare_parameter<double>("service_radius_ch", 250.0);
     service_radius_member_ = this->declare_parameter<double>("service_radius_member", 120.0);
     comm_radius_ch_    = this->declare_parameter<double>("comm_radius_ch", 400.0);
+    diag_stretch_factor_ =
+      this->declare_parameter<double>("ch_diag_stretch_factor", 1.15);
     planner_id_ = this->declare_parameter<std::string>("planner_id", "coverage_planner");
     sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
     // Bootstrap CH: by default first CH in the list
@@ -248,6 +250,39 @@ private:
     if (adjusted) {
       RCLCPP_WARN(this->get_logger(),
                   "Adjusted CH positions to keep comms connected, overlapping, and sink within coverage.");
+    }
+  }
+
+  void stretchChPositionsDiagonal(std::vector<geometry_msgs::msg::Pose> & poses, double factor)
+  {
+    if (poses.empty()) {
+      return;
+    }
+
+    if (factor <= 1.0) {
+      return;
+    }
+
+    double cx = 0.0;
+    double cy = 0.0;
+    for (const auto & pose : poses) {
+      cx += pose.position.x;
+      cy += pose.position.y;
+    }
+    cx /= static_cast<double>(poses.size());
+    cy /= static_cast<double>(poses.size());
+
+    const double inv_sqrt2 = 0.7071067811865475;
+    for (auto & pose : poses) {
+      double dx = pose.position.x - cx;
+      double dy = pose.position.y - cy;
+      double u = (dx + dy) * inv_sqrt2;
+      double v = (-dx + dy) * inv_sqrt2;
+      u *= factor;
+      double nx = (u - v) * inv_sqrt2;
+      double ny = (u + v) * inv_sqrt2;
+      pose.position.x = clamp(cx + nx, x_min_, x_max_);
+      pose.position.y = clamp(cy + ny, y_min_, y_max_);
     }
   }
 
@@ -765,9 +800,7 @@ private:
       dep.target_pose.orientation.w = 1.0;
 
       if (accept_direct_deployment_) {
-      if (accept_direct_deployment_) {
         deployment_pub_->publish(dep);
-      }
       }
       sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
@@ -827,7 +860,8 @@ private:
     std::vector<std::string> cluster_ids;
 
     auto clusters = buildTaskDrivenClusters(num_ch);
-    if (!clusters.empty()) {
+    bool task_layout_used = !clusters.empty();
+    if (task_layout_used) {
       for (int i = 0; i < num_ch; ++i) {
         geometry_msgs::msg::Pose pose = clusters[static_cast<size_t>(i)].ch_pose;
         pose.position.z = z_ch_;
@@ -890,6 +924,9 @@ private:
       }
     }
 
+    if (task_layout_used) {
+      stretchChPositionsDiagonal(ch_poses, diag_stretch_factor_);
+    }
     tightenChConnectivity(ch_poses);
 
     // Store for later dynamic routing recompute
@@ -1513,6 +1550,7 @@ private:
   double service_radius_ch_;
   double service_radius_member_;
   double comm_radius_ch_;
+  double diag_stretch_factor_ = 1.0;
   std::vector<TaskPoint> task_points_;
   bool task_driven_layout_ = false;
 
