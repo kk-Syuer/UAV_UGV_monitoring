@@ -6,7 +6,6 @@
 #include "rclcpp/rclcpp.hpp"
 
 #include "uav_msgs/msg/uav_status.hpp"
-#include "uav_msgs/msg/heartbeat.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/cluster_info.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
@@ -135,8 +134,6 @@ public:
     // ---- Publishers ----
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/uav_fleet/status", 10);
-    heartbeat_pub_ = this->create_publisher<uav_msgs::msg::Heartbeat>(
-      "/uav_fleet/heartbeat", 10);
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/network/traffic", 10);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
@@ -510,10 +507,23 @@ private:
 
   void publishHeartbeat()
   {
-    uav_msgs::msg::Heartbeat hb;
-    hb.uav_id = uav_id_;
-    hb.stamp = this->now();
-    heartbeat_pub_->publish(hb);
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_HEARTBEAT_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = default_dst_id_;
+    msg.flow_type = 1;  // CONTROL
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.control_type = "HEARTBEAT";
+    msg.payload = "";
+
+    if (role_ == 0) {
+      msg.next_hop_id = my_ch_id_;
+    } else {
+      msg.next_hop_id = resolveNextHop(default_dst_id_);
+    }
+
+    traffic_pub_->publish(msg);
   }
 
   void publishTraffic()
@@ -1593,7 +1603,6 @@ private:
   rclcpp::node_interfaces::OnSetParametersCallbackHandle::SharedPtr param_cb_handle_;
 
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
-  rclcpp::Publisher<uav_msgs::msg::Heartbeat>::SharedPtr heartbeat_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeRequest>::SharedPtr charge_request_pub_;
 
