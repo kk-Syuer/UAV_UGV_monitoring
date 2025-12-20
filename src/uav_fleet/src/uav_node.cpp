@@ -413,6 +413,12 @@ private:
 
   void requestCharge(float battery_percent)
   {
+    if (role_ == 0 && neighbor_table_.find(my_ch_id_) == neighbor_table_.end()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: cannot request charge, CH %s not reachable",
+                  uav_id_.c_str(), my_ch_id_.c_str());
+      return;
+    }
     // Set flag to avoid duplicate requests while waiting for decision
     waiting_for_charge_response_ = true;
 
