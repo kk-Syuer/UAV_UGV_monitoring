@@ -69,6 +69,7 @@ public:
     auto task_strings = this->declare_parameter<std::vector<std::string>>(
       "task_points", std::vector<std::string>{});
     parseTaskPoints(task_strings);
+    task_driven_layout_ = !task_points_.empty();
 
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
@@ -763,7 +764,11 @@ private:
       dep.target_pose.position.z = 0.0;
       dep.target_pose.orientation.w = 1.0;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
+      }
       sendDeploymentTraffic(dep);
       RCLCPP_INFO(this->get_logger(),
                   "Deploy SINK sink_gateway at (%.1f, %.1f)",
@@ -785,7 +790,9 @@ private:
       dep.target_pose.position.z = 0.0;
       dep.target_pose.orientation.w = 1.0;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       pending_acks_.insert(dep.uav_id);
       last_deployments_[dep.uav_id] = dep;
       sendDeploymentTraffic(dep);
@@ -1055,7 +1062,9 @@ private:
                   dep.next_hop_to_sink.empty() ? "-" : dep.next_hop_to_sink.c_str(),
                   dep.next_hop_to_ugv.empty() ? "-" : dep.next_hop_to_ugv.c_str());
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       pending_acks_.insert(dep.uav_id);
       last_deployments_[dep.uav_id] = dep;
       sendDeploymentTraffic(dep);
@@ -1100,7 +1109,9 @@ private:
                     dep.target_pose.position.y,
                     dep.target_pose.position.z);
 
-        deployment_pub_->publish(dep);
+        if (accept_direct_deployment_) {
+          deployment_pub_->publish(dep);
+        }
         pending_acks_.insert(dep.uav_id);
         last_deployments_[dep.uav_id] = dep;
         // Network deployment is always injected so members receive commands via the mesh
@@ -1263,7 +1274,9 @@ private:
       dep.next_hop_to_sink = nh_sink;
       dep.next_hop_to_ugv  = nh_ugv;
 
-      deployment_pub_->publish(dep);
+      if (accept_direct_deployment_) {
+        deployment_pub_->publish(dep);
+      }
       sendDeploymentTraffic(dep);
       RCLCPP_WARN(this->get_logger(),
                   "[planner] Updated routing for CH %s: sink=%s  ugv=%s",
@@ -1332,6 +1345,12 @@ private:
     }
 
     if (planner_update_needed && coverage_planner_) {
+      if (!accept_direct_deployment_) {
+        return;
+      }
+      if (task_driven_layout_) {
+        return;
+      }
       std::vector<CoveragePlanner::ClusterHeadInfo> active_chs;
       active_chs.reserve(active_ch_info_.size());
       for (const auto & kv : active_ch_info_) {
@@ -1495,6 +1514,7 @@ private:
   double service_radius_member_;
   double comm_radius_ch_;
   std::vector<TaskPoint> task_points_;
+  bool task_driven_layout_ = false;
 
   // Random sink / UGV
   double sink_x_ = 0.0, sink_y_ = 0.0;
