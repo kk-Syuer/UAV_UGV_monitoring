@@ -328,7 +328,7 @@ private:
     }
 
     // ---- Normal behaviour AFTER deployment ----
-    if (deployment_received_ && ready_for_battery && is_charging_) {
+    if (deployment_received_ && is_charging_) {
       // Charging: interpolate
       if (now >= charge_end_time_) {
         battery_energy_ = battery_capacity_;

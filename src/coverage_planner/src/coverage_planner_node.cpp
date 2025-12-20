@@ -236,7 +236,7 @@ private:
     }
 
     const bool use_anchor = anchors.size() == poses.size();
-    const double max_pair_target = comm_radius_ch_ * 2.0 * 0.98;
+    const double max_pair_target = comm_radius_ch_ * 0.98;
     const int max_iters = 60;
     const double pull_gain = 0.08;
     const double pair_gain = 0.5;
