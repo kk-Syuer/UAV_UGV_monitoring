@@ -384,6 +384,7 @@ private:
                   "UAV %s: BATTERY_DEAD at t=%.3f", uav_id_.c_str(), now.seconds());
 
       failure_pub_->publish(fe);
+      publishFailureTraffic(fe);
     }
 
     // If low and not waiting or scheduled, request a charge slot.
@@ -462,6 +463,41 @@ private:
 
     RCLCPP_INFO(this->get_logger(),
                 "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
+                uav_id_.c_str(), msg.msg_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str());
+
+    traffic_pub_->publish(msg);
+  }
+
+  void publishFailureTraffic(const uav_msgs::msg::FailureEvent & failure)
+  {
+    if (!traffic_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_failure_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = default_dst_id_;
+    msg.flow_type = 1;  // CONTROL
+    msg.creation_time = failure.stamp;
+    msg.hop_count = 0;
+    msg.control_type = "FAILURE_EVENT";
+
+    std::ostringstream oss;
+    oss << static_cast<int>(failure.failure_type) << ","
+        << failure.stamp.sec << "." << failure.stamp.nanosec << ","
+        << failure.description;
+    msg.payload = oss.str();
+
+    if (role_ == 0) {
+      msg.next_hop_id = my_ch_id_;
+    } else {
+      msg.next_hop_id = resolveNextHop(default_dst_id_);
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "[TX CTRL] UAV %s sending FAILURE_EVENT msg_id=%s dst=%s next_hop=%s",
                 uav_id_.c_str(), msg.msg_id.c_str(),
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
