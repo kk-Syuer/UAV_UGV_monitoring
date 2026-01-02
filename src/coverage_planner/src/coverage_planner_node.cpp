@@ -1647,8 +1647,22 @@ private:
       return;
     }
 
-    if (msg->control_type == "DEPLOYMENT_ACK" && msg->dst_id == sink_id_) {
-      pending_acks_.erase(msg->src_id);
+    if (msg->control_type == "DEPLOYMENT_ACK") {
+      auto it = pending_acks_.find(msg->src_id);
+      if (it == pending_acks_.end()) {
+        return;
+      }
+
+      // Members should reach the sink via their CH, so warn if the ACK is
+      // misrouted but still count it to avoid deadlock.
+      if (msg->dst_id != sink_id_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[ACK] %s sent DEPLOYMENT_ACK to %s (expected %s). Counting anyway.",
+                    msg->src_id.c_str(), msg->dst_id.c_str(), sink_id_.c_str());
+      }
+
+      pending_acks_.erase(it);
+
       if (!pending_acks_.empty()) {
         RCLCPP_INFO(this->get_logger(),
                     "[ACK] Received DEPLOYMENT_ACK from %s (%zu remaining)",
