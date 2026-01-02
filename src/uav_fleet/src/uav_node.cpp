@@ -917,6 +917,8 @@ private:
     }
     rclcpp::Time rx_time = this->now();
 
+    rclcpp::Time rx_time = this->now();
+
     if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: dropping msg_id=%s due to TTL expiry (hop=%u ttl=%u)",
