@@ -1885,12 +1885,26 @@ private:
     ack.msg_id = "DEP_ACK_" + uav_id_ + "_" +
                 std::to_string(dep_ack_seq_++);
     ack.src_id = uav_id_;
-    ack.dst_id = default_dst_id_;  // this is your sink id (usually "sink_gateway")
+    ack.dst_id = default_dst_id_;  // expected sink id (usually "sink_gateway")
 
     // First hop into the network
     if (role_ == 0) {
-      // MEMBER: go to its CH
-      ack.next_hop_id = my_ch_id_;
+      // MEMBER: prefer its CH as the first hop toward the sink
+      if (!my_ch_id_.empty() && neighbor_table_.count(my_ch_id_) > 0) {
+        ack.next_hop_id = my_ch_id_;
+      } else {
+        // Fallback: resolve next hop to sink using any available route
+        ack.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
+        if (ack.next_hop_id.empty()) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: cannot send DEPLOYMENT_ACK, no route to sink.",
+                      uav_id_.c_str());
+          return;
+        }
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: CH %s unreachable, sending DEPLOYMENT_ACK via %s",
+                    uav_id_.c_str(), my_ch_id_.c_str(), ack.next_hop_id.c_str());
+      }
     } else {
       // CH (or other roles): use LADTR first, then routing towards sink
       ack.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
