@@ -10,6 +10,7 @@
 #include <cmath>
 #include <queue>
 #include <limits>
+#include <array>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
@@ -255,22 +256,48 @@ private:
         }
       }
 
-      // Ensure all CH pairs are within the overlap target.
+      // Ensure each CH stays within the overlap target of its two nearest neighbors.
       for (size_t i = 0; i < poses.size(); ++i) {
-        for (size_t j = i + 1; j < poses.size(); ++j) {
+        std::array<int, 2> nearest{{-1, -1}};
+        std::array<double, 2> nearest_dist{{std::numeric_limits<double>::infinity(),
+                                            std::numeric_limits<double>::infinity()}};
+
+        for (size_t j = 0; j < poses.size(); ++j) {
+          if (i == j) {
+            continue;
+          }
+
           double dx = poses[j].position.x - poses[i].position.x;
           double dy = poses[j].position.y - poses[i].position.y;
           double dist = std::sqrt(dx * dx + dy * dy);
-          if (dist > max_pair_target) {
+
+          if (dist < nearest_dist[0]) {
+            nearest_dist[1] = nearest_dist[0];
+            nearest[1] = nearest[0];
+            nearest_dist[0] = dist;
+            nearest[0] = static_cast<int>(j);
+          } else if (dist < nearest_dist[1]) {
+            nearest_dist[1] = dist;
+            nearest[1] = static_cast<int>(j);
+          }
+        }
+
+        for (int k = 0; k < 2; ++k) {
+          int idx = nearest[static_cast<size_t>(k)];
+          if (idx < 0) {
+            continue;
+          }
+          double dx = poses[static_cast<size_t>(idx)].position.x - poses[i].position.x;
+          double dy = poses[static_cast<size_t>(idx)].position.y - poses[i].position.y;
+          double dist = std::sqrt(dx * dx + dy * dy);
+          if (dist > max_pair_target && dist > 1e-6) {
             double excess = dist - max_pair_target;
-            if (dist > 1e-6) {
-              double shift = (excess * pair_gain) / dist;
-              poses[i].position.x += dx * shift;
-              poses[i].position.y += dy * shift;
-              poses[j].position.x -= dx * shift;
-              poses[j].position.y -= dy * shift;
-              any_update = true;
-            }
+            double shift = (excess * pair_gain) / dist;
+            poses[i].position.x += dx * shift;
+            poses[i].position.y += dy * shift;
+            poses[static_cast<size_t>(idx)].position.x -= dx * shift;
+            poses[static_cast<size_t>(idx)].position.y -= dy * shift;
+            any_update = true;
           }
         }
       }
@@ -303,7 +330,33 @@ private:
         pose.position.y = clamp(pose.position.y, y_min_, y_max_);
       }
 
-      double max_pair = maxPairDistance(poses);
+      auto worst_second_neighbor = [&](const std::vector<geometry_msgs::msg::Pose> & ps) {
+        double worst = 0.0;
+        for (size_t i = 0; i < ps.size(); ++i) {
+          double best = std::numeric_limits<double>::infinity();
+          double second = std::numeric_limits<double>::infinity();
+          for (size_t j = 0; j < ps.size(); ++j) {
+            if (i == j) {
+              continue;
+            }
+            double d = std::sqrt(dist2(ps[i].position.x, ps[i].position.y,
+                                       ps[j].position.x, ps[j].position.y));
+            if (d < best) {
+              second = best;
+              best = d;
+            } else if (d < second) {
+              second = d;
+            }
+          }
+
+          if (second < std::numeric_limits<double>::infinity()) {
+            worst = std::max(worst, second);
+          }
+        }
+        return worst;
+      };
+
+      double max_pair = worst_second_neighbor(poses);
       sink_dist = minDistToPoint(poses, sink_x_, sink_y_);
       if (max_pair <= max_pair_target && sink_dist <= comm_radius_ch_) {
         break;
