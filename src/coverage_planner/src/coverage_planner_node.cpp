@@ -87,7 +87,7 @@ public:
     coverage_planner_->initializeIdealLayouts();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 50);
+      "/fanet/network_bus", 50);
 
 
     // Timer: handles initial deployment and later routing recomputes.
@@ -102,12 +102,12 @@ public:
 
     // Subscribe to UAV status to see backbone_active changes
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
-      "/uav_fleet/status", 20,
+      "/fanet/status", 20,
       std::bind(&CoveragePlannerNode::statusCallback, this, std::placeholders::_1));
 
     // Subscribe to HELLO / DEPLOYMENT_ACK traffic for discovery and barriers.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 50,
+      "/fanet/network_bus", 50,
       std::bind(&CoveragePlannerNode::trafficCallback, this, std::placeholders::_1));
 
     expected_devices_.insert(uav_ids_.begin(), uav_ids_.end());
