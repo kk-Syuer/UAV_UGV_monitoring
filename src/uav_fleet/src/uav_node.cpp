@@ -2,6 +2,9 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <deque>
+#include <optional>
+#include <cmath>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -173,6 +176,16 @@ public:
     status_ttl_ = static_cast<uint32_t>(
       this->declare_parameter<int>("status_ch_ttl", 20));
 
+    // Location-aided DTN routing parameters
+    location_aided_routing_ =
+      this->declare_parameter<bool>("ladtr_enabled", true);
+    location_progress_threshold_m_ =
+      this->declare_parameter<double>("ladtr_progress_threshold_m", 5.0);
+    carry_buffer_limit_ = static_cast<size_t>(
+      this->declare_parameter<int>("ladtr_buffer_limit", 200));
+    carry_ttl_sec_ = this->declare_parameter<double>("ladtr_buffer_ttl_sec", 45.0);
+    carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
+
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     hello_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
@@ -180,6 +193,11 @@ public:
     neighbor_timeout_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UavNode::pruneNeighbors, this));
+
+    auto carry_retry = std::chrono::duration<double>(carry_retry_period_sec_);
+    ladtr_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(carry_retry),
+      std::bind(&UavNode::flushBufferedMessagesTimer, this));
 
     auto status_period = std::chrono::duration<double>(status_period_sec_);
     ch_status_timer_ = this->create_wall_timer(
@@ -244,6 +262,12 @@ private:
     double x;
     double y;
     double battery;
+  };
+
+  struct BufferedMessage
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    rclcpp::Time buffered_time;
   };
 
   // ---------------- Weather ----------------
@@ -458,7 +482,7 @@ private:
     if (role_ == 0) {  // MEMBER
       msg.next_hop_id = my_ch_id_;
     } else {           // CH
-      msg.next_hop_id = resolveNextHop(ugv_id_);
+      msg.next_hop_id = pickNextHop(ugv_id_, resolveNextHop(ugv_id_));
     }
 
     // Optional control metadata to describe the control alert type.
@@ -497,7 +521,7 @@ private:
     if (role_ == 0) {
       msg.next_hop_id = my_ch_id_;
     } else {
-      msg.next_hop_id = resolveNextHop(default_dst_id_);
+      msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
     }
 
     RCLCPP_INFO(this->get_logger(),
@@ -565,7 +589,7 @@ private:
     if (role_ == 0) {
       msg.next_hop_id = my_ch_id_;
     } else {
-      msg.next_hop_id = resolveNextHop(default_dst_id_);
+      msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
     }
 
     traffic_pub_->publish(msg);
@@ -590,8 +614,8 @@ private:
       // First hop is my CH
       msg.next_hop_id = my_ch_id_;
     } else { // CH
-      // CH sends towards sink/backbone using next_hop_to_sink_
-      msg.next_hop_id = next_hop_to_sink_;
+      // CH sends using LADTR when enabled, otherwise next_hop_to_sink_
+      msg.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
     }
 
     msg.flow_type = 0;       // TEXT
@@ -701,7 +725,7 @@ private:
       return;
     }
 
-    std::string next_hop = resolveNextHop(default_dst_id_);
+    std::string next_hop = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
     if (next_hop.empty()) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot send STATUS_CH (no next hop to %s)",
@@ -783,8 +807,8 @@ private:
       if (cluster_members_.find(msg.dst_id) != cluster_members_.end()) {
         msg.next_hop_id = msg.dst_id;
       } else {
-        // Otherwise, use normal backbone routing (sink/UGV/etc.)
-        msg.next_hop_id = resolveNextHop(msg.dst_id);
+        // Otherwise, use LADTR when available (fallback to backbone routing).
+        msg.next_hop_id = pickNextHop(msg.dst_id, resolveNextHop(msg.dst_id));
       }
     }
 
@@ -911,7 +935,7 @@ private:
       {
           msg->hop_count++;
 
-          if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
+        if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
             RCLCPP_WARN(this->get_logger(),
                         "[FWD-DEPLOY] CH %s dropping %s due to TTL (hop=%u ttl=%u)",
                         uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
@@ -919,7 +943,7 @@ private:
           }
 
           // Use backbone routing
-          std::string next_hop = resolveNextHop(msg->dst_id);
+          std::string next_hop = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id));
 
           if (next_hop.empty()) {
               RCLCPP_WARN(this->get_logger(),
@@ -954,8 +978,33 @@ private:
         // If the destination is one of my cluster members, send directly down to it.
         fwd.next_hop_id = msg->dst_id;
       } else {
-        // Otherwise, forward according to backbone routing (sink/UGV/other CHs)
-        fwd.next_hop_id = resolveNextHop(msg->dst_id);
+        // Otherwise, use LADTR first, then fall back to backbone routing.
+        if (location_aided_routing_) {
+          auto ladtr = selectLadtrNextHop(msg->dst_id);
+          if (ladtr && !ladtr->empty()) {
+            fwd.next_hop_id = *ladtr;
+            RCLCPP_INFO(this->get_logger(),
+                        "[LADTR] %s forwarding msg_id=%s via %s toward %s",
+                        uav_id_.c_str(), fwd.msg_id.c_str(), fwd.next_hop_id.c_str(),
+                        msg->dst_id.c_str());
+            traffic_pub_->publish(fwd);
+            return;
+          }
+        }
+
+        fwd.next_hop_id = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id));
+        if (fwd.next_hop_id.empty() && location_aided_routing_) {
+          if (tryLocationAidedForward(fwd)) {
+            return;
+          }
+          bufferForCarry(fwd);
+          return;
+        } else if (fwd.next_hop_id.empty()) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[FWD] CH %s dropping msg_id=%s: no route to %s",
+                      uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
+          return;
+        }
       }
 
       if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // starts with DEBUG_TEXT:
@@ -1062,6 +1111,190 @@ private:
 
       // CASE 3: default route toward sink
       return next_hop_to_sink_;
+  }
+
+  std::optional<std::string> selectLadtrNextHop(const std::string & dst) const
+  {
+    if (!location_aided_routing_) {
+      return std::nullopt;
+    }
+
+    auto dst_pos_opt = lookupNodePosition(dst);
+    if (!dst_pos_opt) {
+      return std::nullopt;
+    }
+
+    geometry_msgs::msg::Point dst_pos = *dst_pos_opt;
+    double self_dist = distance2d(pose_.position, dst_pos);
+    auto neighbor = selectProgressNeighbor(dst_pos, self_dist);
+    if (!neighbor) {
+      return std::nullopt;
+    }
+
+    return neighbor->first;
+  }
+
+  std::string pickNextHop(const std::string & dst, const std::string & fallback) const
+  {
+    auto ladtr = selectLadtrNextHop(dst);
+    if (ladtr) {
+      return *ladtr;
+    }
+    if (!fallback.empty()) {
+      return fallback;
+    }
+    return resolveNextHop(dst);
+  }
+
+  std::optional<geometry_msgs::msg::Point> lookupNodePosition(const std::string & id) const
+  {
+    if (id == uav_id_) {
+      return pose_.position;
+    }
+
+    auto it_dep = deployment_positions_.find(id);
+    if (it_dep != deployment_positions_.end()) {
+      return it_dep->second.position;
+    }
+
+    auto it_ch = ch_poses_.find(id);
+    if (it_ch != ch_poses_.end()) {
+      return it_ch->second.position;
+    }
+
+    auto it_nb = neighbor_table_.find(id);
+    if (it_nb != neighbor_table_.end()) {
+      geometry_msgs::msg::Point p;
+      p.x = it_nb->second.x;
+      p.y = it_nb->second.y;
+      p.z = 0.0;
+      return p;
+    }
+
+    return std::nullopt;
+  }
+
+  double distance2d(const geometry_msgs::msg::Point & a,
+                    const geometry_msgs::msg::Point & b) const
+  {
+    double dx = a.x - b.x;
+    double dy = a.y - b.y;
+    return std::sqrt(dx * dx + dy * dy);
+  }
+
+  std::optional<std::pair<std::string, double>> selectProgressNeighbor(
+    const geometry_msgs::msg::Point & dst_pos,
+    double self_dist) const
+  {
+    std::optional<std::pair<std::string, double>> best;
+    double best_dist = self_dist;
+
+    for (const auto & kv : neighbor_table_) {
+      geometry_msgs::msg::Point npos;
+      npos.x = kv.second.x;
+      npos.y = kv.second.y;
+      npos.z = 0.0;
+
+      double d = distance2d(npos, dst_pos);
+      if (d + location_progress_threshold_m_ < self_dist && d < best_dist) {
+        best = std::make_pair(kv.first, d);
+        best_dist = d;
+      }
+    }
+
+    return best;
+  }
+
+  bool tryLocationAidedForward(uav_msgs::msg::TrafficMessage & msg)
+  {
+    auto ladtr = selectLadtrNextHop(msg.dst_id);
+    if (!ladtr) {
+      return false;
+    }
+
+    auto dst_pos_opt = lookupNodePosition(msg.dst_id);
+    if (!dst_pos_opt) {
+      return false;
+    }
+    double self_dist = distance2d(pose_.position, *dst_pos_opt);
+    auto neighbor = selectProgressNeighbor(*dst_pos_opt, self_dist);
+    msg.next_hop_id = *ladtr;
+    RCLCPP_INFO(this->get_logger(),
+                "[LADTR] %s forwarding msg_id=%s toward %s via %s (d_self=%.1f d_next=%.1f)",
+                uav_id_.c_str(), msg.msg_id.c_str(), msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(), self_dist,
+                neighbor ? neighbor->second : -1.0);
+
+    traffic_pub_->publish(msg);
+    return true;
+  }
+
+  void bufferForCarry(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (!location_aided_routing_ || carry_buffer_limit_ == 0) {
+      return;
+    }
+
+    for (const auto & entry : carry_buffer_) {
+      if (entry.msg.msg_id == msg.msg_id) {
+        return;
+      }
+    }
+
+    if (carry_buffer_.size() >= carry_buffer_limit_) {
+      const auto & dropped = carry_buffer_.front();
+      RCLCPP_WARN(this->get_logger(),
+                  "[LADTR] buffer full (%zu) dropping oldest msg_id=%s",
+                  carry_buffer_.size(), dropped.msg.msg_id.c_str());
+      carry_buffer_.pop_front();
+    }
+
+    BufferedMessage bm;
+    bm.msg = msg;
+    bm.buffered_time = this->now();
+    carry_buffer_.push_back(bm);
+
+    RCLCPP_INFO(this->get_logger(),
+                "[LADTR] buffering msg_id=%s (dst=%s) carry_buffer=%zu",
+                msg.msg_id.c_str(), msg.dst_id.c_str(), carry_buffer_.size());
+  }
+
+  void flushBufferedMessagesTimer()
+  {
+    if (!location_aided_routing_ || carry_buffer_.empty()) {
+      return;
+    }
+
+    auto now = this->now();
+    for (auto it = carry_buffer_.begin(); it != carry_buffer_.end();) {
+      double age = (now - it->buffered_time).seconds();
+      if (age > carry_ttl_sec_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[LADTR] dropping msg_id=%s after %.1f s in buffer",
+                    it->msg.msg_id.c_str(), age);
+        it = carry_buffer_.erase(it);
+        continue;
+      }
+
+      uav_msgs::msg::TrafficMessage attempt = it->msg;
+      std::string nh = pickNextHop(attempt.dst_id, resolveNextHop(attempt.dst_id));
+      if (!nh.empty()) {
+        attempt.next_hop_id = nh;
+        RCLCPP_INFO(this->get_logger(),
+                    "[LADTR] replaying msg_id=%s via next_hop=%s",
+                    attempt.msg_id.c_str(), nh.c_str());
+        traffic_pub_->publish(attempt);
+        it = carry_buffer_.erase(it);
+        continue;
+      }
+
+      if (tryLocationAidedForward(attempt)) {
+        it = carry_buffer_.erase(it);
+        continue;
+      }
+
+      ++it;
+    }
   }
   void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
   {
@@ -1440,6 +1673,12 @@ private:
     std::getline(ss, next_sink, ',');
     // next_ugv (possibly empty)
     std::getline(ss, next_ugv, ',');
+    geometry_msgs::msg::Pose deployed_pose;
+    deployed_pose.position.x = x;
+    deployed_pose.position.y = y;
+    deployed_pose.position.z = z;
+    deployed_pose.orientation.w = 1.0;
+    deployment_positions_[msg->dst_id] = deployed_pose;
 
     bool is_self_deployment = (msg->dst_id == uav_id_);
     bool is_duplicate = false;
@@ -1551,12 +1790,8 @@ private:
       // MEMBER: go to its CH
       ack.next_hop_id = my_ch_id_;
     } else {
-      // CH (or other roles): use routing towards sink if known
-      if (!next_hop_to_sink_.empty()) {
-        ack.next_hop_id = next_hop_to_sink_;
-      } else {
-        ack.next_hop_id = default_dst_id_;  // direct if in range
-      }
+      // CH (or other roles): use LADTR first, then routing towards sink
+      ack.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
     }
 
     ack.flow_type = 1;
@@ -1618,6 +1853,7 @@ private:
 
   // CH poses so members can know their CH center
   std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
+  std::unordered_map<std::string, geometry_msgs::msg::Pose> deployment_positions_;
 
   // Speed tracking
   geometry_msgs::msg::Pose last_pose_;
@@ -1666,6 +1902,7 @@ private:
   rclcpp::TimerBase::SharedPtr hello_timer_;
   rclcpp::TimerBase::SharedPtr neighbor_timeout_timer_;
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
+  rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
@@ -1676,6 +1913,12 @@ private:
   double hello_timeout_sec_ = 3.0;
   double status_period_sec_ = 5.0;
   uint32_t status_ttl_ = 0;
+  bool location_aided_routing_ = false;
+  double location_progress_threshold_m_ = 0.0;
+  size_t carry_buffer_limit_ = 0;
+  double carry_ttl_sec_ = 0.0;
+  double carry_retry_period_sec_ = 1.0;
+  std::deque<BufferedMessage> carry_buffer_;
 
 };
 
