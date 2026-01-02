@@ -53,6 +53,7 @@ public:
     waiting_for_charge_response_(false),
     is_charging_(false),
     has_charge_slot_(false),
+    charge_state_(ChargeState::IDLE),
     deployment_received_(false)
   {
     // ---- Parameters ----
@@ -245,6 +246,9 @@ public:
     pose_.position.z = 0.0;
     pose_.orientation.w = 1.0;
 
+    ugv_pose_known_ = false;
+    ugv_pose_.orientation.w = 1.0;
+
     service_radius_ = 400.0f;
 
 
@@ -262,6 +266,13 @@ private:
     double x;
     double y;
     double battery;
+  };
+
+  enum class ChargeState {
+    IDLE = 0,
+    TO_UGV,
+    CHARGING,
+    RETURNING
   };
 
   struct BufferedMessage
@@ -352,14 +363,17 @@ private:
     }
 
     // ---- Normal behaviour AFTER deployment ----
-    if (deployment_received_ && is_charging_) {
+    if (deployment_received_ && charge_state_ == ChargeState::CHARGING) {
       // Charging: interpolate
       if (now >= charge_end_time_) {
         battery_energy_ = battery_capacity_;
         is_charging_ = false;
+        charge_state_ = ChargeState::RETURNING;
         RCLCPP_INFO(this->get_logger(),
-                    "UAV %s: finished charging, battery full (%.1f).",
-                    uav_id_.c_str(), battery_energy_);
+                    "UAV %s: finished charging, battery full (%.1f). Returning to (%.1f, %.1f).",
+                    uav_id_.c_str(), battery_energy_,
+                    charge_departure_pose_.position.x,
+                    charge_departure_pose_.position.y);
       } else {
         double total = (charge_end_time_ - charge_start_time_).seconds();
         double elapsed = (now - charge_start_time_).seconds();
@@ -550,15 +564,22 @@ private:
     has_charge_slot_ = false;  // we start charging immediately
 
     if (!is_charging_ && battery_energy_ > 0.0f) {
-      is_charging_ = true;
-      energy_at_charge_start_ = battery_energy_;
-      charge_start_time_ = now;
-      charge_end_time_ = now + rclcpp::Duration::from_seconds(charging_duration_sec_);
+      charge_departure_pose_ = pose_;
+      charge_state_ = ChargeState::TO_UGV;
 
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
-                  "Starting charging session now.",
-                  uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str());
+      if (resolveUgvPose(charge_target_pose_)) {
+        charge_target_pose_.position.z = pose_.position.z;
+        RCLCPP_INFO(this->get_logger(),
+                    "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
+                    "Navigating to UGV at (%.1f, %.1f) before charging.",
+                    uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str(),
+                    charge_target_pose_.position.x, charge_target_pose_.position.y);
+      } else {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: received CHARGE_DECISION but UGV pose unknown. Charging in place.",
+                    uav_id_.c_str());
+        beginChargingSession(now);
+      }
     } else {
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: received CHARGE_DECISION but is already charging or dead.",
@@ -630,6 +651,23 @@ private:
     traffic_pub_->publish(msg);
   }
 
+  void beginChargingSession(const rclcpp::Time & now)
+  {
+    if (is_charging_ || battery_energy_ <= 0.0f) {
+      return;
+    }
+
+    is_charging_ = true;
+    charge_state_ = ChargeState::CHARGING;
+    energy_at_charge_start_ = battery_energy_;
+    charge_start_time_ = now;
+    charge_end_time_ = now + rclcpp::Duration::from_seconds(charging_duration_sec_);
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: starting charging session. ETA %.1f s.",
+                uav_id_.c_str(), charging_duration_sec_);
+  }
+
   void publishHello()
   {
     uav_msgs::msg::TrafficMessage msg;
@@ -682,6 +720,13 @@ private:
                   uav_id_.c_str(), info.id.c_str(), info.role.c_str());
     }
 
+    if (info.role == "UGV") {
+      ugv_pose_known_ = true;
+      ugv_pose_.position.x = info.x;
+      ugv_pose_.position.y = info.y;
+      ugv_pose_.position.z = 0.0;
+    }
+
     if (role_ == 0 && msg->src_id == my_ch_id_) {
       updateChDeploymentReached(info);
     }
@@ -710,6 +755,12 @@ private:
 
   std::string statusStateString() const
   {
+    if (charge_state_ == ChargeState::TO_UGV) {
+      return "FLYING_TO_UGV";
+    }
+    if (charge_state_ == ChargeState::RETURNING) {
+      return "RETURNING_FROM_UGV";
+    }
     if (is_charging_) {
       return "CHARGING";
     }
@@ -752,6 +803,25 @@ private:
     msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
+  }
+
+  bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
+  {
+    if (ugv_pose_known_) {
+      pose = ugv_pose_;
+      return true;
+    }
+
+    auto it = neighbor_table_.find(ugv_id_);
+    if (it != neighbor_table_.end()) {
+      pose.position.x = it->second.x;
+      pose.position.y = it->second.y;
+      pose.position.z = 0.0;
+      pose.orientation.w = 1.0;
+      return true;
+    }
+
+    return false;
   }
 
   std::string roleString(uint8_t role) const
@@ -1397,76 +1467,108 @@ private:
       return false;
     };
 
-    bool held_by_ch = false;
-    switch (mobility_phase_) {
-      case MobilityPhase::IDLE:
-        // nothing to do
-        break;
+    bool handled_charge_motion = false;
+    if (charge_state_ == ChargeState::TO_UGV) {
+      handled_charge_motion = true;
+      bool reached = stepTowards2D(
+        charge_target_pose_.position.x,
+        charge_target_pose_.position.y);
 
-      case MobilityPhase::GO_TO_DEPLOYMENT:
-      {
-        if (role_ == 0 && !ch_deployment_reached_) {
-          held_by_ch = true;
-          break;
-        }
-        bool reached = stepTowards2D(
-          deployment_goal_pose_.position.x,
-          deployment_goal_pose_.position.y);
-
-        if (reached) {
-          pose_.position.x = deployment_goal_pose_.position.x;
-          pose_.position.y = deployment_goal_pose_.position.y;
-          pose_.position.z = deployment_goal_pose_.position.z;
-
-          RCLCPP_INFO(this->get_logger(),
-                      "UAV %s: reached deployment pose (%.1f, %.1f, %.1f)",
-                      uav_id_.c_str(),
-                      pose_.position.x,
-                      pose_.position.y,
-                      pose_.position.z);
-
-          if (role_ == 1) {
-            mobility_phase_ = MobilityPhase::IDLE;
-          } else {
-            // Member: start task mobility inside cluster
-            auto it = ch_poses_.find(my_ch_id_);
-            if (it != ch_poses_.end()) {
-              initTaskMobility(it->second);
-            }
-            mobility_phase_ = MobilityPhase::TASK_MOBILITY;
-          }
-        }
-        break;
+      if (reached) {
+        pose_.position.x = charge_target_pose_.position.x;
+        pose_.position.y = charge_target_pose_.position.y;
+        beginChargingSession(now);
       }
+    } else if (charge_state_ == ChargeState::RETURNING) {
+      handled_charge_motion = true;
+      bool reached = stepTowards2D(
+        charge_departure_pose_.position.x,
+        charge_departure_pose_.position.y);
 
-      case MobilityPhase::TASK_MOBILITY:
-      {
-        // Only members have task mobility
-        if (role_ != 0)
+      if (reached) {
+        pose_.position.x = charge_departure_pose_.position.x;
+        pose_.position.y = charge_departure_pose_.position.y;
+        charge_state_ = ChargeState::IDLE;
+        RCLCPP_INFO(this->get_logger(),
+                    "UAV %s: returned from charging to (%.1f, %.1f).",
+                    uav_id_.c_str(),
+                    pose_.position.x,
+                    pose_.position.y);
+      }
+    }
+
+    bool held_by_ch = false;
+    if (!handled_charge_motion) {
+      switch (mobility_phase_) {
+        case MobilityPhase::IDLE:
+          // nothing to do
           break;
-        if (task_points_.empty())
-          break;
 
-        geometry_msgs::msg::Point & target = task_points_[current_task_index_];
+        case MobilityPhase::GO_TO_DEPLOYMENT:
+        {
+          if (role_ == 0 && !ch_deployment_reached_) {
+            held_by_ch = true;
+            break;
+          }
+          bool reached = stepTowards2D(
+            deployment_goal_pose_.position.x,
+            deployment_goal_pose_.position.y);
 
-        bool reached = stepTowards2D(target.x, target.y);
+          if (reached) {
+            pose_.position.x = deployment_goal_pose_.position.x;
+            pose_.position.y = deployment_goal_pose_.position.y;
+            pose_.position.z = deployment_goal_pose_.position.z;
 
-        if (reached) {
-          pose_.position.x = target.x;
-          pose_.position.y = target.y;
+            RCLCPP_INFO(this->get_logger(),
+                        "UAV %s: reached deployment pose (%.1f, %.1f, %.1f)",
+                        uav_id_.c_str(),
+                        pose_.position.x,
+                        pose_.position.y,
+                        pose_.position.z);
 
-          current_task_index_++;
-          if (current_task_index_ >= task_points_.size()) {
-            // Regenerate tasks around CH
-            auto it = ch_poses_.find(my_ch_id_);
-            if (it != ch_poses_.end()) {
-              generateTaskRound(it->second);
+            if (role_ == 1) {
+              mobility_phase_ = MobilityPhase::IDLE;
             } else {
-              current_task_index_ = 0;
+              // Member: start task mobility inside cluster
+              auto it = ch_poses_.find(my_ch_id_);
+              if (it != ch_poses_.end()) {
+                initTaskMobility(it->second);
+              }
+              mobility_phase_ = MobilityPhase::TASK_MOBILITY;
             }
           }
+          break;
         }
-        break;
+
+        case MobilityPhase::TASK_MOBILITY:
+        {
+          // Only members have task mobility
+          if (role_ != 0)
+            break;
+          if (task_points_.empty())
+            break;
+
+          geometry_msgs::msg::Point & target = task_points_[current_task_index_];
+
+          bool reached = stepTowards2D(target.x, target.y);
+
+          if (reached) {
+            pose_.position.x = target.x;
+            pose_.position.y = target.y;
+
+            current_task_index_++;
+            if (current_task_index_ >= task_points_.size()) {
+              // Regenerate tasks around CH
+              auto it = ch_poses_.find(my_ch_id_);
+              if (it != ch_poses_.end()) {
+                generateTaskRound(it->second);
+              } else {
+                current_task_index_ = 0;
+              }
+            }
+          }
+          break;
+        }
       }
     }
 
@@ -1783,12 +1885,26 @@ private:
     ack.msg_id = "DEP_ACK_" + uav_id_ + "_" +
                 std::to_string(dep_ack_seq_++);
     ack.src_id = uav_id_;
-    ack.dst_id = default_dst_id_;  // this is your sink id (usually "sink_gateway")
+    ack.dst_id = default_dst_id_;  // expected sink id (usually "sink_gateway")
 
     // First hop into the network
     if (role_ == 0) {
-      // MEMBER: go to its CH
-      ack.next_hop_id = my_ch_id_;
+      // MEMBER: prefer its CH as the first hop toward the sink
+      if (!my_ch_id_.empty() && neighbor_table_.count(my_ch_id_) > 0) {
+        ack.next_hop_id = my_ch_id_;
+      } else {
+        // Fallback: resolve next hop to sink using any available route
+        ack.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
+        if (ack.next_hop_id.empty()) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: cannot send DEPLOYMENT_ACK, no route to sink.",
+                      uav_id_.c_str());
+          return;
+        }
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: CH %s unreachable, sending DEPLOYMENT_ACK via %s",
+                    uav_id_.c_str(), my_ch_id_.c_str(), ack.next_hop_id.c_str());
+      }
     } else {
       // CH (or other roles): use LADTR first, then routing towards sink
       ack.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
@@ -1869,6 +1985,12 @@ private:
   float drain_rate_member_;
   float drain_rate_ch_;
   float current_temperature_c_;
+
+  ChargeState charge_state_;
+  geometry_msgs::msg::Pose charge_departure_pose_;
+  geometry_msgs::msg::Pose charge_target_pose_;
+  geometry_msgs::msg::Pose ugv_pose_;
+  bool ugv_pose_known_;
 
   bool waiting_for_charge_response_;
   bool is_charging_;
