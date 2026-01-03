@@ -915,10 +915,7 @@ private:
     if (battery_energy_ <= 0.0f) {
       return;
     }
-    // Don't route anything while charging (you can relax this if you want later)
-    if (is_charging_) {
-      return;
-    }
+    rclcpp::Time rx_time = this->now();
 
     rclcpp::Time rx_time = this->now();
 

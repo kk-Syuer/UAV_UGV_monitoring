@@ -81,7 +81,8 @@ private:
     }
 
     if (msg->flow_type == 1 && msg->control_type == "DROP") {
-      std::string reason = msg->payload.empty() ? "UNKNOWN" : msg->payload;
+      std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
+                          : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
       drop_reasons_[reason]++;
       RCLCPP_WARN(this->get_logger(),
                   "[DROP] msg_id=%s reason=%s total_reason=%zu",
