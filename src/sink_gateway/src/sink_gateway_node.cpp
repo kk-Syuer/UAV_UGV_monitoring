@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
@@ -94,13 +95,14 @@ private:
   // --------------------------------------------------------------------------
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    auto now = this->now();
     if (msg->dst_id != sink_id_) {
       return;
     }
 
     if (msg->flow_type == 1 && msg->control_type == "STATUS_CH") {
       handleStatusCh(msg);
-      delivered_pub_->publish(*msg);
+      publishDelivered(*msg, now);
       return;
     }
 
@@ -137,7 +139,7 @@ private:
                 msg->msg_id.c_str(), msg->src_id.c_str(),
                 msg->dst_id.c_str(), msg->hop_count);
 
-    delivered_pub_->publish(*msg);
+    publishDelivered(*msg, now);
   }
 
   // --------------------------------------------------------------------------
@@ -380,6 +382,22 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;
   rclcpp::TimerBase::SharedPtr                                   control_timer_;
+
+  void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & now)
+  {
+    if (!delivered_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage delivered = msg;
+    delivered.last_rx_time = now;
+    delivered.last_tx_time = now;
+    delivered.last_hop_id = sink_id_;
+    delivered.next_hop_id.clear();
+    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), sink_id_) == delivered.recent_hops.end()) {
+      delivered.recent_hops.push_back(sink_id_);
+    }
+    delivered_pub_->publish(delivered);
+  }
 };
 
 int main(int argc, char ** argv)

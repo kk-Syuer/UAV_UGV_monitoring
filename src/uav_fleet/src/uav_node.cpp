@@ -71,6 +71,7 @@ public:
 
     // NEW: id of the UGV in the network, used as dst_id for CHARGE_REQUEST
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+    monitor_id_ = this->declare_parameter<std::string>("monitor_id", "network_monitor");
 
     // Optional per-destination routing rules: ["dst:next_hop", ...]
     std::vector<std::string> routing_rules =
@@ -926,11 +927,6 @@ private:
       return;
     }
 
-    if (msg->control_type == "HELLO") {
-      handleHelloMessage(msg);
-      return;
-    }
-
     if ((msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START") &&
         msg->dst_id == "broadcast") {
       start_mobility_received_ = true;
@@ -1436,6 +1432,11 @@ private:
     if (std::find(msg.recent_hops.begin(), msg.recent_hops.end(), uav_id_) == msg.recent_hops.end()) {
       msg.recent_hops.push_back(uav_id_);
     }
+    const size_t max_hops = 5;
+    if (msg.recent_hops.size() > max_hops) {
+      msg.recent_hops.erase(msg.recent_hops.begin(),
+                            msg.recent_hops.begin() + (msg.recent_hops.size() - max_hops));
+    }
   }
 
   void publishToBus(uav_msgs::msg::TrafficMessage msg)
@@ -1455,14 +1456,21 @@ private:
     uav_msgs::msg::TrafficMessage drop;
     drop.msg_id = msg_id + "_DROP_" + uav_id_;
     drop.src_id = uav_id_;
-    drop.dst_id = "broadcast";
+    drop.dst_id = monitor_id_;
     drop.flow_type = 1;
     drop.control_type = "DROP";
     drop.drop_reason = reason;
     drop.payload = msg_id + "," + reason;
     drop.creation_time = this->now();
     drop.hop_count = 0;
-    drop.ttl = 1;
+    drop.ttl = 4;
+    drop.next_hop_id = pickNextHop(monitor_id_, resolveNextHop(monitor_id_));
+    if (drop.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[DROP] %s could not forward drop report for msg=%s (reason=%s): no route",
+                  uav_id_.c_str(), msg_id.c_str(), reason.c_str());
+      return;
+    }
     publishToBus(drop);
   }
 
@@ -2158,6 +2166,7 @@ private:
   geometry_msgs::msg::Pose deployment_goal_pose_;
 
   std::string ugv_id_;   // logical id of the UGV in the network
+  std::string monitor_id_;
   // For CHs: set of member UAV IDs in this cluster
   std::unordered_set<std::string> cluster_members_;
   std::unordered_map<std::string, std::string> cluster_parent_;

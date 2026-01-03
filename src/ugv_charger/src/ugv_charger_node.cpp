@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -245,7 +246,7 @@ private:
       entry.request_time = now;
 
       queue_.push_back(entry);
-      delivered_pub_->publish(*msg);
+      publishDelivered(*msg, now);
 
 
       RCLCPP_INFO(this->get_logger(),
@@ -259,6 +260,9 @@ private:
       handleDeploymentFromNetwork(msg);
       return;
     }
+
+    // Any other message destined to UGV counts as delivered.
+    publishDelivered(*msg, this->now());
   }
 
   // Update target pose and reset motion bookkeeping.
@@ -467,7 +471,7 @@ private:
                 deployment_goal_pose_.position.z,
                 next_sink.empty() ? "-" : next_sink.c_str());
 
-    delivered_pub_->publish(*msg);
+    publishDelivered(*msg, this->now());
     sendDeploymentAck(next_sink);
   }
 
@@ -540,6 +544,22 @@ private:
     status.backbone_active = true;
 
     status_pub_->publish(status);
+  }
+
+  void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & now)
+  {
+    if (!delivered_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage delivered = msg;
+    delivered.last_rx_time = now;
+    delivered.last_hop_id = ugv_id_;
+    delivered.last_tx_time = now;
+    delivered.next_hop_id.clear();
+    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), ugv_id_) == delivered.recent_hops.end()) {
+      delivered.recent_hops.push_back(ugv_id_);
+    }
+    delivered_pub_->publish(delivered);
   }
 
   // ------------- Scheduler -------------
