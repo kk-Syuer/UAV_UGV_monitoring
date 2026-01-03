@@ -5,6 +5,7 @@
 #include <deque>
 #include <optional>
 #include <cmath>
+#include <limits>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -16,6 +17,7 @@
 #include "uav_msgs/msg/weather_status.hpp"
 
 #include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 #include "uav_msgs/srv/send_debug_text.hpp"
 #include "uav_msgs/msg/failure_event.hpp"
@@ -69,6 +71,7 @@ public:
 
     // NEW: id of the UGV in the network, used as dst_id for CHARGE_REQUEST
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+    monitor_id_ = this->declare_parameter<std::string>("monitor_id", "network_monitor");
 
     // Optional per-destination routing rules: ["dst:next_hop", ...]
     std::vector<std::string> routing_rules =
@@ -137,11 +140,11 @@ public:
 
     // ---- Publishers ----
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
-      "/uav_fleet/status", 10);
+      "/fanet/status", 10);
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 10);
+      "/fanet/network_bus", 10);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 10);
+      "/fanet/delivered", 10);
     charge_request_pub_ = this->create_publisher<uav_msgs::msg::ChargeRequest>(
       "/uav_fleet/charge_requests", 10);
     failure_pub_ = this->create_publisher<uav_msgs::msg::FailureEvent>(
@@ -149,8 +152,11 @@ public:
 
     // ---- Subscribers ----
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 10,
+      "/fanet/network_bus", 10,
       std::bind(&UavNode::trafficCallback, this, std::placeholders::_1));
+    neighbor_status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
+      "/fanet/status", 50,
+      std::bind(&UavNode::neighborStatusCallback, this, std::placeholders::_1));
 
     cluster_sub_ = this->create_subscription<uav_msgs::msg::ClusterInfo>(
       "/ch_manager/cluster_info", 10,
@@ -188,9 +194,6 @@ public:
     carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
 
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
-    hello_timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
-      std::bind(&UavNode::publishHello, this));
     neighbor_timeout_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UavNode::pruneNeighbors, this));
@@ -258,14 +261,17 @@ public:
   }
 
 private:
-  struct NeighborInfo
+  struct NeighborState
   {
-    std::string id;
-    std::string role;
-    double last_hello_time;
-    double x;
-    double y;
-    double battery;
+    rclcpp::Time last_seen;
+    geometry_msgs::msg::Pose pose;
+    geometry_msgs::msg::Twist velocity;
+    float battery = 0.0f;
+    uint8_t role = 0;
+    uint8_t charging_state = 0;
+    bool intent_to_leave = false;
+    float eta_to_leave_sec = -1.0f;
+    float comm_radius_m = 0.0f;
   };
 
   enum class ChargeState {
@@ -323,6 +329,7 @@ private:
   {
     auto now = this->now();
     float energy_consumption_rate = 0.0f;
+    geometry_msgs::msg::Twist velocity_msg = current_velocity_;
 
     bool ready_for_battery =
       deployment_received_ &&
@@ -350,11 +357,16 @@ private:
       msg.battery_level = battery_percent;
       msg.battery_capacity = battery_capacity_;
       msg.pose = pose_;              // dummy pose until deployment
+      msg.velocity = velocity_msg;
       msg.service_radius = service_radius_;
       msg.connected_users = 0;
       msg.traffic_load = 0.0f;
       msg.packet_loss_estimate = 0.0f;
       msg.energy_consumption_rate = 0.0f;
+      msg.charging_state = 0;
+      msg.intent_to_leave = false;
+      msg.eta_to_leave_sec = -1.0f;
+      msg.comm_radius_m = service_radius_;
       msg.stamp = now;
       msg.backbone_active = backbone_active;
 
@@ -444,11 +456,45 @@ private:
     msg.battery_level = battery_percent;
     msg.battery_capacity = battery_capacity_;
     msg.pose = pose_;
+    msg.velocity = velocity_msg;
     msg.service_radius = service_radius_;
     msg.connected_users = 0;
     msg.traffic_load = 0.0f;
     msg.packet_loss_estimate = 0.0f;
     msg.energy_consumption_rate = energy_consumption_rate;
+
+    switch (charge_state_) {
+      case ChargeState::TO_UGV:
+        msg.charging_state = 1;
+        break;
+      case ChargeState::CHARGING:
+        msg.charging_state = 2;
+        break;
+      case ChargeState::RETURNING:
+        msg.charging_state = 3;
+        break;
+      case ChargeState::IDLE:
+      default:
+        msg.charging_state = 0;
+        break;
+    }
+
+    bool below_threshold = battery_percent <= battery_threshold_percent_;
+    msg.intent_to_leave = below_threshold || waiting_for_charge_response_ ||
+      has_charge_slot_ || charge_state_ == ChargeState::TO_UGV;
+
+    float eta_sec = -1.0f;
+    if (energy_consumption_rate > 0.0f && battery_capacity_ > 0.0f && battery_energy_ > 0.0f) {
+      float threshold_energy = battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+      float delta_energy = battery_energy_ - threshold_energy;
+      if (delta_energy <= 0.0f) {
+        eta_sec = 0.0f;
+      } else {
+        eta_sec = delta_energy / energy_consumption_rate;
+      }
+    }
+    msg.eta_to_leave_sec = eta_sec;
+    msg.comm_radius_m = service_radius_;
 
     msg.stamp = now;
     msg.backbone_active = backbone_active;
@@ -458,7 +504,7 @@ private:
 
   void requestCharge(float battery_percent)
   {
-    if (role_ == 0 && neighbor_table_.find(my_ch_id_) == neighbor_table_.end()) {
+    if (role_ == 0 && neighbors_.find(my_ch_id_) == neighbors_.end()) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot request charge, CH %s not reachable",
                   uav_id_.c_str(), my_ch_id_.c_str());
@@ -501,14 +547,14 @@ private:
 
     // Optional control metadata to describe the control alert type.
     msg.control_type = "CHARGE_REQUEST";
-    // For now payload is empty; UGV will look up status from /uav_fleet/status
+    // For now payload is empty; UGV will look up status from /fanet/status
 
     RCLCPP_INFO(this->get_logger(),
                 "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
                 uav_id_.c_str(), msg.msg_id.c_str(),
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
   }
 
   void publishFailureTraffic(const uav_msgs::msg::FailureEvent & failure)
@@ -543,7 +589,7 @@ private:
                 uav_id_.c_str(), msg.msg_id.c_str(),
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
   }
 
   void handleChargeDecisionFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
@@ -613,7 +659,7 @@ private:
       msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
     }
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
   }
 
   void publishTraffic()
@@ -648,7 +694,7 @@ private:
                 msg.msg_id.c_str(), msg.src_id.c_str(),
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
   }
 
   void beginChargingSession(const rclcpp::Time & now)
@@ -668,67 +714,38 @@ private:
                 uav_id_.c_str(), charging_duration_sec_);
   }
 
-  void publishHello()
-  {
-    uav_msgs::msg::TrafficMessage msg;
-    msg.msg_id = uav_id_ + "_HELLO_" + std::to_string(msg_counter_++);
-    msg.src_id = uav_id_;
-    msg.dst_id = "broadcast";
-    msg.next_hop_id = "";  // broadcast semantics
-
-    msg.flow_type = 1;       // CONTROL
-    msg.creation_time = this->now();
-    msg.hop_count = 0;
-    msg.ttl = 1;            // single-hop broadcast
-    msg.control_type = "HELLO";
-
-    std::ostringstream oss;
-    oss << roleString(role_) << ","
-        << pose_.position.x << ","
-        << pose_.position.y << ","
-        << battery_energy_;
-    msg.payload = oss.str();
-
-    traffic_pub_->publish(msg);
-  }
-
   void handleHelloMessage(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
   {
-    const auto now = this->now().seconds();
-    NeighborInfo info;
-    info.id = msg->src_id;
-    info.role = "UNKNOWN";
-    info.x = 0.0;
-    info.y = 0.0;
-    info.battery = 0.0;
-    info.last_hello_time = now;
+    (void)msg;
+    // Neighbor tables are now driven by /fanet/status.
+  }
 
-    auto parts = splitString(msg->payload, ',');
-    if (parts.size() >= 4) {
-      info.role = parts[0];
-      info.x = std::stod(parts[1]);
-      info.y = std::stod(parts[2]);
-      info.battery = std::stod(parts[3]);
+  void neighborStatusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
+  {
+    if (msg->uav_id == uav_id_) {
+      return;
     }
 
-    bool is_new = neighbor_table_.find(info.id) == neighbor_table_.end();
-    neighbor_table_[info.id] = info;
+    NeighborState state;
+    state.last_seen = this->now();
+    state.pose = msg->pose;
+    state.velocity = msg->velocity;
+    state.battery = msg->battery_level;
+    state.role = msg->role;
+    state.charging_state = msg->charging_state;
+    state.intent_to_leave = msg->intent_to_leave;
+    state.eta_to_leave_sec = msg->eta_to_leave_sec;
+    state.comm_radius_m = msg->comm_radius_m;
 
-    if (is_new) {
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: new neighbor detected via HELLO -> %s (%s)",
-                  uav_id_.c_str(), info.id.c_str(), info.role.c_str());
-    }
+    neighbors_[msg->uav_id] = state;
 
-    if (info.role == "UGV") {
+    if (msg->uav_id == ugv_id_) {
       ugv_pose_known_ = true;
-      ugv_pose_.position.x = info.x;
-      ugv_pose_.position.y = info.y;
-      ugv_pose_.position.z = 0.0;
+      ugv_pose_ = msg->pose;
     }
 
-    if (role_ == 0 && msg->src_id == my_ch_id_) {
-      updateChDeploymentReached(info);
+    if (role_ == 0 && msg->uav_id == my_ch_id_) {
+      updateChDeploymentReached(state);
     }
   }
 
@@ -738,15 +755,17 @@ private:
       return;
     }
 
-    const auto now = this->now().seconds();
-    for (auto it = neighbor_table_.begin(); it != neighbor_table_.end(); ) {
-      if (now - it->second.last_hello_time > hello_timeout_sec_) {
+    const auto now = this->now();
+    const auto timeout = rclcpp::Duration::from_seconds(hello_timeout_sec_);
+    for (auto it = neighbors_.begin(); it != neighbors_.end(); ) {
+      if ((now - it->second.last_seen) > timeout) {
         RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: neighbor %s timed out (no HELLO for %.1f s)",
-                    uav_id_.c_str(), it->first.c_str(), now - it->second.last_hello_time);
+                    "UAV %s: neighbor %s timed out (no status for %.1f s)",
+                    uav_id_.c_str(), it->first.c_str(),
+                    (now - it->second.last_seen).seconds());
 
         dropRoutesThrough(it->first);
-        it = neighbor_table_.erase(it);
+        it = neighbors_.erase(it);
       } else {
         ++it;
       }
@@ -802,7 +821,7 @@ private:
         << statusStateString();
     msg.payload = oss.str();
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
   }
 
   bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
@@ -812,11 +831,9 @@ private:
       return true;
     }
 
-    auto it = neighbor_table_.find(ugv_id_);
-    if (it != neighbor_table_.end()) {
-      pose.position.x = it->second.x;
-      pose.position.y = it->second.y;
-      pose.position.z = 0.0;
+    auto it = neighbors_.find(ugv_id_);
+    if (it != neighbors_.end()) {
+      pose = it->second.pose;
       pose.orientation.w = 1.0;
       return true;
     }
@@ -887,7 +904,7 @@ private:
                 msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
                 msg.next_hop_id.c_str(), msg.payload.c_str());
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
 
     res->accepted = true;
     res->info = "sent";
@@ -900,20 +917,13 @@ private:
     if (battery_energy_ <= 0.0f) {
       return;
     }
-    // Don't route anything while charging (you can relax this if you want later)
-    if (is_charging_) {
-      return;
-    }
+    rclcpp::Time rx_time = this->now();
 
     if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: dropping msg_id=%s due to TTL expiry (hop=%u ttl=%u)",
                   uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
-      return;
-    }
-
-    if (msg->control_type == "HELLO") {
-      handleHelloMessage(msg);
+      publishDrop(msg->msg_id, "TTL_EXPIRED");
       return;
     }
 
@@ -982,7 +992,7 @@ private:
                     msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
                     msg->hop_count, path.c_str(), text.c_str());
 
-        delivered_pub_->publish(*msg);
+        publishDelivered(*msg, rx_time);
         return;
       }
 
@@ -992,7 +1002,7 @@ private:
                   msg->msg_id.c_str(), uav_id_.c_str(),
                   msg->src_id.c_str(), msg->hop_count);
 
-      delivered_pub_->publish(*msg);
+      publishDelivered(*msg, rx_time);
       return;
     }
 
@@ -1009,16 +1019,19 @@ private:
             RCLCPP_WARN(this->get_logger(),
                         "[FWD-DEPLOY] CH %s dropping %s due to TTL (hop=%u ttl=%u)",
                         uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
+            publishDrop(msg->msg_id, "TTL_EXPIRED");
             return;
           }
 
           // Use backbone routing
-          std::string next_hop = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id));
+          std::string next_hop = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id),
+                                             &msg->recent_hops, &rx_time);
 
           if (next_hop.empty()) {
               RCLCPP_WARN(this->get_logger(),
                           "[FWD-DEPLOY] CH %s: no route to %s, dropping msg %s",
                           uav_id_.c_str(), msg->dst_id.c_str(), msg->msg_id.c_str());
+              publishDrop(msg->msg_id, "NO_ROUTE");
               return;
           }
 
@@ -1028,7 +1041,7 @@ private:
                       "[FWD-DEPLOY] CH %s forwarding DEPLOYMENT to %s via %s",
                       uav_id_.c_str(), msg->dst_id.c_str(), next_hop.c_str());
 
-          traffic_pub_->publish(*msg);
+          publishToBus(*msg);
           return;
       }
 
@@ -1039,6 +1052,7 @@ private:
         RCLCPP_WARN(this->get_logger(),
                     "[FWD] CH %s dropping msg_id=%s due to TTL (hop=%u ttl=%u)",
                     uav_id_.c_str(), fwd.msg_id.c_str(), fwd.hop_count, fwd.ttl);
+        publishDrop(fwd.msg_id, "TTL_EXPIRED");
         return;
       }
 
@@ -1057,24 +1071,26 @@ private:
                         "[LADTR] %s forwarding msg_id=%s via %s toward %s",
                         uav_id_.c_str(), fwd.msg_id.c_str(), fwd.next_hop_id.c_str(),
                         msg->dst_id.c_str());
-            traffic_pub_->publish(fwd);
+            publishToBus(fwd);
             return;
           }
         }
 
-        fwd.next_hop_id = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id));
+        fwd.next_hop_id = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id),
+                                      &msg->recent_hops, &rx_time);
         if (fwd.next_hop_id.empty() && location_aided_routing_) {
           if (tryLocationAidedForward(fwd)) {
             return;
           }
           bufferForCarry(fwd);
           return;
-        } else if (fwd.next_hop_id.empty()) {
-          RCLCPP_WARN(this->get_logger(),
-                      "[FWD] CH %s dropping msg_id=%s: no route to %s",
-                      uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
-          return;
-        }
+          } else if (fwd.next_hop_id.empty()) {
+            RCLCPP_WARN(this->get_logger(),
+                        "[FWD] CH %s dropping msg_id=%s: no route to %s",
+                        uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
+            publishDrop(fwd.msg_id, "NO_ROUTE");
+            return;
+          }
       }
 
       if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // starts with DEBUG_TEXT:
@@ -1088,7 +1104,7 @@ private:
                   fwd.dst_id.c_str(), fwd.next_hop_id.c_str(),
                   fwd.hop_count);
 
-      traffic_pub_->publish(fwd);
+      publishToBus(fwd);
     }
 
   }
@@ -1204,8 +1220,16 @@ private:
     return neighbor->first;
   }
 
-  std::string pickNextHop(const std::string & dst, const std::string & fallback) const
+  std::string pickNextHop(const std::string & dst, const std::string & fallback,
+                          const std::vector<std::string> * recent_hops = nullptr,
+                          const rclcpp::Time * now_override = nullptr) const
   {
+    rclcpp::Time now = now_override ? *now_override : this->now();
+    auto greedy = selectGreedyNextHop(dst, recent_hops, now);
+    if (greedy) {
+      return *greedy;
+    }
+
     auto ladtr = selectLadtrNextHop(dst);
     if (ladtr) {
       return *ladtr;
@@ -1232,13 +1256,9 @@ private:
       return it_ch->second.position;
     }
 
-    auto it_nb = neighbor_table_.find(id);
-    if (it_nb != neighbor_table_.end()) {
-      geometry_msgs::msg::Point p;
-      p.x = it_nb->second.x;
-      p.y = it_nb->second.y;
-      p.z = 0.0;
-      return p;
+    auto it_nb = neighbors_.find(id);
+    if (it_nb != neighbors_.end()) {
+      return it_nb->second.pose.position;
     }
 
     return std::nullopt;
@@ -1252,6 +1272,120 @@ private:
     return std::sqrt(dx * dx + dy * dy);
   }
 
+  // Local greedy next-hop selection with link expiration and charging penalty.
+  std::optional<std::string> selectGreedyNextHop(
+    const std::string & dst,
+    const std::vector<std::string> * recent_hops,
+    const rclcpp::Time & now) const
+  {
+    auto dst_pos_opt = lookupNodePosition(dst);
+    geometry_msgs::msg::Point dst_pos;
+    if (dst_pos_opt) {
+      dst_pos = *dst_pos_opt;
+    } else {
+      // Fallback: try the configured sink/CH direction if the destination pose is unknown.
+      auto sink_it = deployment_positions_.find(default_dst_id_);
+      if (sink_it != deployment_positions_.end()) {
+        dst_pos = sink_it->second.position;
+        dst_pos_opt = dst_pos;
+      } else if (!next_hop_to_sink_.empty()) {
+        auto nh_it = neighbors_.find(next_hop_to_sink_);
+        if (nh_it != neighbors_.end()) {
+          dst_pos = nh_it->second.pose.position;
+          dst_pos_opt = dst_pos;
+        }
+      }
+    }
+
+    if (!dst_pos_opt) {
+      return std::nullopt;
+    }
+
+    const double self_comm_radius = static_cast<double>(service_radius_);
+
+    auto link_expiration = [](const geometry_msgs::msg::Pose & self_pose,
+                              const geometry_msgs::msg::Twist & self_vel,
+                              const geometry_msgs::msg::Pose & nb_pose,
+                              const geometry_msgs::msg::Twist & nb_vel,
+                              double range) -> double
+    {
+      double dx = nb_pose.position.x - self_pose.position.x;
+      double dy = nb_pose.position.y - self_pose.position.y;
+      double dist = std::sqrt(dx * dx + dy * dy);
+      if (dist >= range) {
+        return 0.0;
+      }
+      double rel_vx = nb_vel.linear.x - self_vel.linear.x;
+      double rel_vy = nb_vel.linear.y - self_vel.linear.y;
+      double rel_speed_along = (rel_vx * dx + rel_vy * dy) / (dist + 1e-6);
+      double rel_speed_mag = std::sqrt(rel_vx * rel_vx + rel_vy * rel_vy);
+      double closing_speed = rel_speed_mag - rel_speed_along; // heuristic
+      if (closing_speed <= 1e-3) {
+        return std::numeric_limits<double>::infinity();
+      }
+      double remaining = range - dist;
+      if (remaining < 0.0) remaining = 0.0;
+      return remaining / closing_speed;
+    };
+
+    const double w_progress = 1.0;
+    const double w_let = 0.5;
+    const double w_charge = 5.0;
+    const double penalty_intent = 2.0;
+    const double leave_soon_sec = 15.0;
+
+    double best_score = -std::numeric_limits<double>::infinity();
+    std::optional<std::string> best_id;
+
+    const double self_to_dst = distance2d(pose_.position, dst_pos);
+
+    for (const auto & kv : neighbors_) {
+      const auto & nb_id = kv.first;
+      const auto & nb = kv.second;
+
+      if (recent_hops &&
+          std::find(recent_hops->begin(), recent_hops->end(), nb_id) != recent_hops->end()) {
+        continue;
+      }
+
+      if (hello_timeout_sec_ > 0.0 &&
+          (now - nb.last_seen) > rclcpp::Duration::from_seconds(hello_timeout_sec_)) {
+        continue;
+      }
+
+      double nb_range = static_cast<double>(nb.comm_radius_m > 0.0f ? nb.comm_radius_m : service_radius_);
+      double max_range = std::min(self_comm_radius, nb_range);
+
+      double dist_nb = distance2d(pose_.position, nb.pose.position);
+      if (dist_nb > max_range) {
+        continue;
+      }
+
+      double nb_to_dst = distance2d(nb.pose.position, dst_pos);
+      double progress = self_to_dst - nb_to_dst;
+      if (progress <= 0.0) {
+        continue;
+      }
+
+      double let = link_expiration(pose_, current_velocity_, nb.pose, nb.velocity, max_range);
+      double charging_penalty = 0.0;
+      if (nb.charging_state != 0) {
+        charging_penalty = 3.0;
+      } else if (nb.intent_to_leave && (nb.eta_to_leave_sec >= 0.0f && nb.eta_to_leave_sec < leave_soon_sec)) {
+        charging_penalty = penalty_intent;
+      }
+
+      double score = w_progress * progress + w_let * let - w_charge * charging_penalty;
+
+      if (score > best_score) {
+        best_score = score;
+        best_id = nb_id;
+      }
+    }
+
+    return best_id;
+  }
+
   std::optional<std::pair<std::string, double>> selectProgressNeighbor(
     const geometry_msgs::msg::Point & dst_pos,
     double self_dist) const
@@ -1259,11 +1393,8 @@ private:
     std::optional<std::pair<std::string, double>> best;
     double best_dist = self_dist;
 
-    for (const auto & kv : neighbor_table_) {
-      geometry_msgs::msg::Point npos;
-      npos.x = kv.second.x;
-      npos.y = kv.second.y;
-      npos.z = 0.0;
+    for (const auto & kv : neighbors_) {
+      geometry_msgs::msg::Point npos = kv.second.pose.position;
 
       double d = distance2d(npos, dst_pos);
       if (d + location_progress_threshold_m_ < self_dist && d < best_dist) {
@@ -1273,6 +1404,90 @@ private:
     }
 
     return best;
+  }
+
+  bool neighborReachable(const std::string & id, const rclcpp::Time & now) const
+  {
+    auto it = neighbors_.find(id);
+    if (it == neighbors_.end()) {
+      return false;
+    }
+    if (hello_timeout_sec_ > 0.0 &&
+        (now - it->second.last_seen) > rclcpp::Duration::from_seconds(hello_timeout_sec_)) {
+      return false;
+    }
+    double nb_range = static_cast<double>(it->second.comm_radius_m > 0.0f ? it->second.comm_radius_m : service_radius_);
+    double max_range = std::min(static_cast<double>(service_radius_), nb_range);
+    double dist = distance2d(pose_.position, it->second.pose.position);
+    return dist <= max_range;
+  }
+
+  void stampForSend(uav_msgs::msg::TrafficMessage & msg, const std::string & next_hop)
+  {
+    auto now = this->now();
+    msg.last_hop_id = uav_id_;
+    msg.last_tx_time = now;
+    msg.last_rx_time = now;
+    msg.next_hop_id = next_hop;
+    if (std::find(msg.recent_hops.begin(), msg.recent_hops.end(), uav_id_) == msg.recent_hops.end()) {
+      msg.recent_hops.push_back(uav_id_);
+    }
+    const size_t max_hops = 5;
+    if (msg.recent_hops.size() > max_hops) {
+      msg.recent_hops.erase(msg.recent_hops.begin(),
+                            msg.recent_hops.begin() + (msg.recent_hops.size() - max_hops));
+    }
+  }
+
+  void publishToBus(uav_msgs::msg::TrafficMessage msg)
+  {
+    auto now = this->now();
+    msg.last_rx_time = now;
+    if (!msg.next_hop_id.empty() && !neighborReachable(msg.next_hop_id, now)) {
+      publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
+      return;
+    }
+    stampForSend(msg, msg.next_hop_id);
+    traffic_pub_->publish(msg);
+  }
+
+  void publishDrop(const std::string & msg_id, const std::string & reason)
+  {
+    uav_msgs::msg::TrafficMessage drop;
+    drop.msg_id = msg_id + "_DROP_" + uav_id_;
+    drop.src_id = uav_id_;
+    drop.dst_id = monitor_id_;
+    drop.flow_type = 1;
+    drop.control_type = "DROP";
+    drop.drop_reason = reason;
+    drop.payload = msg_id + "," + reason;
+    drop.creation_time = this->now();
+    drop.hop_count = 0;
+    drop.ttl = 4;
+    drop.next_hop_id = pickNextHop(monitor_id_, resolveNextHop(monitor_id_));
+    if (drop.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[DROP] %s could not forward drop report for msg=%s (reason=%s): no route",
+                  uav_id_.c_str(), msg_id.c_str(), reason.c_str());
+      return;
+    }
+    publishToBus(drop);
+  }
+
+  void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & rx_time)
+  {
+    if (!delivered_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage delivered = msg;
+    delivered.last_rx_time = rx_time;
+    delivered.last_hop_id = uav_id_;
+    delivered.last_tx_time = rx_time;
+    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), uav_id_) == delivered.recent_hops.end()) {
+      delivered.recent_hops.push_back(uav_id_);
+    }
+    delivered.next_hop_id = "";
+    delivered_pub_->publish(delivered);
   }
 
   bool tryLocationAidedForward(uav_msgs::msg::TrafficMessage & msg)
@@ -1295,7 +1510,7 @@ private:
                 msg.next_hop_id.c_str(), self_dist,
                 neighbor ? neighbor->second : -1.0);
 
-    traffic_pub_->publish(msg);
+    publishToBus(msg);
     return true;
   }
 
@@ -1353,7 +1568,7 @@ private:
         RCLCPP_INFO(this->get_logger(),
                     "[LADTR] replaying msg_id=%s via next_hop=%s",
                     attempt.msg_id.c_str(), nh.c_str());
-        traffic_pub_->publish(attempt);
+        publishToBus(attempt);
         it = carry_buffer_.erase(it);
         continue;
       }
@@ -1581,6 +1796,15 @@ private:
     double dy_all = pose_.position.y - last_pose_.position.y;
     double d_all = std::sqrt(dx_all * dx_all + dy_all * dy_all);
     current_speed_mps_ = static_cast<float>(d_all / dt);
+    if (dt > 0.0) {
+      current_velocity_.linear.x = static_cast<float>(dx_all / dt);
+      current_velocity_.linear.y = static_cast<float>(dy_all / dt);
+      current_velocity_.linear.z = 0.0f;
+    } else {
+      current_velocity_.linear.x = 0.0f;
+      current_velocity_.linear.y = 0.0f;
+      current_velocity_.linear.z = 0.0f;
+    }
 
     last_pose_ = pose_;
     last_pose_time_ = now;
@@ -1697,7 +1921,7 @@ private:
     }
   }
 
-  void updateChDeploymentReached(const NeighborInfo & info)
+  void updateChDeploymentReached(const NeighborState & info)
   {
     if (role_ != 0 || ch_deployment_reached_) {
       return;
@@ -1709,8 +1933,8 @@ private:
     }
 
     const auto & target = it->second.position;
-    double dx = info.x - target.x;
-    double dy = info.y - target.y;
+    double dx = info.pose.position.x - target.x;
+    double dy = info.pose.position.y - target.y;
     double dist = std::sqrt(dx * dx + dy * dy);
 
     if (dist <= 1.0) {
@@ -1723,13 +1947,13 @@ private:
 
   void syncPoseToCh()
   {
-    auto it = neighbor_table_.find(my_ch_id_);
-    if (it == neighbor_table_.end()) {
+    auto it = neighbors_.find(my_ch_id_);
+    if (it == neighbors_.end()) {
       return;
     }
 
-    pose_.position.x = it->second.x;
-    pose_.position.y = it->second.y;
+    pose_.position.x = it->second.pose.position.x;
+    pose_.position.y = it->second.pose.position.y;
   }
 
   void handleDeploymentFromNetwork(
@@ -1890,7 +2114,7 @@ private:
     // First hop into the network
     if (role_ == 0) {
       // MEMBER: prefer its CH as the first hop toward the sink
-      if (!my_ch_id_.empty() && neighbor_table_.count(my_ch_id_) > 0) {
+      if (!my_ch_id_.empty() && neighbors_.count(my_ch_id_) > 0) {
         ack.next_hop_id = my_ch_id_;
       } else {
         // Fallback: resolve next hop to sink using any available route
@@ -1917,7 +2141,7 @@ private:
     ack.control_type = "DEPLOYMENT_ACK";
     ack.payload = "";  // not needed for now
 
-    traffic_pub_->publish(ack);
+    publishToBus(ack);
     deployment_ack_sent_ = true;
 
     RCLCPP_INFO(this->get_logger(),
@@ -1942,6 +2166,7 @@ private:
   geometry_msgs::msg::Pose deployment_goal_pose_;
 
   std::string ugv_id_;   // logical id of the UGV in the network
+  std::string monitor_id_;
   // For CHs: set of member UAV IDs in this cluster
   std::unordered_set<std::string> cluster_members_;
   std::unordered_map<std::string, std::string> cluster_parent_;
@@ -1974,6 +2199,7 @@ private:
   // Speed tracking
   geometry_msgs::msg::Pose last_pose_;
   rclcpp::Time last_pose_time_;
+  geometry_msgs::msg::Twist current_velocity_;
   float current_speed_mps_ = 0.0f;
 
   // === Extended weather ===
@@ -2013,6 +2239,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::ChargeRequest>::SharedPtr charge_request_pub_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
+  rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr neighbor_status_sub_;
   rclcpp::Subscription<uav_msgs::msg::ClusterInfo>::SharedPtr   cluster_sub_;
   rclcpp::Subscription<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_sub_;
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr  weather_sub_;
@@ -2021,7 +2248,6 @@ private:
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
   rclcpp::TimerBase::SharedPtr traffic_timer_;
-  rclcpp::TimerBase::SharedPtr hello_timer_;
   rclcpp::TimerBase::SharedPtr neighbor_timeout_timer_;
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
@@ -2030,7 +2256,7 @@ private:
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
   rclcpp::Publisher<uav_msgs::msg::FailureEvent>::SharedPtr failure_pub_;
 
-  std::unordered_map<std::string, NeighborInfo> neighbor_table_;
+  std::unordered_map<std::string, NeighborState> neighbors_;
   double hello_period_sec_ = 1.0;
   double hello_timeout_sec_ = 3.0;
   double status_period_sec_ = 5.0;

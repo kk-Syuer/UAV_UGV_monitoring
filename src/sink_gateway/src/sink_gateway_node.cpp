@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <sstream>
 #include <vector>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
@@ -54,15 +55,15 @@ public:
 
     // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100,
+      "/fanet/network_bus", 100,
       std::bind(&SinkGatewayNode::trafficCallback, this, _1));
 
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 100);
+      "/fanet/delivered", 100);
 
-    // Control messages are injected into /network/traffic.
+    // Control messages are injected into /fanet/network_bus.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100);
+      "/fanet/network_bus", 100);
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",
@@ -94,13 +95,14 @@ private:
   // --------------------------------------------------------------------------
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    auto now = this->now();
     if (msg->dst_id != sink_id_) {
       return;
     }
 
     if (msg->flow_type == 1 && msg->control_type == "STATUS_CH") {
       handleStatusCh(msg);
-      delivered_pub_->publish(*msg);
+      publishDelivered(*msg, now);
       return;
     }
 
@@ -137,7 +139,7 @@ private:
                 msg->msg_id.c_str(), msg->src_id.c_str(),
                 msg->dst_id.c_str(), msg->hop_count);
 
-    delivered_pub_->publish(*msg);
+    publishDelivered(*msg, now);
   }
 
   // --------------------------------------------------------------------------
@@ -193,7 +195,7 @@ private:
       expected_uavs_.insert(msg->uav_id);
     }
 
-    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /network/traffic.
+    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /fanet/network_bus.
     if (!control_pub_) {
       return;
     }
@@ -380,6 +382,22 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;
   rclcpp::TimerBase::SharedPtr                                   control_timer_;
+
+  void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & now)
+  {
+    if (!delivered_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage delivered = msg;
+    delivered.last_rx_time = now;
+    delivered.last_tx_time = now;
+    delivered.last_hop_id = sink_id_;
+    delivered.next_hop_id.clear();
+    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), sink_id_) == delivered.recent_hops.end()) {
+      delivered.recent_hops.push_back(sink_id_);
+    }
+    delivered_pub_->publish(delivered);
+  }
 };
 
 int main(int argc, char ** argv)

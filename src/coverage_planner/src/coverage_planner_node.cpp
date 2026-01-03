@@ -87,7 +87,7 @@ public:
     coverage_planner_->initializeIdealLayouts();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 50);
+      "/fanet/network_bus", 50);
 
 
     // Timer: handles initial deployment and later routing recomputes.
@@ -102,12 +102,12 @@ public:
 
     // Subscribe to UAV status to see backbone_active changes
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
-      "/uav_fleet/status", 20,
+      "/fanet/status", 20,
       std::bind(&CoveragePlannerNode::statusCallback, this, std::placeholders::_1));
 
-    // Subscribe to HELLO / DEPLOYMENT_ACK traffic for discovery and barriers.
+    // Subscribe to DEPLOYMENT_ACK traffic for deployment barriers.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 50,
+      "/fanet/network_bus", 50,
       std::bind(&CoveragePlannerNode::trafficCallback, this, std::placeholders::_1));
 
     expected_devices_.insert(uav_ids_.begin(), uav_ids_.end());
@@ -707,7 +707,7 @@ private:
   // Main timer: deploy once and later react to routing changes.
   void periodicUpdate()
   {
-    // First time: wait for HELLO discovery then compute full deployment
+    // First time: wait for status discovery then compute full deployment
     if (!first_deployment_done_) {
       if (!readyForDeployment()) {
         std::vector<std::string> missing;
@@ -738,7 +738,7 @@ private:
         }
 
         RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 30000,
-                             "Waiting for HELLO discovery: %zu/%zu devices seen "
+                             "Waiting for status discovery: %zu/%zu devices seen "
                              "(seen: [%s], missing: [%s])",
                              discovered_devices_.size(), expected_devices_.size(),
                              seen_stream.str().c_str(),
@@ -1445,9 +1445,11 @@ private:
   // ------------------------------------------------------------------
   // Status callback: watch CH backbone_active flag
   // ------------------------------------------------------------------
-  // Track CH backbone activity and refresh planner when needed.
+  // Track backbone activity, discovery, and refresh planner when needed.
   void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
   {
+    discovered_devices_.insert(msg->uav_id);
+
     if (msg->role != 1) {
       return;  // only CHs matter for backbone routing
     }
@@ -1642,11 +1644,6 @@ private:
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    if (msg->control_type == "HELLO") {
-      discovered_devices_.insert(msg->src_id);
-      return;
-    }
-
     if (msg->control_type == "DEPLOYMENT_ACK") {
       auto it = pending_acks_.find(msg->src_id);
       if (it == pending_acks_.end()) {
