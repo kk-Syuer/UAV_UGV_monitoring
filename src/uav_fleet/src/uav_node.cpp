@@ -192,6 +192,7 @@ public:
     carry_ttl_sec_ = this->declare_parameter<double>("ladtr_buffer_ttl_sec", 45.0);
     carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
 
+    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     neighbor_timeout_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UavNode::pruneNeighbors, this));
@@ -915,8 +916,6 @@ private:
     if (battery_energy_ <= 0.0f) {
       return;
     }
-    rclcpp::Time rx_time = this->now();
-
     rclcpp::Time rx_time = this->now();
 
     if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
