@@ -54,15 +54,15 @@ public:
 
     // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100,
+      "/fanet/network_bus", 100,
       std::bind(&SinkGatewayNode::trafficCallback, this, _1));
 
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 100);
+      "/fanet/delivered", 100);
 
-    // Control messages are injected into /network/traffic.
+    // Control messages are injected into /fanet/network_bus.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100);
+      "/fanet/network_bus", 100);
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",
@@ -193,7 +193,7 @@ private:
       expected_uavs_.insert(msg->uav_id);
     }
 
-    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /network/traffic.
+    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /fanet/network_bus.
     if (!control_pub_) {
       return;
     }

@@ -21,7 +21,7 @@ class FleetVizNode(Node):
 
         # Subscriptions provide live data for the visualization panels.
         self.status_sub = self.create_subscription(
-            UavStatus, '/uav_fleet/status', self.status_cb, 50)
+            UavStatus, '/fanet/status', self.status_cb, 50)
 
         self.deployment_sub = self.create_subscription(
             UavDeployment, '/coverage_planner/deployment', self.deployment_cb, 20)
@@ -37,7 +37,7 @@ class FleetVizNode(Node):
         self.task_point_sub = self.create_subscription(
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
         self.traffic_sub = self.create_subscription(
-            TrafficMessage, '/network/traffic', self.traffic_cb, 50)
+            TrafficMessage, '/fanet/network_bus', self.traffic_cb, 50)
 
         # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
