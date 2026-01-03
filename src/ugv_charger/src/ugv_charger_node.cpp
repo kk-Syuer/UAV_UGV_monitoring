@@ -6,6 +6,7 @@
 #include <unordered_map>
 #include <vector>
 #include <sstream>
+#include <algorithm>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -13,6 +14,7 @@
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "geometry_msgs/msg/twist.hpp"
 
 using namespace std::chrono_literals;
 
@@ -83,6 +85,8 @@ public:
     mobility_enabled_ = this->declare_parameter<bool>("mobility_enabled", true);
     mobility_dt_sec_  = this->declare_parameter<double>("mobility_dt_sec", 0.2);
     ugv_speed_mps_    = this->declare_parameter<double>("ugv_speed_mps", 15.3);
+    comm_radius_m_    = this->declare_parameter<double>("comm_radius_m", 400.0);
+    status_period_sec_ = this->declare_parameter<double>("status_period_sec", 1.0);
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -111,33 +115,36 @@ public:
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100);
+      "/fanet/network_bus", 100);
+    status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
+      "/fanet/status", 50);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
                 "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
                 ugv_id_.c_str(), policy_name_.c_str(),
                 charging_duration_sec_, uplink_ch_id_.c_str());
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 100);
+      "/fanet/delivered", 100);
 
     // NEW: subscribe to network control messages
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100,
+      "/fanet/network_bus", 100,
       std::bind(&UgvChargerNode::trafficCallback, this, std::placeholders::_1));
 
     // NEW: subscribe to UAV status to know battery & role
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
-      "/uav_fleet/status", 100,
+      "/fanet/status", 100,
       std::bind(&UgvChargerNode::statusCallback, this, std::placeholders::_1));
 
     // Scheduler loop assigns charging slots at a steady cadence.
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
 
-    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
-    hello_timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
-      std::bind(&UgvChargerNode::publishHello, this));
+    // HELLO beacons removed; discovery happens via UavStatus on /fanet/status.
+    auto status_period = std::chrono::duration<double>(status_period_sec_);
+    status_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
+      std::bind(&UgvChargerNode::publishStatus, this));
 
     ugv_pose_.position.x = 0.0;
     ugv_pose_.position.y = 0.0;
@@ -239,7 +246,7 @@ private:
       entry.request_time = now;
 
       queue_.push_back(entry);
-      delivered_pub_->publish(*msg);
+      publishDelivered(*msg, now);
 
 
       RCLCPP_INFO(this->get_logger(),
@@ -253,6 +260,9 @@ private:
       handleDeploymentFromNetwork(msg);
       return;
     }
+
+    // Any other message destined to UGV counts as delivered.
+    publishDelivered(*msg, this->now());
   }
 
   // Update target pose and reset motion bookkeeping.
@@ -281,6 +291,9 @@ private:
   {
     if (!mobility_enabled_ || !has_deployment_goal_ ||
         !deployment_received_ || !motion_start_received_) {
+      ugv_velocity_.linear.x = 0.0;
+      ugv_velocity_.linear.y = 0.0;
+      ugv_velocity_.linear.z = 0.0;
       return;
     }
 
@@ -294,6 +307,7 @@ private:
         dt = mobility_dt_sec_;
       }
     }
+    geometry_msgs::msg::Pose prev_pose = ugv_pose_;
     last_pose_time_ = now;
 
     double dx = deployment_goal_pose_.position.x - ugv_pose_.position.x;
@@ -303,6 +317,9 @@ private:
 
     if (dist <= 1e-3) {
       ugv_in_motion_ = false;
+      ugv_velocity_.linear.x = 0.0;
+      ugv_velocity_.linear.y = 0.0;
+      ugv_velocity_.linear.z = 0.0;
       return;
     }
 
@@ -315,6 +332,17 @@ private:
                   ugv_pose_.position.x,
                   ugv_pose_.position.y,
                   ugv_pose_.position.z);
+      if (dt > 0.0) {
+        ugv_velocity_.linear.x = static_cast<float>(
+          (ugv_pose_.position.x - prev_pose.position.x) / dt);
+        ugv_velocity_.linear.y = static_cast<float>(
+          (ugv_pose_.position.y - prev_pose.position.y) / dt);
+        ugv_velocity_.linear.z = 0.0f;
+      } else {
+        ugv_velocity_.linear.x = 0.0f;
+        ugv_velocity_.linear.y = 0.0f;
+        ugv_velocity_.linear.z = 0.0f;
+      }
       return;
     }
 
@@ -323,6 +351,18 @@ private:
     ugv_pose_.position.x += ux * max_step;
     ugv_pose_.position.y += uy * max_step;
     // keep current z (UGV stays on ground unless target dictates otherwise)
+
+    if (dt > 0.0) {
+      ugv_velocity_.linear.x = static_cast<float>(
+        (ugv_pose_.position.x - prev_pose.position.x) / dt);
+      ugv_velocity_.linear.y = static_cast<float>(
+        (ugv_pose_.position.y - prev_pose.position.y) / dt);
+      ugv_velocity_.linear.z = 0.0f;
+    } else {
+      ugv_velocity_.linear.x = 0.0f;
+      ugv_velocity_.linear.y = 0.0f;
+      ugv_velocity_.linear.z = 0.0f;
+    }
   }
 
   // Observe deployments to learn topology and update UGV pose.
@@ -431,7 +471,7 @@ private:
                 deployment_goal_pose_.position.z,
                 next_sink.empty() ? "-" : next_sink.c_str());
 
-    delivered_pub_->publish(*msg);
+    publishDelivered(*msg, this->now());
     sendDeploymentAck(next_sink);
   }
 
@@ -475,32 +515,51 @@ private:
   }
 
   // Broadcast HELLO for discovery and timing tests.
-  void publishHello()
+  // Publish UGV status so it appears as a neighbor entity.
+  void publishStatus()
   {
-    if (!control_pub_) {
+    if (!status_pub_) {
       return;
     }
 
-    uav_msgs::msg::TrafficMessage msg;
-    msg.msg_id = ugv_id_ + "_HELLO_" + std::to_string(msg_counter_++);
-    msg.src_id = ugv_id_;
-    msg.dst_id = "broadcast";
-    msg.next_hop_id = "";  // broadcast semantics
+    auto now = this->now();
+    uav_msgs::msg::UavStatus status;
+    status.uav_id = ugv_id_;
+    status.role = 2;  // treat UGV as BACKUP_CH-equivalent for discovery
+    status.cluster_id = "ugv";
+    status.battery_level = 100.0f;
+    status.battery_capacity = 0.0f;
+    status.pose = ugv_pose_;
+    status.velocity = ugv_velocity_;
+    status.service_radius = static_cast<float>(comm_radius_m_);
+    status.connected_users = 0;
+    status.traffic_load = 0.0f;
+    status.packet_loss_estimate = 0.0f;
+    status.energy_consumption_rate = 0.0f;
+    status.charging_state = 0;  // always active
+    status.intent_to_leave = false;
+    status.eta_to_leave_sec = -1.0f;
+    status.comm_radius_m = static_cast<float>(comm_radius_m_);
+    status.stamp = now;
+    status.backbone_active = true;
 
-    msg.flow_type = 1;       // CONTROL
-    msg.creation_time = this->now();
-    msg.hop_count = 0;
-    msg.ttl = 1;            // single-hop broadcast
-    msg.control_type = "HELLO";
+    status_pub_->publish(status);
+  }
 
-    std::ostringstream oss;
-    oss << "UGV,"
-        << ugv_pose_.position.x << ","
-        << ugv_pose_.position.y << ","
-        << 100.0;
-    msg.payload = oss.str();
-
-    control_pub_->publish(msg);
+  void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & now)
+  {
+    if (!delivered_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage delivered = msg;
+    delivered.last_rx_time = now;
+    delivered.last_hop_id = ugv_id_;
+    delivered.last_tx_time = now;
+    delivered.next_hop_id.clear();
+    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), ugv_id_) == delivered.recent_hops.end()) {
+      delivered.recent_hops.push_back(ugv_id_);
+    }
+    delivered_pub_->publish(delivered);
   }
 
   // ------------- Scheduler -------------
@@ -651,11 +710,12 @@ private:
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
-  rclcpp::TimerBase::SharedPtr hello_timer_;
+  rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr mobility_timer_;
   std::string uplink_ch_id_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
+  rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
   uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
@@ -667,6 +727,7 @@ private:
   bool mobility_enabled_ = true;
   double mobility_dt_sec_ = 0.2;
   double ugv_speed_mps_ = 15.3;
+  double comm_radius_m_ = 400.0;
   Policy policy_;
   std::string policy_name_;
 
@@ -679,12 +740,14 @@ private:
   double w_batt_;
   double w_wait_;
   double hello_period_sec_ = 1.0;
+  double status_period_sec_ = 1.0;
   geometry_msgs::msg::Pose deployment_goal_pose_;
   bool has_deployment_goal_ = false;
   bool ugv_in_motion_ = false;
   bool deployment_received_ = false;
   bool motion_start_received_ = false;
   rclcpp::Time last_pose_time_;
+  geometry_msgs::msg::Twist ugv_velocity_;
 
   bool deployment_ack_sent_ = false;
   uint64_t dep_ack_seq_ = 0;

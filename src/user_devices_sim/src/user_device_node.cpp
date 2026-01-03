@@ -25,14 +25,14 @@ public:
 
     // Publish application traffic into the network.
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 10);
+      "/fanet/network_bus", 10);
 
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 10);
+      "/fanet/delivered", 10);
 
     // Listen for delivered messages addressed to this user device.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 10,
+      "/fanet/network_bus", 10,
       std::bind(&UserDeviceNode::trafficCallback, this, std::placeholders::_1));
 
     send_timer_ = this->create_wall_timer(

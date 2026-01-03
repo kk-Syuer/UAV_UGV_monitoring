@@ -4,6 +4,7 @@
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
+#include <vector>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -26,11 +27,11 @@ public:
   {
     // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic", 100,
+      "/fanet/network_bus", 100,
       std::bind(&NetworkMonitorNode::trafficCallback, this, _1));
 
     delivered_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
-      "/network/traffic_delivered", 100,
+      "/fanet/delivered", 100,
       std::bind(&NetworkMonitorNode::deliveredCallback, this, _1));
 
     // Charging request/decision streams for queue statistics.
@@ -50,21 +51,42 @@ private:
   // Track first-seen messages to compute end-to-end delay.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    auto it = creation_times_.find(msg->msg_id);
-    if (it == creation_times_.end()) {
-      rclcpp::Time t_created(msg->creation_time);
-      creation_times_[msg->msg_id] = t_created;
+    rclcpp::Time now = this->now();
+    auto it = traffic_metrics_.find(msg->msg_id);
+    if (it == traffic_metrics_.end()) {
+      TrafficInfo info;
+      info.created = rclcpp::Time(msg->creation_time);
+      info.last_seen = now;
+      info.last_hop_count = msg->hop_count;
+      traffic_metrics_[msg->msg_id] = info;
+      creation_times_[msg->msg_id] = info.created;
       total_generated_++;
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
                   msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
                   total_generated_);
+    } else {
+      auto & info = it->second;
+      if (msg->hop_count > info.last_hop_count) {
+        double hop_delay = (now - info.last_seen).seconds();
+        info.hop_delays.push_back(hop_delay);
+        info.last_hop_count = msg->hop_count;
+      }
+      info.last_seen = now;
     }
-    // If we've already seen this msg_id, we don't log again; it's just forwarding/duplicates
 
     if (msg->flow_type == 1 && msg->control_type == "FAILURE_EVENT") {
       handleFailureFromTraffic(*msg);
+    }
+
+    if (msg->flow_type == 1 && msg->control_type == "DROP") {
+      std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
+                          : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
+      drop_reasons_[reason]++;
+      RCLCPP_WARN(this->get_logger(),
+                  "[DROP] msg_id=%s reason=%s total_reason=%zu",
+                  msg->msg_id.c_str(), reason.c_str(), drop_reasons_[reason]);
     }
   }
 
@@ -87,10 +109,30 @@ private:
     total_delivered_++;
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
 
+    double avg_hop_delay = 0.0;
+    auto it_info = traffic_metrics_.find(msg->msg_id);
+    if (it_info != traffic_metrics_.end()) {
+      if (!it_info->second.hop_delays.empty()) {
+        double sum = 0.0;
+        for (double d : it_info->second.hop_delays) {
+          sum += d;
+        }
+        avg_hop_delay = sum / static_cast<double>(it_info->second.hop_delays.size());
+      }
+      traffic_metrics_.erase(it_info);
+    }
+
+    bool ttl_respected = true;
+    if (msg->ttl != 0 && msg->hop_count > msg->ttl) {
+      ttl_respected = false;
+    }
+
     RCLCPP_INFO(this->get_logger(),
-                "[DEL] msg_id=%s delay=%.4f s | delivered=%zu / generated=%zu | avg_delay=%.4f s",
+                "[DEL] msg_id=%s delay=%.4f s avg_hop_delay=%.4f s ttl_ok=%s | delivered=%zu / generated=%zu | avg_delay=%.4f s",
                 msg->msg_id.c_str(),
                 delay_sec,
+                avg_hop_delay,
+                ttl_respected ? "yes" : "no",
                 total_delivered_,
                 total_generated_,
                 avg_delay_sec_);
@@ -201,6 +243,14 @@ private:
   // ---- Members ----
   // Traffic
   std::unordered_map<std::string, rclcpp::Time> creation_times_;
+  struct TrafficInfo
+  {
+    rclcpp::Time created;
+    rclcpp::Time last_seen;
+    uint32_t last_hop_count = 0;
+    std::vector<double> hop_delays;
+  };
+  std::unordered_map<std::string, TrafficInfo> traffic_metrics_;
   size_t total_generated_;
   size_t total_delivered_;
   double avg_delay_sec_;
@@ -211,6 +261,7 @@ private:
   // Failures
   size_t battery_dead_count_ = 0;
   std::unordered_set<std::string> seen_failure_ids_;
+  std::unordered_map<std::string, size_t> drop_reasons_;
 
   // Charging
   std::unordered_map<std::string, rclcpp::Time> request_times_;
