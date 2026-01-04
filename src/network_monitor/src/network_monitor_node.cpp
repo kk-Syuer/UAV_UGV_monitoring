@@ -115,9 +115,8 @@ private:
   // Compute delivery delay when messages arrive at final destination.
   void deliveredCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    rclcpp::Time delivered_time = msg->last_rx_time.nanoseconds() == 0
-      ? this->now()
-      : rclcpp::Time(msg->last_rx_time);
+    bool rx_time_valid = !(msg->last_rx_time.sec == 0 && msg->last_rx_time.nanosec == 0);
+    rclcpp::Time delivered_time = rx_time_valid ? rclcpp::Time(msg->last_rx_time) : this->now();
 
     rclcpp::Time t_start;
 
