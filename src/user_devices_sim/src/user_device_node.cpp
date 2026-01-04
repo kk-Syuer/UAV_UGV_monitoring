@@ -25,7 +25,7 @@ public:
 
     // Publish application traffic into the network.
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 10);
+      "/fanet/network_bus_raw", 10);
 
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 10);

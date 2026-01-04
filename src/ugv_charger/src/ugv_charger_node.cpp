@@ -117,7 +117,7 @@ public:
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 100);
+      "/fanet/network_bus_raw", 100);
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/fanet/status", 50);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);

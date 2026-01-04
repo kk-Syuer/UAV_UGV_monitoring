@@ -63,7 +63,7 @@ public:
 
     // Control messages are injected into /fanet/network_bus.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 100);
+      "/fanet/network_bus_raw", 100);
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",

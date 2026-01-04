@@ -216,7 +216,7 @@ public:
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/fanet/status", 10);
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 10);
+      "/fanet/network_bus_raw", 10);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 10);
     charge_request_pub_ = this->create_publisher<uav_msgs::msg::ChargeRequest>(

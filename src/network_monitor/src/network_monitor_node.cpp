@@ -80,6 +80,19 @@ private:
       handleFailureFromTraffic(*msg);
     }
 
+    if (msg->flow_type == 1 && msg->control_type == "ACK") {
+      std::string ref_id = msg->ref_msg_id;
+      if (ref_id.empty() && !msg->payload.empty()) {
+        auto eq = msg->payload.find('=');
+        if (eq != std::string::npos && eq + 1 < msg->payload.size()) {
+          ref_id = msg->payload.substr(eq + 1);
+        }
+      }
+      if (!ref_id.empty()) {
+        ack_counts_[ref_id]++;
+      }
+    }
+
     if (msg->flow_type == 1 && msg->control_type == "DROP") {
       std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
                           : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
@@ -88,12 +101,10 @@ private:
         : (!msg->payload.empty() ? msg->payload.substr(0, msg->payload.find(',')) : "");
       drop_reasons_[reason]++;
 
-      if (!msg->payload.empty()) {
-        auto comma = msg->payload.find(',');
-        if (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY") {
-          telemetry_dropped_++;
-          telemetry_drop_reasons_[reason]++;
-        }
+      if (!ref_id.empty() &&
+          (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY")) {
+        telemetry_dropped_++;
+        telemetry_drop_reasons_[reason]++;
       }
       RCLCPP_WARN(this->get_logger(),
                   "[DROP] msg_id=%s reason=%s total_reason=%zu",
@@ -280,6 +291,7 @@ private:
   size_t telemetry_dropped_ = 0;
   std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
   std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
+  std::unordered_map<std::string, size_t> ack_counts_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
