@@ -1154,6 +1154,8 @@ private:
 
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
+      publishDelivered(*msg, rx_time);
+      maybePublishAck(*msg);
 
       // First, see if this is a control message for charging
       if (msg->flow_type == 1 && msg->control_type == "CHARGE_DECISION") {
@@ -1193,7 +1195,6 @@ private:
                     msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
                     msg->hop_count, path.c_str(), text.c_str());
 
-        publishDelivered(*msg, rx_time);
         return;
       }
 
@@ -1203,7 +1204,6 @@ private:
                   msg->msg_id.c_str(), uav_id_.c_str(),
                   msg->src_id.c_str(), msg->hop_count);
 
-      publishDelivered(*msg, rx_time);
       return;
     }
 
@@ -1662,6 +1662,7 @@ private:
     drop.dst_id = monitor_id_;
     drop.flow_type = 1;
     drop.control_type = "DROP";
+    drop.ref_msg_id = msg_id;
     drop.drop_reason = reason;
     drop.payload = msg_id + "," + reason;
     drop.creation_time = this->now();
@@ -1691,6 +1692,36 @@ private:
     }
     delivered.next_hop_id = "";
     delivered_pub_->publish(delivered);
+  }
+
+  void maybePublishAck(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (!msg.requires_ack) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage ack;
+    ack.msg_id = uav_id_ + "_ACK_" + msg.msg_id + "_" + std::to_string(msg_counter_++);
+    ack.src_id = uav_id_;
+    ack.dst_id = msg.src_id;
+    ack.ref_msg_id = msg.msg_id;
+    ack.flow_type = 1;
+    ack.control_type = "ACK";
+    ack.payload = "ref_msg_id=" + msg.msg_id;
+    ack.creation_time = this->now();
+    ack.hop_count = 0;
+    ack.ttl = 6;
+    ack.requires_ack = false;
+    ack.next_hop_id = pickNextHop(ack.dst_id, resolveNextHop(ack.dst_id));
+
+    if (ack.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[ACK] %s could not ACK msg_id=%s (no route to %s)",
+                  uav_id_.c_str(), msg.msg_id.c_str(), ack.dst_id.c_str());
+      return;
+    }
+
+    publishToBus(ack, true);
   }
 
   bool tryLocationAidedForward(uav_msgs::msg::TrafficMessage & msg)
