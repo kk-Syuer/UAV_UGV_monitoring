@@ -3,6 +3,7 @@
 #include <string>
 #include <deque>
 #include <exception>
+#include <optional>
 #include <unordered_map>
 #include <vector>
 #include <sstream>
@@ -87,6 +88,7 @@ public:
     ugv_speed_mps_    = this->declare_parameter<double>("ugv_speed_mps", 15.3);
     comm_radius_m_    = this->declare_parameter<double>("comm_radius_m", 400.0);
     status_period_sec_ = this->declare_parameter<double>("status_period_sec", 1.0);
+    neighbor_timeout_sec_ = this->declare_parameter<double>("neighbor_timeout_sec", 3.0);
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -146,6 +148,13 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
       std::bind(&UgvChargerNode::publishStatus, this));
 
+    if (neighbor_timeout_sec_ > 0.0) {
+      auto timeout_period = std::chrono::duration<double>(neighbor_timeout_sec_);
+      neighbor_timeout_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(timeout_period),
+        std::bind(&UgvChargerNode::pruneNeighbors, this));
+    }
+
     ugv_pose_.position.x = 0.0;
     ugv_pose_.position.y = 0.0;
     ugv_pose_.position.z = 0.0;
@@ -189,6 +198,12 @@ private:
     uint8_t role;
     float battery_level;
     bool backbone_active; // whether this UAV is usable as backbone
+    rclcpp::Time last_seen;
+    geometry_msgs::msg::Pose pose;
+    float comm_radius_m = 0.0f;
+    uint8_t charging_state = 0;
+    bool intent_to_leave = false;
+    float eta_to_leave_sec = -1.0f;
   };
 
   // ------------- Callbacks -------------
@@ -196,10 +211,20 @@ private:
   // Cache latest UAV status for policy scoring and dock sizing.
   void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
   {
+    if (msg->uav_id == ugv_id_) {
+      return;
+    }
+
     UavInfo info;
     info.role = msg->role;
     info.battery_level = msg->battery_level;
     info.backbone_active = msg->backbone_active;
+    info.last_seen = this->now();
+    info.pose = msg->pose;
+    info.comm_radius_m = msg->comm_radius_m;
+    info.charging_state = msg->charging_state;
+    info.intent_to_leave = msg->intent_to_leave;
+    info.eta_to_leave_sec = msg->eta_to_leave_sec;
     uav_status_[msg->uav_id] = info;
     recomputeChargingSpots();
   }
@@ -506,6 +531,13 @@ private:
     ack.control_type = "DEPLOYMENT_ACK";
     ack.payload = "";
 
+    if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: dropping DEPLOYMENT_ACK msg_id=%s (next hop unreachable)",
+                  ugv_id_.c_str(), ack.msg_id.c_str());
+      return;
+    }
+
     control_pub_->publish(ack);
     deployment_ack_sent_ = true;
 
@@ -560,6 +592,162 @@ private:
       delivered.recent_hops.push_back(ugv_id_);
     }
     delivered_pub_->publish(delivered);
+  }
+
+  double distance2d(const geometry_msgs::msg::Point & a,
+                    const geometry_msgs::msg::Point & b) const
+  {
+    double dx = a.x - b.x;
+    double dy = a.y - b.y;
+    return std::sqrt(dx * dx + dy * dy);
+  }
+
+  bool neighborFresh(const UavInfo & info, const rclcpp::Time & now) const
+  {
+    if (neighbor_timeout_sec_ <= 0.0) {
+      return true;
+    }
+    if (info.last_seen.nanoseconds() == 0) {
+      return false;
+    }
+    return (now - info.last_seen) <= rclcpp::Duration::from_seconds(neighbor_timeout_sec_);
+  }
+
+  bool passesChargingPenalty(const UavInfo & info) const
+  {
+    const double leave_soon_sec = 15.0;
+    if (info.charging_state != 0) {
+      return false;
+    }
+    if (info.intent_to_leave &&
+        info.eta_to_leave_sec >= 0.0f &&
+        info.eta_to_leave_sec < leave_soon_sec) {
+      return false;
+    }
+    return true;
+  }
+
+  bool withinRange(const UavInfo & info) const
+  {
+    double nb_range = static_cast<double>(info.comm_radius_m > 0.0f ? info.comm_radius_m : comm_radius_m_);
+    double max_range = std::min(comm_radius_m_, nb_range);
+    double dist = distance2d(ugv_pose_.position, info.pose.position);
+    return dist <= max_range;
+  }
+
+  bool neighborReachable(const std::string & id, const rclcpp::Time & now) const
+  {
+    auto it = uav_status_.find(id);
+    if (it == uav_status_.end()) {
+      return false;
+    }
+    const auto & info = it->second;
+    if (!neighborFresh(info, now)) {
+      return false;
+    }
+    if (!withinRange(info)) {
+      return false;
+    }
+    if (!passesChargingPenalty(info)) {
+      return false;
+    }
+    return info.backbone_active;
+  }
+
+  bool neighborReachable(const std::string & id) const
+  {
+    return neighborReachable(id, this->now());
+  }
+
+  std::optional<std::string> findReachableBackbone(const rclcpp::Time & now) const
+  {
+    for (const auto & kv : uav_status_) {
+      const auto & info = kv.second;
+      if (!(info.role == 1 || info.role == 2 || info.backbone_active)) {
+        continue;
+      }
+      if (!neighborFresh(info, now)) {
+        continue;
+      }
+      if (!withinRange(info)) {
+        continue;
+      }
+      if (!passesChargingPenalty(info)) {
+        continue;
+      }
+      return kv.first;
+    }
+    return std::nullopt;
+  }
+
+  void pruneNeighbors()
+  {
+    if (neighbor_timeout_sec_ <= 0.0) {
+      return;
+    }
+    const auto now = this->now();
+    const auto timeout = rclcpp::Duration::from_seconds(neighbor_timeout_sec_);
+    bool changed = false;
+    for (auto it = uav_status_.begin(); it != uav_status_.end(); ) {
+      if ((now - it->second.last_seen) > timeout) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UGV %s: neighbor %s timed out after %.2f s",
+                    ugv_id_.c_str(), it->first.c_str(),
+                    (now - it->second.last_seen).seconds());
+        it = uav_status_.erase(it);
+        changed = true;
+      } else {
+        ++it;
+      }
+    }
+    if (changed) {
+      recomputeChargingSpots();
+    }
+  }
+
+  void publishDrop(const std::string & msg_id, const std::string & reason)
+  {
+    if (!control_pub_) {
+      return;
+    }
+    uav_msgs::msg::TrafficMessage drop;
+    drop.msg_id = msg_id + "_DROP_" + ugv_id_;
+    drop.src_id = ugv_id_;
+    drop.dst_id = sink_id_;
+    drop.flow_type = 1;
+    drop.control_type = "DROP";
+    drop.drop_reason = reason;
+    drop.payload = msg_id + "," + reason;
+    drop.creation_time = this->now();
+    drop.hop_count = 0;
+    drop.ttl = 4;
+    drop.next_hop_id = "";
+    control_pub_->publish(drop);
+  }
+
+  bool ensureReachableOrDrop(uav_msgs::msg::TrafficMessage & msg,
+                             const std::string & drop_reason)
+  {
+    auto now = this->now();
+    if (msg.next_hop_id.empty()) {
+      publishDrop(msg.msg_id, drop_reason);
+      return false;
+    }
+    if (neighborReachable(msg.next_hop_id, now)) {
+      return true;
+    }
+    auto fallback = findReachableBackbone(now);
+    if (fallback) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: next hop %s unreachable for msg %s, falling back to %s",
+                  ugv_id_.c_str(), msg.next_hop_id.c_str(), msg.msg_id.c_str(),
+                  fallback->c_str());
+      msg.next_hop_id = *fallback;
+      return true;
+    }
+    msg.next_hop_id.clear();
+    publishDrop(msg.msg_id, drop_reason);
+    return false;
   }
 
   // ------------- Scheduler -------------
@@ -712,6 +900,7 @@ private:
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr mobility_timer_;
+  rclcpp::TimerBase::SharedPtr neighbor_timeout_timer_;
   std::string uplink_ch_id_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
@@ -730,6 +919,7 @@ private:
   double comm_radius_m_ = 400.0;
   Policy policy_;
   std::string policy_name_;
+  double neighbor_timeout_sec_ = 0.0;
 
   // EDF parameters
   double drain_percent_member_;
@@ -809,6 +999,13 @@ private:
 
     msg.control_type = "CHARGE_DECISION";
     msg.payload = "";      // we start immediately, so no schedule needed
+
+    if (!ensureReachableOrDrop(msg, "UNREACHABLE_CHARGE_DECISION_NEXT_HOP")) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: dropping CHARGE_DECISION msg_id=%s (next hop unreachable)",
+                  ugv_id_.c_str(), msg.msg_id.c_str());
+      return;
+    }
 
     RCLCPP_INFO(this->get_logger(),
                 "UGV: sending CHARGE_DECISION msg_id=%s to %s via %s",
