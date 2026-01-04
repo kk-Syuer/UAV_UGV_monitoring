@@ -87,7 +87,7 @@ public:
     coverage_planner_->initializeIdealLayouts();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 50);
+      "/fanet/network_bus_raw", 50);
 
 
     // Timer: handles initial deployment and later routing recomputes.

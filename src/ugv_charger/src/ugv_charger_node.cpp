@@ -117,7 +117,7 @@ public:
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
       "/ugv/charge_decisions", 10);
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 100);
+      "/fanet/network_bus_raw", 100);
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/fanet/status", 50);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
@@ -191,6 +191,7 @@ private:
     uint8_t role;         // 0=member,1=CH
     float battery_level;  // percent at request time
     rclcpp::Time request_time;
+    std::string request_msg_id;
   };
 
   struct UavInfo
@@ -241,14 +242,13 @@ private:
       return;
     }
 
-    // Only consider CONTROL messages
-    if (msg->flow_type != 1) { // 1 = CONTROL
-      return;
-    }
+    auto now = this->now();
+    publishDelivered(*msg, now);
+    maybePublishAck(*msg);
 
     if (msg->control_type == "MOTION_START" || msg->control_type == "START_MOBILITY") {
       motion_start_received_ = true;
-      last_pose_time_ = this->now();
+      last_pose_time_ = now;
       RCLCPP_INFO(this->get_logger(),
                   "[MOB-START] %s received %s from %s", ugv_id_.c_str(),
                   msg->control_type.c_str(), msg->src_id.c_str());
@@ -257,7 +257,6 @@ private:
 
     if (msg->control_type == "CHARGE_REQUEST") {
       const std::string & uav_id = msg->src_id;
-      auto now = this->now();
 
       // Lookup last known status for this UAV
       auto it = uav_status_.find(uav_id);
@@ -273,9 +272,9 @@ private:
       entry.role = it->second.role;
       entry.battery_level = it->second.battery_level;
       entry.request_time = now;
+      entry.request_msg_id = msg->msg_id;
 
       queue_.push_back(entry);
-      publishDelivered(*msg, now);
 
 
       RCLCPP_INFO(this->get_logger(),
@@ -291,7 +290,6 @@ private:
     }
 
     // Any other message destined to UGV counts as delivered.
-    publishDelivered(*msg, this->now());
   }
 
   // Update target pose and reset motion bookkeeping.
@@ -598,6 +596,43 @@ private:
     delivered_pub_->publish(delivered);
   }
 
+  void maybePublishAck(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (!msg.requires_ack || !control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage ack;
+    ack.msg_id = ugv_id_ + "_ACK_" + msg.msg_id + "_" + std::to_string(msg_counter_++);
+    ack.src_id = ugv_id_;
+    ack.dst_id = msg.src_id;
+    ack.ref_msg_id = msg.msg_id;
+    ack.flow_type = 1;
+    ack.control_type = "ACK";
+    ack.payload = "ref_msg_id=" + msg.msg_id;
+    ack.creation_time = this->now();
+    ack.hop_count = 0;
+    ack.ttl = 6;
+    ack.requires_ack = false;
+    ack.next_hop_id = sink_id_;
+
+    if (ack.dst_id != sink_id_) {
+      ack.next_hop_id = msg.src_id;
+      if (!neighborReachable(ack.next_hop_id)) {
+        ack.next_hop_id = uplink_ch_id_;
+      }
+    }
+
+    if (!neighborReachable(ack.next_hop_id)) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: cannot ACK msg_id=%s (no reachable next hop)",
+                  ugv_id_.c_str(), msg.msg_id.c_str());
+      return;
+    }
+
+    control_pub_->publish(ack);
+  }
+
   double distance3d(const geometry_msgs::msg::Point & a,
                     const geometry_msgs::msg::Point & b) const
   {
@@ -675,6 +710,7 @@ private:
     drop.dst_id = sink_id_;
     drop.flow_type = 1;
     drop.control_type = "DROP";
+    drop.ref_msg_id = msg_id;
     drop.drop_reason = reason;
     drop.payload = msg_id + "," + reason;
     drop.creation_time = this->now();
@@ -964,6 +1000,7 @@ private:
     msg.flow_type = 1;              // CONTROL_ALERT
     msg.creation_time = now;
     msg.hop_count = 0;
+    msg.ref_msg_id = job.request_msg_id;
 
     msg.control_type = "CHARGE_DECISION";
     msg.payload = "";      // we start immediately, so no schedule needed
