@@ -27,6 +27,8 @@
 #include <algorithm>
 #include <sstream>
 #include <vector>
+#include <deque>
+#include <functional>
 
 
 
@@ -48,6 +50,78 @@ static std::vector<std::string> splitString(const std::string & s, char delim)
 
 class UavNode : public rclcpp::Node
 {
+  struct BufferEntry
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    rclcpp::Time enqueue_time;
+    rclcpp::Time next_retry_time;
+    rclcpp::Time expiry_time;
+  };
+
+  class BufferManager
+  {
+  public:
+    BufferManager() = default;
+
+    void configure(size_t max_msgs,
+                   double ttl_sec,
+                   double retry_period_sec)
+    {
+      max_msgs_ = max_msgs;
+      ttl_sec_ = ttl_sec;
+      retry_period_sec_ = retry_period_sec;
+    }
+
+    size_t size() const { return queue_.size(); }
+
+    bool enqueue(const uav_msgs::msg::TrafficMessage & msg,
+                 const rclcpp::Time & now,
+                 std::function<void(const uav_msgs::msg::TrafficMessage &, const std::string &)> drop_cb)
+    {
+      if (queue_.size() >= max_msgs_) {
+        // Drop oldest
+        drop_cb(queue_.front().msg, "BUFFER_OVERFLOW");
+        queue_.pop_front();
+      }
+      BufferEntry entry;
+      entry.msg = msg;
+      entry.enqueue_time = now;
+      entry.next_retry_time = now + rclcpp::Duration::from_seconds(retry_period_sec_);
+      entry.expiry_time = now + rclcpp::Duration::from_seconds(ttl_sec_);
+      queue_.push_back(entry);
+      return true;
+    }
+
+    void tick(const rclcpp::Time & now,
+              std::function<bool(uav_msgs::msg::TrafficMessage &)> try_send,
+              std::function<void(const uav_msgs::msg::TrafficMessage &, const std::string &)> drop_cb)
+    {
+      for (auto it = queue_.begin(); it != queue_.end(); ) {
+        if (now >= it->expiry_time) {
+          drop_cb(it->msg, "BUFFER_TTL_EXPIRED");
+          it = queue_.erase(it);
+          continue;
+        }
+        if (now < it->next_retry_time) {
+          ++it;
+          continue;
+        }
+        if (try_send(it->msg)) {
+          it = queue_.erase(it);
+        } else {
+          it->next_retry_time = now + rclcpp::Duration::from_seconds(retry_period_sec_);
+          ++it;
+        }
+      }
+    }
+
+  private:
+    std::deque<BufferEntry> queue_;
+    size_t max_msgs_ = 200;
+    double ttl_sec_ = 60.0;
+    double retry_period_sec_ = 1.0;
+  };
+
 public:
   UavNode()
   : Node("uav_node"),
@@ -182,6 +256,14 @@ public:
     status_period_sec_ = this->declare_parameter<double>("status_ch_period_sec", 5.0);
     status_ttl_ = static_cast<uint32_t>(
       this->declare_parameter<int>("status_ch_ttl", 20));
+    buffer_enable_ = this->declare_parameter<bool>("buffer_enable", true);
+    ctrl_buffer_enable_ = this->declare_parameter<bool>("ctrl_buffer_enable", false);
+    buffer_max_msgs_ = static_cast<size_t>(
+      this->declare_parameter<int>("buffer_max_msgs", 200));
+    buffer_ttl_sec_ = this->declare_parameter<double>("buffer_ttl_sec", 90.0);
+    buffer_retry_period_sec_ = this->declare_parameter<double>("buffer_retry_period_sec", 1.0);
+    max_recent_hops_ = static_cast<size_t>(
+      this->declare_parameter<int>("max_recent_hops", 5));
 
     // Location-aided DTN routing parameters
     location_aided_routing_ =
@@ -197,6 +279,11 @@ public:
     neighbor_timeout_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
       std::bind(&UavNode::pruneNeighbors, this));
+    buffer_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(buffer_retry_period_sec_)),
+      std::bind(&UavNode::bufferTick, this));
+    buffer_manager_.configure(buffer_max_msgs_, buffer_ttl_sec_, buffer_retry_period_sec_);
 
     auto carry_retry = std::chrono::duration<double>(carry_retry_period_sec_);
     ladtr_retry_timer_ = this->create_wall_timer(
@@ -720,6 +807,30 @@ private:
     // Neighbor tables are now driven by /fanet/status.
   }
 
+  bool shouldBuffer(const uav_msgs::msg::TrafficMessage & msg) const
+  {
+    if (msg.flow_type == 0) {
+      return buffer_enable_;
+    }
+    return ctrl_buffer_enable_;
+  }
+
+  void bufferTick()
+  {
+    auto now = this->now();
+    buffer_manager_.tick(
+      now,
+      [this](uav_msgs::msg::TrafficMessage & msg) {
+        if (msg.next_hop_id.empty() || !neighborReachable(msg.next_hop_id)) {
+          return false;
+        }
+        return forwardMessage(msg);
+      },
+      [this](const uav_msgs::msg::TrafficMessage & msg, const std::string & reason) {
+        publishDrop(msg.msg_id, reason);
+      });
+  }
+
   void neighborStatusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
   {
     if (msg->uav_id == uav_id_) {
@@ -919,11 +1030,8 @@ private:
     }
     rclcpp::Time rx_time = this->now();
 
-    if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: dropping msg_id=%s due to TTL expiry (hop=%u ttl=%u)",
-                  uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
-      publishDrop(msg->msg_id, "TTL_EXPIRED");
+    if (std::find(msg->recent_hops.begin(), msg->recent_hops.end(), uav_id_) != msg->recent_hops.end()) {
+      publishDrop(msg->msg_id, "LOOP_DETECTED");
       return;
     }
 
@@ -1013,16 +1121,6 @@ private:
           (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD") &&
           msg->dst_id != uav_id_)
       {
-          msg->hop_count++;
-
-        if (msg->ttl != 0 && msg->hop_count >= msg->ttl) {
-            RCLCPP_WARN(this->get_logger(),
-                        "[FWD-DEPLOY] CH %s dropping %s due to TTL (hop=%u ttl=%u)",
-                        uav_id_.c_str(), msg->msg_id.c_str(), msg->hop_count, msg->ttl);
-            publishDrop(msg->msg_id, "TTL_EXPIRED");
-            return;
-          }
-
           // Use backbone routing
           std::string next_hop = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id),
                                              &msg->recent_hops, &rx_time);
@@ -1031,7 +1129,7 @@ private:
               RCLCPP_WARN(this->get_logger(),
                           "[FWD-DEPLOY] CH %s: no route to %s, dropping msg %s",
                           uav_id_.c_str(), msg->dst_id.c_str(), msg->msg_id.c_str());
-              publishDrop(msg->msg_id, "NO_ROUTE");
+              publishDrop(msg->msg_id, "NO_REACHABLE_NEIGHBOR");
               return;
           }
 
@@ -1041,20 +1139,11 @@ private:
                       "[FWD-DEPLOY] CH %s forwarding DEPLOYMENT to %s via %s",
                       uav_id_.c_str(), msg->dst_id.c_str(), next_hop.c_str());
 
-          publishToBus(*msg);
+          publishToBus(*msg, true);
           return;
       }
 
       uav_msgs::msg::TrafficMessage fwd = *msg;
-      fwd.hop_count = msg->hop_count + 1;
-
-      if (fwd.ttl != 0 && fwd.hop_count >= fwd.ttl) {
-        RCLCPP_WARN(this->get_logger(),
-                    "[FWD] CH %s dropping msg_id=%s due to TTL (hop=%u ttl=%u)",
-                    uav_id_.c_str(), fwd.msg_id.c_str(), fwd.hop_count, fwd.ttl);
-        publishDrop(fwd.msg_id, "TTL_EXPIRED");
-        return;
-      }
 
       if (fwd.control_type == "START_MOBILITY" || fwd.control_type == "MOTION_START") {
         fwd.next_hop_id = msg->dst_id;
@@ -1082,13 +1171,13 @@ private:
           if (tryLocationAidedForward(fwd)) {
             return;
           }
-          bufferForCarry(fwd);
+          publishToBus(fwd, true);
           return;
           } else if (fwd.next_hop_id.empty()) {
             RCLCPP_WARN(this->get_logger(),
                         "[FWD] CH %s dropping msg_id=%s: no route to %s",
                         uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
-            publishDrop(fwd.msg_id, "NO_ROUTE");
+            publishDrop(fwd.msg_id, "NO_REACHABLE_NEIGHBOR");
             return;
           }
       }
@@ -1104,7 +1193,7 @@ private:
                   fwd.dst_id.c_str(), fwd.next_hop_id.c_str(),
                   fwd.hop_count);
 
-      publishToBus(fwd);
+      publishToBus(fwd, true);
     }
 
   }
@@ -1432,23 +1521,44 @@ private:
     if (std::find(msg.recent_hops.begin(), msg.recent_hops.end(), uav_id_) == msg.recent_hops.end()) {
       msg.recent_hops.push_back(uav_id_);
     }
-    const size_t max_hops = 5;
-    if (msg.recent_hops.size() > max_hops) {
+    if (msg.recent_hops.size() > max_recent_hops_) {
       msg.recent_hops.erase(msg.recent_hops.begin(),
-                            msg.recent_hops.begin() + (msg.recent_hops.size() - max_hops));
+                            msg.recent_hops.begin() + (msg.recent_hops.size() - max_recent_hops_));
     }
   }
 
-  void publishToBus(uav_msgs::msg::TrafficMessage msg)
+  bool forwardMessage(uav_msgs::msg::TrafficMessage & msg)
   {
+    if (msg.ttl != 0) {
+      msg.ttl -= 1;
+      if (msg.ttl == 0) {
+        publishDrop(msg.msg_id, "TTL_EXPIRED");
+        return false;
+      }
+    }
+    msg.hop_count += 1;
+
     auto now = this->now();
     msg.last_rx_time = now;
-    if (!msg.next_hop_id.empty() && !neighborReachable(msg.next_hop_id, now)) {
-      publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
-      return;
-    }
     stampForSend(msg, msg.next_hop_id);
     traffic_pub_->publish(msg);
+    return true;
+  }
+
+  bool publishToBus(uav_msgs::msg::TrafficMessage msg, bool allow_buffer = false)
+  {
+    if (!msg.next_hop_id.empty() && !neighborReachable(msg.next_hop_id, this->now())) {
+      if (allow_buffer && shouldBuffer(msg)) {
+        buffer_manager_.enqueue(msg, this->now(),
+          [this](const uav_msgs::msg::TrafficMessage & buffered, const std::string & reason) {
+            publishDrop(buffered.msg_id, reason);
+          });
+        return false;
+      }
+      publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
+      return false;
+    }
+    return forwardMessage(msg);
   }
 
   void publishDrop(const std::string & msg_id, const std::string & reason)
@@ -2249,6 +2359,7 @@ private:
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
   rclcpp::TimerBase::SharedPtr traffic_timer_;
   rclcpp::TimerBase::SharedPtr neighbor_timeout_timer_;
+  rclcpp::TimerBase::SharedPtr buffer_retry_timer_;
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
 
@@ -2266,6 +2377,13 @@ private:
   size_t carry_buffer_limit_ = 0;
   double carry_ttl_sec_ = 0.0;
   double carry_retry_period_sec_ = 1.0;
+  bool buffer_enable_ = true;
+  bool ctrl_buffer_enable_ = false;
+  size_t buffer_max_msgs_ = 200;
+  double buffer_ttl_sec_ = 90.0;
+  double buffer_retry_period_sec_ = 1.0;
+  size_t max_recent_hops_ = 5;
+  BufferManager buffer_manager_;
   std::deque<BufferedMessage> carry_buffer_;
 
 };
