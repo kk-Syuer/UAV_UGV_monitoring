@@ -61,7 +61,7 @@ public:
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 100);
 
-    // Control messages are injected into /fanet/network_bus.
+    // Control messages are injected into /fanet/network_bus_raw.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/network_bus_raw", 100);
 
@@ -196,7 +196,7 @@ private:
       expected_uavs_.insert(msg->uav_id);
     }
 
-    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /fanet/network_bus.
+    // 2) Build a DEPLOYMENT TrafficMessage and inject it into /fanet/network_bus_raw.
     if (!control_pub_) {
       return;
     }
