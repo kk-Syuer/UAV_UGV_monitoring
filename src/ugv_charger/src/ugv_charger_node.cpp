@@ -140,7 +140,7 @@ public:
     scheduler_timer_ = this->create_wall_timer(
       500ms, std::bind(&UgvChargerNode::schedulerLoop, this));
 
-    // HELLO beacons removed; neighbor discovery uses /fanet/status.
+    // HELLO beacons removed; discovery happens via UavStatus on /fanet/status.
     auto status_period = std::chrono::duration<double>(status_period_sec_);
     status_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
