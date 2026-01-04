@@ -84,6 +84,15 @@ private:
       std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
                           : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
       drop_reasons_[reason]++;
+
+      if (!msg->payload.empty()) {
+        auto comma = msg->payload.find(',');
+        std::string ref_id = comma == std::string::npos ? msg->payload : msg->payload.substr(0, comma);
+        if (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY") {
+          telemetry_dropped_++;
+          telemetry_drop_reasons_[reason]++;
+        }
+      }
       RCLCPP_WARN(this->get_logger(),
                   "[DROP] msg_id=%s reason=%s total_reason=%zu",
                   msg->msg_id.c_str(), reason.c_str(), drop_reasons_[reason]);
@@ -108,6 +117,11 @@ private:
 
     total_delivered_++;
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
+
+    if (msg->flow_type == 0 && msg->control_type == "SEARCH_TELEMETRY") {
+      telemetry_delivered_++;
+      telemetry_avg_delay_sec_ += (delay_sec - telemetry_avg_delay_sec_) / static_cast<double>(telemetry_delivered_);
+    }
 
     double avg_hop_delay = 0.0;
     auto it_info = traffic_metrics_.find(msg->msg_id);
@@ -254,6 +268,10 @@ private:
   size_t total_generated_;
   size_t total_delivered_;
   double avg_delay_sec_;
+  size_t telemetry_delivered_ = 0;
+  double telemetry_avg_delay_sec_ = 0.0;
+  size_t telemetry_dropped_ = 0;
+  std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
