@@ -63,7 +63,7 @@ public:
 
     // Control messages are injected into /fanet/network_bus.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
-      "/fanet/network_bus", 100);
+      "/fanet/network_bus_raw", 100);
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",
@@ -100,9 +100,11 @@ private:
       return;
     }
 
+    publishDelivered(*msg, now);
+    maybePublishAck(*msg);
+
     if (msg->flow_type == 1 && msg->control_type == "STATUS_CH") {
       handleStatusCh(msg);
-      publishDelivered(*msg, now);
       return;
     }
 
@@ -139,7 +141,6 @@ private:
                 msg->msg_id.c_str(), msg->src_id.c_str(),
                 msg->dst_id.c_str(), msg->hop_count);
 
-    publishDelivered(*msg, now);
   }
 
   // --------------------------------------------------------------------------
@@ -382,6 +383,39 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;
   rclcpp::TimerBase::SharedPtr                                   control_timer_;
+
+  void maybePublishAck(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (!msg.requires_ack || !control_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage ack;
+    ack.msg_id = sink_id_ + "_ACK_" + msg.msg_id;
+    ack.src_id = sink_id_;
+    ack.dst_id = msg.src_id;
+    ack.ref_msg_id = msg.msg_id;
+    ack.flow_type = 1;
+    ack.control_type = "ACK";
+    ack.payload = "ref_msg_id=" + msg.msg_id;
+    ack.creation_time = this->now();
+    ack.hop_count = 0;
+    ack.ttl = 4;
+    ack.requires_ack = false;
+    ack.next_hop_id = msg.src_id.empty() ? "" : msg.src_id;
+
+    if (ack.next_hop_id.empty()) {
+      ack.next_hop_id = uplink_ch_id_;
+    }
+
+    if (!ack.next_hop_id.empty()) {
+      control_pub_->publish(ack);
+    } else {
+      RCLCPP_WARN(this->get_logger(),
+                  "[ACK] Sink could not ACK msg_id=%s (no next hop)",
+                  msg.msg_id.c_str());
+    }
+  }
 
   void publishDelivered(const uav_msgs::msg::TrafficMessage & msg, const rclcpp::Time & now)
   {

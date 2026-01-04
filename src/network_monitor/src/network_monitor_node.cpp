@@ -80,18 +80,31 @@ private:
       handleFailureFromTraffic(*msg);
     }
 
+    if (msg->flow_type == 1 && msg->control_type == "ACK") {
+      std::string ref_id = msg->ref_msg_id;
+      if (ref_id.empty() && !msg->payload.empty()) {
+        auto eq = msg->payload.find('=');
+        if (eq != std::string::npos && eq + 1 < msg->payload.size()) {
+          ref_id = msg->payload.substr(eq + 1);
+        }
+      }
+      if (!ref_id.empty()) {
+        ack_counts_[ref_id]++;
+      }
+    }
+
     if (msg->flow_type == 1 && msg->control_type == "DROP") {
       std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
                           : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
+      std::string ref_id = !msg->ref_msg_id.empty()
+        ? msg->ref_msg_id
+        : (!msg->payload.empty() ? msg->payload.substr(0, msg->payload.find(',')) : "");
       drop_reasons_[reason]++;
 
-      if (!msg->payload.empty()) {
-        auto comma = msg->payload.find(',');
-        std::string ref_id = comma == std::string::npos ? msg->payload : msg->payload.substr(0, comma);
-        if (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY") {
-          telemetry_dropped_++;
-          telemetry_drop_reasons_[reason]++;
-        }
+      if (!ref_id.empty() &&
+          (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY")) {
+        telemetry_dropped_++;
+        telemetry_drop_reasons_[reason]++;
       }
       RCLCPP_WARN(this->get_logger(),
                   "[DROP] msg_id=%s reason=%s total_reason=%zu",
@@ -102,7 +115,9 @@ private:
   // Compute delivery delay when messages arrive at final destination.
   void deliveredCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    auto now = this->now();
+    bool rx_time_valid = !(msg->last_rx_time.sec == 0 && msg->last_rx_time.nanosec == 0);
+    rclcpp::Time delivered_time = rx_time_valid ? rclcpp::Time(msg->last_rx_time) : this->now();
+
     rclcpp::Time t_start;
 
     auto it = creation_times_.find(msg->msg_id);
@@ -113,7 +128,7 @@ private:
       t_start = rclcpp::Time(msg->creation_time);
     }
 
-    double delay_sec = (now - t_start).seconds();
+    double delay_sec = (delivered_time - t_start).seconds();
 
     total_delivered_++;
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
@@ -140,6 +155,8 @@ private:
     if (msg->ttl != 0 && msg->hop_count > msg->ttl) {
       ttl_respected = false;
     }
+
+    delivered_by_flow_control_[msg->flow_type][msg->control_type]++;
 
     RCLCPP_INFO(this->get_logger(),
                 "[DEL] msg_id=%s delay=%.4f s avg_hop_delay=%.4f s ttl_ok=%s | delivered=%zu / generated=%zu | avg_delay=%.4f s",
@@ -272,6 +289,8 @@ private:
   double telemetry_avg_delay_sec_ = 0.0;
   size_t telemetry_dropped_ = 0;
   std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
+  std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
+  std::unordered_map<std::string, size_t> ack_counts_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
