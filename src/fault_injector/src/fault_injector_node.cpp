@@ -46,12 +46,18 @@ public:
 
     network_bus_raw_sub_ = this->create_subscription<TrafficMessage>(
       "/fanet/network_bus_raw", 200,
-      std::bind(&FaultInjectorNode::trafficCallback, this, std::placeholders::_1, false));
+      [this](TrafficMessage::SharedPtr msg)
+      {
+        this->trafficCallback(msg, false);
+      });
 
     if (drop_delivered_) {
       delivered_raw_sub_ = this->create_subscription<TrafficMessage>(
         "/fanet/delivered_raw", 200,
-        std::bind(&FaultInjectorNode::trafficCallback, this, std::placeholders::_1, true));
+        [this](TrafficMessage::SharedPtr msg)
+        {
+          this->trafficCallback(msg, true);
+        });
     }
 
     weather_sub_ = this->create_subscription<WeatherStatus>(
