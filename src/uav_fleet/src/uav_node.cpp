@@ -913,8 +913,8 @@ private:
     auto now = this->now();
     buffer_manager_.tick(
       now,
-      [this](uav_msgs::msg::TrafficMessage & msg) {
-        if (msg.next_hop_id.empty() || !neighborReachable(msg.next_hop_id)) {
+      [this, now](uav_msgs::msg::TrafficMessage & msg) {
+        if (msg.next_hop_id.empty() || !neighborReachable(msg.next_hop_id, now)) {
           return false;
         }
         return forwardMessage(msg);
