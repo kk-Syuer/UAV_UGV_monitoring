@@ -494,6 +494,7 @@ private:
     reconcileCausality();
     writeMessagesCsv(final_flush);
     writeChargeEventsCsv(final_flush);
+    writeStatusTimeseriesRow();
     writeSummaryJson();
   }
 
@@ -804,13 +805,18 @@ private:
       auto sep = key.find(':');
       std::string flow_str = key.substr(0, sep);
       std::string ctrl_str = (sep == std::string::npos) ? "" : key.substr(sep + 1);
-      out << "      {\"flow_type\": " << std::stoi(flow_str)
+      int flow_val = 0;
+      try {
+        flow_val = std::stoi(flow_str);
+      } catch (...) {
+        flow_val = 0;
+      }
+      out << "      {\"flow_type\": " << flow_val
           << ", \"control_type\": \"" << ctrl_str << "\",\n"
           << "       \"generated\": " << stats.generated << ",\n"
           << "       \"delivered\": " << stats.delivered << ",\n"
           << "       \"pdr\": " << pdr << ",\n"
           << "       \"delay_ms\": {\"mean\": " << delay_mean << ", \"p95\": " << percentile(stats.delays_ms, 95.0) << "},\n"
-          << "       \"forward_overhead_mean\": " << forward_mean << ",\n"
           << "       \"drops\": {";
       bool first_reason = true;
       for (const auto & [reason, count] : stats.drop_reasons) {
@@ -818,7 +824,9 @@ private:
         first_reason = false;
         out << "\"" << reason << "\": " << count;
       }
-      out << "}}";
+      out << "},\n"
+          << "       \"overhead\": {\"avg_forward_count_delivered\": " << forward_mean << "}\n"
+          << "      }";
     }
     out << "\n    ]\n"
         << "  }\n"
