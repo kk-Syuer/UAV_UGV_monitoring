@@ -76,6 +76,11 @@ struct UavState
 {
   uint8_t charging_state = 0;
   double battery_level = 0.0;
+  uint8_t role = 0;
+  bool backbone_active = false;
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
 };
 
 // Aggregates network telemetry for traffic, charging, and failures.
@@ -90,10 +95,12 @@ public:
     total_charging_sessions_(0),
     avg_charge_wait_sec_(0.0)
   {
-    run_id_ = this->declare_parameter<std::string>("run_id", "default_run");
+    run_id_ = this->declare_parameter<std::string>("run_id", "run0");
     output_dir_ = this->declare_parameter<std::string>("output_dir", "log");
     double csv_write_period_sec = this->declare_parameter<double>("csv_write_period_sec", 10.0);
     decision_timeout_sec_ = this->declare_parameter<double>("decision_timeout_sec", 30.0);
+    status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
+    output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
 
     // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -119,14 +126,18 @@ public:
 
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
-      std::bind(&NetworkMonitorNode::writeOutputs, this));
+      std::bind(&NetworkMonitorNode::writeOutputs, this, false));
 
     charge_timeout_timer_ = this->create_wall_timer(
       std::chrono::seconds(1),
       std::bind(&NetworkMonitorNode::checkChargeTimeouts, this));
 
+    status_timeseries_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(status_sample_period_sec_),
+      std::bind(&NetworkMonitorNode::writeStatusTimeseriesRow, this));
+
     rclcpp::on_shutdown([this]() {
-      this->writeOutputs();
+      this->writeOutputs(true);
     });
 
     RCLCPP_INFO(this->get_logger(), "Network monitor started.");
@@ -134,7 +145,7 @@ public:
 
   ~NetworkMonitorNode()
   {
-    writeOutputs();
+    writeOutputs(true);
   }
 
 private:
@@ -244,7 +255,7 @@ private:
     rec.delivered_time = delivered_wall_time;
 
     rec.hop_count = msg->hop_count;
-    rec.ttl_hops = msg->ttl_hops;
+    rec.ttl_hops = msg->ttl;
 
     double delay_sec = (rec.delivered_time - rec.creation_time).seconds();
     total_delivered_++;
@@ -258,10 +269,10 @@ private:
     delivered_by_flow_control_[msg->flow_type][msg->control_type]++;
 
     RCLCPP_INFO(this->get_logger(),
-                "[DEL] msg_id=%s delay=%.4f s ttl_hops=%d | delivered=%zu / generated=%zu | avg_delay=%.4f s",
+                "[DEL] msg_id=%s delay=%.4f s ttl=%u | delivered=%zu / generated=%zu | avg_delay=%.4f s",
                 msg->msg_id.c_str(),
                 delay_sec,
-                msg->ttl_hops,
+                msg->ttl,
                 total_delivered_,
                 total_generated_,
                 avg_delay_sec_);
@@ -373,7 +384,15 @@ private:
   {
     rclcpp::Time now = this->now();
     auto prev = uav_states_[msg->uav_id];
-    uav_states_[msg->uav_id] = {msg->charging_state, msg->battery_level};
+    UavState state;
+    state.charging_state = msg->charging_state;
+    state.battery_level = msg->battery_level;
+    state.role = msg->role;
+    state.backbone_active = msg->backbone_active;
+    state.x = msg->pose.position.x;
+    state.y = msg->pose.position.y;
+    state.z = msg->pose.position.z;
+    uav_states_[msg->uav_id] = state;
 
     auto req_it = latest_request_by_uav_.find(msg->uav_id);
     if (req_it == latest_request_by_uav_.end()) {
@@ -470,11 +489,11 @@ private:
     it_rec->second.failure_reason = reason;
   }
 
-  void writeOutputs()
+  void writeOutputs(bool final_flush)
   {
     reconcileCausality();
-    writeMessagesCsv();
-    writeChargeEventsCsv();
+    writeMessagesCsv(final_flush);
+    writeChargeEventsCsv(final_flush);
     writeSummaryJson();
   }
 
@@ -492,28 +511,34 @@ private:
     }
   }
 
-  void writeMessagesCsv()
+  void writeMessagesCsv(bool final_flush)
   {
     std::error_code ec;
-    std::filesystem::create_directories(output_dir_, ec);
+    std::filesystem::create_directories(output_root_, ec);
     if (ec) {
       RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_dir_.c_str(), ec.message().c_str());
+                  output_root_.c_str(), ec.message().c_str());
       return;
     }
 
-    auto path = std::filesystem::path(output_dir_) / "messages.csv";
-    std::ofstream out(path, std::ios::trunc);
+    auto path = std::filesystem::path(output_root_) / "messages.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
 
-    out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
-        << "delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
-        << "dropped,drop_reason,dropper_id,ack_time" << std::endl;
+    if (need_header) {
+      out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
+          << "delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
+          << "dropped,drop_reason,dropper_id,ack_time" << std::endl;
+    }
 
     for (const auto & [msg_id, rec] : records_) {
+      if (!final_flush && exported_messages_.count(msg_id)) {
+        continue;
+      }
       double delay_ms = rec.delivered
         ? (rec.delivered_time - rec.creation_time).seconds() * 1000.0
         : -1.0;
@@ -534,31 +559,38 @@ private:
           << rec.dropper_id << ','
           << ack_time
           << std::endl;
+      exported_messages_.insert(msg_id);
     }
   }
 
-  void writeChargeEventsCsv()
+  void writeChargeEventsCsv(bool final_flush)
   {
     std::error_code ec;
-    std::filesystem::create_directories(output_dir_, ec);
+    std::filesystem::create_directories(output_root_, ec);
     if (ec) {
       RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_dir_.c_str(), ec.message().c_str());
+                  output_root_.c_str(), ec.message().c_str());
       return;
     }
 
-    auto path = std::filesystem::path(output_dir_) / "charge_events.csv";
-    std::ofstream out(path, std::ios::trunc);
+    auto path = std::filesystem::path(output_root_) / "charge_events.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
 
-    out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
-        << "request_time,decision_time,dock_start_time,decision_latency_ms,waiting_time_ms,"
-        << "charge_completed,start_battery,end_battery,energy_recovered" << std::endl;
+    if (need_header) {
+      out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
+          << "request_time,decision_time,dock_start_time,decision_latency_ms,waiting_time_ms,"
+          << "charge_completed,start_battery,end_battery,energy_recovered" << std::endl;
+    }
 
     for (const auto & [id, rec] : charge_records_) {
+      if (!final_flush && exported_charge_requests_.count(id)) {
+        continue;
+      }
       double decision_latency_ms = (rec.decision_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0)
         ? (rec.decision_time - rec.request_time).seconds() * 1000.0
         : -1.0;
@@ -585,6 +617,7 @@ private:
           << rec.end_battery << ','
           << energy_recovered
           << std::endl;
+      exported_charge_requests_.insert(id);
     }
   }
 
@@ -604,13 +637,50 @@ private:
     return values[lower] * (1.0 - weight) + values[upper] * weight;
   }
 
+  void writeStatusTimeseriesRow()
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "status_timeseries.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    if (need_header) {
+      out << "time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z" << std::endl;
+    }
+
+    double t = this->now().seconds();
+    for (const auto & [uav_id, st] : uav_states_) {
+      out << t << ","
+          << uav_id << ","
+          << static_cast<int>(st.role) << ","
+          << static_cast<int>(st.charging_state) << ","
+          << st.battery_level << ","
+          << (st.backbone_active ? "true" : "false") << ","
+          << st.x << ","
+          << st.y << ","
+          << st.z
+          << std::endl;
+    }
+  }
+
   void writeSummaryJson()
   {
     std::error_code ec;
-    std::filesystem::create_directories(output_dir_, ec);
+    std::filesystem::create_directories(output_root_, ec);
     if (ec) {
       RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_dir_.c_str(), ec.message().c_str());
+                  output_root_.c_str(), ec.message().c_str());
       return;
     }
 
@@ -618,6 +688,15 @@ private:
     std::vector<double> decision_latencies_ms;
     std::vector<double> waiting_times_ms;
     std::vector<double> energy_recovered;
+    std::unordered_map<std::string, size_t> drop_reason_counts;
+    struct NetStats {
+      size_t generated = 0;
+      size_t delivered = 0;
+      double forward_sum = 0.0;
+      std::vector<double> delays_ms;
+      std::unordered_map<std::string, size_t> drop_reasons;
+    };
+    std::unordered_map<std::string, NetStats> net_stats;
 
     for (const auto & [id, rec] : charge_records_) {
       switch (rec.outcome) {
@@ -642,6 +721,21 @@ private:
       }
     }
 
+    for (const auto & [msg_id, rec] : records_) {
+      std::string key = std::to_string(rec.flow_type) + ":" + rec.control_type;
+      auto & stats = net_stats[key];
+      stats.generated++;
+      if (rec.delivered) {
+        stats.delivered++;
+        stats.forward_sum += static_cast<double>(rec.forward_count);
+        stats.delays_ms.push_back((rec.delivered_time - rec.creation_time).seconds() * 1000.0);
+      }
+      if (rec.dropped && !rec.drop_reason.empty()) {
+        stats.drop_reasons[rec.drop_reason]++;
+        drop_reason_counts[rec.drop_reason]++;
+      }
+    }
+
     double mean_decision_latency = -1.0;
     if (!decision_latencies_ms.empty()) {
       double sum = 0.0;
@@ -663,7 +757,7 @@ private:
       mean_energy = sum / static_cast<double>(energy_recovered.size());
     }
 
-    auto path = std::filesystem::path(output_dir_) / "summary.json";
+    auto path = std::filesystem::path(output_root_) / "summary.json";
     std::ofstream out(path, std::ios::trunc);
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
@@ -692,6 +786,50 @@ private:
         << "    \"energy_recovered\": {\n"
         << "      \"mean\": " << mean_energy << "\n"
         << "    }\n"
+        << "  },\n"
+        << "  \"network\": {\n"
+        << "    \"pdr_by_category\": {\n";
+
+    bool first_cat = true;
+    for (const auto & [key, stats] : net_stats) {
+      if (!first_cat) out << ",\n";
+      first_cat = false;
+      double pdr = stats.generated == 0 ? 0.0 : static_cast<double>(stats.delivered) / static_cast<double>(stats.generated);
+      double delay_mean = -1.0;
+      if (!stats.delays_ms.empty()) {
+        double sum = 0.0;
+        for (double v : stats.delays_ms) sum += v;
+        delay_mean = sum / static_cast<double>(stats.delays_ms.size());
+      }
+      double forward_mean = stats.delivered == 0 ? -1.0 : stats.forward_sum / static_cast<double>(stats.delivered);
+      out << "      \"" << key << "\": {\n"
+          << "        \"generated\": " << stats.generated << ",\n"
+          << "        \"delivered\": " << stats.delivered << ",\n"
+          << "        \"pdr\": " << pdr << ",\n"
+          << "        \"delay_ms\": {\n"
+          << "          \"mean\": " << delay_mean << ",\n"
+          << "          \"p95\": " << percentile(stats.delays_ms, 95.0) << "\n"
+          << "        },\n"
+          << "        \"forward_overhead_mean\": " << forward_mean << ",\n"
+          << "        \"drop_reasons\": {";
+      bool first_reason = true;
+      for (const auto & [reason, count] : stats.drop_reasons) {
+        if (!first_reason) out << ", ";
+        first_reason = false;
+        out << "\"" << reason << "\": " << count;
+      }
+      out << "}\n"
+          << "      }";
+    }
+    out << "\n    },\n"
+        << "    \"drop_reasons_total\": {";
+    bool first_reason_total = true;
+    for (const auto & [reason, count] : drop_reason_counts) {
+      if (!first_reason_total) out << ", ";
+      first_reason_total = false;
+      out << "\"" << reason << "\": " << count;
+    }
+    out << "}\n"
         << "  }\n"
         << "}\n";
   }
@@ -735,8 +873,13 @@ private:
   // Output
   std::string run_id_;
   std::string output_dir_;
+  std::string output_root_;
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
+  rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
+  double status_sample_period_sec_ = 1.0;
+  std::unordered_set<std::string> exported_messages_;
+  std::unordered_set<std::string> exported_charge_requests_;
 };
 
 int main(int argc, char ** argv)
