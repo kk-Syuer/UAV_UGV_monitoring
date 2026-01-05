@@ -1,20 +1,20 @@
-# UAV–UGV Disaster-Area Network Simulation (ROS2)
+# UAV–UGV Disaster-Area Network Simulation (ROS 2)
 
-A modular **ROS2-based simulation framework** for studying **UAV ad-hoc networks**, **UGV charging policies**, **coverage planning**, **routing**, and **environment-dependent behaviour** in disaster scenarios.
+A modular **ROS 2 simulation framework** for studying **UAV ad-hoc networks**, **UGV charging policies**, **coverage planning**, **routing**, **mobility**, and **environment-dependent behaviour** in disaster scenarios.
 
 The system simulates:
 
-* A **backbone** of *cluster-head UAVs (CH)*
+* A **backbone** of *cluster-head UAVs (CHs)* that route data and control traffic
 * **Member UAVs** connected to CHs
 * A **UGV** acting as a mobile charging station
-* A **sink gateway** representing the “Internet”
-* **Mobile phone users**
+* A **sink gateway** representing the “Internet” and deployment gatekeeper
+* **Mobile phone users** that inject traffic
 * A **weather environment** affecting UAV power consumption
-* A **network monitor** collecting metrics
+* A **network monitor** collecting metrics (CSV) under per-run directories
 * A **coverage planner** generating deployment & routing
-* A **visualizer** showing CH, member, sink, and UGV positions
+* A **visualizer** showing CH, member, sink, and UGV positions with backbone state
 
-This repository is designed for **research experiments**, especially on charging scheduling, routing strategies, connectivity robustness, and battery/weather interactions.
+This repository is designed for **research experiments**, especially on charging scheduling, routing strategies, connectivity robustness, battery/weather interactions, and the interplay between deployment acknowledgement and mobility start.
 
 ---
 
@@ -31,9 +31,10 @@ Each UAV runs its own `uav_node` instance with:
 * **Battery model** with temperature-dependent drain
 * **Weather subscription** (temperature affects power usage)
 * **Traffic generation** (if enabled)
-* **Hop-by-hop routing** through CH backbone
-* **Charging request logic**
-* **Charging session execution**
+* **Mobility simulation** with speed/step tuning and per-UAV enable switches
+* **Hop-by-hop routing** through CH backbone (plus per-destination overrides)
+* **Buffering/retry** for control/data frames with TTL- and retry-aware drops
+* **Charging request logic** and **session execution**
 * **Failure detection** (battery dead event)
 
 ### ✔ UGV Charger with multiple scheduling policies
@@ -45,6 +46,8 @@ Each UAV runs its own `uav_node` instance with:
 * EDF (earliest battery depletion first)
 * Dynamic weighted scoring
 * Network-based *charge decision delivery* using control packets
+
+The UGV also computes a **capacity planning hint** (spots needed vs. target utilization), tracks neighbors via periodic status, and can simulate motion/coverage radius when enabled.
 
 The UGV tracks UAV status, queues requests, assigns slots, and emulates charging.
 
@@ -64,6 +67,7 @@ The UGV tracks UAV status, queues requests, assigns slots, and emulates charging
   * Cluster ID
   * CH ID
   * Next hop information
+* Keeps track of expected devices, waits for deployment acknowledgements, and notifies the sink gateway via DEPLOYMENT traffic on the network bus
 
 ### ✔ Traffic forwarding framework
 
@@ -73,7 +77,7 @@ Fully working multi-hop routing:
 * CH → next CH → … → sink
 * CH used as routing hubs
 * Supports control traffic (charging decisions)
-* Sink gateway mirrors deployments onto `/network/traffic` as `TrafficMessage` frames so deployments and acknowledgements traverse the same simulated multi-hop path as data packets
+* Sink gateway and coverage planner inject deployments into the network bus so deployment acknowledgements and control follow the same simulated multi-hop path as data packets
 
 ### ✔ Network Monitor
 
@@ -85,7 +89,7 @@ Fully working multi-hop routing:
 * Average delay
 * Charging request timestamps
 * Charging wait times
-* Charging session counts
+* Charging session counts (per outcome)
 * Battery death count & timestamps
 
 Useful for experiments & performance comparison.
@@ -98,15 +102,16 @@ Python `planner_viz_node` dynamically displays:
 * Member UAVs (green)
 * Sink (blue)
 * UGV (yellow)
-* Auto-updates positions on every deployment message
+* Auto-updates positions on every deployment message and colors backbone-active CHs
 
 ### ✔ Sink Gateway Node
 
 Handles:
 
 * Delivery of packets addressed to the sink
-* Publishing `/network/traffic_delivered` for monitoring
-* Listening to deployment updates for visualization
+* Publishing `/fanet/delivered` for monitoring
+* Mirroring deployments onto `/fanet/network_bus_raw`
+* Collecting DEPLOYMENT acknowledgements and broadcasting START_MOBILITY when everyone is live
 
 ### ✔ Weather Server
 
