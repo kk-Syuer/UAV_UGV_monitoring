@@ -656,12 +656,13 @@ private:
     }
 
     if (need_header) {
-      out << "time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z" << std::endl;
+      out << "run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z" << std::endl;
     }
 
     double t = this->now().seconds();
     for (const auto & [uav_id, st] : uav_states_) {
-      out << t << ","
+      out << run_id_ << ","
+          << t << ","
           << uav_id << ","
           << static_cast<int>(st.role) << ","
           << static_cast<int>(st.charging_state) << ","
@@ -688,7 +689,6 @@ private:
     std::vector<double> decision_latencies_ms;
     std::vector<double> waiting_times_ms;
     std::vector<double> energy_recovered;
-    std::unordered_map<std::string, size_t> drop_reason_counts;
     struct NetStats {
       size_t generated = 0;
       size_t delivered = 0;
@@ -732,7 +732,6 @@ private:
       }
       if (rec.dropped && !rec.drop_reason.empty()) {
         stats.drop_reasons[rec.drop_reason]++;
-        drop_reason_counts[rec.drop_reason]++;
       }
     }
 
@@ -788,7 +787,7 @@ private:
         << "    }\n"
         << "  },\n"
         << "  \"network\": {\n"
-        << "    \"pdr_by_category\": {\n";
+        << "    \"by_category\": [\n";
 
     bool first_cat = true;
     for (const auto & [key, stats] : net_stats) {
@@ -802,34 +801,26 @@ private:
         delay_mean = sum / static_cast<double>(stats.delays_ms.size());
       }
       double forward_mean = stats.delivered == 0 ? -1.0 : stats.forward_sum / static_cast<double>(stats.delivered);
-      out << "      \"" << key << "\": {\n"
-          << "        \"generated\": " << stats.generated << ",\n"
-          << "        \"delivered\": " << stats.delivered << ",\n"
-          << "        \"pdr\": " << pdr << ",\n"
-          << "        \"delay_ms\": {\n"
-          << "          \"mean\": " << delay_mean << ",\n"
-          << "          \"p95\": " << percentile(stats.delays_ms, 95.0) << "\n"
-          << "        },\n"
-          << "        \"forward_overhead_mean\": " << forward_mean << ",\n"
-          << "        \"drop_reasons\": {";
+      auto sep = key.find(':');
+      std::string flow_str = key.substr(0, sep);
+      std::string ctrl_str = (sep == std::string::npos) ? "" : key.substr(sep + 1);
+      out << "      {\"flow_type\": " << std::stoi(flow_str)
+          << ", \"control_type\": \"" << ctrl_str << "\",\n"
+          << "       \"generated\": " << stats.generated << ",\n"
+          << "       \"delivered\": " << stats.delivered << ",\n"
+          << "       \"pdr\": " << pdr << ",\n"
+          << "       \"delay_ms\": {\"mean\": " << delay_mean << ", \"p95\": " << percentile(stats.delays_ms, 95.0) << "},\n"
+          << "       \"forward_overhead_mean\": " << forward_mean << ",\n"
+          << "       \"drops\": {";
       bool first_reason = true;
       for (const auto & [reason, count] : stats.drop_reasons) {
         if (!first_reason) out << ", ";
         first_reason = false;
         out << "\"" << reason << "\": " << count;
       }
-      out << "}\n"
-          << "      }";
+      out << "}}";
     }
-    out << "\n    },\n"
-        << "    \"drop_reasons_total\": {";
-    bool first_reason_total = true;
-    for (const auto & [reason, count] : drop_reason_counts) {
-      if (!first_reason_total) out << ", ";
-      first_reason_total = false;
-      out << "\"" << reason << "\": " << count;
-    }
-    out << "}\n"
+    out << "\n    ]\n"
         << "  }\n"
         << "}\n";
   }
