@@ -1640,6 +1640,7 @@ private:
 
   bool publishToBus(uav_msgs::msg::TrafficMessage msg, bool allow_buffer = false)
   {
+    const bool is_drop_msg = (msg.control_type == "DROP");
     if (!msg.next_hop_id.empty() && !neighborReachable(msg.next_hop_id, this->now())) {
       if (allow_buffer && shouldBuffer(msg)) {
         buffer_manager_.enqueue(msg, this->now(),
@@ -1648,7 +1649,18 @@ private:
           });
         return false;
       }
-      publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
+      if (is_drop_msg) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[DROP] %s could not forward drop report msg_id=%s (ref=%s, reason=%s): "
+                    "next hop %s unreachable",
+                    uav_id_.c_str(),
+                    msg.msg_id.c_str(),
+                    msg.ref_msg_id.c_str(),
+                    msg.drop_reason.c_str(),
+                    msg.next_hop_id.c_str());
+      } else {
+        publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
+      }
       return false;
     }
     return forwardMessage(msg);
