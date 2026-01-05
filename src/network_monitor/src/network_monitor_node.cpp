@@ -126,7 +126,7 @@ public:
 
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
-      std::bind(&NetworkMonitorNode::writeOutputs, this, false));
+      [this]() { this->writeOutputs(false); });
 
     charge_timeout_timer_ = this->create_wall_timer(
       std::chrono::seconds(1),
