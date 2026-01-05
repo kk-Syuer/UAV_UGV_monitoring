@@ -1,6 +1,10 @@
+#include <algorithm>
 #include <chrono>
 #include <exception>
+#include <filesystem>
+#include <fstream>
 #include <memory>
+#include <cmath>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
@@ -10,8 +14,69 @@
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
+#include "uav_msgs/msg/uav_status.hpp"
 
 using std::placeholders::_1;
+
+struct MsgRecord {
+  std::string msg_id;
+  std::string ref_msg_id;
+
+  uint8_t flow_type = 0;
+  std::string control_type;
+  std::string src_id;
+  std::string dst_id;
+
+  rclcpp::Time creation_time;
+  rclcpp::Time first_seen_bus_time;
+  rclcpp::Time delivered_time;
+  rclcpp::Time ack_time;
+
+  int forward_count = 0;
+  int hop_count = -1;
+  int ttl_hops = -1;
+
+  bool delivered = false;
+  bool dropped = false;
+  std::string drop_reason;
+  std::string dropper_id;
+};
+
+enum class ChargeOutcome {
+  PENDING,
+  ACCEPTED,
+  REJECTED,
+  DROPPED,
+  TIMEOUT,
+  STARTED,
+  PREEMPTED,
+  ENERGY_DEPLETED
+};
+
+struct ChargeRecord
+{
+  std::string request_msg_id;
+  std::string uav_id;
+  std::string ugv_id;
+
+  rclcpp::Time request_time;
+  rclcpp::Time decision_time;
+  rclcpp::Time dock_start_time;
+  rclcpp::Time charge_end_time;
+
+  ChargeOutcome outcome = ChargeOutcome::PENDING;
+  std::string failure_reason;
+
+  double start_battery = -1.0;
+  double end_battery = -1.0;
+  bool charge_completed = false;
+};
+
+struct UavState
+{
+  uint8_t charging_state = 0;
+  double battery_level = 0.0;
+};
 
 // Aggregates network telemetry for traffic, charging, and failures.
 class NetworkMonitorNode : public rclcpp::Node
@@ -25,6 +90,11 @@ public:
     total_charging_sessions_(0),
     avg_charge_wait_sec_(0.0)
   {
+    run_id_ = this->declare_parameter<std::string>("run_id", "default_run");
+    output_dir_ = this->declare_parameter<std::string>("output_dir", "log");
+    double csv_write_period_sec = this->declare_parameter<double>("csv_write_period_sec", 10.0);
+    decision_timeout_sec_ = this->declare_parameter<double>("decision_timeout_sec", 30.0);
+
     // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/fanet/network_bus", 100,
@@ -43,7 +113,28 @@ public:
       "/ugv/charge_decisions", 100,
       std::bind(&NetworkMonitorNode::chargeDecisionCallback, this, _1));
 
+    status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
+      "/fanet/status", 200,
+      std::bind(&NetworkMonitorNode::statusCallback, this, _1));
+
+    csv_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(csv_write_period_sec),
+      std::bind(&NetworkMonitorNode::writeOutputs, this));
+
+    charge_timeout_timer_ = this->create_wall_timer(
+      std::chrono::seconds(1),
+      std::bind(&NetworkMonitorNode::checkChargeTimeouts, this));
+
+    rclcpp::on_shutdown([this]() {
+      this->writeOutputs();
+    });
+
     RCLCPP_INFO(this->get_logger(), "Network monitor started.");
+  }
+
+  ~NetworkMonitorNode()
+  {
+    writeOutputs();
   }
 
 private:
@@ -51,85 +142,111 @@ private:
   // Track first-seen messages to compute end-to-end delay.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    if (msg->control_type == "DROP") {
+      if (!msg->ref_msg_id.empty()) {
+        drop_by_ref_[msg->ref_msg_id] = {msg->drop_reason, msg->src_id};
+
+        auto it_charge = charge_records_.find(msg->ref_msg_id);
+        if (it_charge != charge_records_.end() &&
+            !isTerminalOutcome(it_charge->second.outcome)) {
+          it_charge->second.outcome = ChargeOutcome::DROPPED;
+          it_charge->second.failure_reason = msg->drop_reason.empty()
+            ? "UNKNOWN_DROP"
+            : msg->drop_reason;
+        }
+      }
+      return;
+    }
+
+    if (msg->control_type == "ACK") {
+      if (!msg->ref_msg_id.empty()) {
+        ack_by_ref_[msg->ref_msg_id] = this->now();
+      }
+      return;
+    }
+
     rclcpp::Time now = this->now();
-    auto it = traffic_metrics_.find(msg->msg_id);
-    if (it == traffic_metrics_.end()) {
-      TrafficInfo info;
-      info.created = rclcpp::Time(msg->creation_time);
-      info.last_seen = now;
-      info.last_hop_count = msg->hop_count;
-      traffic_metrics_[msg->msg_id] = info;
-      creation_times_[msg->msg_id] = info.created;
+    if (msg->control_type == "CHARGE_REQUEST") {
+      auto & rec = charge_records_[msg->msg_id];
+      rec.request_msg_id = msg->msg_id;
+      rec.uav_id = msg->src_id;
+      rec.ugv_id = msg->dst_id;
+      rec.request_time = now;
+      if (!isTerminalOutcome(rec.outcome) || rec.outcome == ChargeOutcome::PENDING) {
+        rec.outcome = ChargeOutcome::PENDING;
+      }
+      latest_request_by_uav_[rec.uav_id] = msg->msg_id;
+    }
+
+    auto & rec = records_[msg->msg_id];
+    if (rec.msg_id.empty()) {
+      rec.msg_id = msg->msg_id;
+      rec.ref_msg_id = msg->ref_msg_id;
+      rec.flow_type = msg->flow_type;
+      rec.control_type = msg->control_type;
+      rec.src_id = msg->src_id;
+      rec.dst_id = msg->dst_id;
+      rec.creation_time = rclcpp::Time(msg->creation_time);
+      rec.first_seen_bus_time = now;
       total_generated_++;
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
                   msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
                   total_generated_);
-    } else {
-      auto & info = it->second;
-      if (msg->hop_count > info.last_hop_count) {
-        double hop_delay = (now - info.last_seen).seconds();
-        info.hop_delays.push_back(hop_delay);
-        info.last_hop_count = msg->hop_count;
-      }
-      info.last_seen = now;
     }
+    rec.forward_count++;
 
     if (msg->flow_type == 1 && msg->control_type == "FAILURE_EVENT") {
       handleFailureFromTraffic(*msg);
-    }
-
-    if (msg->flow_type == 1 && msg->control_type == "ACK") {
-      std::string ref_id = msg->ref_msg_id;
-      if (ref_id.empty() && !msg->payload.empty()) {
-        auto eq = msg->payload.find('=');
-        if (eq != std::string::npos && eq + 1 < msg->payload.size()) {
-          ref_id = msg->payload.substr(eq + 1);
-        }
-      }
-      if (!ref_id.empty()) {
-        ack_counts_[ref_id]++;
-      }
-    }
-
-    if (msg->flow_type == 1 && msg->control_type == "DROP") {
-      std::string reason = !msg->drop_reason.empty() ? msg->drop_reason
-                          : (!msg->payload.empty() ? msg->payload : "UNKNOWN");
-      std::string ref_id = !msg->ref_msg_id.empty()
-        ? msg->ref_msg_id
-        : (!msg->payload.empty() ? msg->payload.substr(0, msg->payload.find(',')) : "");
-      drop_reasons_[reason]++;
-
-      if (!ref_id.empty() &&
-          (ref_id.find("TP_") != std::string::npos || msg->control_type == "SEARCH_TELEMETRY")) {
-        telemetry_dropped_++;
-        telemetry_drop_reasons_[reason]++;
-      }
-      RCLCPP_WARN(this->get_logger(),
-                  "[DROP] msg_id=%s reason=%s total_reason=%zu",
-                  msg->msg_id.c_str(), reason.c_str(), drop_reasons_[reason]);
     }
   }
 
   // Compute delivery delay when messages arrive at final destination.
   void deliveredCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
-    bool rx_time_valid = !(msg->last_rx_time.sec == 0 && msg->last_rx_time.nanosec == 0);
-    rclcpp::Time delivered_time = rx_time_valid ? rclcpp::Time(msg->last_rx_time) : this->now();
+    rclcpp::Time delivered_wall_time =
+      (msg->last_rx_time.sec == 0 && msg->last_rx_time.nanosec == 0)
+      ? this->now()
+      : rclcpp::Time(msg->last_rx_time);
 
-    rclcpp::Time t_start;
-
-    auto it = creation_times_.find(msg->msg_id);
-    if (it != creation_times_.end()) {
-      t_start = it->second;
-      creation_times_.erase(it);
-    } else {
-      t_start = rclcpp::Time(msg->creation_time);
+    if (msg->control_type == "CHARGE_DECISION" && !msg->ref_msg_id.empty()) {
+      auto & charge_rec = charge_records_[msg->ref_msg_id];
+      if (charge_rec.request_msg_id.empty()) {
+        charge_rec.request_msg_id = msg->ref_msg_id;
+      }
+      if (charge_rec.uav_id.empty()) {
+        charge_rec.uav_id = msg->dst_id;
+      }
+      charge_rec.ugv_id = msg->src_id;
+      charge_rec.decision_time = delivered_wall_time;
+      bool accepted = msg->payload.find("REJECT") == std::string::npos;
+      if (!isTerminalOutcome(charge_rec.outcome)) {
+        charge_rec.outcome = accepted ? ChargeOutcome::ACCEPTED : ChargeOutcome::REJECTED;
+      }
+      if (!accepted) {
+        charge_rec.failure_reason = "REJECTED";
+      }
+      latest_request_by_uav_[charge_rec.uav_id] = msg->ref_msg_id;
     }
 
-    double delay_sec = (delivered_time - t_start).seconds();
+    auto & rec = records_[msg->msg_id];
+    if (rec.msg_id.empty()) {
+      rec.msg_id = msg->msg_id;
+      rec.flow_type = msg->flow_type;
+      rec.control_type = msg->control_type;
+      rec.src_id = msg->src_id;
+      rec.dst_id = msg->dst_id;
+      rec.creation_time = rclcpp::Time(msg->creation_time);
+    }
 
+    rec.delivered = true;
+    rec.delivered_time = delivered_wall_time;
+
+    rec.hop_count = msg->hop_count;
+    rec.ttl_hops = msg->ttl_hops;
+
+    double delay_sec = (rec.delivered_time - rec.creation_time).seconds();
     total_delivered_++;
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
 
@@ -138,32 +255,13 @@ private:
       telemetry_avg_delay_sec_ += (delay_sec - telemetry_avg_delay_sec_) / static_cast<double>(telemetry_delivered_);
     }
 
-    double avg_hop_delay = 0.0;
-    auto it_info = traffic_metrics_.find(msg->msg_id);
-    if (it_info != traffic_metrics_.end()) {
-      if (!it_info->second.hop_delays.empty()) {
-        double sum = 0.0;
-        for (double d : it_info->second.hop_delays) {
-          sum += d;
-        }
-        avg_hop_delay = sum / static_cast<double>(it_info->second.hop_delays.size());
-      }
-      traffic_metrics_.erase(it_info);
-    }
-
-    bool ttl_respected = true;
-    if (msg->ttl != 0 && msg->hop_count > msg->ttl) {
-      ttl_respected = false;
-    }
-
     delivered_by_flow_control_[msg->flow_type][msg->control_type]++;
 
     RCLCPP_INFO(this->get_logger(),
-                "[DEL] msg_id=%s delay=%.4f s avg_hop_delay=%.4f s ttl_ok=%s | delivered=%zu / generated=%zu | avg_delay=%.4f s",
+                "[DEL] msg_id=%s delay=%.4f s ttl_hops=%d | delivered=%zu / generated=%zu | avg_delay=%.4f s",
                 msg->msg_id.c_str(),
                 delay_sec,
-                avg_hop_delay,
-                ttl_respected ? "yes" : "no",
+                msg->ttl_hops,
                 total_delivered_,
                 total_generated_,
                 avg_delay_sec_);
@@ -256,6 +354,7 @@ private:
 
     if (failure_type == 1) {  // BATTERY_DEAD
       battery_dead_count_++;
+      markChargeFailureForUav(msg.src_id, ChargeOutcome::ENERGY_DEPLETED, "ENERGY_DEPLETED");
       RCLCPP_WARN(this->get_logger(),
                   "[FAIL] BATTERY_DEAD from %s at t=%.3f (total=%zu)",
                   msg.src_id.c_str(),
@@ -270,18 +369,339 @@ private:
     }
   }
 
+  void statusCallback(const uav_msgs::msg::UavStatus::SharedPtr msg)
+  {
+    rclcpp::Time now = this->now();
+    auto prev = uav_states_[msg->uav_id];
+    uav_states_[msg->uav_id] = {msg->charging_state, msg->battery_level};
+
+    auto req_it = latest_request_by_uav_.find(msg->uav_id);
+    if (req_it == latest_request_by_uav_.end()) {
+      return;
+    }
+    auto rec_it = charge_records_.find(req_it->second);
+    if (rec_it == charge_records_.end()) {
+      return;
+    }
+    auto & rec = rec_it->second;
+    if (isTerminalOutcome(rec.outcome) && rec.outcome != ChargeOutcome::STARTED) {
+      return;
+    }
+
+    if (rec.outcome == ChargeOutcome::ACCEPTED &&
+        (msg->charging_state == 1 || msg->charging_state == 2)) {
+      rec.outcome = ChargeOutcome::STARTED;
+      rec.dock_start_time = now;
+      rec.start_battery = msg->battery_level;
+    }
+
+    if (rec.outcome == ChargeOutcome::STARTED) {
+      if (!rec.charge_completed &&
+          prev.charging_state == 2 &&
+          msg->charging_state != 2) {
+        rec.charge_completed = true;
+        rec.charge_end_time = now;
+        rec.end_battery = msg->battery_level;
+      }
+    }
+
+    if ((rec.outcome == ChargeOutcome::ACCEPTED || rec.outcome == ChargeOutcome::PENDING) &&
+        msg->charging_state == 3) {
+      rec.outcome = ChargeOutcome::PREEMPTED;
+      rec.failure_reason = "RETURNED_BEFORE_DOCK";
+    }
+  }
+
+  void checkChargeTimeouts()
+  {
+    rclcpp::Time now = this->now();
+    for (auto & [id, rec] : charge_records_) {
+      if ((rec.outcome == ChargeOutcome::PENDING || rec.outcome == ChargeOutcome::ACCEPTED) &&
+          rec.request_time.nanoseconds() != 0 &&
+          rec.decision_time.nanoseconds() == 0) {
+        double wait_sec = (now - rec.request_time).seconds();
+        if (wait_sec > decision_timeout_sec_) {
+          rec.outcome = ChargeOutcome::TIMEOUT;
+          rec.failure_reason = "NO_DECISION";
+        }
+      }
+    }
+  }
+
+  bool isTerminalOutcome(ChargeOutcome outcome) const
+  {
+    return outcome == ChargeOutcome::STARTED ||
+           outcome == ChargeOutcome::REJECTED ||
+           outcome == ChargeOutcome::DROPPED ||
+           outcome == ChargeOutcome::TIMEOUT ||
+           outcome == ChargeOutcome::PREEMPTED ||
+           outcome == ChargeOutcome::ENERGY_DEPLETED;
+  }
+
+  std::string chargeOutcomeToString(ChargeOutcome outcome) const
+  {
+    switch (outcome) {
+      case ChargeOutcome::PENDING: return "PENDING";
+      case ChargeOutcome::ACCEPTED: return "ACCEPTED";
+      case ChargeOutcome::REJECTED: return "REJECTED";
+      case ChargeOutcome::DROPPED: return "ROUTING_DROP";
+      case ChargeOutcome::TIMEOUT: return "TIMEOUT";
+      case ChargeOutcome::STARTED: return "STARTED";
+      case ChargeOutcome::PREEMPTED: return "PREEMPTED";
+      case ChargeOutcome::ENERGY_DEPLETED: return "ENERGY_DEPLETED";
+      default: return "UNKNOWN";
+    }
+  }
+
+  void markChargeFailureForUav(const std::string & uav_id, ChargeOutcome outcome, const std::string & reason)
+  {
+    auto it_req = latest_request_by_uav_.find(uav_id);
+    if (it_req == latest_request_by_uav_.end()) {
+      return;
+    }
+    auto it_rec = charge_records_.find(it_req->second);
+    if (it_rec == charge_records_.end()) {
+      return;
+    }
+    if (isTerminalOutcome(it_rec->second.outcome)) {
+      return;
+    }
+    it_rec->second.outcome = outcome;
+    it_rec->second.failure_reason = reason;
+  }
+
+  void writeOutputs()
+  {
+    reconcileCausality();
+    writeMessagesCsv();
+    writeChargeEventsCsv();
+    writeSummaryJson();
+  }
+
+  void reconcileCausality()
+  {
+    for (auto & [msg_id, rec] : records_) {
+      if (drop_by_ref_.count(msg_id)) {
+        rec.dropped = true;
+        rec.drop_reason = drop_by_ref_[msg_id].first;
+        rec.dropper_id = drop_by_ref_[msg_id].second;
+      }
+      if (ack_by_ref_.count(msg_id)) {
+        rec.ack_time = ack_by_ref_[msg_id];
+      }
+    }
+  }
+
+  void writeMessagesCsv()
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_dir_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_dir_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_dir_) / "messages.csv";
+    std::ofstream out(path, std::ios::trunc);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
+        << "delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
+        << "dropped,drop_reason,dropper_id,ack_time" << std::endl;
+
+    for (const auto & [msg_id, rec] : records_) {
+      double delay_ms = rec.delivered
+        ? (rec.delivered_time - rec.creation_time).seconds() * 1000.0
+        : -1.0;
+      double ack_time = rec.ack_time.nanoseconds() == 0 ? -1.0 : rec.ack_time.seconds();
+      out << run_id_ << ','
+          << msg_id << ','
+          << static_cast<int>(rec.flow_type) << ','
+          << rec.control_type << ','
+          << rec.src_id << ','
+          << rec.dst_id << ','
+          << (rec.delivered ? "true" : "false") << ','
+          << delay_ms << ','
+          << rec.forward_count << ','
+          << rec.hop_count << ','
+          << rec.ttl_hops << ','
+          << (rec.dropped ? "true" : "false") << ','
+          << rec.drop_reason << ','
+          << rec.dropper_id << ','
+          << ack_time
+          << std::endl;
+    }
+  }
+
+  void writeChargeEventsCsv()
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_dir_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_dir_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_dir_) / "charge_events.csv";
+    std::ofstream out(path, std::ios::trunc);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
+        << "request_time,decision_time,dock_start_time,decision_latency_ms,waiting_time_ms,"
+        << "charge_completed,start_battery,end_battery,energy_recovered" << std::endl;
+
+    for (const auto & [id, rec] : charge_records_) {
+      double decision_latency_ms = (rec.decision_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0)
+        ? (rec.decision_time - rec.request_time).seconds() * 1000.0
+        : -1.0;
+      double waiting_time_ms = (rec.dock_start_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0)
+        ? (rec.dock_start_time - rec.request_time).seconds() * 1000.0
+        : -1.0;
+      double energy_recovered = (rec.charge_completed && rec.end_battery >= 0.0 && rec.start_battery >= 0.0)
+        ? (rec.end_battery - rec.start_battery)
+        : -1.0;
+
+      out << run_id_ << ','
+          << rec.request_msg_id << ','
+          << rec.uav_id << ','
+          << rec.ugv_id << ','
+          << chargeOutcomeToString(rec.outcome) << ','
+          << rec.failure_reason << ','
+          << rec.request_time.seconds() << ','
+          << rec.decision_time.seconds() << ','
+          << rec.dock_start_time.seconds() << ','
+          << decision_latency_ms << ','
+          << waiting_time_ms << ','
+          << (rec.charge_completed ? "true" : "false") << ','
+          << rec.start_battery << ','
+          << rec.end_battery << ','
+          << energy_recovered
+          << std::endl;
+    }
+  }
+
+  double percentile(std::vector<double> values, double pct)
+  {
+    if (values.empty()) {
+      return -1.0;
+    }
+    std::sort(values.begin(), values.end());
+    double idx = (pct / 100.0) * (values.size() - 1);
+    size_t lower = static_cast<size_t>(std::floor(idx));
+    size_t upper = static_cast<size_t>(std::ceil(idx));
+    if (upper >= values.size()) {
+      upper = values.size() - 1;
+    }
+    double weight = idx - lower;
+    return values[lower] * (1.0 - weight) + values[upper] * weight;
+  }
+
+  void writeSummaryJson()
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_dir_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_dir_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    size_t accepted = 0, rejected = 0, dropped = 0, timeouts = 0, started = 0, preempted = 0, energy_depleted = 0;
+    std::vector<double> decision_latencies_ms;
+    std::vector<double> waiting_times_ms;
+    std::vector<double> energy_recovered;
+
+    for (const auto & [id, rec] : charge_records_) {
+      switch (rec.outcome) {
+        case ChargeOutcome::ACCEPTED: accepted++; break;
+        case ChargeOutcome::REJECTED: rejected++; break;
+        case ChargeOutcome::DROPPED: dropped++; break;
+        case ChargeOutcome::TIMEOUT: timeouts++; break;
+        case ChargeOutcome::STARTED: started++; break;
+        case ChargeOutcome::PREEMPTED: preempted++; break;
+        case ChargeOutcome::ENERGY_DEPLETED: energy_depleted++; break;
+        default: break;
+      }
+
+      if (rec.decision_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0) {
+        decision_latencies_ms.push_back((rec.decision_time - rec.request_time).seconds() * 1000.0);
+      }
+      if (rec.dock_start_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0) {
+        waiting_times_ms.push_back((rec.dock_start_time - rec.request_time).seconds() * 1000.0);
+      }
+      if (rec.charge_completed && rec.end_battery >= 0.0 && rec.start_battery >= 0.0) {
+        energy_recovered.push_back(rec.end_battery - rec.start_battery);
+      }
+    }
+
+    double mean_decision_latency = -1.0;
+    if (!decision_latencies_ms.empty()) {
+      double sum = 0.0;
+      for (double v : decision_latencies_ms) sum += v;
+      mean_decision_latency = sum / static_cast<double>(decision_latencies_ms.size());
+    }
+
+    double mean_wait = -1.0;
+    if (!waiting_times_ms.empty()) {
+      double sum = 0.0;
+      for (double v : waiting_times_ms) sum += v;
+      mean_wait = sum / static_cast<double>(waiting_times_ms.size());
+    }
+
+    double mean_energy = -1.0;
+    if (!energy_recovered.empty()) {
+      double sum = 0.0;
+      for (double v : energy_recovered) sum += v;
+      mean_energy = sum / static_cast<double>(energy_recovered.size());
+    }
+
+    auto path = std::filesystem::path(output_dir_) / "summary.json";
+    std::ofstream out(path, std::ios::trunc);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    out << "{\n"
+        << "  \"run_id\": \"" << run_id_ << "\",\n"
+        << "  \"charging\": {\n"
+        << "    \"requests_total\": " << charge_records_.size() << ",\n"
+        << "    \"accepted\": " << accepted << ",\n"
+        << "    \"rejected\": " << rejected << ",\n"
+        << "    \"dropped\": " << dropped << ",\n"
+        << "    \"timeouts\": " << timeouts << ",\n"
+        << "    \"started\": " << started << ",\n"
+        << "    \"preempted\": " << preempted << ",\n"
+        << "    \"energy_depleted\": " << energy_depleted << ",\n"
+        << "    \"success_rate\": " << (charge_records_.empty() ? 0.0 : static_cast<double>(started) / static_cast<double>(charge_records_.size())) << ",\n"
+        << "    \"decision_latency_ms\": {\n"
+        << "      \"mean\": " << mean_decision_latency << ",\n"
+        << "      \"p95\": " << percentile(decision_latencies_ms, 95.0) << "\n"
+        << "    },\n"
+        << "    \"waiting_time_ms\": {\n"
+        << "      \"mean\": " << mean_wait << "\n"
+        << "    },\n"
+        << "    \"energy_recovered\": {\n"
+        << "      \"mean\": " << mean_energy << "\n"
+        << "    }\n"
+        << "  }\n"
+        << "}\n";
+  }
+
 
   // ---- Members ----
   // Traffic
-  std::unordered_map<std::string, rclcpp::Time> creation_times_;
-  struct TrafficInfo
-  {
-    rclcpp::Time created;
-    rclcpp::Time last_seen;
-    uint32_t last_hop_count = 0;
-    std::vector<double> hop_delays;
-  };
-  std::unordered_map<std::string, TrafficInfo> traffic_metrics_;
+  std::unordered_map<std::string, MsgRecord> records_;
+  std::unordered_map<std::string, std::pair<std::string, std::string>> drop_by_ref_;
+  std::unordered_map<std::string, rclcpp::Time> ack_by_ref_;
   size_t total_generated_;
   size_t total_delivered_;
   double avg_delay_sec_;
@@ -290,10 +710,10 @@ private:
   size_t telemetry_dropped_ = 0;
   std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
   std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
-  std::unordered_map<std::string, size_t> ack_counts_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
+  rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
 
   // Failures
   size_t battery_dead_count_ = 0;
@@ -301,12 +721,22 @@ private:
   std::unordered_map<std::string, size_t> drop_reasons_;
 
   // Charging
+  std::unordered_map<std::string, ChargeRecord> charge_records_;
+  std::unordered_map<std::string, std::string> latest_request_by_uav_;
+  std::unordered_map<std::string, UavState> uav_states_;
   std::unordered_map<std::string, rclcpp::Time> request_times_;
   size_t total_charging_sessions_;
   double avg_charge_wait_sec_;
+  double decision_timeout_sec_ = 30.0;
 
   rclcpp::Subscription<uav_msgs::msg::ChargeRequest>::SharedPtr  charge_request_sub_;
   rclcpp::Subscription<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_sub_;
+
+  // Output
+  std::string run_id_;
+  std::string output_dir_;
+  rclcpp::TimerBase::SharedPtr csv_timer_;
+  rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
 };
 
 int main(int argc, char ** argv)
