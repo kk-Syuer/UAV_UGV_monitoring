@@ -18,7 +18,7 @@ This repository is designed for **research experiments**, especially on charging
 
 ---
 
-## ✨ Key Features (Implemented so far)
+##  Key Features (Implemented so far)
 
 ### ✔ Multi-role UAV simulation
 
@@ -37,7 +37,7 @@ Each UAV runs its own `uav_node` instance with:
 * **Charging request logic** and **session execution**
 * **Failure detection** (battery dead event)
 
-### ✔ UGV Charger with multiple scheduling policies
+### UGV Charger with multiple scheduling policies
 
 `ugv_charger_node` supports:
 
@@ -51,7 +51,7 @@ The UGV also computes a **capacity planning hint** (spots needed vs. target util
 
 The UGV tracks UAV status, queues requests, assigns slots, and emulates charging.
 
-### ✔ Coverage Planner (deployment + routing)
+### Coverage Planner (deployment + routing)
 
 `coverage_planner_node`:
 
@@ -69,7 +69,7 @@ The UGV tracks UAV status, queues requests, assigns slots, and emulates charging
   * Next hop information
 * Keeps track of expected devices, waits for deployment acknowledgements, and notifies the sink gateway via DEPLOYMENT traffic on the network bus
 
-### ✔ Traffic forwarding framework
+### Traffic forwarding framework
 
 Fully working multi-hop routing:
 
@@ -79,7 +79,7 @@ Fully working multi-hop routing:
 * Supports control traffic (charging decisions)
 * Sink gateway and coverage planner inject deployments into the network bus so deployment acknowledgements and control follow the same simulated multi-hop path as data packets
 
-### ✔ Network Monitor
+### Network Monitor
 
 `network_monitor_node` computes:
 
@@ -94,7 +94,7 @@ Fully working multi-hop routing:
 
 Useful for experiments & performance comparison.
 
-### ✔ Planner Visualization (2D GUI)
+### Planner Visualization (2D GUI)
 
 Python `planner_viz_node` dynamically displays:
 
@@ -104,7 +104,7 @@ Python `planner_viz_node` dynamically displays:
 * UGV (yellow)
 * Auto-updates positions on every deployment message and colors backbone-active CHs
 
-### ✔ Sink Gateway Node
+### Sink Gateway Node
 
 Handles:
 
@@ -113,18 +113,18 @@ Handles:
 * Mirroring deployments onto `/fanet/network_bus_raw`
 * Collecting DEPLOYMENT acknowledgements and broadcasting START_MOBILITY when everyone is live
 
-### ✔ Weather Server
+### Weather Server
 
 Publishes `WeatherStatus` (temperature, etc.).
 UAVs use temperature to scale energy consumption via a piecewise function.
 
-### ✔ User Device Simulator
+### User Device Simulator
 
 Simulates mobile phones generating traffic into the UAV network.
 
 ---
 
-# 🗂 Project Structure Overview
+# Project Structure Overview
 
 ```
 UAV_UGV_netmonitoring/
@@ -149,7 +149,7 @@ UAV_UGV_netmonitoring/
 
 ---
 
-# 🚀 How It Works (Data Flow)
+# How It Works (Data Flow)
 
 ### 1. **Coverage Planner starts first**
 
@@ -189,7 +189,7 @@ Per-packet and per-session metrics.
 
 ---
 
-## ℹ️ Operational Notes
+## Operational Notes
 
 ### Deployment delivery and acknowledgements
 
@@ -216,7 +216,7 @@ Per-packet and per-session metrics.
 
 ---
 
-# 🧪 Running the System (Example)
+# Running the System (Example)
 
 ### Build and source
 
@@ -267,7 +267,7 @@ ros2 run planner_viz planner_viz_node
 
 ---
 
-# 🎯 Sample 3×CH + 2×Member Deployment
+# Sample 3×CH + 2×Member Deployment
 
 Launch sequence for three cluster heads, two members, one sink, one UGV, the fleet
 visualizer, and the coverage planner:
@@ -306,7 +306,7 @@ ros2 run planner_viz fleet_viz_node
 
 ---
 
-# 📊 What You Can Study With This Framework
+# What You Can Study With This Framework
 
 * Packet delivery rate vs. routing quality
 * Delay distribution over multi-hop backbone
@@ -315,46 +315,6 @@ ros2 run planner_viz fleet_viz_node
 * Number of battery-dead events
 * Impact of CH topology on coverage
 * Routing robustness (future CH-failure handling)
-
----
-
-# 🛠️ Next Steps (Roadmap)
-
-### **Routing**
-
-* Extend Dijkstra to compute `next_hop_to_ugv`
-* Introduce a generic routing table per CH
-* Add dynamic re-routing when CH fails
-
-### **Cluster Management**
-
-* Replace static cluster manager with **geometry-based clustering**
-* Add periodic membership recalculation
-
-### **Mobility & Simulation**
-
-* Introduce simple motion model for:
-
-  * UAV movement
-  * UGV travelling to charging locations
-* Later: integrate with Gazebo
-
-### **Visualizer**
-
-* Add path traces
-* Add battery colour indicators
-* Add animation for motion
-
-### **Metrics**
-
-* Export to CSV for offline analysis
-* Add end-to-end path logging
-
-### **Robustness**
-
-* Fault injector should trigger full topology recomputation
-
----
 
 # 📎 License
 
