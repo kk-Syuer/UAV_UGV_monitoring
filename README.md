@@ -122,6 +122,10 @@ UAVs use temperature to scale energy consumption via a piecewise function.
 
 Simulates mobile phones generating traffic into the UAV network.
 
+### ✔ Weather-Driven Fault Injector
+
+`fault_injector_node` listens to `/environment/weather` and probabilistically drops network frames based on wind, rain, and temperature. A base drop rate (`p0`) is augmented by quadratic wind/rain ratios (`aw`, `ar`) and a temperature deviation term (`at` × |temp−`temp_opt`| / `temp_span`), clamped at `p_max`. Separate multipliers let you amplify or dampen control vs. data drops, while deployment and charge-decision controls can be protected. Optional delivered-stream interception (`drop_delivered:=true`) forces even “delivered” packets through the injector, and every drop emits a `DROP` control report to the network monitor for accounting.
+
 ---
 
 # Project Structure Overview
