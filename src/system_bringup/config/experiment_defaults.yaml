@@ -8,6 +8,10 @@ network:
   neighbor_timeout_sec: 3.0
   comm_radius_m: 400.0
 
+monitor:
+  max_runtime_sec: 0.0
+  stop_on_backbone_loss: false
+
 weather:
   enable: true
   publish_period_sec: 1.0
@@ -32,6 +36,13 @@ fault_injector:
 
 coverage_planner:
   enable: true
+
+planner_viz:
+  enable: true
+
+ch_manager:
+  enable: true
+  cluster_prefix: cluster
 
 traffic:
   user_device_enable: true

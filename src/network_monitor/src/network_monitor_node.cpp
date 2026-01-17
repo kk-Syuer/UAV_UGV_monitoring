@@ -100,7 +100,11 @@ public:
     double csv_write_period_sec = this->declare_parameter<double>("csv_write_period_sec", 10.0);
     decision_timeout_sec_ = this->declare_parameter<double>("decision_timeout_sec", 30.0);
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
+    max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
+    stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
+    backbone_ids_ = this->declare_parameter<std::vector<std::string>>("backbone_ids", {});
     output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
+    start_time_ = this->now();
 
     // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -135,6 +139,10 @@ public:
     status_timeseries_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(status_sample_period_sec_),
       std::bind(&NetworkMonitorNode::writeStatusTimeseriesRow, this));
+
+    shutdown_check_timer_ = this->create_wall_timer(
+      std::chrono::seconds(1),
+      std::bind(&NetworkMonitorNode::checkShutdownConditions, this));
 
     rclcpp::on_shutdown([this]() {
       this->writeOutputs(true);
@@ -365,6 +373,7 @@ private:
 
     if (failure_type == 1) {  // BATTERY_DEAD
       battery_dead_count_++;
+      dead_uavs_.insert(msg.src_id);
       markChargeFailureForUav(msg.src_id, ChargeOutcome::ENERGY_DEPLETED, "ENERGY_DEPLETED");
       RCLCPP_WARN(this->get_logger(),
                   "[FAIL] BATTERY_DEAD from %s at t=%.3f (total=%zu)",
@@ -443,6 +452,36 @@ private:
           rec.outcome = ChargeOutcome::TIMEOUT;
           rec.failure_reason = "NO_DECISION";
         }
+      }
+    }
+  }
+
+  void checkShutdownConditions()
+  {
+    if (max_runtime_sec_ > 0.0) {
+      const double elapsed = (this->now() - start_time_).seconds();
+      if (elapsed >= max_runtime_sec_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[SHUTDOWN] max_runtime_sec reached (%.1f >= %.1f).",
+                    elapsed,
+                    max_runtime_sec_);
+        rclcpp::shutdown();
+        return;
+      }
+    }
+
+    if (stop_on_backbone_loss_ && !backbone_ids_.empty()) {
+      bool all_dead = true;
+      for (const auto & id : backbone_ids_) {
+        if (dead_uavs_.find(id) == dead_uavs_.end()) {
+          all_dead = false;
+          break;
+        }
+      }
+      if (all_dead) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[SHUTDOWN] all backbone UAVs reported dead.");
+        rclcpp::shutdown();
       }
     }
   }
@@ -855,6 +894,7 @@ private:
   // Failures
   size_t battery_dead_count_ = 0;
   std::unordered_set<std::string> seen_failure_ids_;
+  std::unordered_set<std::string> dead_uavs_;
   std::unordered_map<std::string, size_t> drop_reasons_;
 
   // Charging
@@ -876,9 +916,15 @@ private:
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
+  rclcpp::TimerBase::SharedPtr shutdown_check_timer_;
   double status_sample_period_sec_ = 1.0;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
+
+  rclcpp::Time start_time_;
+  double max_runtime_sec_ = 0.0;
+  bool stop_on_backbone_loss_ = false;
+  std::vector<std::string> backbone_ids_;
 };
 
 int main(int argc, char ** argv)
