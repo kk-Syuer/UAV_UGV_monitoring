@@ -9,6 +9,7 @@ import matplotlib.pyplot as plt
 from geometry_msgs.msg import Pose
 from uav_msgs.msg import ChargeDecision
 from uav_msgs.msg import ChargeRequest
+from uav_msgs.msg import ClusterInfo
 from uav_msgs.msg import TaskPointArray
 from uav_msgs.msg import TrafficMessage
 from uav_msgs.msg import UavDeployment
@@ -41,6 +42,8 @@ class FleetVizNode(Node):
             TrafficMessage, '/fanet/network_bus', self.traffic_cb, 50)
         self.delivered_sub = self.create_subscription(
             TrafficMessage, '/fanet/delivered', self.delivered_cb, 50)
+        self.cluster_info_sub = self.create_subscription(
+            ClusterInfo, '/ch_manager/cluster_info', self.cluster_info_cb, 20)
 
         # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
@@ -57,11 +60,19 @@ class FleetVizNode(Node):
         self.pending_charges: Dict[str, float] = {}
         self.latest_policy = 'n/a'
 
+        # Control-plane snapshots.
+        self.cluster_info = {}
+        self.last_cluster_info_time = None
+        self.last_task_points_time = None
+        self.last_task_points_count = 0
+        self.last_deployment_time = None
+        self.last_deployment_target = None
+
         # Plot setup for the main canvas and info panels.
         plt.ion()
-        self.fig = plt.figure(figsize=(14, 8))
+        self.fig = plt.figure(figsize=(14, 8), constrained_layout=True)
         gs = self.fig.add_gridspec(
-            3, 2, width_ratios=[3.3, 1.2], height_ratios=[1.2, 1.1, 1.0]
+            3, 2, width_ratios=[3.3, 1.2], height_ratios=[1.25, 1.05, 0.9]
         )
 
         # main grid (left column spans all rows)
@@ -121,6 +132,8 @@ class FleetVizNode(Node):
 
     def deployment_cb(self, msg: UavDeployment):
         """Capture sink/UGV deployments for map anchors."""
+        self.last_deployment_time = self._now_sec()
+        self.last_deployment_target = msg.uav_id
         if msg.uav_id == 'sink_gateway':
             self.sink_pose = msg.target_pose
         elif msg.uav_id == 'ugv':
@@ -144,6 +157,18 @@ class FleetVizNode(Node):
 
     def task_point_cb(self, msg: TaskPointArray):
         self.task_points = list(msg.tasks)
+        self.last_task_points_time = self._now_sec()
+        self.last_task_points_count = len(self.task_points)
+
+    def cluster_info_cb(self, msg: ClusterInfo):
+        self.cluster_info[msg.cluster_id] = msg
+        self.last_cluster_info_time = self._now_sec()
+
+    def delivered_cb(self, msg: TrafficMessage):
+        now = self._now_sec()
+        self.delivered_total += 1
+        self.last_delivered_time = now
+        self._record_timestamp(self.delivered_timestamps, now)
 
     def delivered_cb(self, msg: TrafficMessage):
         now = self._now_sec()
@@ -378,6 +403,7 @@ class FleetVizNode(Node):
                 f"  UAVs: {len(self.uav_states)} | CH: {num_ch} | MEM: {num_mem} | "
                 f"Backbone: {num_backbone}"
             )
+            max_rows = 6
             for uid in sorted(self.uav_states.keys()):
                 st = self.uav_states[uid]
                 px = st.pose.position.x
@@ -387,7 +413,7 @@ class FleetVizNode(Node):
                     f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | "
                     f"{st.battery_level:.1f}% | cap {st.battery_capacity:.1f} | "
                     f"comm {comm_label}")
-                if len(info_lines) > 12:
+                if len(info_lines) > (6 + max_rows):
                     info_lines.append('  ...')
                     break
         else:
@@ -401,6 +427,27 @@ class FleetVizNode(Node):
                 f"UGV position: ({self.ugv_pose.position.x:.1f}, {self.ugv_pose.position.y:.1f})")
         else:
             info_lines.append('UGV position: (pending deployment)')
+
+        # Control plane status
+        info_lines.append('')
+        info_lines.append('Control status')
+        if self.cluster_info:
+            ch_ids = {info.ch_id for info in self.cluster_info.values() if info.ch_id}
+            info_lines.append(
+                f"  CH manager: {len(self.cluster_info)} clusters | CHs: {len(ch_ids)}"
+            )
+        else:
+            info_lines.append("  CH manager: (no cluster info)")
+        info_lines.append(f"  CH update age: {self._format_age(self.last_cluster_info_time)}")
+        info_lines.append(
+            f"  Planner tasks: {self.last_task_points_count} | "
+            f"age: {self._format_age(self.last_task_points_time)}"
+        )
+        deployment_target = self.last_deployment_target or "n/a"
+        info_lines.append(
+            f"  Last deploy: {deployment_target} | "
+            f"age: {self._format_age(self.last_deployment_time)}"
+        )
 
         self.info_ax.text(
             0.02, 0.98, '\n'.join(info_lines),
@@ -423,7 +470,7 @@ class FleetVizNode(Node):
         drop_ratio = (self.drop_total / self.traffic_total) if self.traffic_total > 0 else 0.0
         top_controls = sorted(
             self.control_type_counts.items(), key=lambda item: item[1], reverse=True
-        )[:5]
+        )[:3]
         top_drop_reasons = sorted(
             self.drop_reason_counts.items(), key=lambda item: item[1], reverse=True
         )[:3]
@@ -475,7 +522,8 @@ class FleetVizNode(Node):
             '',
             f"Scheduling: {self.latest_policy}",
             '',
-            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f}) / {self.target_utilization:.2f})",
+            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
+            f" {self.target_utilization:.2f})",
             f"  spots now: {spots_now}"
         ]
         if self.pending_charges:
@@ -485,7 +533,7 @@ class FleetVizNode(Node):
                 queue_lines.append(f"    - {uid}")
         self.queue_ax.text(
             0.02, 0.98, '\n'.join(queue_lines),
-            va='top', ha='left', color='white', fontsize=10,
+            va='top', ha='left', color='white', fontsize=9,
             fontfamily='monospace', weight='bold',
             bbox=dict(boxstyle='round', facecolor='#111111', edgecolor='#333333', alpha=0.9)
         )
