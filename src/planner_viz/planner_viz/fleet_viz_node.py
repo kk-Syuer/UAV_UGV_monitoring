@@ -1,3 +1,4 @@
+from collections import defaultdict, deque
 from typing import Dict
 
 import rclpy
@@ -38,6 +39,8 @@ class FleetVizNode(Node):
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
         self.traffic_sub = self.create_subscription(
             TrafficMessage, '/fanet/network_bus', self.traffic_cb, 50)
+        self.delivered_sub = self.create_subscription(
+            TrafficMessage, '/fanet/delivered', self.delivered_cb, 50)
 
         # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
@@ -56,19 +59,22 @@ class FleetVizNode(Node):
 
         # Plot setup for the main canvas and info panels.
         plt.ion()
-        self.fig = plt.figure(figsize=(12, 7))
-        gs = self.fig.add_gridspec(2, 2, width_ratios=[3.0, 1.1], height_ratios=[2.2, 1.0])
+        self.fig = plt.figure(figsize=(14, 8), constrained_layout=True)
+        gs = self.fig.add_gridspec(
+            3, 2, width_ratios=[3.3, 1.2], height_ratios=[1.25, 1.05, 0.9]
+        )
 
-        # main grid
+        # main grid (left column spans all rows)
         self.ax = self.fig.add_subplot(gs[:, 0])
         self.ax.set_xlabel('X [m]')
         self.ax.set_ylabel('Y [m]')
         self.ax.set_title('Fleet live view')
 
-        # info panels
+        # info panels (right column)
         self.info_ax = self.fig.add_subplot(gs[0, 1])
-        self.queue_ax = self.fig.add_subplot(gs[1, 1])
-        for panel in (self.info_ax, self.queue_ax):
+        self.net_ax = self.fig.add_subplot(gs[1, 1])
+        self.queue_ax = self.fig.add_subplot(gs[2, 1])
+        for panel in (self.info_ax, self.net_ax, self.queue_ax):
             panel.axis('off')
 
         # dark background for consistent contrast with white text
@@ -86,6 +92,21 @@ class FleetVizNode(Node):
         self.charge_time_ch_min = float(self.declare_parameter('charge_time_ch_min', 30.0).value)
         self.flight_time_mem_min = float(self.declare_parameter('flight_time_mem_min', 45.0).value)
         self.charge_time_mem_min = float(self.declare_parameter('charge_time_mem_min', 20.0).value)
+
+        # Network stats for debug panels.
+        self.traffic_total = 0
+        self.delivered_total = 0
+        self.drop_total = 0
+        self.ack_total = 0
+        self.control_type_counts = defaultdict(int)
+        self.drop_reason_counts = defaultdict(int)
+        self.last_msg_time = None
+        self.last_drop_time = None
+        self.last_delivered_time = None
+        self.rate_window_sec = 10.0
+        self.msg_timestamps = deque()
+        self.drop_timestamps = deque()
+        self.delivered_timestamps = deque()
 
         # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
@@ -124,6 +145,12 @@ class FleetVizNode(Node):
     def task_point_cb(self, msg: TaskPointArray):
         self.task_points = list(msg.tasks)
 
+    def delivered_cb(self, msg: TrafficMessage):
+        now = self._now_sec()
+        self.delivered_total += 1
+        self.last_delivered_time = now
+        self._record_timestamp(self.delivered_timestamps, now)
+
     def color_for_cluster(self, cluster_id: str) -> str:
         """Deterministic color mapping for cluster IDs."""
         if not cluster_id:
@@ -135,6 +162,20 @@ class FleetVizNode(Node):
 
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
+        now = self._now_sec()
+        self.traffic_total += 1
+        self.control_type_counts[msg.control_type] += 1
+        self.last_msg_time = now
+        self._record_timestamp(self.msg_timestamps, now)
+
+        if msg.control_type == 'DROP':
+            self.drop_total += 1
+            self.drop_reason_counts[msg.drop_reason or 'UNKNOWN'] += 1
+            self.last_drop_time = now
+            self._record_timestamp(self.drop_timestamps, now)
+            return
+        if msg.control_type == 'ACK':
+            self.ack_total += 1
         if msg.control_type == 'CHARGE_REQUEST':
             self.pending_charges[msg.src_id] = (
                 msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
@@ -221,6 +262,26 @@ class FleetVizNode(Node):
             num_spots = 1
         return num_spots
 
+    def _now_sec(self) -> float:
+        return self.get_clock().now().nanoseconds * 1e-9
+
+    def _record_timestamp(self, timestamps: deque, now: float) -> None:
+        timestamps.append(now)
+        self._prune_timestamps(timestamps, now)
+
+    def _prune_timestamps(self, timestamps: deque, now: float) -> None:
+        cutoff = now - self.rate_window_sec
+        while timestamps and timestamps[0] < cutoff:
+            timestamps.popleft()
+
+    def _format_age(self, last_time: float) -> str:
+        if last_time is None:
+            return "n/a"
+        age = self._now_sec() - last_time
+        if age < 0:
+            age = 0.0
+        return f"{age:.1f}s"
+
     # --- plotting ---
 
     def update_plot(self):
@@ -294,6 +355,7 @@ class FleetVizNode(Node):
         # info panels --------------------------------------------------
         self.info_ax.cla()
         self.info_ax.axis('off')
+        self.info_ax.set_facecolor('#111111')
         info_lines = []
         # Weather
         if self.weather:
@@ -308,7 +370,15 @@ class FleetVizNode(Node):
         # UAV status summary
         if self.uav_states:
             info_lines.append('')
-            info_lines.append('UAV status (pos [m], batt %)')
+            info_lines.append('Fleet status (pos [m], batt %)')
+            num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
+            num_mem = sum(1 for st in self.uav_states.values() if st.role == 0)
+            num_backbone = sum(1 for st in self.uav_states.values() if st.backbone_active)
+            info_lines.append(
+                f"  UAVs: {len(self.uav_states)} | CH: {num_ch} | MEM: {num_mem} | "
+                f"Backbone: {num_backbone}"
+            )
+            max_rows = 8
             for uid in sorted(self.uav_states.keys()):
                 st = self.uav_states[uid]
                 px = st.pose.position.x
@@ -318,7 +388,7 @@ class FleetVizNode(Node):
                     f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | "
                     f"{st.battery_level:.1f}% | cap {st.battery_capacity:.1f} | "
                     f"comm {comm_label}")
-                if len(info_lines) > 12:
+                if len(info_lines) > (6 + max_rows):
                     info_lines.append('  ...')
                     break
         else:
@@ -333,13 +403,68 @@ class FleetVizNode(Node):
         else:
             info_lines.append('UGV position: (pending deployment)')
 
-        self.info_ax.text(0.02, 0.98, '\n'.join(info_lines),
-                          va='top', ha='left', color='white', fontsize=9,
-                          fontfamily='monospace')
+        self.info_ax.text(
+            0.02, 0.98, '\n'.join(info_lines),
+            va='top', ha='left', color='white', fontsize=9,
+            fontfamily='monospace',
+            bbox=dict(boxstyle='round', facecolor='#111111', edgecolor='#333333', alpha=0.9)
+        )
+
+        # network panel -----------------------------------------------
+        self.net_ax.cla()
+        self.net_ax.axis('off')
+        self.net_ax.set_facecolor('#111111')
+        now = self._now_sec()
+        self._prune_timestamps(self.msg_timestamps, now)
+        self._prune_timestamps(self.drop_timestamps, now)
+        self._prune_timestamps(self.delivered_timestamps, now)
+        msg_rate = len(self.msg_timestamps) / self.rate_window_sec
+        drop_rate = len(self.drop_timestamps) / self.rate_window_sec
+        delivered_rate = len(self.delivered_timestamps) / self.rate_window_sec
+        drop_ratio = (self.drop_total / self.traffic_total) if self.traffic_total > 0 else 0.0
+        top_controls = sorted(
+            self.control_type_counts.items(), key=lambda item: item[1], reverse=True
+        )[:3]
+        top_drop_reasons = sorted(
+            self.drop_reason_counts.items(), key=lambda item: item[1], reverse=True
+        )[:3]
+        net_lines = [
+            'Network routing',
+            f"  bus msgs: {self.traffic_total}",
+            f"  delivered: {self.delivered_total}",
+            f"  drops: {self.drop_total} ({drop_ratio:.1%})",
+            f"  acks: {self.ack_total}",
+            '',
+            f"Rates (last {self.rate_window_sec:.0f}s)",
+            f"  bus: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s",
+            f"  drops: {drop_rate:.1f}/s",
+            '',
+            f"Last msg age: {self._format_age(self.last_msg_time)}",
+            f"Last drop age: {self._format_age(self.last_drop_time)}",
+            f"Last deliver age: {self._format_age(self.last_delivered_time)}",
+            '',
+            "Top control types:"
+        ]
+        if top_controls:
+            for name, count in top_controls:
+                net_lines.append(f"  - {name}: {count}")
+        else:
+            net_lines.append("  - (no traffic)")
+        if top_drop_reasons:
+            net_lines.append("Top drop reasons:")
+            for name, count in top_drop_reasons:
+                net_lines.append(f"  - {name}: {count}")
+        self.net_ax.text(
+            0.02, 0.98, '\n'.join(net_lines),
+            va='top', ha='left', color='white', fontsize=9,
+            fontfamily='monospace',
+            bbox=dict(boxstyle='round', facecolor='#111111', edgecolor='#333333', alpha=0.9)
+        )
 
         # queue / scheduling panel -------------------------------------
         self.queue_ax.cla()
         self.queue_ax.axis('off')
+        self.queue_ax.set_facecolor('#111111')
         spots_now = self.compute_required_spots()
         load_ch_den = self.flight_time_ch_min + self.charge_time_ch_min
         load_mem_den = self.flight_time_mem_min + self.charge_time_mem_min
@@ -351,7 +476,8 @@ class FleetVizNode(Node):
             '',
             f"Scheduling: {self.latest_policy}",
             '',
-            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f}) / {self.target_utilization:.2f})",
+            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
+            f" {self.target_utilization:.2f})",
             f"  spots now: {spots_now}"
         ]
         if self.pending_charges:
@@ -359,9 +485,12 @@ class FleetVizNode(Node):
             ordered = sorted(self.pending_charges.items(), key=lambda item: item[1])
             for uid, _ in ordered:
                 queue_lines.append(f"    - {uid}")
-        self.queue_ax.text(0.02, 0.98, '\n'.join(queue_lines),
-                           va='top', ha='left', color='white', fontsize=10,
-                           fontfamily='monospace', weight='bold')
+        self.queue_ax.text(
+            0.02, 0.98, '\n'.join(queue_lines),
+            va='top', ha='left', color='white', fontsize=9,
+            fontfamily='monospace', weight='bold',
+            bbox=dict(boxstyle='round', facecolor='#111111', edgecolor='#333333', alpha=0.9)
+        )
 
         self.fig.canvas.draw()
         plt.pause(0.001)
