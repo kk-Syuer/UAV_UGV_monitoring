@@ -16,6 +16,10 @@ def _load_yaml(path: str, fallback_root: str | None = None) -> dict:
     resolved = path
     if not os.path.exists(resolved) and fallback_root and not os.path.isabs(path):
         resolved = os.path.join(fallback_root, path)
+        if not os.path.exists(resolved):
+            prefix = "system_bringup" + os.sep
+            if path.startswith(prefix):
+                resolved = os.path.join(fallback_root, path[len(prefix):])
     if not os.path.exists(resolved):
         return {}
     with open(resolved, "r") as f:
