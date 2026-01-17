@@ -1,327 +1,216 @@
-# UAV–UGV Disaster-Area Network Simulation (ROS 2)
+# FANET-Based UAV–UGV Cooperative Monitoring System (Flood / Disaster Scenarios)
 
-A modular **ROS 2 simulation framework** for studying **UAV ad-hoc networks**, **UGV charging policies**, **coverage planning**, **routing**, **mobility**, and **environment-dependent behaviour** in disaster scenarios.
+## Overview
 
-The system simulates:
+This project implements a **fully simulated FANET (Flying Ad‑hoc Network)** for **UAV–UGV cooperative monitoring in disaster and flood scenarios**, with a strong focus on **network robustness, routing under mobility, charging logistics, and weather‑induced failures**.
 
-* A **backbone** of *cluster-head UAVs (CHs)* that route data and control traffic
-* **Member UAVs** connected to CHs
-* A **UGV** acting as a mobile charging station
-* A **sink gateway** representing the “Internet” and deployment gatekeeper
-* **Mobile phone users** that inject traffic
-* A **weather environment** affecting UAV power consumption
-* A **network monitor** collecting metrics (CSV) under per-run directories
-* A **coverage planner** generating deployment & routing
-* A **visualizer** showing CH, member, sink, and UGV positions with backbone state
+The system is designed as a **research-grade experimental platform**, not a toy simulator. All network behavior (routing, buffering, drops, acknowledgements) is **explicitly modeled at application level**, enabling precise QoS measurement and reproducible experiments.
 
-This repository is designed for **research experiments**, especially on charging scheduling, routing strategies, connectivity robustness, battery/weather interactions, and the interplay between deployment acknowledgement and mobility start.
+The project is structured to support:
 
----
+* Highly mobile UAV swarms
+* Dynamic network partitioning
+* Store–carry–forward routing
+* Energy‑aware charging via UGVs
+* Weather‑driven network instability
+* End‑to‑end QoS evaluation
 
-##  Key Features (Implemented so far)
-
-### ✔ Multi-role UAV simulation
-
-Each UAV runs its own `uav_node` instance with:
-
-* **Roles:**
-
-  * `role=1` → Cluster Head (CH)
-  * `role=0` → Member UAV
-* **Battery model** with temperature-dependent drain
-* **Weather subscription** (temperature affects power usage)
-* **Traffic generation** (if enabled)
-* **Mobility simulation** with speed/step tuning and per-UAV enable switches
-* **Hop-by-hop routing** through CH backbone (plus per-destination overrides)
-* **Buffering/retry** for control/data frames with TTL- and retry-aware drops
-* **Charging request logic** and **session execution**
-* **Failure detection** (battery dead event)
-
-### UGV Charger with multiple scheduling policies
-
-`ugv_charger_node` supports:
-
-* FCFS
-* Role-priority (CH > member)
-* EDF (earliest battery depletion first)
-* Dynamic weighted scoring
-* Network-based *charge decision delivery* using control packets
-
-The UGV also computes a **capacity planning hint** (spots needed vs. target utilization), tracks neighbors via periodic status, and can simulate motion/coverage radius when enabled.
-
-The UGV tracks UAV status, queues requests, assigns slots, and emulates charging.
-
-### Coverage Planner (deployment + routing)
-
-`coverage_planner_node`:
-
-* Randomly generates **sink** and **UGV** positions inside the area
-* Places CHs on a **grid layout** (or later hex layout)
-* Assigns member UAVs to nearest CH
-* Computes **CH backbone connectivity graph**
-* Runs **Dijkstra from sink** to compute `next_hop_to_sink`
-* Publishes `UavDeployment` messages on `/coverage_planner/deployment` with:
-
-  * Position
-  * Role
-  * Cluster ID
-  * CH ID
-  * Next hop information
-* Keeps track of expected devices, waits for deployment acknowledgements, and notifies the sink gateway via DEPLOYMENT traffic on the network bus
-
-### Traffic forwarding framework
-
-Fully working multi-hop routing:
-
-* Member UAV → its CH
-* CH → next CH → … → sink
-* CH used as routing hubs
-* Supports control traffic (charging decisions)
-* Sink gateway and coverage planner inject deployments into the network bus so deployment acknowledgements and control follow the same simulated multi-hop path as data packets
-
-### Network Monitor
-
-`network_monitor_node` computes:
-
-* Packet generation count
-* Packet delivery count
-* End-to-end delay
-* Average delay
-* Charging request timestamps
-* Charging wait times
-* Charging session counts (per outcome)
-* Battery death count & timestamps
-
-Useful for experiments & performance comparison.
-
-### Planner Visualization (2D GUI)
-
-Python `planner_viz_node` dynamically displays:
-
-* CH UAVs (red + dashed coverage circles)
-* Member UAVs (green)
-* Sink (blue)
-* UGV (yellow)
-* Auto-updates positions on every deployment message and colors backbone-active CHs
-
-### Sink Gateway Node
-
-Handles:
-
-* Delivery of packets addressed to the sink
-* Publishing `/fanet/delivered` for monitoring
-* Mirroring deployments onto `/fanet/network_bus_raw`
-* Collecting DEPLOYMENT acknowledgements and broadcasting START_MOBILITY when everyone is live
-
-### Weather Server
-
-Publishes `WeatherStatus` (temperature, etc.).
-UAVs use temperature to scale energy consumption via a piecewise function.
-
-### User Device Simulator
-
-Simulates mobile phones generating traffic into the UAV network.
-
-### ✔ Weather-Driven Fault Injector
-
-`fault_injector_node` listens to `/environment/weather` and probabilistically drops network frames based on wind, rain, and temperature. A base drop rate (`p0`) is augmented by quadratic wind/rain ratios (`aw`, `ar`) and a temperature deviation term (`at` × |temp−`temp_opt`| / `temp_span`), clamped at `p_max`. Separate multipliers let you amplify or dampen control vs. data drops, while deployment and charge-decision controls can be protected. Optional delivered-stream interception (`drop_delivered:=true`) forces even “delivered” packets through the injector, and every drop emits a `DROP` control report to the network monitor for accounting.
+This repository supports **system-level experimentation** suitable for a Master’s thesis or academic publication.
 
 ---
 
-# Project Structure Overview
+## Key Concepts
+
+### 1. FANET Network Abstraction
+
+All packets (DATA and CONTROL) are routed through a **logical FANET bus**:
+
+* `/fanet/network_bus_raw` – packets before impairment
+* `/fanet/network_bus` – packets after fault injection
+* `/fanet/delivered` – authoritative delivery events
+
+This separation allows us to **inject failures without modifying node logic** and to **measure true end‑to‑end performance**.
+
+---
+
+### 2. Routing Model (No Global Knowledge)
+
+The system intentionally **does not use global routing (e.g., Dijkstra)**. Instead, each UAV performs:
+
+* Local neighbor discovery
+* Greedy next‑hop selection
+* Charging‑aware routing penalty
+* Loop guard + TTL enforcement
+* Store–carry–forward buffering
+
+This reflects **realistic FANET constraints** under mobility and intermittent connectivity.
+
+---
+
+### 3. Roles in the System
+
+* **Member UAVs**
+  Perform area scanning and generate search telemetry when reaching task points.
+
+* **Cluster‑Head (CH) UAVs**
+  Act as aggregation and relay nodes; may temporarily disconnect from the backbone.
+
+* **UGV Charger**
+  Provides charging service; charging requests and decisions are routed through the FANET.
+
+* **Sink Gateway**
+  Collects all delivered data and control packets.
+
+* **User Device**
+  Generates external traffic to stress the network.
+
+---
+
+### 4. Charging Protocol Evaluation
+
+Charging is treated as a **networked control problem**:
+
+* `ChargeRequest` and `ChargeDecision` packets are routed like any other traffic
+* Decisions may be delayed, dropped, or arrive too late
+* Charging success depends on **both network QoS and energy state**
+
+The system records:
+
+* Request acceptance / rejection
+* Timeouts and drops
+* Docking success
+* Charging latency
+
+This enables **direct comparison of charging policies under network stress**.
+
+---
+
+### 5. Weather‑Driven Fault Injection
+
+A dedicated **fault injector** models packet drops as a function of:
+
+* Wind intensity
+* Rain intensity
+* Temperature deviation
+
+Drops affect:
+
+* Data traffic
+* Control traffic (with configurable attenuation)
+
+This allows controlled experiments on **network resilience under adverse environmental conditions**.
+
+---
+
+## Architecture
 
 ```
-UAV_UGV_netmonitoring/
-│
-├── src/
-│   ├── uav_msgs/               # All custom message types
-│   ├── uav_fleet/              # uav_node implementation
-│   ├── ugv_charger/            # UGV charger & scheduling policies
-│   ├── sink_gateway/           # Internet gateway node
-│   ├── coverage_planner/       # CH placement, routing, deployments
-│   ├── planner_viz/            # 2D live visualizer
-│   ├── network_monitor/        # Logging & metrics
-│   ├── ch_manager/             # Cluster membership (currently static)
-│   ├── weather_server/         # Environment model
-│   ├── user_devices_sim/       # Simulated mobile phones
-│   ├── fault_injector/         # Failure injection (basic)
-│   └── system_bringup/         # (for future launch files)
-│
-├── commands-to-run             # Useful command sequences
-└── README.md
++-------------------+
+| Weather Node      |
++---------+---------+
+          |
+          v
++-------------------+        +---------------------+
+| Fault Injector    |<-------| FANET Raw Bus       |
++---------+---------+        +---------------------+
+          |
+          v
++-------------------+        +---------------------+
+| FANET Bus         |<------>| UAV / UGV / Sink    |
++---------+---------+        +---------------------+
+          |
+          v
++-------------------+
+| Delivered Channel |
++-------------------+
+          |
+          v
++-------------------+
+| Network Monitor   |
++-------------------+
 ```
 
 ---
 
-# How It Works (Data Flow)
+## Metrics & Logging (Step F)
 
-### 1. **Coverage Planner starts first**
+The system automatically records **experiment‑ready metrics**:
 
-* Generates positions for CHs, members, sink and UGV
-* Computes Dijkstra routing for CH→sink
-* Publishes `UavDeployment` for each UAV and UGV
+### Per‑Message (`messages.csv`)
 
-### 2. **UAVs receive deployment**
+* End‑to‑end delay
+* Hop count / forwarding overhead
+* Delivery or drop reason
+* Loop / TTL / weather drops
 
-Each UAV updates:
+### Charging Events (`charge_events.csv`)
 
-* Position
-* Role
-* Cluster
-* CH assignment
-* `next_hop_to_sink` (for CHs)
+* Success vs failure
+* Decision latency
+* Failure causes (drop, timeout, energy)
 
-### 3. **Weather server influences UAV battery drain**
+### UAV State Time Series (`status_timeseries.csv`)
 
-UAV battery consumption = base × weather factor.
+* Battery level
+* Charging state
+* Backbone participation
+* Position over time
 
-### 4. **Traffic flows**
+### Run Summary (`summary.json`)
 
-Member → CH → CH → … → Sink
+* PDR by traffic type
+* Delay statistics (mean / p95)
+* Drop breakdown
+* Charging success rate
 
-### 5. **Charging requests**
+All outputs are written to:
 
-If battery < threshold:
-
-* UAV sends `CHARGE_REQUEST` as a control packet (routed via backbone)
-* UGV evaluates queue and sends `CHARGE_DECISION`
-* UAV travels into charging state
-
-### 6. **Network monitor gathers statistics**
-
-Per-packet and per-session metrics.
-
----
-
-## Operational Notes
-
-### Deployment delivery and acknowledgements
-
-* The coverage planner publishes `UavDeployment` directly on `/coverage_planner/deployment`; UAVs consume it immediately when `accept_direct_deployment:=true`.
-* The sink gateway also mirrors each deployment into a `TrafficMessage` on `/network/traffic`, letting deployments and acknowledgement packets follow the same multi-hop route as normal traffic.
-* Deployment acknowledgements are sent as control packets via the backbone; enabling direct deployments on each UAV avoids the need to rerun nodes to trigger the first acknowledgement.
-
-### Liveness and failure monitoring
-
-* Every UAV publishes periodic heartbeats on `/uav_fleet/heartbeat` and prunes neighbors using configurable hello timers (default 1 s), providing liveness detection for routing and monitoring.
-* Battery or node-failure events are emitted on `/uav_fleet/failure_events`, where the cluster-head manager and network monitor subscribe to log the outage and update topology-aware metrics.
-
-### Multi-hop network simulation
-
-* All control and data traffic uses `/network/traffic` (`uav_msgs/TrafficMessage`) with destination IDs, TTL, and hop counts; frames are forwarded hop by hop based on `next_hop_id` and dropped if TTL expires or the next hop does not match.
-* Cluster heads relay member traffic toward the sink using their `next_hop_to_sink`, while also forwarding deployments, charging commands, and other control packets along the same simulated backbone.
-* Delivered packets are reported on `/network/traffic_delivered` so the sink gateway and metrics nodes can track end-to-end performance.
-
-### Weather model and Markov chain
-
-* The weather server evolves a three-state Markov chain (SUNNY, WINDY, STORMY) each tick: SUNNY usually persists (≈85%), WINDY persists ≈65%, and STORMY persists ≈40%, with the remaining probability split across transitions to the other states.
-* For the chosen state, the node samples temperature, wind speed, rain rate, and a slowly drifting wind direction from regime-specific normal distributions, clamps negatives to zero, and publishes `WeatherStatus` on `/environment/weather`.
-* UAVs subscribe to `/environment/weather`, cache the latest conditions, and apply temperature-dependent scaling to their battery consumption.
+```
+<output_dir>/<run_id>/
+```
 
 ---
 
-# Running the System (Example)
+## System Bringup
 
-### Build and source
+The entire system is launched via the **`system_bringup` package**.
+
+### Example
 
 ```bash
-colcon build
-source install/setup.bash
-```
-
-### Example command sequence
-
-*(from `commands-to-run`)*
-
-```bash
-# 1. Weather
-ros2 run weather_server weather_node
-
-# 2. Coverage planner
-ros2 run coverage_planner coverage_planner_node --ros-args \
-    -p uav_ids:="['uav_1','uav_2','uav_3']" \
-    -p num_ch:=2 \
-    -p x_min:=0 -p x_max:=600 \
-    -p y_min:=0 -p y_max:=600 \
-    -p service_radius_ch:=250 -p comm_radius_ch:=400
-
-# 3. Sink
-ros2 run sink_gateway sink_gateway_node
-
-# 4. UGV
-ros2 run ugv_charger ugv_charger_node --ros-args \
-    -p ugv_id:=ugv \
-    -p uplink_ch_id:=uav_1 \
-    -p charging_policy:=fcfs
-
-# 5. UAVs
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_1
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_2
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_3
-
-# 6. Mobile users
-ros2 run user_devices_sim user_device_node
-
-# 7. Network monitor
-ros2 run network_monitor network_monitor_node
-
-# 8. Visualizer
-ros2 run planner_viz planner_viz_node
+ros2 launch system_bringup experiment.launch.py \
+  config:=system_bringup/config/runs/example_run.yaml \
+  run_id:=demo_weather_high \
+  output_dir:=/tmp/fanet_logs
 ```
 
 ---
 
-# Sample 3×CH + 2×Member Deployment
+## Reproducible Experiments
 
-Launch sequence for three cluster heads, two members, one sink, one UGV, the fleet
-visualizer, and the coverage planner:
+Experiments are defined via YAML files:
 
-```bash
-# Terminal 1: weather
-ros2 run weather_server weather_node
+* Network parameters
+* Weather regime
+* Charging policy
+* Traffic intensity
+* Random seeds
 
-# Terminal 2: coverage planner (3 CHs, 2 members)
-ros2 run coverage_planner coverage_planner_node --ros-args \
-  -p uav_ids:="['uav_1','uav_2','uav_3','uav_4','uav_5']" \
-  -p num_ch:=3 \
-  -p x_min:=0 -p x_max:=600 \
-  -p y_min:=0 -p y_max:=600 \
-  -p service_radius_ch:=250 -p comm_radius_ch:=400
-
-# Terminal 3: sink
-ros2 run sink_gateway sink_gateway_node
-
-# Terminal 4: UGV
-ros2 run ugv_charger ugv_charger_node --ros-args \
-  -p ugv_id:=ugv \
-  -p uplink_ch_id:=uav_1 \
-  -p charging_policy:=fcfs
-
-# Terminals 5-9: UAVs
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_1 -p role:=1
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_2 -p role:=1
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_3 -p role:=1
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_4 -p role:=0
-ros2 run uav_fleet uav_node --ros-args -p uav_id:=uav_5 -p role:=0
-
-# Terminal 10: fleet visualizer
-ros2 run planner_viz fleet_viz_node
-```
+This allows **batch execution and fair comparison** across scenarios.
 
 ---
 
-# What You Can Study With This Framework
+## Intended Use
 
-* Packet delivery rate vs. routing quality
-* Delay distribution over multi-hop backbone
-* Battery drain vs. environmental conditions
-* Charging wait time under different policies
-* Number of battery-dead events
-* Impact of CH topology on coverage
-* Routing robustness (future CH-failure handling)
+This project is intended for:
 
-# 📎 License
-
-TBD.
+* Academic research
+* FANET / disaster‑response simulation
+* Energy‑aware networking studies
 
 ---
+
+
+## License
+
+Specify your license here.
