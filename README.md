@@ -213,4 +213,4 @@ This project is intended for:
 
 ## License
 
-Specify your license here.
+MIT
