@@ -170,6 +170,12 @@ class FleetVizNode(Node):
         self.last_delivered_time = now
         self._record_timestamp(self.delivered_timestamps, now)
 
+    def delivered_cb(self, msg: TrafficMessage):
+        now = self._now_sec()
+        self.delivered_total += 1
+        self.last_delivered_time = now
+        self._record_timestamp(self.delivered_timestamps, now)
+
     def color_for_cluster(self, cluster_id: str) -> str:
         """Deterministic color mapping for cluster IDs."""
         if not cluster_id:
