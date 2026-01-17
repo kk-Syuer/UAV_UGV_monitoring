@@ -112,18 +112,23 @@ This allows controlled experiments on **network resilience under adverse environ
           |
           v
 +-------------------+        +---------------------+
-| FANET Bus         |<------>| UAV / UGV / Sink    |
+| FANET Raw Bus (In)|<------ | UAV / UGV / Sink    |
 +---------+---------+        +---------------------+
           |
           v
-+-------------------+
-| Delivered Channel |
-+-------------------+
-          |
-          v
-+-------------------+
-| Network Monitor   |
-+-------------------+
++-------------------+        +---------------------+
+| FANET Raw Bus(Out)|------> | UAV / UGV / Sink    |
++-------------------+        +---------------------+
+                                        |
+                                        v
+                             +---------------------+
+                             | Delivered Channel   |
+                             +---------------------+
+                                        |
+                                        v
+                             +-------------------+
+                             | Network Monitor   |
+                             +-------------------+
 ```
 
 ---
