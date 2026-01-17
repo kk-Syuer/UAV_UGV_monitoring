@@ -10,10 +10,19 @@ from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
 
 
-def _load_yaml(path: str) -> dict:
-    if not path or not os.path.exists(path):
+def _load_yaml(path: str, fallback_root: str | None = None) -> dict:
+    if not path:
         return {}
-    with open(path, "r") as f:
+    resolved = path
+    if not os.path.exists(resolved) and fallback_root and not os.path.isabs(path):
+        resolved = os.path.join(fallback_root, path)
+        if not os.path.exists(resolved):
+            prefix = "system_bringup" + os.sep
+            if path.startswith(prefix):
+                resolved = os.path.join(fallback_root, path[len(prefix):])
+    if not os.path.exists(resolved):
+        return {}
+    with open(resolved, "r") as f:
         return yaml.safe_load(f) or {}
 
 
@@ -42,7 +51,7 @@ def _make_nodes(context, *args, **kwargs):
     use_weather_arg = LaunchConfiguration("use_weather").perform(context)
     use_injector_arg = LaunchConfiguration("use_fault_injector").perform(context)
 
-    cfg = _load_yaml(cfg_path)
+    cfg = _load_yaml(cfg_path, fallback_root=get_package_share_directory("system_bringup"))
 
     # Resolve run_id / output_dir
     run_id = run_id_arg if run_id_arg else _get(cfg, ["global", "run_id"], "run0")
