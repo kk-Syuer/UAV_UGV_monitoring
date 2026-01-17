@@ -79,7 +79,7 @@ def _make_nodes(context, *args, **kwargs):
     nodes.append(Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
         executable=_get(cfg, ["executables", "monitor_exec"], "network_monitor_node"),
-        name="network_monitor",
+        name=f"network_monitor_{run_id}",
         output="screen",
         parameters=[monitor_params],
     ))
@@ -95,7 +95,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=_get(cfg, ["executables", "weather_pkg"], "weather_server"),
             executable=_get(cfg, ["executables", "weather_exec"], "weather_node"),
-            name="weather",
+            name=f"weather_{run_id}",
             output="screen",
             parameters=[weather_params],
         ))
@@ -121,7 +121,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=_get(cfg, ["executables", "injector_pkg"], "fanet_faults"),
             executable=_get(cfg, ["executables", "injector_exec"], "fault_injector_node"),
-            name="fault_injector",
+            name=f"fault_injector_{run_id}",
             output="screen",
             parameters=[injector_params],
         ))
@@ -131,7 +131,7 @@ def _make_nodes(context, *args, **kwargs):
     nodes.append(Node(
         package=_get(cfg, ["executables", "sink_pkg"], "sink_gateway"),
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),
-        name="sink_gateway",
+        name=f"sink_gateway_{run_id}",
         output="screen",
         parameters=[{"sink_id": sink_id}],
     ))
@@ -146,7 +146,7 @@ def _make_nodes(context, *args, **kwargs):
     nodes.append(Node(
         package=ugv_pkg,
         executable=ugv_exec,
-        name="ugv_charger",
+        name=f"ugv_charger_{run_id}",
         output="screen",
         parameters=[ugv_params],
     ))
@@ -156,7 +156,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
-            name="coverage_planner",
+            name=f"coverage_planner_{run_id}",
             output="screen",
             parameters=[{}],
         ))
@@ -166,7 +166,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=_get(cfg, ["executables", "user_device_pkg"], "user_device"),
             executable=_get(cfg, ["executables", "user_device_exec"], "user_device_node"),
-            name="user_device",
+            name=f"user_device_{run_id}",
             output="screen",
             parameters=[{}],
         ))
@@ -196,7 +196,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=uav_pkg,
             executable=uav_exec,
-            name=str(ch_id),
+            name=f"{ch_id}_{run_id}",
             output="screen",
             parameters=[shared_uav_params, {"uav_id": str(ch_id), "role": 1}],
         ))
@@ -210,7 +210,7 @@ def _make_nodes(context, *args, **kwargs):
         nodes.append(Node(
             package=uav_pkg,
             executable=uav_exec,
-            name=uid,
+            name=f"{uid}_{run_id}",
             output="screen",
             parameters=[shared_uav_params, {"uav_id": uid, "role": role, "my_ch_id": my_ch}],
         ))
