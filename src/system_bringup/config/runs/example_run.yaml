@@ -15,6 +15,10 @@ executables:
   ugv_exec: ugv_charger_node
   planner_pkg: coverage_planner
   planner_exec: coverage_planner_node
+  planner_viz_pkg: planner_viz
+  planner_viz_exec: fleet_viz
+  ch_manager_pkg: ch_manager
+  ch_manager_exec: ch_manager_node
   user_device_pkg: user_devices_sim
   user_device_exec: user_device_node
   uav_pkg: uav_fleet
@@ -27,6 +31,8 @@ network:
 monitor:
   flush_period_sec: 2.0
   status_sample_period_sec: 1.0
+  max_runtime_sec: 0.0
+  stop_on_backbone_loss: false
 
 weather:
   enable: true
@@ -58,6 +64,13 @@ ugv:
 
 coverage_planner:
   enable: true
+
+planner_viz:
+  enable: true
+
+ch_manager:
+  enable: true
+  cluster_prefix: cluster
 
 traffic:
   user_device_enable: true
