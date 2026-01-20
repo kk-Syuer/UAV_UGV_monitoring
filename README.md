@@ -96,6 +96,24 @@ Drops affect:
 
 This allows controlled experiments on **network resilience under adverse environmental conditions**.
 
+The weather node steps through a **three‑state Markov regime model** (SUNNY, WINDY, STORMY) with the following transition probabilities:
+
+```mermaid
+stateDiagram-v2
+  [*] --> SUNNY
+  SUNNY --> SUNNY: 0.85
+  SUNNY --> WINDY: 0.10
+  SUNNY --> STORMY: 0.05
+
+  WINDY --> SUNNY: 0.15
+  WINDY --> WINDY: 0.65
+  WINDY --> STORMY: 0.20
+
+  STORMY --> WINDY: 0.40
+  STORMY --> STORMY: 0.40
+  STORMY --> SUNNY: 0.20
+```
+
 ---
 
 ## Architecture
