@@ -698,9 +698,7 @@ private:
   // Main timer: deploy once and later react to routing changes.
   void periodicUpdate()
   {
-    if (!task_points_.empty()) {
-      publishTaskPoints();
-    }
+
     // First time: wait for status discovery then compute full deployment
     if (!first_deployment_done_) {
       if (!readyForDeployment()) {
