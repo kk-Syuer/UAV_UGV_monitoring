@@ -337,12 +337,16 @@ class FleetVizNode(Node):
                          'ugv', color='yellow', fontsize=8)
 
         # draw task points first so UAVs appear above
+        task_legend = None
         for tp in self.task_points:
             color = self.color_for_cluster(tp.cluster_id)
             self.ax.scatter(tp.position.x, tp.position.y,
                             marker='x', s=40, color=color, alpha=0.9)
             self.ax.text(tp.position.x, tp.position.y - 5,
                          tp.id, color=color, fontsize=7)
+        if self.task_points:
+            task_legend = self.ax.scatter([], [], marker='x', s=40, color='white',
+                                          label='task point')
 
         # draw UAVs
         for uav_id, st in self.uav_states.items():
@@ -370,6 +374,10 @@ class FleetVizNode(Node):
                 # member: green
                 self.ax.scatter(x, y, c=color, s=20)
                 self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
+
+        if task_legend:
+            self.ax.legend(loc='upper right', facecolor='black', edgecolor='white',
+                           labelcolor='white')
 
         self.ax.set_aspect('equal', adjustable='box')
 
