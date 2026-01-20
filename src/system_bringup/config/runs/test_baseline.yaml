@@ -51,7 +51,7 @@ fault_injector:
   drop_data_multiplier: 1.0
 
 sink:
-  sink_id: sink
+  sink_id: sink_gateway
 
 ugv:
   ugv_id: ugv_1
