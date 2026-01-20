@@ -94,10 +94,12 @@ class FleetVizNode(Node):
         # page navigation for the info panel
         self.info_pages = ['Status', 'Network', 'Charging']
         self.info_page_index = 0
+        self.info_scroll = {name: 0.0 for name in self.info_pages}
         self.prev_button = None
         self.next_button = None
         if not _headless:
             self._init_page_buttons()
+            self.fig.canvas.mpl_connect('scroll_event', self._on_scroll)
 
         # dark background for consistent contrast with white text
         self.fig.patch.set_facecolor("#000000")
@@ -164,6 +166,16 @@ class FleetVizNode(Node):
 
     def _on_next_page(self, _event):
         self.info_page_index = (self.info_page_index + 1) % len(self.info_pages)
+
+    def _on_scroll(self, event):
+        if event.inaxes != self.info_ax:
+            return
+        page_name = self.info_pages[self.info_page_index]
+        delta = 1.0 if event.button == 'up' else -1.0
+        self.info_scroll[page_name] = max(
+            0.0,
+            self.info_scroll.get(page_name, 0.0) - delta * 0.6
+        )
 
     # --- callbacks ---
 
@@ -356,8 +368,8 @@ class FleetVizNode(Node):
     def _page_header(self, text: str) -> dict:
         return self._line(text, size=12, weight='bold', spacing=1.2)
 
-    def _render_info_lines(self, lines):
-        self.info_ax.add_patch(
+    def _render_info_lines(self, lines, scroll_offset=0.0):
+        background = self.info_ax.add_patch(
             plt.Rectangle(
                 (0.01, 0.02), 0.98, 0.96,
                 transform=self.info_ax.transAxes,
@@ -367,7 +379,7 @@ class FleetVizNode(Node):
                 zorder=0
             )
         )
-        y = 0.965
+        y = 0.965 + scroll_offset
         base_step = 0.042
         for line in lines:
             size = line.get('size', 9)
@@ -382,7 +394,9 @@ class FleetVizNode(Node):
                     fontsize=size,
                     fontfamily='monospace',
                     fontweight=weight,
-                    transform=self.info_ax.transAxes
+                    transform=self.info_ax.transAxes,
+                    clip_on=True,
+                    clip_path=background
                 )
             y -= base_step * (size / 9) * spacing
 
@@ -664,7 +678,7 @@ class FleetVizNode(Node):
             info_lines = header + self._network_lines()
         else:
             info_lines = header + self._queue_lines()
-        self._render_info_lines(info_lines)
+        self._render_info_lines(info_lines, self.info_scroll.get(page_name, 0.0))
 
         self.fig.canvas.draw()
         plt.pause(0.001)
