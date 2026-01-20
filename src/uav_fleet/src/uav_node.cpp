@@ -1591,6 +1591,7 @@ private:
   void logSinkNeighborExclusion(const std::string & reason,
                                 const rclcpp::Time & now) const
   {
+    static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
     std::ostringstream neighbors;
     for (const auto & kv : neighbors_) {
       if (!neighbors.str().empty()) {
@@ -1603,7 +1604,7 @@ private:
       neighbors << "none";
     }
 
-    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+    RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, 5000,
                          "UAV %s: sink '%s' unreachable (%s). Neighbors: %s",
                          uav_id_.c_str(),
                          default_dst_id_.c_str(),
