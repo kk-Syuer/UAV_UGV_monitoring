@@ -172,16 +172,11 @@ private:
     drop.dst_id = monitor_id_;
     drop.flow_type = 1;
     drop.control_type = "DROP";
-    drop.ref_msg_id = msg.msg_id;
-    drop.drop_reason = "WEATHER_DROP";
     drop.payload = msg.msg_id + ",WEATHER_DROP";
     drop.creation_time = this->now();
     drop.hop_count = 0;
     drop.ttl = 4;
     drop.next_hop_id = "";
-    drop.last_rx_time = this->now();
-    drop.last_tx_time = drop.last_rx_time;
-    drop.recent_hops.push_back(injector_id_);
 
     network_bus_pub_->publish(drop);
   }
