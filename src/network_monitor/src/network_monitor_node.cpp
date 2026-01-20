@@ -285,6 +285,10 @@ private:
       rec.creation_time = rclcpp::Time(msg->creation_time);
     }
 
+    if (rec.delivered) {
+      return;
+    }
+
     rec.delivered = true;
     rec.delivered_time = delivered_wall_time;
 
