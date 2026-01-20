@@ -75,6 +75,8 @@ task_telemetry:
 uavs:
   ch_ids:
     - ch0
+    - ch1
+    - ch2
   members:
     - id: uav1
       role: 0
@@ -82,3 +84,9 @@ uavs:
     - id: uav2
       role: 0
       my_ch_id: ch0
+    - id: uav3
+      role: 0
+      my_ch_id: ch1
+    - id: uav4
+      role: 0
+      my_ch_id: ch2
