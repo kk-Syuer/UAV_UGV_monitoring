@@ -55,6 +55,8 @@ public:
     ch_timeout_sec_ = this->declare_parameter<double>("ch_timeout_sec", 15.0);
     status_period_sec_ = this->declare_parameter<double>("status_period_sec", 1.0);
     comm_radius_m_ = this->declare_parameter<double>("comm_radius_m", 400.0);
+    deployment_resend_period_sec_ =
+      this->declare_parameter<double>("deployment_resend_period_sec", 2.0);
 
     // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -98,6 +100,11 @@ public:
     status_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
       std::bind(&SinkGatewayNode::publishStatus, this));
+
+    auto resend_period = std::chrono::duration<double>(deployment_resend_period_sec_);
+    deployment_resend_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(resend_period),
+      std::bind(&SinkGatewayNode::checkDeploymentAcks, this));
   }
 
 private:
@@ -129,6 +136,7 @@ private:
                       "[DEP-ACK] from %s but it was not in expected set", u.c_str());
         } else {
           acked_uavs_.insert(u);
+          deployment_cache_.erase(u);
           RCLCPP_INFO(this->get_logger(),
                       "[DEP-ACK] from %s (%zu / %zu)",
                       u.c_str(),
@@ -260,13 +268,14 @@ private:
         << safe_ugv;
     tm.payload = oss.str();
 
-    control_pub_->publish(tm);
+    sendDeployment(tm, "initial");
 
-    RCLCPP_INFO(this->get_logger(),
-                "[DEP-TX] sink sending deployment to=%s via first_hop=%s payload=\"%s\"",
-                tm.dst_id.c_str(),
-                tm.next_hop_id.c_str(),
-                tm.payload.c_str());
+    deployment_cache_[msg->uav_id] = DeploymentRecord{
+      tm.next_hop_id,
+      tm.payload,
+      this->now(),
+      0
+    };
   }
 
   // --------------------------------------------------------------------------
@@ -361,6 +370,64 @@ private:
                 "[COVERAGE] requesting planner to recompute layouts after CH loss");
   }
 
+  void checkDeploymentAcks()
+  {
+    if (all_deployed_ || expected_uavs_.empty() || !control_pub_) {
+      return;
+    }
+
+    const auto now = this->now();
+    for (const auto & uav_id : expected_uavs_) {
+      if (acked_uavs_.count(uav_id) > 0) {
+        continue;
+      }
+
+      auto it = deployment_cache_.find(uav_id);
+      if (it == deployment_cache_.end()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[DEP-RESEND] missing cached deployment for %s",
+                    uav_id.c_str());
+        continue;
+      }
+
+      auto elapsed = now - it->second.last_sent;
+      if (elapsed.seconds() < deployment_resend_period_sec_) {
+        continue;
+      }
+
+      uav_msgs::msg::TrafficMessage tm;
+      tm.msg_id = "DEP_" + uav_id + "_" + std::to_string(msg_counter_++);
+      tm.src_id = sink_id_;
+      tm.dst_id = uav_id;
+      tm.next_hop_id = it->second.next_hop_id;
+      tm.flow_type = 1;
+      tm.creation_time = now;
+      tm.hop_count = 0;
+      tm.control_type = "DEPLOYMENT";
+      tm.payload = it->second.payload;
+
+      sendDeployment(tm, "resend");
+      it->second.last_sent = now;
+      it->second.resend_count++;
+    }
+  }
+
+  void sendDeployment(const uav_msgs::msg::TrafficMessage & msg, const std::string & reason)
+  {
+    if (!control_pub_) {
+      return;
+    }
+
+    control_pub_->publish(msg);
+
+    RCLCPP_INFO(this->get_logger(),
+                "[DEP-TX] (%s) sink sending deployment to=%s via first_hop=%s payload=\"%s\"",
+                reason.c_str(),
+                msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(),
+                msg.payload.c_str());
+  }
+
   // Members
   std::string sink_id_;
   std::string uplink_ch_id_;
@@ -387,10 +454,21 @@ private:
   rclcpp::TimerBase::SharedPtr status_timer_;
 
   // Deployment tracking
+  struct DeploymentRecord
+  {
+    std::string next_hop_id;
+    std::string payload;
+    rclcpp::Time last_sent;
+    int resend_count = 0;
+  };
+
   std::unordered_set<std::string> expected_uavs_;
   std::unordered_set<std::string> acked_uavs_;
+  std::unordered_map<std::string, DeploymentRecord> deployment_cache_;
   bool all_deployed_ = false;
   uint64_t start_mobility_seq_ = 0;
+  double deployment_resend_period_sec_ = 0.0;
+  rclcpp::TimerBase::SharedPtr deployment_resend_timer_;
 
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
