@@ -1925,13 +1925,39 @@ private:
 
   void mobilityStep()
   {
-    // Do nothing until we actually have a deployment
-    if (!mobility_enabled_ || !deployment_received_ || !start_mobility_received_ )
+    static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
+    constexpr int throttle_ms = 5000;
+    if (!mobility_enabled_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: mobility disabled; holding position.",
+                           uav_id_.c_str());
       return;
-
-
-    if (battery_energy_ <= 0.0f || is_charging_)
+    }
+    if (!deployment_received_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: waiting for deployment; holding position.",
+                           uav_id_.c_str());
       return;
+    }
+    if (!start_mobility_received_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: waiting for START_MOBILITY/MOTION_START; holding position.",
+                           uav_id_.c_str());
+      return;
+    }
+
+    if (battery_energy_ <= 0.0f) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: battery depleted; mobility paused.",
+                           uav_id_.c_str());
+      return;
+    }
+    if (is_charging_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: charging in progress; mobility paused.",
+                           uav_id_.c_str());
+      return;
+    }
 
     // Time step: guard against mixed / uninitialised time sources
     rclcpp::Time now = this->now();
