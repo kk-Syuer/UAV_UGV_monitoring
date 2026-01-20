@@ -448,24 +448,6 @@ class FleetVizNode(Node):
             info_lines.append(self._title_line('UGV position'))
             info_lines.append(self._line('  (pending deployment)'))
 
-        info_lines.append(self._title_line('Network nodes'))
-        if self.uav_states:
-            for uid in sorted(self.uav_states.keys()):
-                info_lines.append(self._line(f"  - {uid}"))
-        if self.sink_pose is not None:
-            info_lines.append(self._line("  - sink_gateway"))
-        if self.ugv_pose is not None:
-            info_lines.append(self._line("  - ugv"))
-
-        info_lines.append(self._title_line('Cluster agenda'))
-        cluster_ids = sorted({st.cluster_id for st in self.uav_states.values() if st.cluster_id})
-        if cluster_ids:
-            for cluster_id in cluster_ids:
-                info_lines.append(self._line(
-                    f"  - {cluster_id}: {self.color_for_cluster(cluster_id)}"))
-        else:
-            info_lines.append(self._line("  (no cluster data)"))
-
         info_lines.append(self._title_line('Control status'))
         if self.cluster_info:
             ch_ids = {info.ch_id for info in self.cluster_info.values() if info.ch_id}
