@@ -1,2 +1,1 @@
-source;share/weather_server/environment/ament_prefix_path.sh
-source;share/weather_server/environment/path.sh
+/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/ament_cmake_environment_hooks/local_setup.dsv
