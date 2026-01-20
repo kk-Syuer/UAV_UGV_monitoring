@@ -7,7 +7,7 @@ executables:
   monitor_exec: network_monitor_node
   weather_pkg: weather_server
   weather_exec: weather_node
-  injector_pkg: fanet_faults
+  injector_pkg: fault_injector
   injector_exec: fault_injector_node
   sink_pkg: sink_gateway
   sink_exec: sink_gateway_node
