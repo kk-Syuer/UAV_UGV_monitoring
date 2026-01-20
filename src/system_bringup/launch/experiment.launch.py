@@ -158,12 +158,17 @@ def _make_nodes(context, *args, **kwargs):
 
     # Coverage planner (optional)
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
+        member_ids = [str(m.get("id")) for m in members]
+        uav_ids = [str(ch_id) for ch_id in ch_ids] + member_ids
         nodes.append(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
             name=f"coverage_planner_{run_id}",
             output="screen",
-            parameters=[{}],
+            parameters=[{
+                "uav_ids": uav_ids,
+                "num_ch": len(ch_ids),
+            }],
         ))
 
     # Fleet visualizer (optional)
