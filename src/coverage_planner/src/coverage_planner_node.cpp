@@ -81,6 +81,8 @@ public:
     accept_direct_deployment_ = this->declare_parameter<bool>(
       "accept_direct_deployment", false);
 
+    ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+
     coverage_planner_ = std::make_unique<CoveragePlanner>(
       x_min_, x_max_, y_min_, y_max_, comm_radius_ch_, service_radius_ch_,
       this->get_logger(), deployment_pub_);
@@ -111,7 +113,7 @@ public:
       std::bind(&CoveragePlannerNode::trafficCallback, this, std::placeholders::_1));
 
     expected_devices_.insert(uav_ids_.begin(), uav_ids_.end());
-    expected_devices_.insert("ugv");
+    expected_devices_.insert(ugv_id_);
     expected_devices_.insert(expected_extra_ids_.begin(), expected_extra_ids_.end());
 
     RCLCPP_INFO(this->get_logger(),
@@ -929,7 +931,7 @@ private:
     // UGV
     {
       uav_msgs::msg::UavDeployment dep;
-      dep.uav_id = "ugv";
+      dep.uav_id = ugv_id_;
       dep.role   = 3;   // 3 = UGV (for viz only)
       dep.cluster_id = "";
       dep.ch_id      = "";
@@ -1179,7 +1181,7 @@ private:
       compute_next_hops_to_target(sink_x_, sink_y_, "sink_gateway", "sink");
 
     std::vector<std::string> next_hop_to_ugv =
-      compute_next_hops_to_target(ugv_x_, ugv_y_, "ugv", "ugv");
+      compute_next_hops_to_target(ugv_x_, ugv_y_, ugv_id_, "ugv");
 
     if (clusters.size() != static_cast<size_t>(num_ch)) {
       clusters.clear();
@@ -1414,7 +1416,7 @@ private:
       if (prev_ugv[iv] != -1) {
         int v = prev_ugv[iv];
         if (v == ugv_node) {
-          nh_ugv = "ugv";
+          nh_ugv = ugv_id_;
         } else if (v >= 0 && v < A) {
           int real = active_index[v];
           nh_ugv = ch_ids_[real];
@@ -1569,7 +1571,7 @@ private:
   // Decide the initial hop used to inject deployments into the mesh.
   std::string chooseBootstrapNextHop(const uav_msgs::msg::UavDeployment & dep)
   {
-    if (dep.uav_id == "sink_gateway" || dep.uav_id == "ugv") {
+    if (dep.uav_id == "sink_gateway" || dep.uav_id == ugv_id_) {
       // Infrastructure nodes: inject via bootstrap CH if we have one,
       // otherwise send directly to them.
       if (!bootstrap_ch_id_.empty()) {
@@ -1609,7 +1611,7 @@ private:
     if (dep.role == 0 && !dep.ch_id.empty()) {
       return dep.ch_id;
     }
-    if ((dep.uav_id == "ugv" || dep.uav_id == "sink_gateway") && !bootstrap_ch_id_.empty()) {
+    if ((dep.uav_id == ugv_id_ || dep.uav_id == "sink_gateway") && !bootstrap_ch_id_.empty()) {
       return bootstrap_ch_id_;
     }
     return dep.uav_id;
@@ -1704,6 +1706,7 @@ private:
 
   std::string planner_id_ = "coverage_planner";
   std::string sink_id_ = "sink_gateway";
+  std::string ugv_id_ = "ugv";
   uint64_t deployment_seq_ = 0;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
 
