@@ -133,12 +133,16 @@ def _make_nodes(context, *args, **kwargs):
             parameters=[injector_params],
         ))
 
+    # UGV charger
+    ugv_id = str(_get(cfg, ["ugv", "ugv_id"], "ugv_1"))
+
     # Sink
     sink_id = str(_get(cfg, ["sink", "sink_id"], "sink_gateway"))
     sink_uplink_ch_id = str(_get(cfg, ["sink", "uplink_ch_id"], ""))
     sink_params = {"sink_id": sink_id}
     if sink_uplink_ch_id:
         sink_params["uplink_ch_id"] = sink_uplink_ch_id
+    sink_params["ugv_id"] = ugv_id
     nodes.append(Node(
         package=_get(cfg, ["executables", "sink_pkg"], "sink_gateway"),
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),
@@ -148,7 +152,6 @@ def _make_nodes(context, *args, **kwargs):
     ))
 
     # UGV charger
-    ugv_id = str(_get(cfg, ["ugv", "ugv_id"], "ugv_1"))
     ugv_params = {
         "ugv_id": ugv_id,
     }
@@ -238,6 +241,7 @@ def _make_nodes(context, *args, **kwargs):
     shared_uav_params = {
         "neighbor_timeout_sec": neighbor_timeout,
         "comm_radius_m": comm_radius,
+        "ugv_id": ugv_id,
         # task telemetry knobs (members generate telemetry on task reach)
         "task_telemetry_enable": bool(task_tlm.get("enable", True)),
         "task_telemetry_packets_min": int(task_tlm.get("packets_min", 1)),
