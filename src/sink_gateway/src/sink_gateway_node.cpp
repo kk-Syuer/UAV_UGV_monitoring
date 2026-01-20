@@ -37,6 +37,8 @@ public:
   {
     sink_id_ =
       this->declare_parameter<std::string>("sink_id", "sink_gateway");
+    ugv_id_ =
+      this->declare_parameter<std::string>("ugv_id", "ugv");
 
     // Subscribe to planner deployments and re-encode as network messages.
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
@@ -74,8 +76,9 @@ public:
       "/fanet/status", 10);
 
     RCLCPP_INFO(this->get_logger(),
-                "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",
-                sink_id_.c_str(), uplink_ch_id_.c_str(),
+                "Sink gateway started with id='%s', ugv_id='%s', uplink_ch_id='%s', "
+                "target_uav_id='%s', period=%.1fs",
+                sink_id_.c_str(), ugv_id_.c_str(), uplink_ch_id_.c_str(),
                 target_uav_id_.c_str(), period);
 
     // If period > 0 and target_uav_id_ non-empty, start sending control messages
@@ -229,7 +232,7 @@ private:
     // We reuse uplink_ch_id_ as the "bootstrap CH" (typically uav_1).
     std::string next_hop;
 
-    if (msg->uav_id == "ugv") {
+    if (msg->uav_id == ugv_id_) {
       // UGV: send via the bootstrap CH near the UGV.
       next_hop = uplink_ch_id_;
     } else if (msg->role == 1) {
@@ -430,6 +433,7 @@ private:
 
   // Members
   std::string sink_id_;
+  std::string ugv_id_;
   std::string uplink_ch_id_;
   std::string target_uav_id_;
   uint64_t msg_counter_;
