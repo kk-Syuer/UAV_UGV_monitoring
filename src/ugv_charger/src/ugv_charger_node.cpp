@@ -227,10 +227,7 @@ private:
 
     info.last_seen = now;
     info.pose = msg->pose;
-    info.comm_radius_m = msg->comm_radius_m;
-    info.charging_state = msg->charging_state;
-    info.intent_to_leave = msg->intent_to_leave;
-    info.eta_to_leave_sec = msg->eta_to_leave_sec;
+    info.comm_radius_m = static_cast<float>(comm_radius_m_);
     recomputeChargingSpots();
   }
 
@@ -564,16 +561,11 @@ private:
     status.battery_level = 100.0f;
     status.battery_capacity = 0.0f;
     status.pose = ugv_pose_;
-    status.velocity = ugv_velocity_;
     status.service_radius = static_cast<float>(comm_radius_m_);
     status.connected_users = 0;
     status.traffic_load = 0.0f;
     status.packet_loss_estimate = 0.0f;
     status.energy_consumption_rate = 0.0f;
-    status.charging_state = 0;  // always active
-    status.intent_to_leave = false;
-    status.eta_to_leave_sec = -1.0f;
-    status.comm_radius_m = static_cast<float>(comm_radius_m_);
     status.stamp = now;
     status.backbone_active = true;
 
@@ -586,13 +578,7 @@ private:
       return;
     }
     uav_msgs::msg::TrafficMessage delivered = msg;
-    delivered.last_rx_time = now;
-    delivered.last_hop_id = ugv_id_;
-    delivered.last_tx_time = now;
     delivered.next_hop_id.clear();
-    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), ugv_id_) == delivered.recent_hops.end()) {
-      delivered.recent_hops.push_back(ugv_id_);
-    }
     delivered_pub_->publish(delivered);
   }
 
@@ -606,7 +592,6 @@ private:
     ack.msg_id = ugv_id_ + "_ACK_" + msg.msg_id + "_" + std::to_string(msg_counter_++);
     ack.src_id = ugv_id_;
     ack.dst_id = msg.src_id;
-    ack.ref_msg_id = msg.msg_id;
     ack.flow_type = 1;
     ack.control_type = "ACK";
     ack.payload = "ref_msg_id=" + msg.msg_id;
@@ -710,8 +695,6 @@ private:
     drop.dst_id = sink_id_;
     drop.flow_type = 1;
     drop.control_type = "DROP";
-    drop.ref_msg_id = msg_id;
-    drop.drop_reason = reason;
     drop.payload = msg_id + "," + reason;
     drop.creation_time = this->now();
     drop.hop_count = 0;
@@ -1000,10 +983,9 @@ private:
     msg.flow_type = 1;              // CONTROL_ALERT
     msg.creation_time = now;
     msg.hop_count = 0;
-    msg.ref_msg_id = job.request_msg_id;
 
     msg.control_type = "CHARGE_DECISION";
-    msg.payload = "";      // we start immediately, so no schedule needed
+    msg.payload = "ref_msg_id=" + job.request_msg_id;
 
     if (!ensureReachableOrDrop(msg, "UNREACHABLE_CHARGE_DECISION_NEXT_HOP")) {
       RCLCPP_WARN(this->get_logger(),
