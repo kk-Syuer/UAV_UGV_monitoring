@@ -10,10 +10,10 @@ uint32 seq                  # sequence number (per src + control_type)
 uint32 hop_count
 uint32 ttl                  # max hops allowed (0 = unlimited)
 bool requires_ack           # whether the receiver should ACK this control message
-string ref_msg_id           # optional: references another message (e.g., ACK/DROP/DECISION)
 
 string payload              # serialized application payload (JSON, CSV, plain text, ...)
 builtin_interfaces/Time creation_time
+string ref_msg_id           # optional: references another message (e.g., ACK/DROP/DECISION)
 builtin_interfaces/Time last_tx_time   # when the previous hop transmitted
 builtin_interfaces/Time last_rx_time   # when this hop received it
 string drop_reason                     # if control_type == DROP, why it was dropped
