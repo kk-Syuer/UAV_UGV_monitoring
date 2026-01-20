@@ -112,6 +112,10 @@ public:
       "/fanet/network_bus", 100,
       std::bind(&NetworkMonitorNode::trafficCallback, this, _1));
 
+    traffic_raw_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
+      "/fanet/network_bus_raw", 100,
+      std::bind(&NetworkMonitorNode::trafficRawCallback, this, _1));
+
     delivered_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 100,
       std::bind(&NetworkMonitorNode::deliveredCallback, this, _1));
@@ -207,18 +211,39 @@ private:
       rec.src_id = msg->src_id;
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
+    }
+    if (rec.first_seen_bus_time.nanoseconds() == 0) {
       rec.first_seen_bus_time = now;
+    }
+    rec.forward_count++;
+
+    if (msg->flow_type == 1 && msg->control_type == "FAILURE_EVENT") {
+      handleFailureFromTraffic(*msg);
+    }
+  }
+
+  void trafficRawCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    if (msg->control_type == "DROP" || msg->control_type == "ACK") {
+      return;
+    }
+
+    auto & rec = records_[msg->msg_id];
+    if (rec.msg_id.empty()) {
+      rec.msg_id = msg->msg_id;
+      rec.ref_msg_id = msg->ref_msg_id;
+      rec.flow_type = msg->flow_type;
+      rec.control_type = msg->control_type;
+      rec.src_id = msg->src_id;
+      rec.dst_id = msg->dst_id;
+      rec.creation_time = rclcpp::Time(msg->creation_time);
+      rec.first_seen_bus_time = this->now();
       total_generated_++;
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
                   msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
                   total_generated_);
-    }
-    rec.forward_count++;
-
-    if (msg->flow_type == 1 && msg->control_type == "FAILURE_EVENT") {
-      handleFailureFromTraffic(*msg);
     }
   }
 
@@ -258,6 +283,10 @@ private:
       rec.src_id = msg->src_id;
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
+    }
+
+    if (rec.delivered) {
+      return;
     }
 
     rec.delivered = true;
@@ -889,6 +918,7 @@ private:
   std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
+  rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_raw_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
 
