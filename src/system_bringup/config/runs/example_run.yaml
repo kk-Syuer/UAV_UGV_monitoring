@@ -58,6 +58,7 @@ fault_injector:
 
 sink:
   sink_id: sink_gateway
+  uplink_ch_id: ch0
 
 ugv:
   ugv_id: ugv_1
