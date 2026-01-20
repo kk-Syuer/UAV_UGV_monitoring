@@ -132,7 +132,7 @@ def _make_nodes(context, *args, **kwargs):
         ))
 
     # Sink
-    sink_id = str(_get(cfg, ["sink", "sink_id"], "sink"))
+    sink_id = str(_get(cfg, ["sink", "sink_id"], "sink_gateway"))
     nodes.append(Node(
         package=_get(cfg, ["executables", "sink_pkg"], "sink_gateway"),
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),

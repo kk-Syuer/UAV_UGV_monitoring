@@ -9,6 +9,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
+#include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 
 using std::placeholders::_1;
@@ -52,6 +53,8 @@ public:
       this->declare_parameter<double>("control_period_sec", 0.0);
 
     ch_timeout_sec_ = this->declare_parameter<double>("ch_timeout_sec", 15.0);
+    status_period_sec_ = this->declare_parameter<double>("status_period_sec", 1.0);
+    comm_radius_m_ = this->declare_parameter<double>("comm_radius_m", 400.0);
 
     // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -64,6 +67,9 @@ public:
     // Control messages are injected into /fanet/network_bus_raw.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/network_bus_raw", 100);
+
+    status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
+      "/fanet/status", 10);
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', uplink_ch_id='%s', target_uav_id='%s', period=%.1fs",
@@ -87,6 +93,11 @@ public:
 
     ch_timeout_timer_ = this->create_wall_timer(
       1s, std::bind(&SinkGatewayNode::checkChTimeouts, this));
+
+    auto status_period = std::chrono::duration<double>(status_period_sec_);
+    status_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
+      std::bind(&SinkGatewayNode::publishStatus, this));
   }
 
 private:
@@ -370,7 +381,10 @@ private:
   std::unordered_map<std::string, ChStatus> ch_status_table_;
   std::unordered_set<std::string> active_ch_ids_;
   double ch_timeout_sec_ = 0.0;
+  double status_period_sec_ = 1.0;
+  double comm_radius_m_ = 0.0;
   rclcpp::TimerBase::SharedPtr ch_timeout_timer_;
+  rclcpp::TimerBase::SharedPtr status_timer_;
 
   // Deployment tracking
   std::unordered_set<std::string> expected_uavs_;
@@ -382,6 +396,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;
+  rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr         status_pub_;
   rclcpp::TimerBase::SharedPtr                                   control_timer_;
 
   void maybePublishAck(const uav_msgs::msg::TrafficMessage & msg)
@@ -424,6 +439,35 @@ private:
     uav_msgs::msg::TrafficMessage delivered = msg;
     delivered.next_hop_id.clear();
     delivered_pub_->publish(delivered);
+  }
+
+  void publishStatus()
+  {
+    if (!status_pub_) {
+      return;
+    }
+
+    auto now = this->now();
+    uav_msgs::msg::UavStatus status;
+    status.uav_id = sink_id_;
+    status.role = 2;
+    status.cluster_id = "sink";
+    status.battery_level = 100.0f;
+    status.battery_capacity = 0.0f;
+    status.pose = sink_pose_;
+    status.service_radius = static_cast<float>(comm_radius_m_);
+    status.connected_users = 0;
+    status.traffic_load = 0.0f;
+    status.packet_loss_estimate = 0.0f;
+    status.energy_consumption_rate = 0.0f;
+    status.charging_state = 0;
+    status.intent_to_leave = false;
+    status.eta_to_leave_sec = 0.0f;
+    status.comm_radius_m = static_cast<float>(comm_radius_m_);
+    status.stamp = now;
+    status.backbone_active = true;
+
+    status_pub_->publish(status);
   }
 };
 
