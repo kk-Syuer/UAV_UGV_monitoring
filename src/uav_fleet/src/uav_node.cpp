@@ -1588,20 +1588,60 @@ private:
     return best;
   }
 
+  void logSinkNeighborExclusion(const std::string & reason,
+                                const rclcpp::Time & now) const
+  {
+    std::ostringstream neighbors;
+    for (const auto & kv : neighbors_) {
+      if (!neighbors.str().empty()) {
+        neighbors << ", ";
+      }
+      double age = (now - kv.second.last_seen).seconds();
+      neighbors << kv.first << "(age=" << age << "s)";
+    }
+    if (neighbors.str().empty()) {
+      neighbors << "none";
+    }
+
+    RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                         "UAV %s: sink '%s' unreachable (%s). Neighbors: %s",
+                         uav_id_.c_str(),
+                         default_dst_id_.c_str(),
+                         reason.c_str(),
+                         neighbors.str().c_str());
+  }
+
   bool neighborReachable(const std::string & id, const rclcpp::Time & now) const
   {
     auto it = neighbors_.find(id);
     if (it == neighbors_.end()) {
+      if (id == default_dst_id_) {
+        logSinkNeighborExclusion("not in neighbor table", now);
+      }
       return false;
     }
     if (hello_timeout_sec_ > 0.0 &&
         (now - it->second.last_seen) > rclcpp::Duration::from_seconds(hello_timeout_sec_)) {
+      if (id == default_dst_id_) {
+        double age = (now - it->second.last_seen).seconds();
+        std::ostringstream reason;
+        reason << "stale status age=" << age << "s";
+        logSinkNeighborExclusion(reason.str(), now);
+      }
       return false;
     }
     double nb_range = static_cast<double>(it->second.comm_radius_m > 0.0f ? it->second.comm_radius_m : service_radius_);
     double max_range = std::min(static_cast<double>(service_radius_), nb_range);
     double dist = distance2d(pose_.position, it->second.pose.position);
-    return dist <= max_range;
+    if (dist > max_range) {
+      if (id == default_dst_id_) {
+        std::ostringstream reason;
+        reason << "out of range dist=" << dist << "m max=" << max_range << "m";
+        logSinkNeighborExclusion(reason.str(), now);
+      }
+      return false;
+    }
+    return true;
   }
 
   void stampForSend(uav_msgs::msg::TrafficMessage & msg, const std::string & next_hop)
