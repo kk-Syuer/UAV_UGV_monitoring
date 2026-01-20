@@ -1,11 +1,15 @@
 from collections import defaultdict, deque
+import os
 from typing import Dict
 
 import rclpy
 from rclpy.node import Node
 
 import matplotlib
-matplotlib.use("TkAgg")
+
+_headless_env = os.environ.get("FLEET_VIZ_HEADLESS", "").lower()
+_headless = _headless_env in ("1", "true", "yes") or not os.environ.get("DISPLAY")
+matplotlib.use("Agg" if _headless else "TkAgg")
 import matplotlib.pyplot as plt
 
 from geometry_msgs.msg import Pose
