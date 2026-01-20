@@ -102,7 +102,8 @@ public:
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
     max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
     stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
-    backbone_ids_ = this->declare_parameter<std::vector<std::string>>("backbone_ids", {});
+    backbone_ids_ = this->declare_parameter<std::vector<std::string>>(
+      "backbone_ids", std::vector<std::string>{});
     output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
     start_time_ = this->now();
 
