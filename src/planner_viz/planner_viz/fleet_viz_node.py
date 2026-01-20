@@ -366,7 +366,7 @@ class FleetVizNode(Node):
         return self._line(text, size=11, weight='bold')
 
     def _page_header(self, text: str) -> dict:
-        return self._line(text, size=12, weight='bold', spacing=1.2)
+        return self._line(text, size=12, weight='bold', spacing=1.0)
 
     def _render_info_lines(self, lines, scroll_offset=0.0):
         background = self.info_ax.add_patch(
@@ -380,7 +380,7 @@ class FleetVizNode(Node):
             )
         )
         y = 0.965 + scroll_offset
-        base_step = 0.042
+        base_step = 0.032
         for line in lines:
             size = line.get('size', 9)
             weight = line.get('weight', 'normal')
@@ -414,7 +414,6 @@ class FleetVizNode(Node):
             info_lines.append(self._line('  (no data)'))
 
         if self.uav_states:
-            info_lines.append(self._line('', spacing=0.6))
             info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
             num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
             num_mem = sum(1 for st in self.uav_states.values() if st.role == 0)
@@ -438,11 +437,9 @@ class FleetVizNode(Node):
                     f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | "
                     f"{st.battery_level:.1f}%"))
         else:
-            info_lines.append(self._line('', spacing=0.6))
             info_lines.append(self._title_line('UAV status'))
             info_lines.append(self._line('  (no reports)'))
 
-        info_lines.append(self._line('', spacing=0.6))
         if self.ugv_pose:
             info_lines.append(self._title_line('UGV position'))
             info_lines.append(self._line(
@@ -451,7 +448,6 @@ class FleetVizNode(Node):
             info_lines.append(self._title_line('UGV position'))
             info_lines.append(self._line('  (pending deployment)'))
 
-        info_lines.append(self._line('', spacing=0.6))
         info_lines.append(self._title_line('Network nodes'))
         if self.uav_states:
             for uid in sorted(self.uav_states.keys()):
@@ -461,7 +457,6 @@ class FleetVizNode(Node):
         if self.ugv_pose is not None:
             info_lines.append(self._line("  - ugv"))
 
-        info_lines.append(self._line('', spacing=0.6))
         info_lines.append(self._title_line('Cluster agenda'))
         cluster_ids = sorted({st.cluster_id for st in self.uav_states.values() if st.cluster_id})
         if cluster_ids:
@@ -471,7 +466,6 @@ class FleetVizNode(Node):
         else:
             info_lines.append(self._line("  (no cluster data)"))
 
-        info_lines.append(self._line('', spacing=0.6))
         info_lines.append(self._title_line('Control status'))
         if self.cluster_info:
             ch_ids = {info.ch_id for info in self.cluster_info.values() if info.ch_id}
@@ -514,16 +508,13 @@ class FleetVizNode(Node):
             self._line(f"  delivered: {self.delivered_total}"),
             self._line(f"  drops: {self.drop_total} ({drop_ratio:.1%})"),
             self._line(f"  acks: {self.ack_total}"),
-            self._line('', spacing=0.6),
             self._title_line(f"Rates (last {self.rate_window_sec:.0f}s)"),
             self._line(f"  bus: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s"),
             self._line(f"  drops: {drop_rate:.1f}/s"),
-            self._line('', spacing=0.6),
             self._title_line("Recent activity"),
             self._line(f"  Last msg age: {self._format_age(self.last_msg_time)}"),
             self._line(f"  Last drop age: {self._format_age(self.last_drop_time)}"),
             self._line(f"  Last deliver age: {self._format_age(self.last_delivered_time)}"),
-            self._line('', spacing=0.6),
             self._title_line("Top control types")
         ]
         if top_controls:
@@ -532,7 +523,6 @@ class FleetVizNode(Node):
         else:
             net_lines.append(self._line("  - (no traffic)"))
         if top_drop_reasons:
-            net_lines.append(self._line('', spacing=0.6))
             net_lines.append(self._title_line("Top drop reasons"))
             for name, count in top_drop_reasons:
                 net_lines.append(self._line(f"  - {name}: {count}"))
@@ -547,10 +537,8 @@ class FleetVizNode(Node):
         queue_lines = [
             self._title_line('Charging queue'),
             self._line(f"  pending requests: {len(self.pending_charges)}"),
-            self._line('', spacing=0.6),
             self._title_line("Scheduling"),
             self._line(f"  {self.latest_policy}"),
-            self._line('', spacing=0.6),
             self._title_line("Spots"),
             self._line(
                 f"  ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
@@ -558,7 +546,6 @@ class FleetVizNode(Node):
             self._line(f"  spots now: {spots_now}")
         ]
         if self.pending_charges:
-            queue_lines.append(self._line('', spacing=0.6))
             queue_lines.append(self._title_line('Waiting'))
             ordered = sorted(self.pending_charges.items(), key=lambda item: item[1])
             for uid, _ in ordered:
@@ -671,7 +658,6 @@ class FleetVizNode(Node):
             f"{page_name} ({self.info_page_index + 1}/{len(self.info_pages)})")]
         if not _headless:
             header.append(self._line("Use ◀/▶ to browse"))
-        header.append(self._line('', spacing=0.7))
         if page_name == 'Status':
             info_lines = header + self._status_lines()
         elif page_name == 'Network':
