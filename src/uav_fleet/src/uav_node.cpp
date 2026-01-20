@@ -1709,6 +1709,9 @@ private:
 
   void publishDrop(const std::string & msg_id, const std::string & reason)
   {
+    if (msg_id.find("_DROP_") != std::string::npos) {
+      return;
+    }
     uav_msgs::msg::TrafficMessage drop;
     drop.msg_id = msg_id + "_DROP_" + uav_id_;
     drop.src_id = uav_id_;
