@@ -106,9 +106,9 @@ This allows controlled experiments on **network resilience under adverse environ
 +---------+---------+
           |
           v
-+-------------------+        +---------------------+
-| Fault Injector    |<-------| FANET Raw Bus       |
-+---------+---------+        +---------------------+
++-------------------+       
+| Fault Injector    |
++---------+---------+       
           |
           v
 +-------------------+        +---------------------+
