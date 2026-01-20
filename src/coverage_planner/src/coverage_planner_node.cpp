@@ -440,33 +440,22 @@ private:
     }
 
     if (task_points_.empty()) {
-      // Default: generate clustered random points within the area.
-      const int num_points = 9;
-      const int num_clusters = 3;
+      // Default: generate scattered random points within the area.
+      std::uniform_int_distribution<int> num_points_dist(16, 29);
+      const int num_points = num_points_dist(rng_);
       std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
       std::uniform_real_distribution<double> y_dist(y_min_, y_max_);
-      const double sigma_x = (x_max_ - x_min_) * 0.12;
-      const double sigma_y = (y_max_ - y_min_) * 0.12;
-      std::normal_distribution<double> jitter_x(0.0, sigma_x);
-      std::normal_distribution<double> jitter_y(0.0, sigma_y);
-
-      std::vector<std::pair<double, double>> centers;
-      centers.reserve(static_cast<size_t>(num_clusters));
-      for (int c = 0; c < num_clusters; ++c) {
-        centers.emplace_back(x_dist(rng_), y_dist(rng_));
-      }
 
       for (int i = 0; i < num_points; ++i) {
-        const auto & center = centers[static_cast<size_t>(i % num_clusters)];
         TaskPoint tp;
         tp.id = "task_" + std::to_string(i + 1);
-        tp.x = clamp(center.first + jitter_x(rng_), x_min_, x_max_);
-        tp.y = clamp(center.second + jitter_y(rng_), y_min_, y_max_);
+        tp.x = x_dist(rng_);
+        tp.y = y_dist(rng_);
         tp.cluster_index = -1;
         task_points_.push_back(tp);
       }
       RCLCPP_WARN(this->get_logger(),
-                  "No task_points provided; generated %zu clustered random task points.",
+                  "No task_points provided; generated %zu scattered random task points.",
                   task_points_.size());
     }
   }
@@ -709,6 +698,9 @@ private:
   // Main timer: deploy once and later react to routing changes.
   void periodicUpdate()
   {
+    if (!task_points_.empty()) {
+      publishTaskPoints();
+    }
     // First time: wait for status discovery then compute full deployment
     if (!first_deployment_done_) {
       if (!readyForDeployment()) {
