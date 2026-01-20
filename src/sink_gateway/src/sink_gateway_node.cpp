@@ -394,7 +394,6 @@ private:
     ack.msg_id = sink_id_ + "_ACK_" + msg.msg_id;
     ack.src_id = sink_id_;
     ack.dst_id = msg.src_id;
-    ack.ref_msg_id = msg.msg_id;
     ack.flow_type = 1;
     ack.control_type = "ACK";
     ack.payload = "ref_msg_id=" + msg.msg_id;
@@ -423,13 +422,7 @@ private:
       return;
     }
     uav_msgs::msg::TrafficMessage delivered = msg;
-    delivered.last_rx_time = now;
-    delivered.last_tx_time = now;
-    delivered.last_hop_id = sink_id_;
     delivered.next_hop_id.clear();
-    if (std::find(delivered.recent_hops.begin(), delivered.recent_hops.end(), sink_id_) == delivered.recent_hops.end()) {
-      delivered.recent_hops.push_back(sink_id_);
-    }
     delivered_pub_->publish(delivered);
   }
 };
