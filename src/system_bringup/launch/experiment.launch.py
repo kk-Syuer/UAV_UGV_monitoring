@@ -29,6 +29,8 @@ def _load_yaml(path: str, fallback_root: str | None = None) -> dict:
 def _bool_from_str(s: str, default: bool) -> bool:
     if s is None:
         return default
+    if isinstance(s, str) and not s.strip():
+        return default
     if isinstance(s, bool):
         return s
     return str(s).strip().lower() in ("1", "true", "yes", "on")
