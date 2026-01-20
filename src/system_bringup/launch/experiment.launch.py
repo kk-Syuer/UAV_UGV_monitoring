@@ -68,6 +68,8 @@ def _make_nodes(context, *args, **kwargs):
     # Common network params
     neighbor_timeout = float(_get(cfg, ["network", "neighbor_timeout_sec"], 3.0))
     comm_radius = float(_get(cfg, ["network", "comm_radius_m"], 400.0))
+    ch_ids = _get(cfg, ["uavs", "ch_ids"], []) or []
+    members = _get(cfg, ["uavs", "members"], []) or []
 
     # Monitor
     monitor_params = {
@@ -75,6 +77,9 @@ def _make_nodes(context, *args, **kwargs):
         "output_dir": output_dir,
         "flush_period_sec": float(_get(cfg, ["monitor", "flush_period_sec"], 2.0)),
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
+        "max_runtime_sec": float(_get(cfg, ["monitor", "max_runtime_sec"], 0.0)),
+        "stop_on_backbone_loss": bool(_get(cfg, ["monitor", "stop_on_backbone_loss"], False)),
+        "backbone_ids": ch_ids,
     }
     nodes.append(Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
@@ -153,13 +158,60 @@ def _make_nodes(context, *args, **kwargs):
 
     # Coverage planner (optional)
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
+        member_ids = [str(m.get("id")) for m in members]
+        uav_ids = [str(ch_id) for ch_id in ch_ids] + member_ids
         nodes.append(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
             name=f"coverage_planner_{run_id}",
             output="screen",
+            parameters=[{
+                "uav_ids": uav_ids,
+                "num_ch": len(ch_ids),
+            }],
+        ))
+
+    # Fleet visualizer (optional)
+    if _bool_from_str(_get(cfg, ["planner_viz", "enable"], True), True):
+        nodes.append(Node(
+            package=_get(cfg, ["executables", "planner_viz_pkg"], "planner_viz"),
+            executable=_get(cfg, ["executables", "planner_viz_exec"], "fleet_viz"),
+            name=f"fleet_viz_{run_id}",
+            output="screen",
             parameters=[{}],
         ))
+
+    # Cluster head manager(s) (optional)
+    if _bool_from_str(_get(cfg, ["ch_manager", "enable"], True), True):
+        clusters = _get(cfg, ["ch_manager", "clusters"], []) or []
+        if clusters:
+            cluster_configs = clusters
+        else:
+            cluster_prefix = str(_get(cfg, ["ch_manager", "cluster_prefix"], "cluster"))
+            member_map: dict[str, list[str]] = {}
+            for member in members:
+                my_ch = str(member.get("my_ch_id", ""))
+                member_map.setdefault(my_ch, []).append(str(member.get("id")))
+            cluster_configs = [
+                {
+                    "cluster_id": f"{cluster_prefix}_{idx + 1}",
+                    "ch_id": str(ch_id),
+                    "member_ids": member_map.get(str(ch_id), []),
+                }
+                for idx, ch_id in enumerate(ch_ids)
+            ]
+        for cfg_entry in cluster_configs:
+            nodes.append(Node(
+                package=_get(cfg, ["executables", "ch_manager_pkg"], "ch_manager"),
+                executable=_get(cfg, ["executables", "ch_manager_exec"], "ch_manager_node"),
+                name=f"ch_manager_{cfg_entry['cluster_id']}",
+                output="screen",
+                parameters=[{
+                    "cluster_id": cfg_entry["cluster_id"],
+                    "ch_id": cfg_entry["ch_id"],
+                    "member_ids": cfg_entry["member_ids"],
+                }],
+            ))
 
     # User device traffic (optional)
     if _bool_from_str(_get(cfg, ["traffic", "user_device_enable"], True), True):
@@ -191,7 +243,6 @@ def _make_nodes(context, *args, **kwargs):
     uav_exec = _get(cfg, ["executables", "uav_exec"], "uav_node")
 
     # CH UAVs
-    ch_ids = _get(cfg, ["uavs", "ch_ids"], []) or []
     for ch_id in ch_ids:
         nodes.append(Node(
             package=uav_pkg,
@@ -202,7 +253,6 @@ def _make_nodes(context, *args, **kwargs):
         ))
 
     # Member UAVs
-    members = _get(cfg, ["uavs", "members"], []) or []
     for m in members:
         uid = str(m.get("id"))
         role = int(m.get("role", 0))

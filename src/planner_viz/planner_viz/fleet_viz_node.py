@@ -4,6 +4,8 @@ from typing import Dict
 import rclpy
 from rclpy.node import Node
 
+import matplotlib
+matplotlib.use("TkAgg")
 import matplotlib.pyplot as plt
 
 from geometry_msgs.msg import Pose
@@ -163,12 +165,6 @@ class FleetVizNode(Node):
     def cluster_info_cb(self, msg: ClusterInfo):
         self.cluster_info[msg.cluster_id] = msg
         self.last_cluster_info_time = self._now_sec()
-
-    def delivered_cb(self, msg: TrafficMessage):
-        now = self._now_sec()
-        self.delivered_total += 1
-        self.last_delivered_time = now
-        self._record_timestamp(self.delivered_timestamps, now)
 
     def delivered_cb(self, msg: TrafficMessage):
         now = self._now_sec()
