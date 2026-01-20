@@ -24,11 +24,15 @@ module uav_msgs {
       string next_hop_id;
 
       @verbatim (language="comment", text=
+        "who forwarded this packet most recently")
+      string last_hop_id;
+
+      @verbatim (language="comment", text=
         "0=DATA, 1=CONTROL")
       uint8 flow_type;
 
       @verbatim (language="comment", text=
-        "NONE, HELLO, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, etc.")
+        "NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, DROP, DEBUG_TEXT, STATUS_CH")
       string control_type;
 
       @verbatim (language="comment", text=
@@ -50,6 +54,26 @@ module uav_msgs {
       string payload;
 
       builtin_interfaces::msg::Time creation_time;
+
+      @verbatim (language="comment", text=
+        "optional: references another message (e.g., ACK/DROP/DECISION)")
+      string ref_msg_id;
+
+      @verbatim (language="comment", text=
+        "when the previous hop transmitted")
+      builtin_interfaces::msg::Time last_tx_time;
+
+      @verbatim (language="comment", text=
+        "when this hop received it")
+      builtin_interfaces::msg::Time last_rx_time;
+
+      @verbatim (language="comment", text=
+        "if control_type == DROP, why it was dropped")
+      string drop_reason;
+
+      @verbatim (language="comment", text=
+        "history of forwarders (optional, bounded by producer)")
+      sequence<string> recent_hops;
     };
   };
 };

@@ -63,6 +63,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         '_src_id',
         '_dst_id',
         '_next_hop_id',
+        '_last_hop_id',
         '_flow_type',
         '_control_type',
         '_seq',
@@ -71,6 +72,11 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         '_requires_ack',
         '_payload',
         '_creation_time',
+        '_ref_msg_id',
+        '_last_tx_time',
+        '_last_rx_time',
+        '_drop_reason',
+        '_recent_hops',
     ]
 
     _fields_and_field_types = {
@@ -78,6 +84,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         'src_id': 'string',
         'dst_id': 'string',
         'next_hop_id': 'string',
+        'last_hop_id': 'string',
         'flow_type': 'uint8',
         'control_type': 'string',
         'seq': 'uint32',
@@ -86,9 +93,15 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         'requires_ack': 'boolean',
         'payload': 'string',
         'creation_time': 'builtin_interfaces/Time',
+        'ref_msg_id': 'string',
+        'last_tx_time': 'builtin_interfaces/Time',
+        'last_rx_time': 'builtin_interfaces/Time',
+        'drop_reason': 'string',
+        'recent_hops': 'sequence<string>',
     }
 
     SLOT_TYPES = (
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
@@ -101,6 +114,11 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         rosidl_parser.definition.BasicType('boolean'),  # noqa: E501
         rosidl_parser.definition.UnboundedString(),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
+        rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
+        rosidl_parser.definition.UnboundedSequence(rosidl_parser.definition.UnboundedString()),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -111,6 +129,7 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self.src_id = kwargs.get('src_id', str())
         self.dst_id = kwargs.get('dst_id', str())
         self.next_hop_id = kwargs.get('next_hop_id', str())
+        self.last_hop_id = kwargs.get('last_hop_id', str())
         self.flow_type = kwargs.get('flow_type', int())
         self.control_type = kwargs.get('control_type', str())
         self.seq = kwargs.get('seq', int())
@@ -120,6 +139,13 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         self.payload = kwargs.get('payload', str())
         from builtin_interfaces.msg import Time
         self.creation_time = kwargs.get('creation_time', Time())
+        self.ref_msg_id = kwargs.get('ref_msg_id', str())
+        from builtin_interfaces.msg import Time
+        self.last_tx_time = kwargs.get('last_tx_time', Time())
+        from builtin_interfaces.msg import Time
+        self.last_rx_time = kwargs.get('last_rx_time', Time())
+        self.drop_reason = kwargs.get('drop_reason', str())
+        self.recent_hops = kwargs.get('recent_hops', [])
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -158,6 +184,8 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
             return False
         if self.next_hop_id != other.next_hop_id:
             return False
+        if self.last_hop_id != other.last_hop_id:
+            return False
         if self.flow_type != other.flow_type:
             return False
         if self.control_type != other.control_type:
@@ -173,6 +201,16 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
         if self.payload != other.payload:
             return False
         if self.creation_time != other.creation_time:
+            return False
+        if self.ref_msg_id != other.ref_msg_id:
+            return False
+        if self.last_tx_time != other.last_tx_time:
+            return False
+        if self.last_rx_time != other.last_rx_time:
+            return False
+        if self.drop_reason != other.drop_reason:
+            return False
+        if self.recent_hops != other.recent_hops:
             return False
         return True
 
@@ -232,6 +270,19 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
                 isinstance(value, str), \
                 "The 'next_hop_id' field must be of type 'str'"
         self._next_hop_id = value
+
+    @builtins.property
+    def last_hop_id(self):
+        """Message field 'last_hop_id'."""
+        return self._last_hop_id
+
+    @last_hop_id.setter
+    def last_hop_id(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'last_hop_id' field must be of type 'str'"
+        self._last_hop_id = value
 
     @builtins.property
     def flow_type(self):
@@ -345,3 +396,80 @@ class TrafficMessage(metaclass=Metaclass_TrafficMessage):
                 isinstance(value, Time), \
                 "The 'creation_time' field must be a sub message of type 'Time'"
         self._creation_time = value
+
+    @builtins.property
+    def ref_msg_id(self):
+        """Message field 'ref_msg_id'."""
+        return self._ref_msg_id
+
+    @ref_msg_id.setter
+    def ref_msg_id(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'ref_msg_id' field must be of type 'str'"
+        self._ref_msg_id = value
+
+    @builtins.property
+    def last_tx_time(self):
+        """Message field 'last_tx_time'."""
+        return self._last_tx_time
+
+    @last_tx_time.setter
+    def last_tx_time(self, value):
+        if __debug__:
+            from builtin_interfaces.msg import Time
+            assert \
+                isinstance(value, Time), \
+                "The 'last_tx_time' field must be a sub message of type 'Time'"
+        self._last_tx_time = value
+
+    @builtins.property
+    def last_rx_time(self):
+        """Message field 'last_rx_time'."""
+        return self._last_rx_time
+
+    @last_rx_time.setter
+    def last_rx_time(self, value):
+        if __debug__:
+            from builtin_interfaces.msg import Time
+            assert \
+                isinstance(value, Time), \
+                "The 'last_rx_time' field must be a sub message of type 'Time'"
+        self._last_rx_time = value
+
+    @builtins.property
+    def drop_reason(self):
+        """Message field 'drop_reason'."""
+        return self._drop_reason
+
+    @drop_reason.setter
+    def drop_reason(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'drop_reason' field must be of type 'str'"
+        self._drop_reason = value
+
+    @builtins.property
+    def recent_hops(self):
+        """Message field 'recent_hops'."""
+        return self._recent_hops
+
+    @recent_hops.setter
+    def recent_hops(self, value):
+        if __debug__:
+            from collections.abc import Sequence
+            from collections.abc import Set
+            from collections import UserList
+            from collections import UserString
+            assert \
+                ((isinstance(value, Sequence) or
+                  isinstance(value, Set) or
+                  isinstance(value, UserList)) and
+                 not isinstance(value, str) and
+                 not isinstance(value, UserString) and
+                 all(isinstance(v, str) for v in value) and
+                 True), \
+                "The 'recent_hops' field must be a set or sequence and each value of type 'str'"
+        self._recent_hops = value

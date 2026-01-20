@@ -40,6 +40,10 @@ max_serialized_size_Time(
 }  // namespace msg
 }  // namespace builtin_interfaces
 
+// functions for builtin_interfaces::msg::Time already declared above
+
+// functions for builtin_interfaces::msg::Time already declared above
+
 
 namespace uav_msgs
 {
@@ -64,6 +68,8 @@ cdr_serialize(
   cdr << ros_message.dst_id;
   // Member: next_hop_id
   cdr << ros_message.next_hop_id;
+  // Member: last_hop_id
+  cdr << ros_message.last_hop_id;
   // Member: flow_type
   cdr << ros_message.flow_type;
   // Member: control_type
@@ -82,6 +88,22 @@ cdr_serialize(
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
     ros_message.creation_time,
     cdr);
+  // Member: ref_msg_id
+  cdr << ros_message.ref_msg_id;
+  // Member: last_tx_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
+    ros_message.last_tx_time,
+    cdr);
+  // Member: last_rx_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
+    ros_message.last_rx_time,
+    cdr);
+  // Member: drop_reason
+  cdr << ros_message.drop_reason;
+  // Member: recent_hops
+  {
+    cdr << ros_message.recent_hops;
+  }
   return true;
 }
 
@@ -102,6 +124,9 @@ cdr_deserialize(
 
   // Member: next_hop_id
   cdr >> ros_message.next_hop_id;
+
+  // Member: last_hop_id
+  cdr >> ros_message.last_hop_id;
 
   // Member: flow_type
   cdr >> ros_message.flow_type;
@@ -131,6 +156,25 @@ cdr_deserialize(
   // Member: creation_time
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
     cdr, ros_message.creation_time);
+
+  // Member: ref_msg_id
+  cdr >> ros_message.ref_msg_id;
+
+  // Member: last_tx_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
+    cdr, ros_message.last_tx_time);
+
+  // Member: last_rx_time
+  builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
+    cdr, ros_message.last_rx_time);
+
+  // Member: drop_reason
+  cdr >> ros_message.drop_reason;
+
+  // Member: recent_hops
+  {
+    cdr >> ros_message.recent_hops;
+  }
 
   return true;
 }
@@ -164,6 +208,10 @@ get_serialized_size(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message.next_hop_id.size() + 1);
+  // Member: last_hop_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.last_hop_id.size() + 1);
   // Member: flow_type
   {
     size_t item_size = sizeof(ros_message.flow_type);
@@ -207,6 +255,36 @@ get_serialized_size(
   current_alignment +=
     builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
     ros_message.creation_time, current_alignment);
+  // Member: ref_msg_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.ref_msg_id.size() + 1);
+  // Member: last_tx_time
+
+  current_alignment +=
+    builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
+    ros_message.last_tx_time, current_alignment);
+  // Member: last_rx_time
+
+  current_alignment +=
+    builtin_interfaces::msg::typesupport_fastrtps_cpp::get_serialized_size(
+    ros_message.last_rx_time, current_alignment);
+  // Member: drop_reason
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.drop_reason.size() + 1);
+  // Member: recent_hops
+  {
+    size_t array_size = ros_message.recent_hops.size();
+
+    current_alignment += padding +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, padding);
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        (ros_message.recent_hops[index].size() + 1);
+    }
+  }
 
   return current_alignment - initial_alignment;
 }
@@ -271,6 +349,19 @@ max_serialized_size_TrafficMessage(
   }
 
   // Member: next_hop_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: last_hop_id
   {
     size_t array_size = 1;
 
@@ -371,6 +462,87 @@ max_serialized_size_TrafficMessage(
     }
   }
 
+  // Member: ref_msg_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: last_tx_time
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size =
+        builtin_interfaces::msg::typesupport_fastrtps_cpp::max_serialized_size_Time(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+
+  // Member: last_rx_time
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size =
+        builtin_interfaces::msg::typesupport_fastrtps_cpp::max_serialized_size_Time(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+
+  // Member: drop_reason
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
+  // Member: recent_hops
+  {
+    size_t array_size = 0;
+    full_bounded = false;
+    is_plain = false;
+    current_alignment += padding +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, padding);
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -379,7 +551,7 @@ max_serialized_size_TrafficMessage(
     using DataType = uav_msgs::msg::TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, creation_time) +
+      offsetof(DataType, recent_hops) +
       last_member_size
       ) == ret_val;
   }

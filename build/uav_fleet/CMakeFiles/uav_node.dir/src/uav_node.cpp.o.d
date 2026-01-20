@@ -155,7 +155,30 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: \
  /usr/include/c++/11/bits/enable_special_members.h \
  /usr/include/c++/11/bits/node_handle.h \
  /usr/include/c++/11/bits/unordered_map.h \
- /usr/include/c++/11/bits/erase_if.h \
+ /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/deque \
+ /usr/include/c++/11/bits/stl_deque.h /usr/include/c++/11/bits/deque.tcc \
+ /usr/include/c++/11/optional /usr/include/c++/11/cmath \
+ /usr/include/math.h /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+ /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+ /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+ /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+ /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+ /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+ /usr/include/c++/11/bits/specfun.h /usr/include/c++/11/tr1/gamma.tcc \
+ /usr/include/c++/11/tr1/special_function_util.h \
+ /usr/include/c++/11/tr1/bessel_function.tcc \
+ /usr/include/c++/11/tr1/beta_function.tcc \
+ /usr/include/c++/11/tr1/ell_integral.tcc \
+ /usr/include/c++/11/tr1/exp_integral.tcc \
+ /usr/include/c++/11/tr1/hypergeometric.tcc \
+ /usr/include/c++/11/tr1/legendre_function.tcc \
+ /usr/include/c++/11/tr1/modified_bessel_func.tcc \
+ /usr/include/c++/11/tr1/poly_hermite.tcc \
+ /usr/include/c++/11/tr1/poly_laguerre.tcc \
+ /usr/include/c++/11/tr1/riemann_zeta.tcc \
  /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
  /usr/include/c++/11/csignal /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
@@ -321,8 +344,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: \
  /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
- /usr/include/c++/11/optional /usr/include/c++/11/sstream \
- /usr/include/c++/11/bits/sstream.tcc /usr/include/c++/11/variant \
+ /usr/include/c++/11/sstream /usr/include/c++/11/bits/sstream.tcc \
+ /usr/include/c++/11/variant \
  /opt/ros/humble/include/rcl/rcl/error_handling.h \
  /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp \
@@ -450,28 +473,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: \
  /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp \
- /usr/include/c++/11/cmath /usr/include/math.h \
- /usr/include/x86_64-linux-gnu/bits/math-vector.h \
- /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
- /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
- /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
- /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
- /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
- /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
- /usr/include/c++/11/bits/specfun.h /usr/include/c++/11/tr1/gamma.tcc \
- /usr/include/c++/11/tr1/special_function_util.h \
- /usr/include/c++/11/tr1/bessel_function.tcc \
- /usr/include/c++/11/tr1/beta_function.tcc \
- /usr/include/c++/11/tr1/ell_integral.tcc \
- /usr/include/c++/11/tr1/exp_integral.tcc \
- /usr/include/c++/11/tr1/hypergeometric.tcc \
- /usr/include/c++/11/tr1/legendre_function.tcc \
- /usr/include/c++/11/tr1/modified_bessel_func.tcc \
- /usr/include/c++/11/tr1/poly_hermite.tcc \
- /usr/include/c++/11/tr1/poly_laguerre.tcc \
- /usr/include/c++/11/tr1/riemann_zeta.tcc \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp \
  /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
@@ -621,18 +622,17 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__traits.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp \
@@ -662,6 +662,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp \

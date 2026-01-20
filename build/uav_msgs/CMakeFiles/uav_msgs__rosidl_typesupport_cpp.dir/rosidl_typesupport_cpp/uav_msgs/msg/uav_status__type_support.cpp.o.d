@@ -163,6 +163,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_cpp.dir/rosidl_typesupport_cpp/uav_msgs/
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp \
  /opt/ros/humble/include/rosidl_typesupport_cpp/rosidl_typesupport_cpp/identifier.hpp \
  /opt/ros/humble/include/rosidl_typesupport_cpp/rosidl_typesupport_cpp/visibility_control.h \

@@ -871,6 +871,8 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/deta
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
   /usr/include/assert.h \
   /usr/include/string.h \
@@ -895,6 +897,7 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/deta
   /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__functions.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_c__visibility_control.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__functions.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_c__visibility_control.h
 
@@ -1135,6 +1138,10 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/deta
 
 rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__struct.h:
 
+rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h:
+
+rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c:
+
 /usr/include/assert.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__functions.h:
@@ -1173,6 +1180,10 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h:
 
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
 
+rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/uav_status__struct.h:
+
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
 /usr/include/x86_64-linux-gnu/bits/floatn-common.h:
@@ -1184,8 +1195,6 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h:
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
-
-/usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
 /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
 
@@ -1203,10 +1212,6 @@ rosidl_generator_c/uav_msgs/msg/detail/heartbeat__struct.h:
 
 rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c:
 
-/usr/include/x86_64-linux-gnu/sys/select.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
-
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h:
 
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
@@ -1216,8 +1221,6 @@ rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c:
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__struct.h:
-
-rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.c:
 
 /usr/include/x86_64-linux-gnu/bits/libc-header-start.h:
 
@@ -1341,6 +1344,10 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.c:
 
 rosidl_generator_c/uav_msgs/msg/detail/cluster_info__functions.c:
 
+/usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h:
+
 rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.c:
 
 rosidl_generator_c/uav_msgs/msg/detail/failure_event__struct.h:
@@ -1375,6 +1382,14 @@ rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c:
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h:
 
+/usr/include/x86_64-linux-gnu/sys/select.h:
+
+/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h:
+
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c:
@@ -1382,9 +1397,3 @@ rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c:
 rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
 
 rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h:
-
-rosidl_generator_c/uav_msgs/msg/detail/uav_status__struct.h:
-
-rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
-
-rosidl_generator_c/uav_msgs/srv/detail/send_debug_text__functions.h:

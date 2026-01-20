@@ -24,6 +24,10 @@ bool geometry_msgs__msg__pose__convert_from_py(PyObject * _pymsg, void * _ros_me
 ROSIDL_GENERATOR_C_IMPORT
 PyObject * geometry_msgs__msg__pose__convert_to_py(void * raw_ros_message);
 ROSIDL_GENERATOR_C_IMPORT
+bool geometry_msgs__msg__twist__convert_from_py(PyObject * _pymsg, void * _ros_message);
+ROSIDL_GENERATOR_C_IMPORT
+PyObject * geometry_msgs__msg__twist__convert_to_py(void * raw_ros_message);
+ROSIDL_GENERATOR_C_IMPORT
 bool builtin_interfaces__msg__time__convert_from_py(PyObject * _pymsg, void * _ros_message);
 ROSIDL_GENERATOR_C_IMPORT
 PyObject * builtin_interfaces__msg__time__convert_to_py(void * raw_ros_message);
@@ -129,6 +133,17 @@ bool uav_msgs__msg__uav_status__convert_from_py(PyObject * _pymsg, void * _ros_m
     }
     Py_DECREF(field);
   }
+  {  // velocity
+    PyObject * field = PyObject_GetAttrString(_pymsg, "velocity");
+    if (!field) {
+      return false;
+    }
+    if (!geometry_msgs__msg__twist__convert_from_py(field, &ros_message->velocity)) {
+      Py_DECREF(field);
+      return false;
+    }
+    Py_DECREF(field);
+  }
   {  // service_radius
     PyObject * field = PyObject_GetAttrString(_pymsg, "service_radius");
     if (!field) {
@@ -172,6 +187,42 @@ bool uav_msgs__msg__uav_status__convert_from_py(PyObject * _pymsg, void * _ros_m
     }
     assert(PyFloat_Check(field));
     ros_message->energy_consumption_rate = (float)PyFloat_AS_DOUBLE(field);
+    Py_DECREF(field);
+  }
+  {  // charging_state
+    PyObject * field = PyObject_GetAttrString(_pymsg, "charging_state");
+    if (!field) {
+      return false;
+    }
+    assert(PyLong_Check(field));
+    ros_message->charging_state = (uint8_t)PyLong_AsUnsignedLong(field);
+    Py_DECREF(field);
+  }
+  {  // intent_to_leave
+    PyObject * field = PyObject_GetAttrString(_pymsg, "intent_to_leave");
+    if (!field) {
+      return false;
+    }
+    assert(PyBool_Check(field));
+    ros_message->intent_to_leave = (Py_True == field);
+    Py_DECREF(field);
+  }
+  {  // eta_to_leave_sec
+    PyObject * field = PyObject_GetAttrString(_pymsg, "eta_to_leave_sec");
+    if (!field) {
+      return false;
+    }
+    assert(PyFloat_Check(field));
+    ros_message->eta_to_leave_sec = (float)PyFloat_AS_DOUBLE(field);
+    Py_DECREF(field);
+  }
+  {  // comm_radius_m
+    PyObject * field = PyObject_GetAttrString(_pymsg, "comm_radius_m");
+    if (!field) {
+      return false;
+    }
+    assert(PyFloat_Check(field));
+    ros_message->comm_radius_m = (float)PyFloat_AS_DOUBLE(field);
     Py_DECREF(field);
   }
   {  // stamp
@@ -297,6 +348,20 @@ PyObject * uav_msgs__msg__uav_status__convert_to_py(void * raw_ros_message)
       }
     }
   }
+  {  // velocity
+    PyObject * field = NULL;
+    field = geometry_msgs__msg__twist__convert_to_py(&ros_message->velocity);
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "velocity", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
   {  // service_radius
     PyObject * field = NULL;
     field = PyFloat_FromDouble(ros_message->service_radius);
@@ -346,6 +411,50 @@ PyObject * uav_msgs__msg__uav_status__convert_to_py(void * raw_ros_message)
     field = PyFloat_FromDouble(ros_message->energy_consumption_rate);
     {
       int rc = PyObject_SetAttrString(_pymessage, "energy_consumption_rate", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // charging_state
+    PyObject * field = NULL;
+    field = PyLong_FromUnsignedLong(ros_message->charging_state);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "charging_state", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // intent_to_leave
+    PyObject * field = NULL;
+    field = PyBool_FromLong(ros_message->intent_to_leave ? 1 : 0);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "intent_to_leave", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // eta_to_leave_sec
+    PyObject * field = NULL;
+    field = PyFloat_FromDouble(ros_message->eta_to_leave_sec);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "eta_to_leave_sec", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // comm_radius_m
+    PyObject * field = NULL;
+    field = PyFloat_FromDouble(ros_message->comm_radius_m);
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "comm_radius_m", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

@@ -711,8 +711,12 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_status.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp \
@@ -757,6 +761,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__struct.hpp:
 
@@ -1320,6 +1326,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
@@ -1454,6 +1462,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/debug/debug.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
+
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/get_parameters.hpp:
@@ -1461,6 +1471,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/service_type_support_struct.h:
 
 /usr/include/c++/11/iosfwd:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
 
 /usr/include/c++/11/initializer_list:
 

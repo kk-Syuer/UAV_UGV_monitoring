@@ -16,6 +16,8 @@
 
 // Include directives for member types
 // Member 'creation_time'
+// Member 'last_tx_time'
+// Member 'last_rx_time'
 #include "builtin_interfaces/msg/detail/time__traits.hpp"
 
 namespace uav_msgs
@@ -54,6 +56,13 @@ inline void to_flow_style_yaml(
   {
     out << "next_hop_id: ";
     rosidl_generator_traits::value_to_yaml(msg.next_hop_id, out);
+    out << ", ";
+  }
+
+  // member: last_hop_id
+  {
+    out << "last_hop_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.last_hop_id, out);
     out << ", ";
   }
 
@@ -110,6 +119,52 @@ inline void to_flow_style_yaml(
   {
     out << "creation_time: ";
     to_flow_style_yaml(msg.creation_time, out);
+    out << ", ";
+  }
+
+  // member: ref_msg_id
+  {
+    out << "ref_msg_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.ref_msg_id, out);
+    out << ", ";
+  }
+
+  // member: last_tx_time
+  {
+    out << "last_tx_time: ";
+    to_flow_style_yaml(msg.last_tx_time, out);
+    out << ", ";
+  }
+
+  // member: last_rx_time
+  {
+    out << "last_rx_time: ";
+    to_flow_style_yaml(msg.last_rx_time, out);
+    out << ", ";
+  }
+
+  // member: drop_reason
+  {
+    out << "drop_reason: ";
+    rosidl_generator_traits::value_to_yaml(msg.drop_reason, out);
+    out << ", ";
+  }
+
+  // member: recent_hops
+  {
+    if (msg.recent_hops.size() == 0) {
+      out << "recent_hops: []";
+    } else {
+      out << "recent_hops: [";
+      size_t pending_items = msg.recent_hops.size();
+      for (auto item : msg.recent_hops) {
+        rosidl_generator_traits::value_to_yaml(item, out);
+        if (--pending_items > 0) {
+          out << ", ";
+        }
+      }
+      out << "]";
+    }
   }
   out << "}";
 }  // NOLINT(readability/fn_size)
@@ -155,6 +210,16 @@ inline void to_block_style_yaml(
     }
     out << "next_hop_id: ";
     rosidl_generator_traits::value_to_yaml(msg.next_hop_id, out);
+    out << "\n";
+  }
+
+  // member: last_hop_id
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "last_hop_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.last_hop_id, out);
     out << "\n";
   }
 
@@ -235,6 +300,64 @@ inline void to_block_style_yaml(
     }
     out << "creation_time:\n";
     to_block_style_yaml(msg.creation_time, out, indentation + 2);
+  }
+
+  // member: ref_msg_id
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "ref_msg_id: ";
+    rosidl_generator_traits::value_to_yaml(msg.ref_msg_id, out);
+    out << "\n";
+  }
+
+  // member: last_tx_time
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "last_tx_time:\n";
+    to_block_style_yaml(msg.last_tx_time, out, indentation + 2);
+  }
+
+  // member: last_rx_time
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "last_rx_time:\n";
+    to_block_style_yaml(msg.last_rx_time, out, indentation + 2);
+  }
+
+  // member: drop_reason
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "drop_reason: ";
+    rosidl_generator_traits::value_to_yaml(msg.drop_reason, out);
+    out << "\n";
+  }
+
+  // member: recent_hops
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    if (msg.recent_hops.size() == 0) {
+      out << "recent_hops: []\n";
+    } else {
+      out << "recent_hops:\n";
+      for (auto item : msg.recent_hops) {
+        if (indentation > 0) {
+          out << std::string(indentation, ' ');
+        }
+        out << "- ";
+        rosidl_generator_traits::value_to_yaml(item, out);
+        out << "\n";
+      }
+    }
   }
 }  // NOLINT(readability/fn_size)
 

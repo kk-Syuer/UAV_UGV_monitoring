@@ -52,6 +52,10 @@ class Metaclass_UavStatus(type):
             if Pose.__class__._TYPE_SUPPORT is None:
                 Pose.__class__.__import_type_support__()
 
+            from geometry_msgs.msg import Twist
+            if Twist.__class__._TYPE_SUPPORT is None:
+                Twist.__class__.__import_type_support__()
+
     @classmethod
     def __prepare__(cls, name, bases, **kwargs):
         # list constant names here so that they appear in the help text of
@@ -71,11 +75,16 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         '_battery_level',
         '_battery_capacity',
         '_pose',
+        '_velocity',
         '_service_radius',
         '_connected_users',
         '_traffic_load',
         '_packet_loss_estimate',
         '_energy_consumption_rate',
+        '_charging_state',
+        '_intent_to_leave',
+        '_eta_to_leave_sec',
+        '_comm_radius_m',
         '_stamp',
         '_backbone_active',
     ]
@@ -87,11 +96,16 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         'battery_level': 'float',
         'battery_capacity': 'float',
         'pose': 'geometry_msgs/Pose',
+        'velocity': 'geometry_msgs/Twist',
         'service_radius': 'float',
         'connected_users': 'uint32',
         'traffic_load': 'float',
         'packet_loss_estimate': 'float',
         'energy_consumption_rate': 'float',
+        'charging_state': 'uint8',
+        'intent_to_leave': 'boolean',
+        'eta_to_leave_sec': 'float',
+        'comm_radius_m': 'float',
         'stamp': 'builtin_interfaces/Time',
         'backbone_active': 'boolean',
     }
@@ -103,9 +117,14 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Pose'),  # noqa: E501
+        rosidl_parser.definition.NamespacedType(['geometry_msgs', 'msg'], 'Twist'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('uint32'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
+        rosidl_parser.definition.BasicType('float'),  # noqa: E501
+        rosidl_parser.definition.BasicType('float'),  # noqa: E501
+        rosidl_parser.definition.BasicType('uint8'),  # noqa: E501
+        rosidl_parser.definition.BasicType('boolean'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.NamespacedType(['builtin_interfaces', 'msg'], 'Time'),  # noqa: E501
@@ -123,11 +142,17 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         self.battery_capacity = kwargs.get('battery_capacity', float())
         from geometry_msgs.msg import Pose
         self.pose = kwargs.get('pose', Pose())
+        from geometry_msgs.msg import Twist
+        self.velocity = kwargs.get('velocity', Twist())
         self.service_radius = kwargs.get('service_radius', float())
         self.connected_users = kwargs.get('connected_users', int())
         self.traffic_load = kwargs.get('traffic_load', float())
         self.packet_loss_estimate = kwargs.get('packet_loss_estimate', float())
         self.energy_consumption_rate = kwargs.get('energy_consumption_rate', float())
+        self.charging_state = kwargs.get('charging_state', int())
+        self.intent_to_leave = kwargs.get('intent_to_leave', bool())
+        self.eta_to_leave_sec = kwargs.get('eta_to_leave_sec', float())
+        self.comm_radius_m = kwargs.get('comm_radius_m', float())
         from builtin_interfaces.msg import Time
         self.stamp = kwargs.get('stamp', Time())
         self.backbone_active = kwargs.get('backbone_active', bool())
@@ -173,6 +198,8 @@ class UavStatus(metaclass=Metaclass_UavStatus):
             return False
         if self.pose != other.pose:
             return False
+        if self.velocity != other.velocity:
+            return False
         if self.service_radius != other.service_radius:
             return False
         if self.connected_users != other.connected_users:
@@ -182,6 +209,14 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         if self.packet_loss_estimate != other.packet_loss_estimate:
             return False
         if self.energy_consumption_rate != other.energy_consumption_rate:
+            return False
+        if self.charging_state != other.charging_state:
+            return False
+        if self.intent_to_leave != other.intent_to_leave:
+            return False
+        if self.eta_to_leave_sec != other.eta_to_leave_sec:
+            return False
+        if self.comm_radius_m != other.comm_radius_m:
             return False
         if self.stamp != other.stamp:
             return False
@@ -280,6 +315,20 @@ class UavStatus(metaclass=Metaclass_UavStatus):
         self._pose = value
 
     @builtins.property
+    def velocity(self):
+        """Message field 'velocity'."""
+        return self._velocity
+
+    @velocity.setter
+    def velocity(self, value):
+        if __debug__:
+            from geometry_msgs.msg import Twist
+            assert \
+                isinstance(value, Twist), \
+                "The 'velocity' field must be a sub message of type 'Twist'"
+        self._velocity = value
+
+    @builtins.property
     def service_radius(self):
         """Message field 'service_radius'."""
         return self._service_radius
@@ -353,6 +402,64 @@ class UavStatus(metaclass=Metaclass_UavStatus):
             assert not (value < -3.402823466e+38 or value > 3.402823466e+38) or math.isinf(value), \
                 "The 'energy_consumption_rate' field must be a float in [-3.402823466e+38, 3.402823466e+38]"
         self._energy_consumption_rate = value
+
+    @builtins.property
+    def charging_state(self):
+        """Message field 'charging_state'."""
+        return self._charging_state
+
+    @charging_state.setter
+    def charging_state(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, int), \
+                "The 'charging_state' field must be of type 'int'"
+            assert value >= 0 and value < 256, \
+                "The 'charging_state' field must be an unsigned integer in [0, 255]"
+        self._charging_state = value
+
+    @builtins.property
+    def intent_to_leave(self):
+        """Message field 'intent_to_leave'."""
+        return self._intent_to_leave
+
+    @intent_to_leave.setter
+    def intent_to_leave(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, bool), \
+                "The 'intent_to_leave' field must be of type 'bool'"
+        self._intent_to_leave = value
+
+    @builtins.property
+    def eta_to_leave_sec(self):
+        """Message field 'eta_to_leave_sec'."""
+        return self._eta_to_leave_sec
+
+    @eta_to_leave_sec.setter
+    def eta_to_leave_sec(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, float), \
+                "The 'eta_to_leave_sec' field must be of type 'float'"
+            assert not (value < -3.402823466e+38 or value > 3.402823466e+38) or math.isinf(value), \
+                "The 'eta_to_leave_sec' field must be a float in [-3.402823466e+38, 3.402823466e+38]"
+        self._eta_to_leave_sec = value
+
+    @builtins.property
+    def comm_radius_m(self):
+        """Message field 'comm_radius_m'."""
+        return self._comm_radius_m
+
+    @comm_radius_m.setter
+    def comm_radius_m(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, float), \
+                "The 'comm_radius_m' field must be of type 'float'"
+            assert not (value < -3.402823466e+38 or value > 3.402823466e+38) or math.isinf(value), \
+                "The 'comm_radius_m' field must be a float in [-3.402823466e+38, 3.402823466e+38]"
+        self._comm_radius_m = value
 
     @builtins.property
     def stamp(self):

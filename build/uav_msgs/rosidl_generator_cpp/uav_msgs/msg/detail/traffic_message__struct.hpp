@@ -17,6 +17,8 @@
 
 // Include directives for member types
 // Member 'creation_time'
+// Member 'last_tx_time'
+// Member 'last_rx_time'
 #include "builtin_interfaces/msg/detail/time__struct.hpp"
 
 #ifndef _WIN32
@@ -38,7 +40,9 @@ struct TrafficMessage_
   using Type = TrafficMessage_<ContainerAllocator>;
 
   explicit TrafficMessage_(rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
-  : creation_time(_init)
+  : creation_time(_init),
+    last_tx_time(_init),
+    last_rx_time(_init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
@@ -47,6 +51,7 @@ struct TrafficMessage_
       this->src_id = "";
       this->dst_id = "";
       this->next_hop_id = "";
+      this->last_hop_id = "";
       this->flow_type = 0;
       this->control_type = "";
       this->seq = 0ul;
@@ -54,6 +59,8 @@ struct TrafficMessage_
       this->ttl = 0ul;
       this->requires_ack = false;
       this->payload = "";
+      this->ref_msg_id = "";
+      this->drop_reason = "";
     }
   }
 
@@ -62,9 +69,14 @@ struct TrafficMessage_
     src_id(_alloc),
     dst_id(_alloc),
     next_hop_id(_alloc),
+    last_hop_id(_alloc),
     control_type(_alloc),
     payload(_alloc),
-    creation_time(_alloc, _init)
+    creation_time(_alloc, _init),
+    ref_msg_id(_alloc),
+    last_tx_time(_alloc, _init),
+    last_rx_time(_alloc, _init),
+    drop_reason(_alloc)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
@@ -73,6 +85,7 @@ struct TrafficMessage_
       this->src_id = "";
       this->dst_id = "";
       this->next_hop_id = "";
+      this->last_hop_id = "";
       this->flow_type = 0;
       this->control_type = "";
       this->seq = 0ul;
@@ -80,6 +93,8 @@ struct TrafficMessage_
       this->ttl = 0ul;
       this->requires_ack = false;
       this->payload = "";
+      this->ref_msg_id = "";
+      this->drop_reason = "";
     }
   }
 
@@ -96,6 +111,9 @@ struct TrafficMessage_
   using _next_hop_id_type =
     std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
   _next_hop_id_type next_hop_id;
+  using _last_hop_id_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _last_hop_id_type last_hop_id;
   using _flow_type_type =
     uint8_t;
   _flow_type_type flow_type;
@@ -120,6 +138,21 @@ struct TrafficMessage_
   using _creation_time_type =
     builtin_interfaces::msg::Time_<ContainerAllocator>;
   _creation_time_type creation_time;
+  using _ref_msg_id_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _ref_msg_id_type ref_msg_id;
+  using _last_tx_time_type =
+    builtin_interfaces::msg::Time_<ContainerAllocator>;
+  _last_tx_time_type last_tx_time;
+  using _last_rx_time_type =
+    builtin_interfaces::msg::Time_<ContainerAllocator>;
+  _last_rx_time_type last_rx_time;
+  using _drop_reason_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _drop_reason_type drop_reason;
+  using _recent_hops_type =
+    std::vector<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>>>;
+  _recent_hops_type recent_hops;
 
   // setters for named parameter idiom
   Type & set__msg_id(
@@ -144,6 +177,12 @@ struct TrafficMessage_
     const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
   {
     this->next_hop_id = _arg;
+    return *this;
+  }
+  Type & set__last_hop_id(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->last_hop_id = _arg;
     return *this;
   }
   Type & set__flow_type(
@@ -192,6 +231,36 @@ struct TrafficMessage_
     const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
   {
     this->creation_time = _arg;
+    return *this;
+  }
+  Type & set__ref_msg_id(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->ref_msg_id = _arg;
+    return *this;
+  }
+  Type & set__last_tx_time(
+    const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
+  {
+    this->last_tx_time = _arg;
+    return *this;
+  }
+  Type & set__last_rx_time(
+    const builtin_interfaces::msg::Time_<ContainerAllocator> & _arg)
+  {
+    this->last_rx_time = _arg;
+    return *this;
+  }
+  Type & set__drop_reason(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->drop_reason = _arg;
+    return *this;
+  }
+  Type & set__recent_hops(
+    const std::vector<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>>> & _arg)
+  {
+    this->recent_hops = _arg;
     return *this;
   }
 
@@ -249,6 +318,9 @@ struct TrafficMessage_
     if (this->next_hop_id != other.next_hop_id) {
       return false;
     }
+    if (this->last_hop_id != other.last_hop_id) {
+      return false;
+    }
     if (this->flow_type != other.flow_type) {
       return false;
     }
@@ -271,6 +343,21 @@ struct TrafficMessage_
       return false;
     }
     if (this->creation_time != other.creation_time) {
+      return false;
+    }
+    if (this->ref_msg_id != other.ref_msg_id) {
+      return false;
+    }
+    if (this->last_tx_time != other.last_tx_time) {
+      return false;
+    }
+    if (this->last_rx_time != other.last_rx_time) {
+      return false;
+    }
+    if (this->drop_reason != other.drop_reason) {
+      return false;
+    }
+    if (this->recent_hops != other.recent_hops) {
       return false;
     }
     return true;

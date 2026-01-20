@@ -478,6 +478,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/uav_status__type_support.h \
   rosidl_generator_c/uav_msgs/msg/rosidl_generator_c__visibility_control.h \
@@ -658,6 +660,10 @@ rosidl_typesupport_c/uav_msgs/msg/charge_request__type_support.cpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
+rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/uav_status__struct.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
@@ -697,6 +703,8 @@ rosidl_generator_c/uav_msgs/msg/detail/traffic_message__type_support.h:
 /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
 
 /opt/ros/humble/include/action_msgs/action_msgs/srv/detail/cancel_goal__struct.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h:
 
 /opt/ros/humble/include/rosidl_typesupport_interface/rosidl_typesupport_interface/macros.h:
 
@@ -773,10 +781,6 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__struct.h:
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
 
 /usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
-
-/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
-
-/usr/include/x86_64-linux-gnu/sys/select.h:
 
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
@@ -860,8 +864,10 @@ rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__type_support.h:
 
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp:
 
+/usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
+
+/usr/include/x86_64-linux-gnu/sys/select.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h:
+
 rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
-
-rosidl_generator_c/uav_msgs/msg/detail/uav_status__struct.h:
-
-rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:

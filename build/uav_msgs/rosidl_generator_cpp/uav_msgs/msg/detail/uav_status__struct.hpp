@@ -18,6 +18,8 @@
 // Include directives for member types
 // Member 'pose'
 #include "geometry_msgs/msg/detail/pose__struct.hpp"
+// Member 'velocity'
+#include "geometry_msgs/msg/detail/twist__struct.hpp"
 // Member 'stamp'
 #include "builtin_interfaces/msg/detail/time__struct.hpp"
 
@@ -41,6 +43,7 @@ struct UavStatus_
 
   explicit UavStatus_(rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
   : pose(_init),
+    velocity(_init),
     stamp(_init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
@@ -56,6 +59,10 @@ struct UavStatus_
       this->traffic_load = 0.0f;
       this->packet_loss_estimate = 0.0f;
       this->energy_consumption_rate = 0.0f;
+      this->charging_state = 0;
+      this->intent_to_leave = false;
+      this->eta_to_leave_sec = 0.0f;
+      this->comm_radius_m = 0.0f;
       this->backbone_active = false;
     }
   }
@@ -64,6 +71,7 @@ struct UavStatus_
   : uav_id(_alloc),
     cluster_id(_alloc),
     pose(_alloc, _init),
+    velocity(_alloc, _init),
     stamp(_alloc, _init)
   {
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
@@ -79,6 +87,10 @@ struct UavStatus_
       this->traffic_load = 0.0f;
       this->packet_loss_estimate = 0.0f;
       this->energy_consumption_rate = 0.0f;
+      this->charging_state = 0;
+      this->intent_to_leave = false;
+      this->eta_to_leave_sec = 0.0f;
+      this->comm_radius_m = 0.0f;
       this->backbone_active = false;
     }
   }
@@ -102,6 +114,9 @@ struct UavStatus_
   using _pose_type =
     geometry_msgs::msg::Pose_<ContainerAllocator>;
   _pose_type pose;
+  using _velocity_type =
+    geometry_msgs::msg::Twist_<ContainerAllocator>;
+  _velocity_type velocity;
   using _service_radius_type =
     float;
   _service_radius_type service_radius;
@@ -117,6 +132,18 @@ struct UavStatus_
   using _energy_consumption_rate_type =
     float;
   _energy_consumption_rate_type energy_consumption_rate;
+  using _charging_state_type =
+    uint8_t;
+  _charging_state_type charging_state;
+  using _intent_to_leave_type =
+    bool;
+  _intent_to_leave_type intent_to_leave;
+  using _eta_to_leave_sec_type =
+    float;
+  _eta_to_leave_sec_type eta_to_leave_sec;
+  using _comm_radius_m_type =
+    float;
+  _comm_radius_m_type comm_radius_m;
   using _stamp_type =
     builtin_interfaces::msg::Time_<ContainerAllocator>;
   _stamp_type stamp;
@@ -161,6 +188,12 @@ struct UavStatus_
     this->pose = _arg;
     return *this;
   }
+  Type & set__velocity(
+    const geometry_msgs::msg::Twist_<ContainerAllocator> & _arg)
+  {
+    this->velocity = _arg;
+    return *this;
+  }
   Type & set__service_radius(
     const float & _arg)
   {
@@ -189,6 +222,30 @@ struct UavStatus_
     const float & _arg)
   {
     this->energy_consumption_rate = _arg;
+    return *this;
+  }
+  Type & set__charging_state(
+    const uint8_t & _arg)
+  {
+    this->charging_state = _arg;
+    return *this;
+  }
+  Type & set__intent_to_leave(
+    const bool & _arg)
+  {
+    this->intent_to_leave = _arg;
+    return *this;
+  }
+  Type & set__eta_to_leave_sec(
+    const float & _arg)
+  {
+    this->eta_to_leave_sec = _arg;
+    return *this;
+  }
+  Type & set__comm_radius_m(
+    const float & _arg)
+  {
+    this->comm_radius_m = _arg;
     return *this;
   }
   Type & set__stamp(
@@ -264,6 +321,9 @@ struct UavStatus_
     if (this->pose != other.pose) {
       return false;
     }
+    if (this->velocity != other.velocity) {
+      return false;
+    }
     if (this->service_radius != other.service_radius) {
       return false;
     }
@@ -277,6 +337,18 @@ struct UavStatus_
       return false;
     }
     if (this->energy_consumption_rate != other.energy_consumption_rate) {
+      return false;
+    }
+    if (this->charging_state != other.charging_state) {
+      return false;
+    }
+    if (this->intent_to_leave != other.intent_to_leave) {
+      return false;
+    }
+    if (this->eta_to_leave_sec != other.eta_to_leave_sec) {
+      return false;
+    }
+    if (this->comm_radius_m != other.comm_radius_m) {
       return false;
     }
     if (this->stamp != other.stamp) {

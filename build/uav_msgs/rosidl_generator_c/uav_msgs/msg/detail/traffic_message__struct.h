@@ -22,10 +22,16 @@ extern "C"
 // Member 'src_id'
 // Member 'dst_id'
 // Member 'next_hop_id'
+// Member 'last_hop_id'
 // Member 'control_type'
 // Member 'payload'
+// Member 'ref_msg_id'
+// Member 'drop_reason'
+// Member 'recent_hops'
 #include "rosidl_runtime_c/string.h"
 // Member 'creation_time'
+// Member 'last_tx_time'
+// Member 'last_rx_time'
 #include "builtin_interfaces/msg/detail/time__struct.h"
 
 /// Struct defined in msg/TrafficMessage in the package uav_msgs.
@@ -39,9 +45,11 @@ typedef struct uav_msgs__msg__TrafficMessage
   rosidl_runtime_c__String dst_id;
   /// for this hop, who we are sending to (empty for broadcast)
   rosidl_runtime_c__String next_hop_id;
+  /// who forwarded this packet most recently
+  rosidl_runtime_c__String last_hop_id;
   /// 0=DATA, 1=CONTROL
   uint8_t flow_type;
-  /// NONE, HELLO, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, etc.
+  /// NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, DROP, DEBUG_TEXT, STATUS_CH
   rosidl_runtime_c__String control_type;
   /// sequence number (per src + control_type)
   uint32_t seq;
@@ -53,6 +61,16 @@ typedef struct uav_msgs__msg__TrafficMessage
   /// serialized application payload (JSON, CSV, plain text, ...)
   rosidl_runtime_c__String payload;
   builtin_interfaces__msg__Time creation_time;
+  /// optional: references another message (e.g., ACK/DROP/DECISION)
+  rosidl_runtime_c__String ref_msg_id;
+  /// when the previous hop transmitted
+  builtin_interfaces__msg__Time last_tx_time;
+  /// when this hop received it
+  builtin_interfaces__msg__Time last_rx_time;
+  /// if control_type == DROP, why it was dropped
+  rosidl_runtime_c__String drop_reason;
+  /// history of forwarders (optional, bounded by producer)
+  rosidl_runtime_c__String__Sequence recent_hops;
 } uav_msgs__msg__TrafficMessage;
 
 // Struct for a sequence of uav_msgs__msg__TrafficMessage.

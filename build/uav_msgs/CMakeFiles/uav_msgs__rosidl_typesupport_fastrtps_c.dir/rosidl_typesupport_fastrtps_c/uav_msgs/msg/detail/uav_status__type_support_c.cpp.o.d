@@ -187,6 +187,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrt
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
  /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h \
  /usr/include/c++/11/stdlib.h \
@@ -195,4 +197,5 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrt
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_c__visibility_control.h \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__functions.h \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_c__visibility_control.h \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h \
  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h

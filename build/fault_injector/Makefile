@@ -197,6 +197,43 @@ fault_injector_uninstall/fast:
 	$(MAKE) $(MAKESILENT) -f CMakeFiles/fault_injector_uninstall.dir/build.make CMakeFiles/fault_injector_uninstall.dir/build
 .PHONY : fault_injector_uninstall/fast
 
+#=============================================================================
+# Target rules for targets named fault_injector_node
+
+# Build rule for target.
+fault_injector_node: cmake_check_build_system
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/Makefile2 fault_injector_node
+.PHONY : fault_injector_node
+
+# fast build rule for target.
+fault_injector_node/fast:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fault_injector_node.dir/build.make CMakeFiles/fault_injector_node.dir/build
+.PHONY : fault_injector_node/fast
+
+src/fault_injector_node.o: src/fault_injector_node.cpp.o
+.PHONY : src/fault_injector_node.o
+
+# target to build an object file
+src/fault_injector_node.cpp.o:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fault_injector_node.dir/build.make CMakeFiles/fault_injector_node.dir/src/fault_injector_node.cpp.o
+.PHONY : src/fault_injector_node.cpp.o
+
+src/fault_injector_node.i: src/fault_injector_node.cpp.i
+.PHONY : src/fault_injector_node.i
+
+# target to preprocess a source file
+src/fault_injector_node.cpp.i:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fault_injector_node.dir/build.make CMakeFiles/fault_injector_node.dir/src/fault_injector_node.cpp.i
+.PHONY : src/fault_injector_node.cpp.i
+
+src/fault_injector_node.s: src/fault_injector_node.cpp.s
+.PHONY : src/fault_injector_node.s
+
+# target to generate assembly for a file
+src/fault_injector_node.cpp.s:
+	$(MAKE) $(MAKESILENT) -f CMakeFiles/fault_injector_node.dir/build.make CMakeFiles/fault_injector_node.dir/src/fault_injector_node.cpp.s
+.PHONY : src/fault_injector_node.cpp.s
+
 # Help Target
 help:
 	@echo "The following are some of the valid targets for this Makefile:"
@@ -212,6 +249,10 @@ help:
 	@echo "... test"
 	@echo "... fault_injector_uninstall"
 	@echo "... uninstall"
+	@echo "... fault_injector_node"
+	@echo "... src/fault_injector_node.o"
+	@echo "... src/fault_injector_node.i"
+	@echo "... src/fault_injector_node.s"
 .PHONY : help
 
 

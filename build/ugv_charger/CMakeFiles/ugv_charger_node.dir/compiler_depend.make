@@ -246,6 +246,14 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /usr/include/c++/11/bits/ostream.tcc \
   /usr/include/c++/11/bits/istream.tcc \
   /usr/include/c++/11/bits/sstream.tcc \
+  /usr/include/c++/11/algorithm \
+  /usr/include/c++/11/bits/stl_algo.h \
+  /usr/include/c++/11/bits/algorithmfwd.h \
+  /usr/include/c++/11/bits/stl_heap.h \
+  /usr/include/c++/11/bits/uniform_int_dist.h \
+  /usr/include/c++/11/pstl/glue_algorithm_defs.h \
+  /usr/include/c++/11/functional \
+  /usr/include/c++/11/bits/std_function.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -290,7 +298,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /usr/include/c++/11/condition_variable \
   /usr/include/c++/11/atomic \
   /usr/include/c++/11/bits/atomic_futex.h \
-  /usr/include/c++/11/bits/std_function.h \
   /usr/include/c++/11/bits/std_thread.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp \
   /usr/include/c++/11/set \
@@ -300,13 +307,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /usr/include/c++/11/thread \
   /usr/include/c++/11/bits/this_thread_sleep.h \
   /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp \
-  /usr/include/c++/11/algorithm \
-  /usr/include/c++/11/bits/stl_algo.h \
-  /usr/include/c++/11/bits/algorithmfwd.h \
-  /usr/include/c++/11/bits/stl_heap.h \
-  /usr/include/c++/11/bits/uniform_int_dist.h \
-  /usr/include/c++/11/pstl/glue_algorithm_defs.h \
-  /usr/include/c++/11/functional \
   /usr/include/c++/11/cassert \
   /usr/include/assert.h \
   /usr/include/c++/11/iostream \
@@ -703,11 +703,15 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/uav_deployment.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_deployment__struct.hpp \
@@ -717,8 +721,13 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
-  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp
 
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -745,6 +754,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
 
@@ -944,31 +955,23 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp:
+
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__builder.hpp:
-
-/usr/include/c++/11/bits/ios_base.h:
-
-/opt/ros/humble/include/rmw/rmw/message_sequence.h:
-
-/usr/include/x86_64-linux-gnu/bits/ss_flags.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
-
-/usr/include/x86_64-linux-gnu/bits/errno.h:
-
-/opt/ros/humble/include/rmw/rmw/security_options.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
+
+/usr/include/c++/11/bits/stl_heap.h:
+
+/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
+
+/usr/include/c++/11/bits/std_abs.h:
+
+/usr/include/c++/11/pstl/execution_defs.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
 
@@ -1046,6 +1049,14 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /opt/ros/humble/include/rclcpp/rclcpp/context.hpp:
 
+/usr/include/x86_64-linux-gnu/bits/errno.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
+
+/opt/ros/humble/include/rmw/rmw/security_options.h:
+
 /usr/include/c++/11/cerrno:
 
 /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
@@ -1090,10 +1101,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/x86_64-linux-gnu/bits/locale.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
-
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/metrics_message.hpp:
 
 /usr/include/c++/11/cstdint:
@@ -1101,6 +1108,14 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_timers_interface.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
+
+/usr/include/c++/11/functional:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
+
+/usr/include/linux/errno.h:
 
 /usr/include/asm-generic/errno-base.h:
 
@@ -1131,14 +1146,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
-
-/usr/include/linux/errno.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
-
-/usr/include/c++/11/functional:
 
 /usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
 
@@ -1190,6 +1197,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/iosfwd:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
+
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.hpp:
 
 /usr/include/c++/11/initializer_list:
@@ -1207,14 +1216,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/c++/11/bits/invoke.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
-
-/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
-
-/usr/include/c++/11/bits/std_abs.h:
-
-/usr/include/c++/11/bits/stl_heap.h:
 
 /usr/include/c++/11/memory:
 
@@ -1278,6 +1279,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
+
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
 
 /usr/include/c++/11/ext/aligned_buffer.h:
@@ -1293,6 +1296,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/c++/11/debug/assertions.h:
 
 /opt/ros/humble/include/tracetools/tracetools/config.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
@@ -1316,8 +1321,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/stdlib.h:
 
-/usr/include/c++/11/pstl/execution_defs.h:
-
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
 /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
@@ -1325,6 +1328,14 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/c++/11/bits/locale_classes.h:
 
 /usr/include/c++/11/tr1/gamma.tcc:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__builder.hpp:
+
+/usr/include/c++/11/bits/ios_base.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+
+/opt/ros/humble/include/rmw/rmw/message_sequence.h:
 
 /usr/include/x86_64-linux-gnu/bits/fp-logb.h:
 
@@ -1343,8 +1354,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/c++/11/ext/new_allocator.h:
 
 /usr/include/c++/11/bits/stl_uninitialized.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
 
 /usr/include/c++/11/bits/atomic_base.h:
 
@@ -1365,6 +1374,12 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
 
 /usr/include/c++/11/bits/stl_construct.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
+
+/usr/include/c++/11/bits/std_function.h:
+
+/usr/include/c++/11/bits/stl_tempbuf.h:
 
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
@@ -1461,6 +1476,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
 /usr/include/c++/11/bits/predefined_ops.h:
+
+/usr/include/c++/11/bits/stl_algo.h:
 
 /usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
@@ -1562,10 +1579,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/bits/stl_relops.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
-
-/usr/include/c++/11/tuple:
-
 /opt/ros/humble/include/rcl/rcl/network_flow_endpoints.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
@@ -1620,12 +1633,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
-/usr/include/c++/11/bits/stl_tempbuf.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
-
-/usr/include/c++/11/bits/std_function.h:
-
 /usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
@@ -1644,6 +1651,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/bits/unique_lock.h:
 
+/usr/include/c++/11/algorithm:
+
 /usr/include/c++/11/bits/deque.tcc:
 
 /usr/include/c++/11/backward/binders.h:
@@ -1655,6 +1664,20 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
 
 /usr/include/c++/11/bits/string_view.tcc:
+
+/usr/include/c++/11/tuple:
+
+/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/ss_flags.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
@@ -1739,10 +1762,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/c++/11/bits/stl_set.h:
 
 /usr/include/c++/11/bits/stl_multiset.h:
-
-/usr/include/c++/11/algorithm:
-
-/usr/include/c++/11/bits/stl_algo.h:
 
 /usr/include/c++/11/cassert:
 
@@ -1852,9 +1871,9 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
 
-/usr/include/c++/11/bits/list.tcc:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+
+/usr/include/c++/11/bits/list.tcc:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/events_statuses.h:
 
@@ -1931,6 +1950,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rcl/rcl/time.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__traits.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/sequence_bound.h:
 

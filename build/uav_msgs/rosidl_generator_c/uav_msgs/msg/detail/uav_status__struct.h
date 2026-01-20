@@ -23,6 +23,8 @@ extern "C"
 #include "rosidl_runtime_c/string.h"
 // Member 'pose'
 #include "geometry_msgs/msg/detail/pose__struct.h"
+// Member 'velocity'
+#include "geometry_msgs/msg/detail/twist__struct.h"
 // Member 'stamp'
 #include "builtin_interfaces/msg/detail/time__struct.h"
 
@@ -40,6 +42,7 @@ typedef struct uav_msgs__msg__UavStatus
   /// optional, in Wh or similar
   float battery_capacity;
   geometry_msgs__msg__Pose pose;
+  geometry_msgs__msg__Twist velocity;
   /// meters (CH > MEMBER)
   float service_radius;
   /// number of user devices associated
@@ -48,6 +51,13 @@ typedef struct uav_msgs__msg__UavStatus
   float traffic_load;
   float packet_loss_estimate;
   float energy_consumption_rate;
+  /// 0=ACTIVE,1=GOING_TO_UGV,2=CHARGING,3=RETURNING
+  uint8_t charging_state;
+  /// true if battery below threshold or queued
+  bool intent_to_leave;
+  float eta_to_leave_sec;
+  /// so receivers can simulate range consistently
+  float comm_radius_m;
   builtin_interfaces__msg__Time stamp;
   bool backbone_active;
 } uav_msgs__msg__UavStatus;

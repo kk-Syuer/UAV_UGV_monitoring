@@ -2582,6 +2582,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrt
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h \
   /usr/include/c++/11/stdlib.h \
@@ -2590,6 +2592,7 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrt
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_c__visibility_control.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__functions.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_c__visibility_control.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h \
   /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h
 
 CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp.o: rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/weather_status__type_support_c.cpp \
@@ -3376,6 +3379,10 @@ rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h:
+
 rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__functions.h:
@@ -3997,6 +4004,8 @@ rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/task_point__rosidl_typesupport
 rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/heartbeat__type_support_c.cpp:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h:
 
 /opt/ros/humble/include/unique_identifier_msgs/unique_identifier_msgs/msg/detail/uuid__struct.h:
 

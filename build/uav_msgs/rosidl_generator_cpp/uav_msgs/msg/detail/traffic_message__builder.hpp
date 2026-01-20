@@ -21,16 +21,96 @@ namespace msg
 namespace builder
 {
 
+class Init_TrafficMessage_recent_hops
+{
+public:
+  explicit Init_TrafficMessage_recent_hops(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  ::uav_msgs::msg::TrafficMessage recent_hops(::uav_msgs::msg::TrafficMessage::_recent_hops_type arg)
+  {
+    msg_.recent_hops = std::move(arg);
+    return std::move(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_drop_reason
+{
+public:
+  explicit Init_TrafficMessage_drop_reason(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_recent_hops drop_reason(::uav_msgs::msg::TrafficMessage::_drop_reason_type arg)
+  {
+    msg_.drop_reason = std::move(arg);
+    return Init_TrafficMessage_recent_hops(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_last_rx_time
+{
+public:
+  explicit Init_TrafficMessage_last_rx_time(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_drop_reason last_rx_time(::uav_msgs::msg::TrafficMessage::_last_rx_time_type arg)
+  {
+    msg_.last_rx_time = std::move(arg);
+    return Init_TrafficMessage_drop_reason(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_last_tx_time
+{
+public:
+  explicit Init_TrafficMessage_last_tx_time(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_last_rx_time last_tx_time(::uav_msgs::msg::TrafficMessage::_last_tx_time_type arg)
+  {
+    msg_.last_tx_time = std::move(arg);
+    return Init_TrafficMessage_last_rx_time(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
+class Init_TrafficMessage_ref_msg_id
+{
+public:
+  explicit Init_TrafficMessage_ref_msg_id(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_last_tx_time ref_msg_id(::uav_msgs::msg::TrafficMessage::_ref_msg_id_type arg)
+  {
+    msg_.ref_msg_id = std::move(arg);
+    return Init_TrafficMessage_last_tx_time(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
 class Init_TrafficMessage_creation_time
 {
 public:
   explicit Init_TrafficMessage_creation_time(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::TrafficMessage creation_time(::uav_msgs::msg::TrafficMessage::_creation_time_type arg)
+  Init_TrafficMessage_ref_msg_id creation_time(::uav_msgs::msg::TrafficMessage::_creation_time_type arg)
   {
     msg_.creation_time = std::move(arg);
-    return std::move(msg_);
+    return Init_TrafficMessage_ref_msg_id(msg_);
   }
 
 private:
@@ -149,16 +229,32 @@ private:
   ::uav_msgs::msg::TrafficMessage msg_;
 };
 
+class Init_TrafficMessage_last_hop_id
+{
+public:
+  explicit Init_TrafficMessage_last_hop_id(::uav_msgs::msg::TrafficMessage & msg)
+  : msg_(msg)
+  {}
+  Init_TrafficMessage_flow_type last_hop_id(::uav_msgs::msg::TrafficMessage::_last_hop_id_type arg)
+  {
+    msg_.last_hop_id = std::move(arg);
+    return Init_TrafficMessage_flow_type(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::TrafficMessage msg_;
+};
+
 class Init_TrafficMessage_next_hop_id
 {
 public:
   explicit Init_TrafficMessage_next_hop_id(::uav_msgs::msg::TrafficMessage & msg)
   : msg_(msg)
   {}
-  Init_TrafficMessage_flow_type next_hop_id(::uav_msgs::msg::TrafficMessage::_next_hop_id_type arg)
+  Init_TrafficMessage_last_hop_id next_hop_id(::uav_msgs::msg::TrafficMessage::_next_hop_id_type arg)
   {
     msg_.next_hop_id = std::move(arg);
-    return Init_TrafficMessage_flow_type(msg_);
+    return Init_TrafficMessage_last_hop_id(msg_);
   }
 
 private:

@@ -17,6 +17,8 @@
 #include "rosidl_runtime_c/string_functions.h"
 // Member `pose`
 #include "geometry_msgs/msg/detail/pose__functions.h"
+// Member `velocity`
+#include "geometry_msgs/msg/detail/twist__functions.h"
 // Member `stamp`
 #include "builtin_interfaces/msg/detail/time__functions.h"
 
@@ -44,11 +46,20 @@ uav_msgs__msg__UavStatus__init(uav_msgs__msg__UavStatus * msg)
     uav_msgs__msg__UavStatus__fini(msg);
     return false;
   }
+  // velocity
+  if (!geometry_msgs__msg__Twist__init(&msg->velocity)) {
+    uav_msgs__msg__UavStatus__fini(msg);
+    return false;
+  }
   // service_radius
   // connected_users
   // traffic_load
   // packet_loss_estimate
   // energy_consumption_rate
+  // charging_state
+  // intent_to_leave
+  // eta_to_leave_sec
+  // comm_radius_m
   // stamp
   if (!builtin_interfaces__msg__Time__init(&msg->stamp)) {
     uav_msgs__msg__UavStatus__fini(msg);
@@ -73,11 +84,17 @@ uav_msgs__msg__UavStatus__fini(uav_msgs__msg__UavStatus * msg)
   // battery_capacity
   // pose
   geometry_msgs__msg__Pose__fini(&msg->pose);
+  // velocity
+  geometry_msgs__msg__Twist__fini(&msg->velocity);
   // service_radius
   // connected_users
   // traffic_load
   // packet_loss_estimate
   // energy_consumption_rate
+  // charging_state
+  // intent_to_leave
+  // eta_to_leave_sec
+  // comm_radius_m
   // stamp
   builtin_interfaces__msg__Time__fini(&msg->stamp);
   // backbone_active
@@ -119,6 +136,12 @@ uav_msgs__msg__UavStatus__are_equal(const uav_msgs__msg__UavStatus * lhs, const 
   {
     return false;
   }
+  // velocity
+  if (!geometry_msgs__msg__Twist__are_equal(
+      &(lhs->velocity), &(rhs->velocity)))
+  {
+    return false;
+  }
   // service_radius
   if (lhs->service_radius != rhs->service_radius) {
     return false;
@@ -137,6 +160,22 @@ uav_msgs__msg__UavStatus__are_equal(const uav_msgs__msg__UavStatus * lhs, const 
   }
   // energy_consumption_rate
   if (lhs->energy_consumption_rate != rhs->energy_consumption_rate) {
+    return false;
+  }
+  // charging_state
+  if (lhs->charging_state != rhs->charging_state) {
+    return false;
+  }
+  // intent_to_leave
+  if (lhs->intent_to_leave != rhs->intent_to_leave) {
+    return false;
+  }
+  // eta_to_leave_sec
+  if (lhs->eta_to_leave_sec != rhs->eta_to_leave_sec) {
+    return false;
+  }
+  // comm_radius_m
+  if (lhs->comm_radius_m != rhs->comm_radius_m) {
     return false;
   }
   // stamp
@@ -184,6 +223,12 @@ uav_msgs__msg__UavStatus__copy(
   {
     return false;
   }
+  // velocity
+  if (!geometry_msgs__msg__Twist__copy(
+      &(input->velocity), &(output->velocity)))
+  {
+    return false;
+  }
   // service_radius
   output->service_radius = input->service_radius;
   // connected_users
@@ -194,6 +239,14 @@ uav_msgs__msg__UavStatus__copy(
   output->packet_loss_estimate = input->packet_loss_estimate;
   // energy_consumption_rate
   output->energy_consumption_rate = input->energy_consumption_rate;
+  // charging_state
+  output->charging_state = input->charging_state;
+  // intent_to_leave
+  output->intent_to_leave = input->intent_to_leave;
+  // eta_to_leave_sec
+  output->eta_to_leave_sec = input->eta_to_leave_sec;
+  // comm_radius_m
+  output->comm_radius_m = input->comm_radius_m;
   // stamp
   if (!builtin_interfaces__msg__Time__copy(
       &(input->stamp), &(output->stamp)))

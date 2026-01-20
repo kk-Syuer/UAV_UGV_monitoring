@@ -36,6 +36,7 @@ extern "C"
 
 #include "builtin_interfaces/msg/detail/time__functions.h"  // stamp
 #include "geometry_msgs/msg/detail/pose__functions.h"  // pose
+#include "geometry_msgs/msg/detail/twist__functions.h"  // velocity
 #include "rosidl_runtime_c/string.h"  // cluster_id, uav_id
 #include "rosidl_runtime_c/string_functions.h"  // cluster_id, uav_id
 
@@ -68,6 +69,20 @@ size_t max_serialized_size_geometry_msgs__msg__Pose(
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
 const rosidl_message_type_support_t *
   ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Pose)();
+ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
+size_t get_serialized_size_geometry_msgs__msg__Twist(
+  const void * untyped_ros_message,
+  size_t current_alignment);
+
+ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
+size_t max_serialized_size_geometry_msgs__msg__Twist(
+  bool & full_bounded,
+  bool & is_plain,
+  size_t current_alignment);
+
+ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
+const rosidl_message_type_support_t *
+  ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Twist)();
 
 
 using _UavStatus__ros_msg_type = uav_msgs__msg__UavStatus;
@@ -138,6 +153,20 @@ static bool _UavStatus__cdr_serialize(
     }
   }
 
+  // Field name: velocity
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Twist
+      )()->data);
+    if (!callbacks->cdr_serialize(
+        &ros_message->velocity, cdr))
+    {
+      return false;
+    }
+  }
+
   // Field name: service_radius
   {
     cdr << ros_message->service_radius;
@@ -161,6 +190,26 @@ static bool _UavStatus__cdr_serialize(
   // Field name: energy_consumption_rate
   {
     cdr << ros_message->energy_consumption_rate;
+  }
+
+  // Field name: charging_state
+  {
+    cdr << ros_message->charging_state;
+  }
+
+  // Field name: intent_to_leave
+  {
+    cdr << (ros_message->intent_to_leave ? true : false);
+  }
+
+  // Field name: eta_to_leave_sec
+  {
+    cdr << ros_message->eta_to_leave_sec;
+  }
+
+  // Field name: comm_radius_m
+  {
+    cdr << ros_message->comm_radius_m;
   }
 
   // Field name: stamp
@@ -255,6 +304,20 @@ static bool _UavStatus__cdr_deserialize(
     }
   }
 
+  // Field name: velocity
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, geometry_msgs, msg, Twist
+      )()->data);
+    if (!callbacks->cdr_deserialize(
+        cdr, &ros_message->velocity))
+    {
+      return false;
+    }
+  }
+
   // Field name: service_radius
   {
     cdr >> ros_message->service_radius;
@@ -278,6 +341,28 @@ static bool _UavStatus__cdr_deserialize(
   // Field name: energy_consumption_rate
   {
     cdr >> ros_message->energy_consumption_rate;
+  }
+
+  // Field name: charging_state
+  {
+    cdr >> ros_message->charging_state;
+  }
+
+  // Field name: intent_to_leave
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message->intent_to_leave = tmp ? true : false;
+  }
+
+  // Field name: eta_to_leave_sec
+  {
+    cdr >> ros_message->eta_to_leave_sec;
+  }
+
+  // Field name: comm_radius_m
+  {
+    cdr >> ros_message->comm_radius_m;
   }
 
   // Field name: stamp
@@ -348,6 +433,10 @@ size_t get_serialized_size_uav_msgs__msg__UavStatus(
 
   current_alignment += get_serialized_size_geometry_msgs__msg__Pose(
     &(ros_message->pose), current_alignment);
+  // field.name velocity
+
+  current_alignment += get_serialized_size_geometry_msgs__msg__Twist(
+    &(ros_message->velocity), current_alignment);
   // field.name service_radius
   {
     size_t item_size = sizeof(ros_message->service_radius);
@@ -375,6 +464,30 @@ size_t get_serialized_size_uav_msgs__msg__UavStatus(
   // field.name energy_consumption_rate
   {
     size_t item_size = sizeof(ros_message->energy_consumption_rate);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name charging_state
+  {
+    size_t item_size = sizeof(ros_message->charging_state);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name intent_to_leave
+  {
+    size_t item_size = sizeof(ros_message->intent_to_leave);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name eta_to_leave_sec
+  {
+    size_t item_size = sizeof(ros_message->eta_to_leave_sec);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // field.name comm_radius_m
+  {
+    size_t item_size = sizeof(ros_message->comm_radius_m);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
@@ -483,6 +596,25 @@ size_t max_serialized_size_uav_msgs__msg__UavStatus(
       is_plain &= inner_is_plain;
     }
   }
+  // member: velocity
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size;
+      inner_size =
+        max_serialized_size_geometry_msgs__msg__Twist(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
   // member: service_radius
   {
     size_t array_size = 1;
@@ -516,6 +648,36 @@ size_t max_serialized_size_uav_msgs__msg__UavStatus(
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
   }
   // member: energy_consumption_rate
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: charging_state
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+  // member: intent_to_leave
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+  // member: eta_to_leave_sec
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+  // member: comm_radius_m
   {
     size_t array_size = 1;
 

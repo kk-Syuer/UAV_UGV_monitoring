@@ -17,6 +17,8 @@
 // Include directives for member types
 // Member 'pose'
 #include "geometry_msgs/msg/detail/pose__traits.hpp"
+// Member 'velocity'
+#include "geometry_msgs/msg/detail/twist__traits.hpp"
 // Member 'stamp'
 #include "builtin_interfaces/msg/detail/time__traits.hpp"
 
@@ -73,6 +75,13 @@ inline void to_flow_style_yaml(
     out << ", ";
   }
 
+  // member: velocity
+  {
+    out << "velocity: ";
+    to_flow_style_yaml(msg.velocity, out);
+    out << ", ";
+  }
+
   // member: service_radius
   {
     out << "service_radius: ";
@@ -105,6 +114,34 @@ inline void to_flow_style_yaml(
   {
     out << "energy_consumption_rate: ";
     rosidl_generator_traits::value_to_yaml(msg.energy_consumption_rate, out);
+    out << ", ";
+  }
+
+  // member: charging_state
+  {
+    out << "charging_state: ";
+    rosidl_generator_traits::value_to_yaml(msg.charging_state, out);
+    out << ", ";
+  }
+
+  // member: intent_to_leave
+  {
+    out << "intent_to_leave: ";
+    rosidl_generator_traits::value_to_yaml(msg.intent_to_leave, out);
+    out << ", ";
+  }
+
+  // member: eta_to_leave_sec
+  {
+    out << "eta_to_leave_sec: ";
+    rosidl_generator_traits::value_to_yaml(msg.eta_to_leave_sec, out);
+    out << ", ";
+  }
+
+  // member: comm_radius_m
+  {
+    out << "comm_radius_m: ";
+    rosidl_generator_traits::value_to_yaml(msg.comm_radius_m, out);
     out << ", ";
   }
 
@@ -186,6 +223,15 @@ inline void to_block_style_yaml(
     to_block_style_yaml(msg.pose, out, indentation + 2);
   }
 
+  // member: velocity
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "velocity:\n";
+    to_block_style_yaml(msg.velocity, out, indentation + 2);
+  }
+
   // member: service_radius
   {
     if (indentation > 0) {
@@ -233,6 +279,46 @@ inline void to_block_style_yaml(
     }
     out << "energy_consumption_rate: ";
     rosidl_generator_traits::value_to_yaml(msg.energy_consumption_rate, out);
+    out << "\n";
+  }
+
+  // member: charging_state
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "charging_state: ";
+    rosidl_generator_traits::value_to_yaml(msg.charging_state, out);
+    out << "\n";
+  }
+
+  // member: intent_to_leave
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "intent_to_leave: ";
+    rosidl_generator_traits::value_to_yaml(msg.intent_to_leave, out);
+    out << "\n";
+  }
+
+  // member: eta_to_leave_sec
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "eta_to_leave_sec: ";
+    rosidl_generator_traits::value_to_yaml(msg.eta_to_leave_sec, out);
+    out << "\n";
+  }
+
+  // member: comm_radius_m
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "comm_radius_m: ";
+    rosidl_generator_traits::value_to_yaml(msg.comm_radius_m, out);
     out << "\n";
   }
 

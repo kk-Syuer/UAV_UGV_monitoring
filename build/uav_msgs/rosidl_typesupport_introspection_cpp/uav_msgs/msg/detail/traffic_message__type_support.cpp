@@ -37,7 +37,52 @@ void TrafficMessage_fini_function(void * message_memory)
   typed_message->~TrafficMessage();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessage_message_member_array[12] = {
+size_t size_function__TrafficMessage__recent_hops(const void * untyped_member)
+{
+  const auto * member = reinterpret_cast<const std::vector<std::string> *>(untyped_member);
+  return member->size();
+}
+
+const void * get_const_function__TrafficMessage__recent_hops(const void * untyped_member, size_t index)
+{
+  const auto & member =
+    *reinterpret_cast<const std::vector<std::string> *>(untyped_member);
+  return &member[index];
+}
+
+void * get_function__TrafficMessage__recent_hops(void * untyped_member, size_t index)
+{
+  auto & member =
+    *reinterpret_cast<std::vector<std::string> *>(untyped_member);
+  return &member[index];
+}
+
+void fetch_function__TrafficMessage__recent_hops(
+  const void * untyped_member, size_t index, void * untyped_value)
+{
+  const auto & item = *reinterpret_cast<const std::string *>(
+    get_const_function__TrafficMessage__recent_hops(untyped_member, index));
+  auto & value = *reinterpret_cast<std::string *>(untyped_value);
+  value = item;
+}
+
+void assign_function__TrafficMessage__recent_hops(
+  void * untyped_member, size_t index, const void * untyped_value)
+{
+  auto & item = *reinterpret_cast<std::string *>(
+    get_function__TrafficMessage__recent_hops(untyped_member, index));
+  const auto & value = *reinterpret_cast<const std::string *>(untyped_value);
+  item = value;
+}
+
+void resize_function__TrafficMessage__recent_hops(void * untyped_member, size_t size)
+{
+  auto * member =
+    reinterpret_cast<std::vector<std::string> *>(untyped_member);
+  member->resize(size);
+}
+
+static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessage_message_member_array[18] = {
   {
     "msg_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
@@ -98,6 +143,23 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     0,  // array size
     false,  // is upper bound
     offsetof(uav_msgs::msg::TrafficMessage, next_hop_id),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "last_hop_id",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, last_hop_id),  // bytes offset in struct
     nullptr,  // default value
     nullptr,  // size() function pointer
     nullptr,  // get_const(index) function pointer
@@ -241,13 +303,98 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember TrafficMessag
     nullptr,  // fetch(index, &value) function pointer
     nullptr,  // assign(index, value) function pointer
     nullptr  // resize(index) function pointer
+  },
+  {
+    "ref_msg_id",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, ref_msg_id),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "last_tx_time",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<builtin_interfaces::msg::Time>(),  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, last_tx_time),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "last_rx_time",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<builtin_interfaces::msg::Time>(),  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, last_rx_time),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "drop_reason",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, drop_reason),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "recent_hops",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    true,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::TrafficMessage, recent_hops),  // bytes offset in struct
+    nullptr,  // default value
+    size_function__TrafficMessage__recent_hops,  // size() function pointer
+    get_const_function__TrafficMessage__recent_hops,  // get_const(index) function pointer
+    get_function__TrafficMessage__recent_hops,  // get(index) function pointer
+    fetch_function__TrafficMessage__recent_hops,  // fetch(index, &value) function pointer
+    assign_function__TrafficMessage__recent_hops,  // assign(index, value) function pointer
+    resize_function__TrafficMessage__recent_hops  // resize(index) function pointer
   }
 };
 
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers TrafficMessage_message_members = {
   "uav_msgs::msg",  // message namespace
   "TrafficMessage",  // message name
-  12,  // number of fields
+  18,  // number of fields
   sizeof(uav_msgs::msg::TrafficMessage),
   TrafficMessage_message_member_array,  // message members
   TrafficMessage_init_function,  // function to initialize message memory (memory has to be allocated)

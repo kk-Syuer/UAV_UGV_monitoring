@@ -2723,6 +2723,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fast
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp \
   /opt/ros/humble/include/fastcdr/fastcdr/Cdr.h \
   /opt/ros/humble/include/fastcdr/fastcdr/fastcdr_dll.h \
@@ -3965,6 +3967,8 @@ rosidl_typesupport_fastrtps_cpp/uav_msgs/action/detail/dock_and_charge__rosidl_t
 
 /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
+
 /usr/include/c++/11/bits/exception_defines.h:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/os_defines.h:
@@ -4190,6 +4194,8 @@ rosidl_typesupport_fastrtps_cpp/uav_msgs/srv/detail/request_charge__rosidl_types
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
 
 /usr/include/asm-generic/errno.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
 
 /usr/include/c++/11/bits/charconv.h:
 

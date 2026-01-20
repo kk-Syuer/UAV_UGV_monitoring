@@ -194,6 +194,34 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /usr/include/c++/11/bits/node_handle.h \
   /usr/include/c++/11/bits/unordered_map.h \
   /usr/include/c++/11/bits/erase_if.h \
+  /usr/include/c++/11/deque \
+  /usr/include/c++/11/bits/stl_deque.h \
+  /usr/include/c++/11/bits/deque.tcc \
+  /usr/include/c++/11/optional \
+  /usr/include/c++/11/cmath \
+  /usr/include/math.h \
+  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
+  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
+  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
+  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
+  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
+  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
+  /usr/include/c++/11/bits/specfun.h \
+  /usr/include/c++/11/tr1/gamma.tcc \
+  /usr/include/c++/11/tr1/special_function_util.h \
+  /usr/include/c++/11/tr1/bessel_function.tcc \
+  /usr/include/c++/11/tr1/beta_function.tcc \
+  /usr/include/c++/11/tr1/ell_integral.tcc \
+  /usr/include/c++/11/tr1/exp_integral.tcc \
+  /usr/include/c++/11/tr1/hypergeometric.tcc \
+  /usr/include/c++/11/tr1/legendre_function.tcc \
+  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
+  /usr/include/c++/11/tr1/poly_hermite.tcc \
+  /usr/include/c++/11/tr1/poly_laguerre.tcc \
+  /usr/include/c++/11/tr1/riemann_zeta.tcc \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -380,7 +408,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
-  /usr/include/c++/11/optional \
   /usr/include/c++/11/sstream \
   /usr/include/c++/11/bits/sstream.tcc \
   /usr/include/c++/11/variant \
@@ -515,30 +542,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/visibility_control.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/moving_average_statistics/types.hpp \
-  /usr/include/c++/11/cmath \
-  /usr/include/math.h \
-  /usr/include/x86_64-linux-gnu/bits/math-vector.h \
-  /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h \
-  /usr/include/x86_64-linux-gnu/bits/flt-eval-method.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-logb.h \
-  /usr/include/x86_64-linux-gnu/bits/fp-fast.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls.h \
-  /usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h \
-  /usr/include/x86_64-linux-gnu/bits/iscanonical.h \
-  /usr/include/c++/11/bits/specfun.h \
-  /usr/include/c++/11/tr1/gamma.tcc \
-  /usr/include/c++/11/tr1/special_function_util.h \
-  /usr/include/c++/11/tr1/bessel_function.tcc \
-  /usr/include/c++/11/tr1/beta_function.tcc \
-  /usr/include/c++/11/tr1/ell_integral.tcc \
-  /usr/include/c++/11/tr1/exp_integral.tcc \
-  /usr/include/c++/11/tr1/hypergeometric.tcc \
-  /usr/include/c++/11/tr1/legendre_function.tcc \
-  /usr/include/c++/11/tr1/modified_bessel_func.tcc \
-  /usr/include/c++/11/tr1/poly_hermite.tcc \
-  /usr/include/c++/11/tr1/poly_laguerre.tcc \
-  /usr/include/c++/11/tr1/riemann_zeta.tcc \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp \
   /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp \
@@ -689,18 +692,17 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__traits.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__traits.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/traffic_message__builder.hpp \
@@ -730,6 +732,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/send_debug_text.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__struct.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp \
@@ -775,6 +780,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/srv/detail/send_debug_text__builder.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp:
+
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
@@ -819,10 +826,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/traffic_message.hpp:
 
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__type_support.hpp:
-
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__struct.hpp:
-
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_request__type_support.hpp:
@@ -834,6 +837,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__traits.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__builder.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp:
 
@@ -1013,45 +1018,13 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/collector.hpp:
 
-/usr/include/c++/11/bits/vector.tcc:
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp:
 
-/usr/include/c++/11/bits/stl_bvector.h:
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__builder.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
-
-/usr/include/c++/11/bits/stl_heap.h:
-
-/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
-
-/usr/include/c++/11/bits/std_abs.h:
-
-/usr/include/c++/11/pstl/execution_defs.h:
-
-/usr/include/c++/11/bits/stl_algo.h:
-
-/usr/include/c++/11/bits/move.h:
-
-/usr/include/c++/11/bits/hash_bytes.h:
-
-/usr/include/c++/11/bits/stl_multiset.h:
-
-/usr/include/c++/11/stdexcept:
-
-/usr/include/c++/11/pstl/glue_algorithm_defs.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
-
-/usr/include/c++/11/utility:
-
-/usr/include/c++/11/ios:
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp:
 
 /opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
 
@@ -1060,14 +1033,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/sys/types.h:
-
-/usr/include/c++/11/bits/unique_lock.h:
-
-/usr/include/c++/11/bits/uses_allocator.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/unistd_ext.h:
 
@@ -1119,15 +1084,63 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
 
+/opt/ros/humble/include/rclcpp/rclcpp/typesupport_helpers.hpp:
+
+/usr/include/c++/11/tr1/poly_hermite.tcc:
+
+/usr/include/c++/11/tr1/legendre_function.tcc:
+
+/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
+
+/usr/include/c++/11/tr1/beta_function.tcc:
+
+/usr/include/c++/11/array:
+
+/usr/include/c++/11/tr1/gamma.tcc:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
+
+/usr/include/c++/11/bits/specfun.h:
+
+/usr/include/c++/11/bits/stl_list.h:
+
+/usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
+
+/usr/include/c++/11/bits/postypes.h:
+
+/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+
+/usr/include/c++/11/bits/node_handle.h:
+
+/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
+
+/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
+
+/usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
+
+/usr/include/c++/11/string_view:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
+
+/usr/include/c++/11/numeric:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/math-vector.h:
+
+/usr/include/c++/11/bits/stl_deque.h:
+
 /usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
 /usr/include/c++/11/bits/erase_if.h:
 
 /usr/include/stdint.h:
-
-/usr/include/c++/11/bits/cpp_type_traits.h:
-
-/usr/include/endian.h:
 
 /usr/include/c++/11/bits/ptr_traits.h:
 
@@ -1151,9 +1164,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcutils/rcutils/logging_macros.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
+/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
 
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__traits.hpp:
+/usr/include/x86_64-linux-gnu/bits/types/error_t.h:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/service_type_support.hpp:
 
@@ -1165,27 +1178,25 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/bits/types/cookie_io_functions_t.h:
 
-/usr/include/c++/11/ratio:
-
 /usr/include/stdio.h:
 
+/opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__traits.hpp:
+
+/usr/include/c++/11/bits/std_abs.h:
+
+/usr/include/c++/11/bits/stl_heap.h:
+
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
+
+/usr/include/c++/11/iostream:
+
+/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
 
 /usr/include/x86_64-linux-gnu/bits/waitflags.h:
 
 /usr/include/stdlib.h:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/topic_statistics_collector.hpp:
-
-/usr/include/c++/11/string_view:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
-
-/usr/include/c++/11/numeric:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/write_preferring_read_write_lock.hpp:
 
@@ -1196,14 +1207,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/ctype.h:
 
 /usr/include/c++/11/locale:
-
-/opt/ros/humble/include/rclcpp/rclcpp/wait_set.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription.hpp:
-
-/usr/include/c++/11/unordered_map:
 
 /usr/include/c++/11/cctype:
 
@@ -1217,15 +1220,25 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/metrics_message.hpp:
 
+/usr/include/c++/11/tr1/hypergeometric.tcc:
+
+/opt/ros/humble/include/rclcpp/rclcpp/expand_topic_or_service_name.hpp:
+
+/usr/include/c++/11/tr1/riemann_zeta.tcc:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.hpp:
+
 /usr/include/c++/11/bits/localefwd.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
 
 /usr/include/c++/11/string:
 
-/usr/include/c++/11/bits/std_thread.h:
+/usr/include/c++/11/tr1/bessel_function.tcc:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
+/usr/include/c++/11/bits/codecvt.h:
+
+/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
@@ -1237,11 +1250,17 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rmw/rmw/topic_endpoint_info_array.h:
 
+/usr/include/x86_64-linux-gnu/bits/iscanonical.h:
+
+/usr/include/c++/11/ext/string_conversions.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
+
+/usr/include/c++/11/cstring:
+
+/usr/include/c++/11/bits/atomic_futex.h:
+
 /opt/ros/humble/include/rcl/rcl/graph.h:
-
-/usr/include/c++/11/bits/stl_set.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
 
 /usr/include/c++/11/exception:
 
@@ -1250,8 +1269,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
-
-/usr/include/c++/11/atomic:
 
 /usr/include/c++/11/bits/concept_check.h:
 
@@ -1263,10 +1280,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/parse_numbers.h:
 
-/usr/include/c++/11/bits/uniform_int_dist.h:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
-
 /usr/include/c++/11/bits/cxxabi_init_exception.h:
 
 /usr/include/x86_64-linux-gnu/bits/stdlib-float.h:
@@ -1275,17 +1288,11 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
 
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/heartbeat.hpp:
-
 /usr/include/c++/11/memory:
 
 /opt/ros/humble/include/rmw/rmw/serialized_message.h:
 
-/usr/include/c++/11/bits/std_mutex.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
-
-/usr/include/c++/11/tr1/poly_laguerre.tcc:
+/usr/include/c++/11/deque:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
 
@@ -1323,19 +1330,21 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/sys/cdefs.h:
 
+/usr/include/c++/11/tr1/special_function_util.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
+
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_timers_interface.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/waitstatus.h:
 
 /usr/include/c++/11/cstdint:
 
-/usr/include/c++/11/bits/postypes.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathcalls-narrow.h:
-
 /usr/include/x86_64-linux-gnu/bits/long-double.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/__sigset_t.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
 
@@ -1345,17 +1354,11 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/charge_decision__type_support.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp:
+
 /usr/include/c++/11/initializer_list:
 
 /usr/include/c++/11/iosfwd:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
-
-/usr/include/c++/11/functional:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
-
-/usr/include/linux/errno.h:
 
 /usr/include/asm-generic/errno-base.h:
 
@@ -1365,11 +1368,13 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/debug/debug.h:
 
-/usr/include/x86_64-linux-gnu/bits/pthread_stack_min-dynamic.h:
+/usr/include/x86_64-linux-gnu/c++/11/bits/c++locale.h:
 
-/usr/include/x86_64-linux-gnu/c++/11/bits/c++config.h:
+/usr/include/linux/errno.h:
 
-/usr/include/c++/11/tr1/legendre_function.tcc:
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__traits.hpp:
+
+/usr/include/c++/11/functional:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/cpu_defines.h:
 
@@ -1383,10 +1388,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/stl_relops.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
-
 /usr/include/c++/11/bits/random.tcc:
 
 /usr/include/c++/11/bits/atomic_base.h:
@@ -1397,7 +1398,23 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/ext/numeric_traits.h:
 
+/usr/include/c++/11/utility:
+
+/usr/include/c++/11/tr1/ell_integral.tcc:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
+
+/usr/include/c++/11/ios:
+
 /usr/include/c++/11/ext/type_traits.h:
+
+/usr/include/c++/11/ratio:
+
+/usr/include/c++/11/optional:
+
+/usr/include/x86_64-linux-gnu/bits/sigstksz.h:
+
+/usr/include/c++/11/condition_variable:
 
 /usr/include/strings.h:
 
@@ -1424,6 +1441,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/features-time64.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
+
+/usr/include/c++/11/pstl/execution_defs.h:
 
 /usr/include/x86_64-linux-gnu/bits/wordsize.h:
 
@@ -1459,10 +1478,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
 
-/usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
-
-/usr/include/c++/11/tr1/gamma.tcc:
-
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/floating_point_range__struct.hpp:
 
 /usr/include/unistd.h:
@@ -1485,6 +1500,16 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcl/rcl/types.h:
 
+/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+
+/usr/include/c++/11/bits/stl_bvector.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_topics_interface.hpp:
+
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
+
 /usr/include/c++/11/mutex:
 
 /usr/include/stdc-predef.h:
@@ -1501,6 +1526,10 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcl/rcl/allocator.h:
 
+/usr/include/c++/11/bits/move.h:
+
+/usr/include/c++/11/bits/hash_bytes.h:
+
 /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
 
 /usr/include/c++/11/ext/atomicity.h:
@@ -1511,17 +1540,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/shared_ptr_base.h:
 
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__traits.hpp:
+/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
-
-/usr/include/c++/11/set:
-
-/usr/include/x86_64-linux-gnu/gnu/stubs.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
-
-/usr/include/c++/11/tr1/special_function_util.h:
+/usr/include/x86_64-linux-gnu/bits/endian.h:
 
 /usr/include/x86_64-linux-gnu/bits/byteswap.h:
 
@@ -1535,15 +1556,7 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/stl_construct.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
-
-/usr/include/c++/11/bits/std_function.h:
-
-/usr/include/c++/11/bits/stl_tempbuf.h:
-
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/received_message_age.hpp:
 
 /usr/include/c++/11/bits/allocator.h:
 
@@ -1553,6 +1566,22 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/pstl/pstl_config.h:
 
+/usr/include/endian.h:
+
+/usr/include/c++/11/bits/cpp_type_traits.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/usr/include/c++/11/bits/std_thread.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/clock_t.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/qos_event.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
+
+/usr/include/c++/11/backward/auto_ptr.h:
+
 /usr/include/c++/11/bits/stl_uninitialized.h:
 
 /usr/include/x86_64-linux-gnu/bits/sched.h:
@@ -1561,21 +1590,21 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/unordered_map.h:
 
+/usr/include/c++/11/tr1/modified_bessel_func.tcc:
+
 /usr/include/x86_64-linux-gnu/bits/endianness.h:
 
 /usr/include/x86_64-linux-gnu/bits/typesizes.h:
 
 /usr/include/c++/11/bits/predefined_ops.h:
 
-/usr/include/c++/11/bits/stl_tree.h:
-
-/opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
 
 /usr/include/c++/11/tuple:
 
 /opt/ros/humble/include/rcl/rcl/network_flow_endpoints.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
@@ -1607,31 +1636,21 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/sstream.tcc:
 
-/usr/include/c++/11/array:
-
-/usr/include/c++/11/tr1/beta_function.tcc:
-
 /usr/include/x86_64-linux-gnu/bits/types/struct_itimerspec.h:
-
-/usr/include/c++/11/bits/this_thread_sleep.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
 
 /usr/include/c++/11/bits/algorithmfwd.h:
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
-/usr/include/c++/11/backward/auto_ptr.h:
+/usr/include/c++/11/bits/stl_tempbuf.h:
 
-/usr/include/x86_64-linux-gnu/bits/types/__FILE.h:
+/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__struct.hpp:
-
-/usr/include/c++/11/bits/atomic_futex.h:
-
-/usr/include/c++/11/cstring:
+/usr/include/c++/11/bits/std_function.h:
 
 /usr/include/c++/11/typeinfo:
+
+/usr/include/math.h:
 
 /usr/include/c++/11/bits/charconv.h:
 
@@ -1639,13 +1658,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/c++allocator.h:
 
-/usr/include/math.h:
-
 /usr/include/x86_64-linux-gnu/bits/types/__mbstate_t.h:
 
 /usr/include/c++/11/bits/stl_raw_storage_iter.h:
-
-/usr/include/c++/11/vector:
 
 /opt/ros/humble/include/rcutils/rcutils/allocator.h:
 
@@ -1663,7 +1678,17 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_options.hpp:
 
+/opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/get_node_parameters_interface.hpp:
+
+/usr/include/c++/11/tr1/poly_laguerre.tcc:
+
+/usr/include/c++/11/bits/std_mutex.h:
+
 /usr/include/c++/11/cstdlib:
+
+/usr/include/c++/11/bits/uses_allocator.h:
+
+/usr/include/c++/11/bits/unique_lock.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
@@ -1671,7 +1696,15 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/invoke.h:
 
-/usr/include/c++/11/algorithm:
+/usr/include/c++/11/bits/deque.tcc:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
+
+/usr/include/x86_64-linux-gnu/bits/types.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:
 
 /usr/include/c++/11/backward/binders.h:
 
@@ -1683,6 +1716,10 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/c++/11/bits/string_view.tcc:
 
+/usr/include/x86_64-linux-gnu/bits/types/struct_tm.h:
+
+/usr/include/c++/11/bits/this_thread_sleep.h:
+
 /usr/include/c++/11/bits/stringfwd.h:
 
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdint.h:
@@ -1693,13 +1730,9 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/x86_64-linux-gnu/bits/floatn-common.h:
 
-/usr/include/c++/11/bits/node_handle.h:
+/opt/ros/humble/include/rclcpp/rclcpp/any_service_callback.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/uintn-identity.h:
-
-/usr/include/c++/11/iostream:
-
-/usr/include/x86_64-linux-gnu/bits/fp-fast.h:
+/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
 
 /opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
 
@@ -1723,9 +1756,53 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /usr/include/pthread.h:
 
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/heartbeat__builder.hpp:
-
 /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
+
+/usr/include/c++/11/stdexcept:
+
+/usr/include/c++/11/pstl/glue_algorithm_defs.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
+
+/usr/include/c++/11/atomic:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/cluster_info__traits.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
+
+/usr/include/x86_64-linux-gnu/gnu/stubs.h:
+
+/usr/include/c++/11/set:
+
+/usr/include/c++/11/bits/stl_tree.h:
+
+/opt/ros/humble/include/rcutils/rcutils/visibility_control.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/multi_threaded_executor.hpp:
+
+/usr/include/c++/11/bits/stl_set.h:
+
+/usr/include/c++/11/bits/stl_multiset.h:
+
+/usr/include/c++/11/algorithm:
+
+/usr/include/c++/11/bits/stl_algo.h:
+
+/usr/include/c++/11/bits/uniform_int_dist.h:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__traits.hpp:
+
+/usr/include/c++/11/vector:
+
+/opt/ros/humble/include/rclcpp/rclcpp/wait_set.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/executors/single_threaded_executor.hpp:
+
+/usr/include/c++/11/unordered_map:
+
+/opt/ros/humble/include/rclcpp/rclcpp/subscription.hpp:
+
+/usr/include/c++/11/bits/vector.tcc:
 
 /usr/include/c++/11/cassert:
 
@@ -1766,12 +1843,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/c++/11/bits/istream.tcc:
 
 /usr/include/c++/11/list:
-
-/usr/include/c++/11/bits/stl_list.h:
-
-/usr/include/c++/11/ext/string_conversions.h:
-
-/usr/include/x86_64-linux-gnu/bits/iscanonical.h:
 
 /usr/include/c++/11/map:
 
@@ -1857,6 +1928,10 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcutils/rcutils/types/hash_map.h:
 
+/usr/include/c++/11/tr1/exp_integral.tcc:
+
+/opt/ros/humble/include/rcl/rcl/error_handling.h:
+
 /opt/ros/humble/include/rcutils/rcutils/types/string_array.h:
 
 /opt/ros/humble/include/rcutils/rcutils/qsort.h:
@@ -1894,12 +1969,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /usr/include/c++/11/bit:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_changed.h:
-
-/usr/include/c++/11/bits/codecvt.h:
-
-/opt/ros/humble/include/rmw/rmw/events_statuses/liveliness_lost.h:
-
-/usr/include/c++/11/tr1/bessel_function.tcc:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/list_parameters_result__type_support.hpp:
 
@@ -1963,6 +2032,8 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__traits.hpp:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.hpp:
+
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/sequence_bound.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_template.hpp:
@@ -2007,29 +2078,11 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rclcpp/rclcpp/time.hpp:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__struct.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/signal_ext.h:
-
-/usr/include/x86_64-linux-gnu/bits/types.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/client.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/sigstksz.h:
-
-/usr/include/c++/11/condition_variable:
-
-/usr/include/c++/11/optional:
 
 /usr/include/c++/11/sstream:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/expand_topic_or_service_name.hpp:
-
-/usr/include/c++/11/tr1/hypergeometric.tcc:
 
 /opt/ros/humble/include/rclcpp/rclcpp/function_traits.hpp:
 
@@ -2137,12 +2190,6 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 
 /opt/ros/humble/include/rcpputils/rcpputils/time.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/any_service_callback.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/math-vector.h:
-
 /opt/ros/humble/include/tracetools/tracetools/utils.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/parameter_map.hpp:
@@ -2210,35 +2257,3 @@ CMakeFiles/uav_node.dir/src/uav_node.cpp.o: /home/vboxuser/UAV_UGV_netmonitoring
 /opt/ros/humble/include/rmw/rmw/time.h:
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/statistic_data_point__traits.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/flt-eval-method.h:
-
-/usr/include/x86_64-linux-gnu/bits/fp-logb.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathcalls-helper-functions.h:
-
-/usr/include/x86_64-linux-gnu/bits/endian.h:
-
-/usr/include/x86_64-linux-gnu/bits/mathcalls.h:
-
-/usr/include/c++/11/bits/specfun.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
-
-/usr/include/c++/11/tr1/ell_integral.tcc:
-
-/opt/ros/humble/include/rcl/rcl/error_handling.h:
-
-/usr/include/c++/11/tr1/exp_integral.tcc:
-
-/usr/include/c++/11/tr1/modified_bessel_func.tcc:
-
-/opt/ros/humble/include/rclcpp/rclcpp/typesupport_helpers.hpp:
-
-/usr/include/c++/11/tr1/poly_hermite.tcc:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.hpp:
-
-/usr/include/c++/11/tr1/riemann_zeta.tcc:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp:

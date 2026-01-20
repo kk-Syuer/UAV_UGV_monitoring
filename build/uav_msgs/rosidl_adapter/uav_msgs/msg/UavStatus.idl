@@ -4,6 +4,7 @@
 
 #include "builtin_interfaces/msg/Time.idl"
 #include "geometry_msgs/msg/Pose.idl"
+#include "geometry_msgs/msg/Twist.idl"
 
 module uav_msgs {
   module msg {
@@ -30,6 +31,8 @@ module uav_msgs {
 
       geometry_msgs::msg::Pose pose;
 
+      geometry_msgs::msg::Twist velocity;
+
       @verbatim (language="comment", text=
         "meters (CH > MEMBER)")
       float service_radius;
@@ -45,6 +48,20 @@ module uav_msgs {
       float packet_loss_estimate;
 
       float energy_consumption_rate;
+
+      @verbatim (language="comment", text=
+        "0=ACTIVE,1=GOING_TO_UGV,2=CHARGING,3=RETURNING")
+      uint8 charging_state;
+
+      @verbatim (language="comment", text=
+        "true if battery below threshold or queued")
+      boolean intent_to_leave;
+
+      float eta_to_leave_sec;
+
+      @verbatim (language="comment", text=
+        "so receivers can simulate range consistently")
+      float comm_radius_m;
 
       builtin_interfaces::msg::Time stamp;
 

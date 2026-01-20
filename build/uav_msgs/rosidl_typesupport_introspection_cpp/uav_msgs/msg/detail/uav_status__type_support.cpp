@@ -37,7 +37,7 @@ void UavStatus_fini_function(void * message_memory)
   typed_message->~UavStatus();
 }
 
-static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_message_member_array[13] = {
+static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_message_member_array[18] = {
   {
     "uav_id",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_STRING,  // type
@@ -141,6 +141,23 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_mes
     nullptr  // resize(index) function pointer
   },
   {
+    "velocity",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
+    0,  // upper bound of string
+    ::rosidl_typesupport_introspection_cpp::get_message_type_support_handle<geometry_msgs::msg::Twist>(),  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, velocity),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
     "service_radius",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
     0,  // upper bound of string
@@ -226,6 +243,74 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_mes
     nullptr  // resize(index) function pointer
   },
   {
+    "charging_state",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_UINT8,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, charging_state),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "intent_to_leave",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_BOOLEAN,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, intent_to_leave),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "eta_to_leave_sec",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, eta_to_leave_sec),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
+    "comm_radius_m",  // name
+    ::rosidl_typesupport_introspection_cpp::ROS_TYPE_FLOAT,  // type
+    0,  // upper bound of string
+    nullptr,  // members of sub message
+    false,  // is array
+    0,  // array size
+    false,  // is upper bound
+    offsetof(uav_msgs::msg::UavStatus, comm_radius_m),  // bytes offset in struct
+    nullptr,  // default value
+    nullptr,  // size() function pointer
+    nullptr,  // get_const(index) function pointer
+    nullptr,  // get(index) function pointer
+    nullptr,  // fetch(index, &value) function pointer
+    nullptr,  // assign(index, value) function pointer
+    nullptr  // resize(index) function pointer
+  },
+  {
     "stamp",  // name
     ::rosidl_typesupport_introspection_cpp::ROS_TYPE_MESSAGE,  // type
     0,  // upper bound of string
@@ -264,7 +349,7 @@ static const ::rosidl_typesupport_introspection_cpp::MessageMember UavStatus_mes
 static const ::rosidl_typesupport_introspection_cpp::MessageMembers UavStatus_message_members = {
   "uav_msgs::msg",  // message namespace
   "UavStatus",  // message name
-  13,  // number of fields
+  18,  // number of fields
   sizeof(uav_msgs::msg::UavStatus),
   UavStatus_message_member_array,  // message members
   UavStatus_init_function,  // function to initialize message memory (memory has to be allocated)

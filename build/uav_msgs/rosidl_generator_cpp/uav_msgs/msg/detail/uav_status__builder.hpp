@@ -53,16 +53,80 @@ private:
   ::uav_msgs::msg::UavStatus msg_;
 };
 
+class Init_UavStatus_comm_radius_m
+{
+public:
+  explicit Init_UavStatus_comm_radius_m(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  Init_UavStatus_stamp comm_radius_m(::uav_msgs::msg::UavStatus::_comm_radius_m_type arg)
+  {
+    msg_.comm_radius_m = std::move(arg);
+    return Init_UavStatus_stamp(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
+class Init_UavStatus_eta_to_leave_sec
+{
+public:
+  explicit Init_UavStatus_eta_to_leave_sec(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  Init_UavStatus_comm_radius_m eta_to_leave_sec(::uav_msgs::msg::UavStatus::_eta_to_leave_sec_type arg)
+  {
+    msg_.eta_to_leave_sec = std::move(arg);
+    return Init_UavStatus_comm_radius_m(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
+class Init_UavStatus_intent_to_leave
+{
+public:
+  explicit Init_UavStatus_intent_to_leave(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  Init_UavStatus_eta_to_leave_sec intent_to_leave(::uav_msgs::msg::UavStatus::_intent_to_leave_type arg)
+  {
+    msg_.intent_to_leave = std::move(arg);
+    return Init_UavStatus_eta_to_leave_sec(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
+class Init_UavStatus_charging_state
+{
+public:
+  explicit Init_UavStatus_charging_state(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  Init_UavStatus_intent_to_leave charging_state(::uav_msgs::msg::UavStatus::_charging_state_type arg)
+  {
+    msg_.charging_state = std::move(arg);
+    return Init_UavStatus_intent_to_leave(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
 class Init_UavStatus_energy_consumption_rate
 {
 public:
   explicit Init_UavStatus_energy_consumption_rate(::uav_msgs::msg::UavStatus & msg)
   : msg_(msg)
   {}
-  Init_UavStatus_stamp energy_consumption_rate(::uav_msgs::msg::UavStatus::_energy_consumption_rate_type arg)
+  Init_UavStatus_charging_state energy_consumption_rate(::uav_msgs::msg::UavStatus::_energy_consumption_rate_type arg)
   {
     msg_.energy_consumption_rate = std::move(arg);
-    return Init_UavStatus_stamp(msg_);
+    return Init_UavStatus_charging_state(msg_);
   }
 
 private:
@@ -133,16 +197,32 @@ private:
   ::uav_msgs::msg::UavStatus msg_;
 };
 
+class Init_UavStatus_velocity
+{
+public:
+  explicit Init_UavStatus_velocity(::uav_msgs::msg::UavStatus & msg)
+  : msg_(msg)
+  {}
+  Init_UavStatus_service_radius velocity(::uav_msgs::msg::UavStatus::_velocity_type arg)
+  {
+    msg_.velocity = std::move(arg);
+    return Init_UavStatus_service_radius(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::UavStatus msg_;
+};
+
 class Init_UavStatus_pose
 {
 public:
   explicit Init_UavStatus_pose(::uav_msgs::msg::UavStatus & msg)
   : msg_(msg)
   {}
-  Init_UavStatus_service_radius pose(::uav_msgs::msg::UavStatus::_pose_type arg)
+  Init_UavStatus_velocity pose(::uav_msgs::msg::UavStatus::_pose_type arg)
   {
     msg_.pose = std::move(arg);
-    return Init_UavStatus_service_radius(msg_);
+    return Init_UavStatus_velocity(msg_);
   }
 
 private:

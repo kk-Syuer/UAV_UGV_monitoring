@@ -19,6 +19,17 @@
 #include "rosidl_runtime_c/string.h"
 #include "rosidl_runtime_c/string_functions.h"
 
+#include "rosidl_runtime_c/primitives_sequence.h"
+#include "rosidl_runtime_c/primitives_sequence_functions.h"
+
+ROSIDL_GENERATOR_C_IMPORT
+bool builtin_interfaces__msg__time__convert_from_py(PyObject * _pymsg, void * _ros_message);
+ROSIDL_GENERATOR_C_IMPORT
+PyObject * builtin_interfaces__msg__time__convert_to_py(void * raw_ros_message);
+ROSIDL_GENERATOR_C_IMPORT
+bool builtin_interfaces__msg__time__convert_from_py(PyObject * _pymsg, void * _ros_message);
+ROSIDL_GENERATOR_C_IMPORT
+PyObject * builtin_interfaces__msg__time__convert_to_py(void * raw_ros_message);
 ROSIDL_GENERATOR_C_IMPORT
 bool builtin_interfaces__msg__time__convert_from_py(PyObject * _pymsg, void * _ros_message);
 ROSIDL_GENERATOR_C_IMPORT
@@ -117,6 +128,21 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     Py_DECREF(encoded_field);
     Py_DECREF(field);
   }
+  {  // last_hop_id
+    PyObject * field = PyObject_GetAttrString(_pymsg, "last_hop_id");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->last_hop_id, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
   {  // flow_type
     PyObject * field = PyObject_GetAttrString(_pymsg, "flow_type");
     if (!field) {
@@ -200,6 +226,103 @@ bool uav_msgs__msg__traffic_message__convert_from_py(PyObject * _pymsg, void * _
     if (!builtin_interfaces__msg__time__convert_from_py(field, &ros_message->creation_time)) {
       Py_DECREF(field);
       return false;
+    }
+    Py_DECREF(field);
+  }
+  {  // ref_msg_id
+    PyObject * field = PyObject_GetAttrString(_pymsg, "ref_msg_id");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->ref_msg_id, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // last_tx_time
+    PyObject * field = PyObject_GetAttrString(_pymsg, "last_tx_time");
+    if (!field) {
+      return false;
+    }
+    if (!builtin_interfaces__msg__time__convert_from_py(field, &ros_message->last_tx_time)) {
+      Py_DECREF(field);
+      return false;
+    }
+    Py_DECREF(field);
+  }
+  {  // last_rx_time
+    PyObject * field = PyObject_GetAttrString(_pymsg, "last_rx_time");
+    if (!field) {
+      return false;
+    }
+    if (!builtin_interfaces__msg__time__convert_from_py(field, &ros_message->last_rx_time)) {
+      Py_DECREF(field);
+      return false;
+    }
+    Py_DECREF(field);
+  }
+  {  // drop_reason
+    PyObject * field = PyObject_GetAttrString(_pymsg, "drop_reason");
+    if (!field) {
+      return false;
+    }
+    assert(PyUnicode_Check(field));
+    PyObject * encoded_field = PyUnicode_AsUTF8String(field);
+    if (!encoded_field) {
+      Py_DECREF(field);
+      return false;
+    }
+    rosidl_runtime_c__String__assign(&ros_message->drop_reason, PyBytes_AS_STRING(encoded_field));
+    Py_DECREF(encoded_field);
+    Py_DECREF(field);
+  }
+  {  // recent_hops
+    PyObject * field = PyObject_GetAttrString(_pymsg, "recent_hops");
+    if (!field) {
+      return false;
+    }
+    {
+      PyObject * seq_field = PySequence_Fast(field, "expected a sequence in 'recent_hops'");
+      if (!seq_field) {
+        Py_DECREF(field);
+        return false;
+      }
+      Py_ssize_t size = PySequence_Size(field);
+      if (-1 == size) {
+        Py_DECREF(seq_field);
+        Py_DECREF(field);
+        return false;
+      }
+      if (!rosidl_runtime_c__String__Sequence__init(&(ros_message->recent_hops), size)) {
+        PyErr_SetString(PyExc_RuntimeError, "unable to create String__Sequence ros_message");
+        Py_DECREF(seq_field);
+        Py_DECREF(field);
+        return false;
+      }
+      rosidl_runtime_c__String * dest = ros_message->recent_hops.data;
+      for (Py_ssize_t i = 0; i < size; ++i) {
+        PyObject * item = PySequence_Fast_GET_ITEM(seq_field, i);
+        if (!item) {
+          Py_DECREF(seq_field);
+          Py_DECREF(field);
+          return false;
+        }
+        assert(PyUnicode_Check(item));
+        PyObject * encoded_item = PyUnicode_AsUTF8String(item);
+        if (!encoded_item) {
+          Py_DECREF(seq_field);
+          Py_DECREF(field);
+          return false;
+        }
+        rosidl_runtime_c__String__assign(&dest[i], PyBytes_AS_STRING(encoded_item));
+        Py_DECREF(encoded_item);
+      }
+      Py_DECREF(seq_field);
     }
     Py_DECREF(field);
   }
@@ -287,6 +410,23 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "next_hop_id", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // last_hop_id
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->last_hop_id.data,
+      strlen(ros_message->last_hop_id.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "last_hop_id", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;
@@ -390,6 +530,94 @@ PyObject * uav_msgs__msg__traffic_message__convert_to_py(void * raw_ros_message)
     }
     {
       int rc = PyObject_SetAttrString(_pymessage, "creation_time", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // ref_msg_id
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->ref_msg_id.data,
+      strlen(ros_message->ref_msg_id.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "ref_msg_id", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // last_tx_time
+    PyObject * field = NULL;
+    field = builtin_interfaces__msg__time__convert_to_py(&ros_message->last_tx_time);
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "last_tx_time", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // last_rx_time
+    PyObject * field = NULL;
+    field = builtin_interfaces__msg__time__convert_to_py(&ros_message->last_rx_time);
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "last_rx_time", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // drop_reason
+    PyObject * field = NULL;
+    field = PyUnicode_DecodeUTF8(
+      ros_message->drop_reason.data,
+      strlen(ros_message->drop_reason.data),
+      "replace");
+    if (!field) {
+      return NULL;
+    }
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "drop_reason", field);
+      Py_DECREF(field);
+      if (rc) {
+        return NULL;
+      }
+    }
+  }
+  {  // recent_hops
+    PyObject * field = NULL;
+    size_t size = ros_message->recent_hops.size;
+    rosidl_runtime_c__String * src = ros_message->recent_hops.data;
+    field = PyList_New(size);
+    if (!field) {
+      return NULL;
+    }
+    for (size_t i = 0; i < size; ++i) {
+      PyObject * decoded_item = PyUnicode_DecodeUTF8(src[i].data, strlen(src[i].data), "replace");
+      if (!decoded_item) {
+        return NULL;
+      }
+      int rc = PyList_SetItem(field, i, decoded_item);
+      (void)rc;
+      assert(rc == 0);
+    }
+    assert(PySequence_Check(field));
+    {
+      int rc = PyObject_SetAttrString(_pymessage, "recent_hops", field);
       Py_DECREF(field);
       if (rc) {
         return NULL;

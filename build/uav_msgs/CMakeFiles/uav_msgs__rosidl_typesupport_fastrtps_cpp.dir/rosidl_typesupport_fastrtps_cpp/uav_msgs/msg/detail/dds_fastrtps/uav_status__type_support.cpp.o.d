@@ -165,6 +165,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_cpp.dir/rosidl_typesupport_fast
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.hpp \
+ /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.hpp \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.hpp \
  /opt/ros/humble/include/fastcdr/fastcdr/Cdr.h \
  /opt/ros/humble/include/fastcdr/fastcdr/fastcdr_dll.h \

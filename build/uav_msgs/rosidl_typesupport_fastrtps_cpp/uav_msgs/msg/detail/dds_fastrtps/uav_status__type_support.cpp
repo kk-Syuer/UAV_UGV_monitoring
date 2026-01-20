@@ -40,6 +40,30 @@ max_serialized_size_Pose(
 }  // namespace msg
 }  // namespace geometry_msgs
 
+namespace geometry_msgs
+{
+namespace msg
+{
+namespace typesupport_fastrtps_cpp
+{
+bool cdr_serialize(
+  const geometry_msgs::msg::Twist &,
+  eprosima::fastcdr::Cdr &);
+bool cdr_deserialize(
+  eprosima::fastcdr::Cdr &,
+  geometry_msgs::msg::Twist &);
+size_t get_serialized_size(
+  const geometry_msgs::msg::Twist &,
+  size_t current_alignment);
+size_t
+max_serialized_size_Twist(
+  bool & full_bounded,
+  bool & is_plain,
+  size_t current_alignment);
+}  // namespace typesupport_fastrtps_cpp
+}  // namespace msg
+}  // namespace geometry_msgs
+
 namespace builtin_interfaces
 {
 namespace msg
@@ -94,6 +118,10 @@ cdr_serialize(
   geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_serialize(
     ros_message.pose,
     cdr);
+  // Member: velocity
+  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_serialize(
+    ros_message.velocity,
+    cdr);
   // Member: service_radius
   cdr << ros_message.service_radius;
   // Member: connected_users
@@ -104,6 +132,14 @@ cdr_serialize(
   cdr << ros_message.packet_loss_estimate;
   // Member: energy_consumption_rate
   cdr << ros_message.energy_consumption_rate;
+  // Member: charging_state
+  cdr << ros_message.charging_state;
+  // Member: intent_to_leave
+  cdr << (ros_message.intent_to_leave ? true : false);
+  // Member: eta_to_leave_sec
+  cdr << ros_message.eta_to_leave_sec;
+  // Member: comm_radius_m
+  cdr << ros_message.comm_radius_m;
   // Member: stamp
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_serialize(
     ros_message.stamp,
@@ -138,6 +174,10 @@ cdr_deserialize(
   geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_deserialize(
     cdr, ros_message.pose);
 
+  // Member: velocity
+  geometry_msgs::msg::typesupport_fastrtps_cpp::cdr_deserialize(
+    cdr, ros_message.velocity);
+
   // Member: service_radius
   cdr >> ros_message.service_radius;
 
@@ -152,6 +192,22 @@ cdr_deserialize(
 
   // Member: energy_consumption_rate
   cdr >> ros_message.energy_consumption_rate;
+
+  // Member: charging_state
+  cdr >> ros_message.charging_state;
+
+  // Member: intent_to_leave
+  {
+    uint8_t tmp;
+    cdr >> tmp;
+    ros_message.intent_to_leave = tmp ? true : false;
+  }
+
+  // Member: eta_to_leave_sec
+  cdr >> ros_message.eta_to_leave_sec;
+
+  // Member: comm_radius_m
+  cdr >> ros_message.comm_radius_m;
 
   // Member: stamp
   builtin_interfaces::msg::typesupport_fastrtps_cpp::cdr_deserialize(
@@ -211,6 +267,11 @@ get_serialized_size(
   current_alignment +=
     geometry_msgs::msg::typesupport_fastrtps_cpp::get_serialized_size(
     ros_message.pose, current_alignment);
+  // Member: velocity
+
+  current_alignment +=
+    geometry_msgs::msg::typesupport_fastrtps_cpp::get_serialized_size(
+    ros_message.velocity, current_alignment);
   // Member: service_radius
   {
     size_t item_size = sizeof(ros_message.service_radius);
@@ -238,6 +299,30 @@ get_serialized_size(
   // Member: energy_consumption_rate
   {
     size_t item_size = sizeof(ros_message.energy_consumption_rate);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: charging_state
+  {
+    size_t item_size = sizeof(ros_message.charging_state);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: intent_to_leave
+  {
+    size_t item_size = sizeof(ros_message.intent_to_leave);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: eta_to_leave_sec
+  {
+    size_t item_size = sizeof(ros_message.eta_to_leave_sec);
+    current_alignment += item_size +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
+  }
+  // Member: comm_radius_m
+  {
+    size_t item_size = sizeof(ros_message.comm_radius_m);
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
@@ -347,6 +432,25 @@ max_serialized_size_UavStatus(
     }
   }
 
+  // Member: velocity
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size =
+        geometry_msgs::msg::typesupport_fastrtps_cpp::max_serialized_size_Twist(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+
   // Member: service_radius
   {
     size_t array_size = 1;
@@ -384,6 +488,40 @@ max_serialized_size_UavStatus(
   }
 
   // Member: energy_consumption_rate
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: charging_state
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+
+  // Member: intent_to_leave
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint8_t);
+    current_alignment += array_size * sizeof(uint8_t);
+  }
+
+  // Member: eta_to_leave_sec
+  {
+    size_t array_size = 1;
+
+    last_member_size = array_size * sizeof(uint32_t);
+    current_alignment += array_size * sizeof(uint32_t) +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
+  }
+
+  // Member: comm_radius_m
   {
     size_t array_size = 1;
 

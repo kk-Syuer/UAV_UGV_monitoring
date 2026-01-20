@@ -1,4 +1,3 @@
-/home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/lib/coverage_planner/libcoverage_planner_lib.a
 /home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/lib/coverage_planner/coverage_planner_node
 /home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/ament_index/resource_index/package_run_dependencies/coverage_planner
 /home/vboxuser/UAV_UGV_netmonitoring/install/coverage_planner/share/ament_index/resource_index/parent_prefix_path/coverage_planner

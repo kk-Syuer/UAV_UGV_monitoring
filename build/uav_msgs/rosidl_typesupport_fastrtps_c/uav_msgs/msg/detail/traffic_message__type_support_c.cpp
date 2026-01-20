@@ -34,9 +34,9 @@ extern "C"
 {
 #endif
 
-#include "builtin_interfaces/msg/detail/time__functions.h"  // creation_time
-#include "rosidl_runtime_c/string.h"  // control_type, dst_id, msg_id, next_hop_id, payload, src_id
-#include "rosidl_runtime_c/string_functions.h"  // control_type, dst_id, msg_id, next_hop_id, payload, src_id
+#include "builtin_interfaces/msg/detail/time__functions.h"  // creation_time, last_rx_time, last_tx_time
+#include "rosidl_runtime_c/string.h"  // control_type, drop_reason, dst_id, last_hop_id, msg_id, next_hop_id, payload, recent_hops, ref_msg_id, src_id
+#include "rosidl_runtime_c/string_functions.h"  // control_type, drop_reason, dst_id, last_hop_id, msg_id, next_hop_id, payload, recent_hops, ref_msg_id, src_id
 
 // forward declare type support functions
 ROSIDL_TYPESUPPORT_FASTRTPS_C_IMPORT_uav_msgs
@@ -122,6 +122,20 @@ static bool _TrafficMessage__cdr_serialize(
     cdr << str->data;
   }
 
+  // Field name: last_hop_id
+  {
+    const rosidl_runtime_c__String * str = &ros_message->last_hop_id;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
   // Field name: flow_type
   {
     cdr << ros_message->flow_type;
@@ -186,6 +200,81 @@ static bool _TrafficMessage__cdr_serialize(
         &ros_message->creation_time, cdr))
     {
       return false;
+    }
+  }
+
+  // Field name: ref_msg_id
+  {
+    const rosidl_runtime_c__String * str = &ros_message->ref_msg_id;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
+  // Field name: last_tx_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_serialize(
+        &ros_message->last_tx_time, cdr))
+    {
+      return false;
+    }
+  }
+
+  // Field name: last_rx_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_serialize(
+        &ros_message->last_rx_time, cdr))
+    {
+      return false;
+    }
+  }
+
+  // Field name: drop_reason
+  {
+    const rosidl_runtime_c__String * str = &ros_message->drop_reason;
+    if (str->capacity == 0 || str->capacity <= str->size) {
+      fprintf(stderr, "string capacity not greater than size\n");
+      return false;
+    }
+    if (str->data[str->size] != '\0') {
+      fprintf(stderr, "string not null-terminated\n");
+      return false;
+    }
+    cdr << str->data;
+  }
+
+  // Field name: recent_hops
+  {
+    size_t size = ros_message->recent_hops.size;
+    auto array_ptr = ros_message->recent_hops.data;
+    cdr << static_cast<uint32_t>(size);
+    for (size_t i = 0; i < size; ++i) {
+      const rosidl_runtime_c__String * str = &array_ptr[i];
+      if (str->capacity == 0 || str->capacity <= str->size) {
+        fprintf(stderr, "string capacity not greater than size\n");
+        return false;
+      }
+      if (str->data[str->size] != '\0') {
+        fprintf(stderr, "string not null-terminated\n");
+        return false;
+      }
+      cdr << str->data;
     }
   }
 
@@ -265,6 +354,22 @@ static bool _TrafficMessage__cdr_deserialize(
     }
   }
 
+  // Field name: last_hop_id
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->last_hop_id.data) {
+      rosidl_runtime_c__String__init(&ros_message->last_hop_id);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->last_hop_id,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'last_hop_id'\n");
+      return false;
+    }
+  }
+
   // Field name: flow_type
   {
     cdr >> ros_message->flow_type;
@@ -338,6 +443,96 @@ static bool _TrafficMessage__cdr_deserialize(
     }
   }
 
+  // Field name: ref_msg_id
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->ref_msg_id.data) {
+      rosidl_runtime_c__String__init(&ros_message->ref_msg_id);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->ref_msg_id,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'ref_msg_id'\n");
+      return false;
+    }
+  }
+
+  // Field name: last_tx_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_deserialize(
+        cdr, &ros_message->last_tx_time))
+    {
+      return false;
+    }
+  }
+
+  // Field name: last_rx_time
+  {
+    const message_type_support_callbacks_t * callbacks =
+      static_cast<const message_type_support_callbacks_t *>(
+      ROSIDL_TYPESUPPORT_INTERFACE__MESSAGE_SYMBOL_NAME(
+        rosidl_typesupport_fastrtps_c, builtin_interfaces, msg, Time
+      )()->data);
+    if (!callbacks->cdr_deserialize(
+        cdr, &ros_message->last_rx_time))
+    {
+      return false;
+    }
+  }
+
+  // Field name: drop_reason
+  {
+    std::string tmp;
+    cdr >> tmp;
+    if (!ros_message->drop_reason.data) {
+      rosidl_runtime_c__String__init(&ros_message->drop_reason);
+    }
+    bool succeeded = rosidl_runtime_c__String__assign(
+      &ros_message->drop_reason,
+      tmp.c_str());
+    if (!succeeded) {
+      fprintf(stderr, "failed to assign string into field 'drop_reason'\n");
+      return false;
+    }
+  }
+
+  // Field name: recent_hops
+  {
+    uint32_t cdrSize;
+    cdr >> cdrSize;
+    size_t size = static_cast<size_t>(cdrSize);
+    if (ros_message->recent_hops.data) {
+      rosidl_runtime_c__String__Sequence__fini(&ros_message->recent_hops);
+    }
+    if (!rosidl_runtime_c__String__Sequence__init(&ros_message->recent_hops, size)) {
+      fprintf(stderr, "failed to create array for field 'recent_hops'");
+      return false;
+    }
+    auto array_ptr = ros_message->recent_hops.data;
+    for (size_t i = 0; i < size; ++i) {
+      std::string tmp;
+      cdr >> tmp;
+      auto & ros_i = array_ptr[i];
+      if (!ros_i.data) {
+        rosidl_runtime_c__String__init(&ros_i);
+      }
+      bool succeeded = rosidl_runtime_c__String__assign(
+        &ros_i,
+        tmp.c_str());
+      if (!succeeded) {
+        fprintf(stderr, "failed to assign string into field 'recent_hops'\n");
+        return false;
+      }
+    }
+  }
+
   return true;
 }  // NOLINT(readability/fn_size)
 
@@ -371,6 +566,10 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
   current_alignment += padding +
     eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
     (ros_message->next_hop_id.size + 1);
+  // field.name last_hop_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->last_hop_id.size + 1);
   // field.name flow_type
   {
     size_t item_size = sizeof(ros_message->flow_type);
@@ -413,6 +612,34 @@ size_t get_serialized_size_uav_msgs__msg__TrafficMessage(
 
   current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
     &(ros_message->creation_time), current_alignment);
+  // field.name ref_msg_id
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->ref_msg_id.size + 1);
+  // field.name last_tx_time
+
+  current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
+    &(ros_message->last_tx_time), current_alignment);
+  // field.name last_rx_time
+
+  current_alignment += get_serialized_size_builtin_interfaces__msg__Time(
+    &(ros_message->last_rx_time), current_alignment);
+  // field.name drop_reason
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message->drop_reason.size + 1);
+  // field.name recent_hops
+  {
+    size_t array_size = ros_message->recent_hops.size;
+    auto array_ptr = ros_message->recent_hops.data;
+    current_alignment += padding +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, padding);
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        (array_ptr[index].size + 1);
+    }
+  }
 
   return current_alignment - initial_alignment;
 }
@@ -479,6 +706,18 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     }
   }
   // member: next_hop_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: last_hop_id
   {
     size_t array_size = 1;
 
@@ -571,6 +810,84 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
       is_plain &= inner_is_plain;
     }
   }
+  // member: ref_msg_id
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: last_tx_time
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size;
+      inner_size =
+        max_serialized_size_builtin_interfaces__msg__Time(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+  // member: last_rx_time
+  {
+    size_t array_size = 1;
+
+
+    last_member_size = 0;
+    for (size_t index = 0; index < array_size; ++index) {
+      bool inner_full_bounded;
+      bool inner_is_plain;
+      size_t inner_size;
+      inner_size =
+        max_serialized_size_builtin_interfaces__msg__Time(
+        inner_full_bounded, inner_is_plain, current_alignment);
+      last_member_size += inner_size;
+      current_alignment += inner_size;
+      full_bounded &= inner_full_bounded;
+      is_plain &= inner_is_plain;
+    }
+  }
+  // member: drop_reason
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+  // member: recent_hops
+  {
+    size_t array_size = 0;
+    full_bounded = false;
+    is_plain = false;
+    current_alignment += padding +
+      eprosima::fastcdr::Cdr::alignment(current_alignment, padding);
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
 
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
@@ -580,7 +897,7 @@ size_t max_serialized_size_uav_msgs__msg__TrafficMessage(
     using DataType = uav_msgs__msg__TrafficMessage;
     is_plain =
       (
-      offsetof(DataType, creation_time) +
+      offsetof(DataType, recent_hops) +
       last_member_size
       ) == ret_val;
   }

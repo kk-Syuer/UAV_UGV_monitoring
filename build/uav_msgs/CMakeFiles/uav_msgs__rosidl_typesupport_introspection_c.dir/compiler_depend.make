@@ -814,6 +814,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_i
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
   /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/pose.h \
@@ -822,6 +824,10 @@ CMakeFiles/uav_msgs__rosidl_typesupport_introspection_c.dir/rosidl_typesupport_i
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__rosidl_typesupport_introspection_c.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_typesupport_introspection_c__visibility_control.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__rosidl_typesupport_introspection_c.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/time.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__functions.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_c__visibility_control.h \
@@ -1055,6 +1061,10 @@ rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h:
 
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_c.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/twist.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h:
+
 rosidl_generator_c/uav_msgs/srv/detail/request_charge__struct.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_status__struct.h:
@@ -1076,6 +1086,8 @@ rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h:
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/task_point_array__type_support.c:
 
 /usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__rosidl_typesupport_introspection_c.h:
 
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_introspection_c.h:
 
@@ -1122,6 +1134,8 @@ rosidl_typesupport_introspection_c/uav_msgs/action/detail/dock_and_charge__type_
 /opt/ros/humble/include/unique_identifier_msgs/unique_identifier_msgs/msg/detail/uuid__functions.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/sigset_t.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.h:
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
 
@@ -1173,6 +1187,8 @@ rosidl_generator_c/uav_msgs/msg/detail/charge_request__functions.h:
 
 rosidl_typesupport_introspection_c/uav_msgs/msg/detail/traffic_message__type_support.c:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__functions.h:
+
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stdbool.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__struct.h:
@@ -1218,6 +1234,8 @@ rosidl_typesupport_introspection_c/uav_msgs/msg/detail/uav_status__type_support.
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/message_initialization.h:
 
 /usr/include/x86_64-linux-gnu/bits/wchar.h:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h:
 
 /usr/include/x86_64-linux-gnu/sys/select.h:
 

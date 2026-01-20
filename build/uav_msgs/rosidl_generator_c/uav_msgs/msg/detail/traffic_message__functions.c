@@ -16,10 +16,16 @@
 // Member `src_id`
 // Member `dst_id`
 // Member `next_hop_id`
+// Member `last_hop_id`
 // Member `control_type`
 // Member `payload`
+// Member `ref_msg_id`
+// Member `drop_reason`
+// Member `recent_hops`
 #include "rosidl_runtime_c/string_functions.h"
 // Member `creation_time`
+// Member `last_tx_time`
+// Member `last_rx_time`
 #include "builtin_interfaces/msg/detail/time__functions.h"
 
 bool
@@ -48,6 +54,11 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
+  // last_hop_id
+  if (!rosidl_runtime_c__String__init(&msg->last_hop_id)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
   // flow_type
   // control_type
   if (!rosidl_runtime_c__String__init(&msg->control_type)) {
@@ -68,6 +79,31 @@ uav_msgs__msg__TrafficMessage__init(uav_msgs__msg__TrafficMessage * msg)
     uav_msgs__msg__TrafficMessage__fini(msg);
     return false;
   }
+  // ref_msg_id
+  if (!rosidl_runtime_c__String__init(&msg->ref_msg_id)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // last_tx_time
+  if (!builtin_interfaces__msg__Time__init(&msg->last_tx_time)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // last_rx_time
+  if (!builtin_interfaces__msg__Time__init(&msg->last_rx_time)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // drop_reason
+  if (!rosidl_runtime_c__String__init(&msg->drop_reason)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
+  // recent_hops
+  if (!rosidl_runtime_c__String__Sequence__init(&msg->recent_hops, 0)) {
+    uav_msgs__msg__TrafficMessage__fini(msg);
+    return false;
+  }
   return true;
 }
 
@@ -85,6 +121,8 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   rosidl_runtime_c__String__fini(&msg->dst_id);
   // next_hop_id
   rosidl_runtime_c__String__fini(&msg->next_hop_id);
+  // last_hop_id
+  rosidl_runtime_c__String__fini(&msg->last_hop_id);
   // flow_type
   // control_type
   rosidl_runtime_c__String__fini(&msg->control_type);
@@ -96,6 +134,16 @@ uav_msgs__msg__TrafficMessage__fini(uav_msgs__msg__TrafficMessage * msg)
   rosidl_runtime_c__String__fini(&msg->payload);
   // creation_time
   builtin_interfaces__msg__Time__fini(&msg->creation_time);
+  // ref_msg_id
+  rosidl_runtime_c__String__fini(&msg->ref_msg_id);
+  // last_tx_time
+  builtin_interfaces__msg__Time__fini(&msg->last_tx_time);
+  // last_rx_time
+  builtin_interfaces__msg__Time__fini(&msg->last_rx_time);
+  // drop_reason
+  rosidl_runtime_c__String__fini(&msg->drop_reason);
+  // recent_hops
+  rosidl_runtime_c__String__Sequence__fini(&msg->recent_hops);
 }
 
 bool
@@ -125,6 +173,12 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   // next_hop_id
   if (!rosidl_runtime_c__String__are_equal(
       &(lhs->next_hop_id), &(rhs->next_hop_id)))
+  {
+    return false;
+  }
+  // last_hop_id
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->last_hop_id), &(rhs->last_hop_id)))
   {
     return false;
   }
@@ -166,6 +220,36 @@ uav_msgs__msg__TrafficMessage__are_equal(const uav_msgs__msg__TrafficMessage * l
   {
     return false;
   }
+  // ref_msg_id
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->ref_msg_id), &(rhs->ref_msg_id)))
+  {
+    return false;
+  }
+  // last_tx_time
+  if (!builtin_interfaces__msg__Time__are_equal(
+      &(lhs->last_tx_time), &(rhs->last_tx_time)))
+  {
+    return false;
+  }
+  // last_rx_time
+  if (!builtin_interfaces__msg__Time__are_equal(
+      &(lhs->last_rx_time), &(rhs->last_rx_time)))
+  {
+    return false;
+  }
+  // drop_reason
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->drop_reason), &(rhs->drop_reason)))
+  {
+    return false;
+  }
+  // recent_hops
+  if (!rosidl_runtime_c__String__Sequence__are_equal(
+      &(lhs->recent_hops), &(rhs->recent_hops)))
+  {
+    return false;
+  }
   return true;
 }
 
@@ -201,6 +285,12 @@ uav_msgs__msg__TrafficMessage__copy(
   {
     return false;
   }
+  // last_hop_id
+  if (!rosidl_runtime_c__String__copy(
+      &(input->last_hop_id), &(output->last_hop_id)))
+  {
+    return false;
+  }
   // flow_type
   output->flow_type = input->flow_type;
   // control_type
@@ -226,6 +316,36 @@ uav_msgs__msg__TrafficMessage__copy(
   // creation_time
   if (!builtin_interfaces__msg__Time__copy(
       &(input->creation_time), &(output->creation_time)))
+  {
+    return false;
+  }
+  // ref_msg_id
+  if (!rosidl_runtime_c__String__copy(
+      &(input->ref_msg_id), &(output->ref_msg_id)))
+  {
+    return false;
+  }
+  // last_tx_time
+  if (!builtin_interfaces__msg__Time__copy(
+      &(input->last_tx_time), &(output->last_tx_time)))
+  {
+    return false;
+  }
+  // last_rx_time
+  if (!builtin_interfaces__msg__Time__copy(
+      &(input->last_rx_time), &(output->last_rx_time)))
+  {
+    return false;
+  }
+  // drop_reason
+  if (!rosidl_runtime_c__String__copy(
+      &(input->drop_reason), &(output->drop_reason)))
+  {
+    return false;
+  }
+  // recent_hops
+  if (!rosidl_runtime_c__String__Sequence__copy(
+      &(input->recent_hops), &(output->recent_hops)))
   {
     return false;
   }

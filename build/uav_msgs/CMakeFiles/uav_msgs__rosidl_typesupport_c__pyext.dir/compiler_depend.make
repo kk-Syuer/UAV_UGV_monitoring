@@ -250,6 +250,8 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c__pyext.dir/rosidl_generator_py/uav_msg
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h \
   /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h \
+  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/time__struct.h \
   rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h \
   rosidl_generator_c/uav_msgs/msg/detail/heartbeat__type_support.h \
@@ -330,6 +332,8 @@ rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 
+rosidl_generator_c/uav_msgs/msg/detail/traffic_message__functions.h:
+
 /usr/include/asm-generic/errno-base.h:
 
 /usr/include/linux/stddef.h:
@@ -357,6 +361,10 @@ rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 /usr/include/x86_64-linux-gnu/bits/select.h:
 
 /usr/include/x86_64-linux-gnu/bits/time.h:
+
+rosidl_generator_c/uav_msgs/msg/detail/traffic_message__struct.h:
+
+/usr/include/x86_64-linux-gnu/sys/time.h:
 
 /usr/include/x86_64-linux-gnu/bits/iscanonical.h:
 
@@ -398,6 +406,8 @@ rosidl_generator_c/uav_msgs/msg/detail/cluster_info__type_support.h:
 
 /usr/include/x86_64-linux-gnu/sys/select.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__struct.h:
+
 /usr/include/python3.10/pyport.h:
 
 /usr/include/alloca.h:
@@ -435,10 +445,6 @@ rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.h:
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__struct.h:
 
 /usr/include/x86_64-linux-gnu/bits/types.h:
-
-/usr/include/x86_64-linux-gnu/sys/time.h:
-
-rosidl_generator_c/uav_msgs/msg/detail/traffic_message__struct.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
@@ -868,10 +874,10 @@ rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.h:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.h:
 
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__struct.h:
+
 rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/heartbeat__type_support.h:
 
 rosidl_generator_c/uav_msgs/msg/detail/heartbeat__struct.h:
-
-rosidl_generator_c/uav_msgs/msg/detail/traffic_message__functions.h:
