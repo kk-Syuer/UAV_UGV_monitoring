@@ -11,6 +11,7 @@ _headless_env = os.environ.get("FLEET_VIZ_HEADLESS", "").lower()
 _headless = _headless_env in ("1", "true", "yes") or not os.environ.get("DISPLAY")
 matplotlib.use("Agg" if _headless else "TkAgg")
 import matplotlib.pyplot as plt
+from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 
 from geometry_msgs.msg import Pose
@@ -135,8 +136,18 @@ class FleetVizNode(Node):
         self.get_logger().info("FleetVizNode started.")
 
     def _init_page_buttons(self):
-        self.prev_button_ax = self.fig.add_axes([0.77, 0.93, 0.08, 0.05])
-        self.next_button_ax = self.fig.add_axes([0.86, 0.93, 0.08, 0.05])
+        self.fig.canvas.draw()
+        info_pos = self.info_ax.get_position()
+        total_width = info_pos.width * 0.7
+        gap = info_pos.width * 0.04
+        button_width = (total_width - gap) / 2
+        button_height = info_pos.height * 0.06
+        left = info_pos.x0 + (info_pos.width - total_width) / 2
+        bottom = info_pos.y0 + info_pos.height * 0.02
+        self.prev_button_ax = self.fig.add_axes([left, bottom, button_width, button_height])
+        self.next_button_ax = self.fig.add_axes(
+            [left + button_width + gap, bottom, button_width, button_height]
+        )
         for ax in (self.prev_button_ax, self.next_button_ax):
             ax.set_facecolor('#111111')
         self.prev_button = Button(self.prev_button_ax, '◀ Prev', color='#111111',
@@ -331,71 +342,141 @@ class FleetVizNode(Node):
             age = 0.0
         return f"{age:.1f}s"
 
+    def _line(self, text: str, size: int = 9, weight: str = 'normal', spacing: float = 1.0):
+        return {
+            'text': text,
+            'size': size,
+            'weight': weight,
+            'spacing': spacing,
+        }
+
+    def _title_line(self, text: str) -> dict:
+        return self._line(text, size=11, weight='bold')
+
+    def _page_header(self, text: str) -> dict:
+        return self._line(text, size=12, weight='bold', spacing=1.2)
+
+    def _render_info_lines(self, lines):
+        self.info_ax.add_patch(
+            plt.Rectangle(
+                (0.01, 0.02), 0.98, 0.96,
+                transform=self.info_ax.transAxes,
+                facecolor='#111111',
+                edgecolor='#333333',
+                linewidth=1.0,
+                zorder=0
+            )
+        )
+        y = 0.965
+        base_step = 0.042
+        for line in lines:
+            size = line.get('size', 9)
+            weight = line.get('weight', 'normal')
+            spacing = line.get('spacing', 1.0)
+            text = line.get('text', '')
+            if text:
+                self.info_ax.text(
+                    0.03, y, text,
+                    va='top', ha='left',
+                    color='white',
+                    fontsize=size,
+                    fontfamily='monospace',
+                    fontweight=weight,
+                    transform=self.info_ax.transAxes
+                )
+            y -= base_step * (size / 9) * spacing
+
     def _status_lines(self):
         info_lines = []
         if self.weather:
-            info_lines.append('Weather')
-            info_lines.append(f"  Rain: {self.weather.rain_intensity:.1f} mm/h")
-            info_lines.append(
-                f"  Wind: {self.weather.wind_speed:.1f} m/s @ {self.weather.wind_direction_deg:.0f}°")
-            info_lines.append(f"  Temp: {self.weather.temperature_c:.1f} °C")
-            info_lines.append(f"  State: {self.weather_state(self.weather)}")
+            info_lines.append(self._title_line('Weather'))
+            info_lines.append(self._line(f"  Rain: {self.weather.rain_intensity:.1f} mm/h"))
+            info_lines.append(self._line(
+                f"  Wind: {self.weather.wind_speed:.1f} m/s @ {self.weather.wind_direction_deg:.0f}°"))
+            info_lines.append(self._line(f"  Temp: {self.weather.temperature_c:.1f} °C"))
+            info_lines.append(self._line(f"  State: {self.weather_state(self.weather)}"))
         else:
-            info_lines.append('Weather: (no data)')
+            info_lines.append(self._title_line('Weather'))
+            info_lines.append(self._line('  (no data)'))
 
         if self.uav_states:
-            info_lines.append('')
-            info_lines.append('Fleet status (pos [m], batt %)')
+            info_lines.append(self._line('', spacing=0.6))
+            info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
             num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
             num_mem = sum(1 for st in self.uav_states.values() if st.role == 0)
             num_backbone = sum(1 for st in self.uav_states.values() if st.backbone_active)
-            info_lines.append(
+            avg_capacity = sum(st.battery_capacity for st in self.uav_states.values()) / len(
+                self.uav_states
+            )
+            info_lines.append(self._line(
                 f"  UAVs: {len(self.uav_states)} | CH: {num_ch} | MEM: {num_mem} | "
                 f"Backbone: {num_backbone}"
-            )
-            max_rows = 8
+            ))
+            info_lines.append(self._line(
+                f"  Comm radius (CH): {self.comm_radius_ch:.1f} m | "
+                f"Avg capacity: {avg_capacity:.1f}"
+            ))
             for uid in sorted(self.uav_states.keys()):
                 st = self.uav_states[uid]
                 px = st.pose.position.x
                 py = st.pose.position.y
-                comm_label = f"{self.comm_radius_ch:.1f}" if st.role == 1 else "n/a"
-                info_lines.append(
+                info_lines.append(self._line(
                     f"  {uid} [{self.role_label(st.role)}]: ({px:.1f}, {py:.1f}) | "
-                    f"{st.battery_level:.1f}% | cap {st.battery_capacity:.1f} | "
-                    f"comm {comm_label}")
-                if len(info_lines) > (7 + max_rows):
-                    info_lines.append('  ...')
-                    break
+                    f"{st.battery_level:.1f}%"))
         else:
-            info_lines.append('')
-            info_lines.append('UAV status: (no reports)')
+            info_lines.append(self._line('', spacing=0.6))
+            info_lines.append(self._title_line('UAV status'))
+            info_lines.append(self._line('  (no reports)'))
 
-        info_lines.append('')
+        info_lines.append(self._line('', spacing=0.6))
         if self.ugv_pose:
-            info_lines.append(
-                f"UGV position: ({self.ugv_pose.position.x:.1f}, {self.ugv_pose.position.y:.1f})")
+            info_lines.append(self._title_line('UGV position'))
+            info_lines.append(self._line(
+                f"  ({self.ugv_pose.position.x:.1f}, {self.ugv_pose.position.y:.1f})"))
         else:
-            info_lines.append('UGV position: (pending deployment)')
+            info_lines.append(self._title_line('UGV position'))
+            info_lines.append(self._line('  (pending deployment)'))
 
-        info_lines.append('')
-        info_lines.append('Control status')
+        info_lines.append(self._line('', spacing=0.6))
+        info_lines.append(self._title_line('Network nodes'))
+        if self.uav_states:
+            for uid in sorted(self.uav_states.keys()):
+                info_lines.append(self._line(f"  - {uid}"))
+        if self.sink_pose is not None:
+            info_lines.append(self._line("  - sink_gateway"))
+        if self.ugv_pose is not None:
+            info_lines.append(self._line("  - ugv"))
+
+        info_lines.append(self._line('', spacing=0.6))
+        info_lines.append(self._title_line('Cluster agenda'))
+        cluster_ids = sorted({st.cluster_id for st in self.uav_states.values() if st.cluster_id})
+        if cluster_ids:
+            for cluster_id in cluster_ids:
+                info_lines.append(self._line(
+                    f"  - {cluster_id}: {self.color_for_cluster(cluster_id)}"))
+        else:
+            info_lines.append(self._line("  (no cluster data)"))
+
+        info_lines.append(self._line('', spacing=0.6))
+        info_lines.append(self._title_line('Control status'))
         if self.cluster_info:
             ch_ids = {info.ch_id for info in self.cluster_info.values() if info.ch_id}
-            info_lines.append(
+            info_lines.append(self._line(
                 f"  CH manager: {len(self.cluster_info)} clusters | CHs: {len(ch_ids)}"
-            )
+            ))
         else:
-            info_lines.append("  CH manager: (no cluster info)")
-        info_lines.append(f"  CH update age: {self._format_age(self.last_cluster_info_time)}")
-        info_lines.append(
+            info_lines.append(self._line("  CH manager: (no cluster info)"))
+        info_lines.append(self._line(
+            f"  CH update age: {self._format_age(self.last_cluster_info_time)}"))
+        info_lines.append(self._line(
             f"  Planner tasks: {self.last_task_points_count} | "
             f"age: {self._format_age(self.last_task_points_time)}"
-        )
+        ))
         deployment_target = self.last_deployment_target or "n/a"
-        info_lines.append(
+        info_lines.append(self._line(
             f"  Last deploy: {deployment_target} | "
             f"age: {self._format_age(self.last_deployment_time)}"
-        )
+        ))
         return info_lines
 
     def _network_lines(self):
@@ -414,31 +495,33 @@ class FleetVizNode(Node):
             self.drop_reason_counts.items(), key=lambda item: item[1], reverse=True
         )[:3]
         net_lines = [
-            'Network routing',
-            f"  bus msgs: {self.traffic_total}",
-            f"  delivered: {self.delivered_total}",
-            f"  drops: {self.drop_total} ({drop_ratio:.1%})",
-            f"  acks: {self.ack_total}",
-            '',
-            f"Rates (last {self.rate_window_sec:.0f}s)",
-            f"  bus: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s",
-            f"  drops: {drop_rate:.1f}/s",
-            '',
-            f"Last msg age: {self._format_age(self.last_msg_time)}",
-            f"Last drop age: {self._format_age(self.last_drop_time)}",
-            f"Last deliver age: {self._format_age(self.last_delivered_time)}",
-            '',
-            "Top control types:"
+            self._title_line('Network routing'),
+            self._line(f"  bus msgs: {self.traffic_total}"),
+            self._line(f"  delivered: {self.delivered_total}"),
+            self._line(f"  drops: {self.drop_total} ({drop_ratio:.1%})"),
+            self._line(f"  acks: {self.ack_total}"),
+            self._line('', spacing=0.6),
+            self._title_line(f"Rates (last {self.rate_window_sec:.0f}s)"),
+            self._line(f"  bus: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s"),
+            self._line(f"  drops: {drop_rate:.1f}/s"),
+            self._line('', spacing=0.6),
+            self._title_line("Recent activity"),
+            self._line(f"  Last msg age: {self._format_age(self.last_msg_time)}"),
+            self._line(f"  Last drop age: {self._format_age(self.last_drop_time)}"),
+            self._line(f"  Last deliver age: {self._format_age(self.last_delivered_time)}"),
+            self._line('', spacing=0.6),
+            self._title_line("Top control types")
         ]
         if top_controls:
             for name, count in top_controls:
-                net_lines.append(f"  - {name}: {count}")
+                net_lines.append(self._line(f"  - {name}: {count}"))
         else:
-            net_lines.append("  - (no traffic)")
+            net_lines.append(self._line("  - (no traffic)"))
         if top_drop_reasons:
-            net_lines.append("Top drop reasons:")
+            net_lines.append(self._line('', spacing=0.6))
+            net_lines.append(self._title_line("Top drop reasons"))
             for name, count in top_drop_reasons:
-                net_lines.append(f"  - {name}: {count}")
+                net_lines.append(self._line(f"  - {name}: {count}"))
         return net_lines
 
     def _queue_lines(self):
@@ -448,20 +531,24 @@ class FleetVizNode(Node):
         load_ch = (self.charge_time_ch_min / load_ch_den) if load_ch_den > 0.0 else 0.0
         load_mem = (self.charge_time_mem_min / load_mem_den) if load_mem_den > 0.0 else 0.0
         queue_lines = [
-            'Charging queue',
-            f"  pending requests: {len(self.pending_charges)}",
-            '',
-            f"Scheduling: {self.latest_policy}",
-            '',
-            f"Spots: ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
-            f" {self.target_utilization:.2f})",
-            f"  spots now: {spots_now}"
+            self._title_line('Charging queue'),
+            self._line(f"  pending requests: {len(self.pending_charges)}"),
+            self._line('', spacing=0.6),
+            self._title_line("Scheduling"),
+            self._line(f"  {self.latest_policy}"),
+            self._line('', spacing=0.6),
+            self._title_line("Spots"),
+            self._line(
+                f"  ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
+                f" {self.target_utilization:.2f})"),
+            self._line(f"  spots now: {spots_now}")
         ]
         if self.pending_charges:
-            queue_lines.append('  waiting:')
+            queue_lines.append(self._line('', spacing=0.6))
+            queue_lines.append(self._title_line('Waiting'))
             ordered = sorted(self.pending_charges.items(), key=lambda item: item[1])
             for uid, _ in ordered:
-                queue_lines.append(f"    - {uid}")
+                queue_lines.append(self._line(f"    - {uid}"))
         return queue_lines
 
     # --- plotting ---
@@ -536,9 +623,28 @@ class FleetVizNode(Node):
                 self.ax.scatter(x, y, c=color, s=20)
                 self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
 
+        legend_handles = []
         if task_legend:
-            self.ax.legend(loc='upper right', facecolor='black', edgecolor='white',
-                           labelcolor='white')
+            legend_handles.append(task_legend)
+        cluster_ids = sorted({st.cluster_id for st in self.uav_states.values() if st.cluster_id})
+        for cluster_id in cluster_ids:
+            legend_handles.append(Line2D(
+                [0], [0],
+                marker='o',
+                color='none',
+                label=f"cluster {cluster_id}",
+                markerfacecolor=self.color_for_cluster(cluster_id),
+                markeredgecolor=self.color_for_cluster(cluster_id),
+                markersize=6
+            ))
+        if legend_handles:
+            self.ax.legend(
+                handles=legend_handles,
+                loc='upper right',
+                facecolor='black',
+                edgecolor='white',
+                labelcolor='white'
+            )
 
         self.ax.set_aspect('equal', adjustable='box')
 
@@ -547,23 +653,18 @@ class FleetVizNode(Node):
         self.info_ax.axis('off')
         self.info_ax.set_facecolor('#111111')
         page_name = self.info_pages[self.info_page_index]
-        header = [f"{page_name} ({self.info_page_index + 1}/{len(self.info_pages)})"]
+        header = [self._page_header(
+            f"{page_name} ({self.info_page_index + 1}/{len(self.info_pages)})")]
         if not _headless:
-            header.append("Use ◀/▶ to browse")
-        header.append('')
+            header.append(self._line("Use ◀/▶ to browse"))
+        header.append(self._line('', spacing=0.7))
         if page_name == 'Status':
             info_lines = header + self._status_lines()
         elif page_name == 'Network':
             info_lines = header + self._network_lines()
         else:
             info_lines = header + self._queue_lines()
-
-        self.info_ax.text(
-            0.02, 0.98, '\n'.join(info_lines),
-            va='top', ha='left', color='white', fontsize=9,
-            fontfamily='monospace',
-            bbox=dict(boxstyle='round', facecolor='#111111', edgecolor='#333333', alpha=0.9)
-        )
+        self._render_info_lines(info_lines)
 
         self.fig.canvas.draw()
         plt.pause(0.001)
