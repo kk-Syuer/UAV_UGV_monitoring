@@ -133,12 +133,16 @@ def _make_nodes(context, *args, **kwargs):
 
     # Sink
     sink_id = str(_get(cfg, ["sink", "sink_id"], "sink_gateway"))
+    sink_uplink_ch_id = str(_get(cfg, ["sink", "uplink_ch_id"], ""))
+    sink_params = {"sink_id": sink_id}
+    if sink_uplink_ch_id:
+        sink_params["uplink_ch_id"] = sink_uplink_ch_id
     nodes.append(Node(
         package=_get(cfg, ["executables", "sink_pkg"], "sink_gateway"),
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),
         name=f"sink_gateway_{run_id}",
         output="screen",
-        parameters=[{"sink_id": sink_id}],
+        parameters=[sink_params],
     ))
 
     # UGV charger
@@ -168,6 +172,7 @@ def _make_nodes(context, *args, **kwargs):
             parameters=[{
                 "uav_ids": uav_ids,
                 "num_ch": len(ch_ids),
+                "ugv_id": ugv_id,
             }],
         ))
 
