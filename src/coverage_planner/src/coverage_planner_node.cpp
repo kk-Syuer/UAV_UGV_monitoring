@@ -66,7 +66,10 @@ public:
                   bootstrap_ch_id_.c_str());
     }
 
-    int seed = this->declare_parameter<int>("rng_seed", 42);
+    int seed = this->declare_parameter<int>("rng_seed", -1);
+    if (seed < 0) {
+      seed = static_cast<int>(std::random_device{}());
+    }
     rng_ = std::mt19937(seed);
 
     auto task_strings = this->declare_parameter<std::vector<std::string>>(
