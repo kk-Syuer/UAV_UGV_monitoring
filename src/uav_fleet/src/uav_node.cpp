@@ -1373,6 +1373,14 @@ private:
                     "UAV %s: cluster=%s (CH members=%zu)",
                     uav_id_.c_str(), cluster_id_.c_str(), cluster_members_.size());
       }
+      if (!release_sent_ &&
+          deployment_received_ &&
+          start_mobility_received_ &&
+          mobility_phase_ == MobilityPhase::IDLE &&
+          !cluster_members_.empty())
+      {
+        sendTaskReleaseToMembers();
+      }
     }
 
     if (std::find(msg->member_ids.begin(), msg->member_ids.end(), uav_id_) != msg->member_ids.end()) {
@@ -2668,7 +2676,6 @@ private:
     if (cluster_members_.empty()) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: no cluster members known to release.", uav_id_.c_str());
-      release_sent_ = true;
       return;
     }
 
