@@ -1357,15 +1357,31 @@ private:
 
   void clusterInfoCallback(const uav_msgs::msg::ClusterInfo::SharedPtr msg)
   {
-    for (const auto & id : msg->member_ids) {
-      if (id == uav_id_) {
-        my_ch_id_ = msg->ch_id;
+    if (msg->ch_id == uav_id_) {
+      cluster_members_.clear();
+      for (const auto & id : msg->member_ids) {
+        if (id == uav_id_) {
+          continue;
+        }
+        cluster_members_.insert(id);
+        cluster_parent_[id] = uav_id_;
+      }
+      cluster_parent_[uav_id_] = uav_id_;
+      if (cluster_id_ != msg->cluster_id) {
         cluster_id_ = msg->cluster_id;
         RCLCPP_INFO(this->get_logger(),
-                    "UAV %s: cluster=%s CH=%s",
-                    uav_id_.c_str(), cluster_id_.c_str(), my_ch_id_.c_str());
-        break;
+                    "UAV %s: cluster=%s (CH members=%zu)",
+                    uav_id_.c_str(), cluster_id_.c_str(), cluster_members_.size());
       }
+    }
+
+    if (std::find(msg->member_ids.begin(), msg->member_ids.end(), uav_id_) != msg->member_ids.end()) {
+      my_ch_id_ = msg->ch_id;
+      cluster_id_ = msg->cluster_id;
+      cluster_parent_[uav_id_] = msg->ch_id;
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: cluster=%s CH=%s",
+                  uav_id_.c_str(), cluster_id_.c_str(), my_ch_id_.c_str());
     }
   }
 
@@ -2517,15 +2533,17 @@ private:
       task_release_msg_to_member_.clear();
     }
 
-    // 1) Store CH pose for later task mobility
-    if (role_int == 1) {
-      geometry_msgs::msg::Pose ch_pose;
-      ch_pose.position.x = x;
-      ch_pose.position.y = y;
-      ch_pose.position.z = z;
-      ch_pose.orientation.w = 1.0;
-      ch_poses_[msg->dst_id] = ch_pose;
-    }
+    // 1) Update cluster metadata for routing + task release targeting.
+    DeploymentInfo info;
+    info.role = role_int;
+    info.cluster_id = cluster_id;
+    info.ch_id = ch_id;
+    info.x = x;
+    info.y = y;
+    info.z = z;
+    info.next_sink = next_sink;
+    info.next_ugv = next_ugv;
+    updateClusterMetadata(info, msg->dst_id);
 
     // 2) If this deployment is not for us, we are done (we only forward in trafficCallback)
     if (!is_self_deployment) {
