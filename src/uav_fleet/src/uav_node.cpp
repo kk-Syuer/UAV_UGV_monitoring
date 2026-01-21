@@ -970,6 +970,16 @@ private:
     if (role_ == 0 && msg->uav_id == my_ch_id_) {
       updateChDeploymentReached(state);
     }
+
+    if (role_ == 1 &&
+        !release_sent_ &&
+        deployment_received_ &&
+        start_mobility_received_ &&
+        mobility_phase_ == MobilityPhase::IDLE &&
+        cluster_members_.count(msg->uav_id) > 0)
+    {
+      sendTaskReleaseToMembers();
+    }
   }
 
   void pruneNeighbors()
@@ -2709,10 +2719,10 @@ private:
     release_sent_ = true;
   }
 
-  void sendTaskRelease(const std::string & member_id, TaskReleasePending & pending)
+  bool sendTaskRelease(const std::string & member_id, TaskReleasePending & pending)
   {
     if (!traffic_pub_) {
-      return;
+      return false;
     }
 
     uav_msgs::msg::TrafficMessage msg;
@@ -2732,15 +2742,25 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot send TASK_RELEASE to %s (no route).",
                   uav_id_.c_str(), member_id.c_str());
-    } else {
-      publishToBus(msg);
+      return false;
+    }
+
+    bool sent = publishToBus(msg);
+    if (sent) {
       RCLCPP_INFO(this->get_logger(),
                   "[TASK-RELEASE] CH %s sent TASK_RELEASE to %s via %s",
+                  uav_id_.c_str(), member_id.c_str(), msg.next_hop_id.c_str());
+    } else {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: TASK_RELEASE to %s failed to send via %s (unreachable).",
                   uav_id_.c_str(), member_id.c_str(), msg.next_hop_id.c_str());
     }
 
     pending.last_send_time = this->now();
-    pending.attempts++;
+    if (sent) {
+      pending.attempts++;
+    }
+    return sent;
   }
 
   std::string serializeTaskReleasePayload(
