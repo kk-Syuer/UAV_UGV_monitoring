@@ -15,6 +15,8 @@
 #include "uav_msgs/msg/charge_decision.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/weather_status.hpp"
+#include "uav_msgs/msg/task_point_array.hpp"
+#include "uav_msgs/msg/task_point.hpp"
 
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -242,6 +244,9 @@ public:
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10,
       std::bind(&UavNode::deploymentCallback, this, std::placeholders::_1));
+    task_point_sub_ = this->create_subscription<uav_msgs::msg::TaskPointArray>(
+      "/coverage_planner/task_points", 10,
+      std::bind(&UavNode::taskPointCallback, this, std::placeholders::_1));
 
     // ---- Timers ----
     status_timer_ = this->create_wall_timer(
@@ -1873,9 +1878,20 @@ private:
   }
   void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
   {
-    // Generate first round of task points around this CH
-    generateTaskRound(ch_pose);
-    current_task_index_ = 0;
+    geometry_msgs::msg::Point start_point = pose_.position;
+    if (!cluster_task_points_.empty()) {
+      task_points_ = buildTspPath(start_point, cluster_task_points_);
+      current_task_index_ = 0;
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: TSP path initialized with %zu task points for cluster %s.",
+                  uav_id_.c_str(),
+                  task_points_.size(),
+                  cluster_id_.c_str());
+    } else {
+      // Fallback: generate synthetic task points around CH
+      generateTaskRound(ch_pose);
+      current_task_index_ = 0;
+    }
 
     // Switch to task mobility phase (for members)
     if (role_ == 0 && mobility_enabled_) {
@@ -1924,6 +1940,73 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: generated %d task points",
                 uav_id_.c_str(), tasks_per_round_);
+  }
+
+  std::vector<geometry_msgs::msg::Point> buildTspPath(
+    const geometry_msgs::msg::Point & start,
+    const std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    std::vector<geometry_msgs::msg::Point> ordered;
+    if (points.empty()) {
+      return ordered;
+    }
+
+    std::vector<bool> visited(points.size(), false);
+    geometry_msgs::msg::Point current = start;
+    ordered.reserve(points.size());
+
+    for (size_t step = 0; step < points.size(); ++step) {
+      double best_dist = std::numeric_limits<double>::max();
+      size_t best_idx = points.size();
+      for (size_t i = 0; i < points.size(); ++i) {
+        if (visited[i]) {
+          continue;
+        }
+        double dx = points[i].x - current.x;
+        double dy = points[i].y - current.y;
+        double dist = std::sqrt(dx * dx + dy * dy);
+        if (dist < best_dist) {
+          best_dist = dist;
+          best_idx = i;
+        }
+      }
+      if (best_idx >= points.size()) {
+        break;
+      }
+      visited[best_idx] = true;
+      ordered.push_back(points[best_idx]);
+      current = points[best_idx];
+    }
+    return ordered;
+  }
+
+  void refreshClusterTaskPoints()
+  {
+    cluster_task_points_.clear();
+    if (cluster_id_.empty()) {
+      return;
+    }
+    for (const auto & tp : last_task_points_) {
+      if (tp.cluster_id == cluster_id_) {
+        cluster_task_points_.push_back(tp.position);
+      }
+    }
+    if (role_ == 0 && ch_deployment_reached_ && !cluster_task_points_.empty()) {
+      task_points_ = buildTspPath(pose_.position, cluster_task_points_);
+      current_task_index_ = 0;
+      if (mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
+        RCLCPP_INFO(this->get_logger(),
+                    "UAV %s: refreshed TSP path with %zu task points.",
+                    uav_id_.c_str(),
+                    task_points_.size());
+      }
+    }
+  }
+
+  void taskPointCallback(const uav_msgs::msg::TaskPointArray::SharedPtr msg)
+  {
+    last_task_points_ = msg->tasks;
+    refreshClusterTaskPoints();
   }
 
   void mobilityStep()
@@ -2041,6 +2124,19 @@ private:
             held_by_ch = true;
             break;
           }
+          if (role_ == 0 && ch_deployment_reached_) {
+            auto it = ch_poses_.find(my_ch_id_);
+            if (it != ch_poses_.end()) {
+              initTaskMobility(it->second);
+            } else {
+              geometry_msgs::msg::Pose fallback_pose;
+              fallback_pose.position = pose_.position;
+              fallback_pose.orientation.w = 1.0;
+              initTaskMobility(fallback_pose);
+            }
+            mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+            break;
+          }
           bool reached = stepTowards2D(
             deployment_goal_pose_.position.x,
             deployment_goal_pose_.position.y);
@@ -2091,12 +2187,16 @@ private:
 
             current_task_index_++;
             if (current_task_index_ >= task_points_.size()) {
-              // Regenerate tasks around CH
-              auto it = ch_poses_.find(my_ch_id_);
-              if (it != ch_poses_.end()) {
-                generateTaskRound(it->second);
-              } else {
+              if (!cluster_task_points_.empty()) {
                 current_task_index_ = 0;
+              } else {
+                // Regenerate tasks around CH
+                auto it = ch_poses_.find(my_ch_id_);
+                if (it != ch_poses_.end()) {
+                  generateTaskRound(it->second);
+                } else {
+                  current_task_index_ = 0;
+                }
               }
             }
           }
@@ -2260,6 +2360,12 @@ private:
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: CH %s reached deployment target (dist=%.2f).",
                   uav_id_.c_str(), my_ch_id_.c_str(), dist);
+      if (mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT && mobility_enabled_) {
+        auto it_ch = ch_poses_.find(my_ch_id_);
+        if (it_ch != ch_poses_.end()) {
+          initTaskMobility(it_ch->second);
+        }
+      }
     }
   }
 
@@ -2366,6 +2472,7 @@ private:
     role_       = static_cast<uint8_t>(role_int);
     cluster_id_ = cluster_id;
     my_ch_id_   = (role_ == 0) ? ch_id : uav_id_;
+    refreshClusterTaskPoints();
 
     // Backbone routing info
     if (!next_sink.empty() && next_sink != "-") {
@@ -2508,6 +2615,8 @@ private:
   rclcpp::TimerBase::SharedPtr mobility_timer_;
 
   std::vector<geometry_msgs::msg::Point> task_points_;
+  std::vector<uav_msgs::msg::TaskPoint> last_task_points_;
+  std::vector<geometry_msgs::msg::Point> cluster_task_points_;
   size_t current_task_index_ = 0;
 
   // CH poses so members can know their CH center
@@ -2562,6 +2671,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_sub_;
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr  weather_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
+  rclcpp::Subscription<uav_msgs::msg::TaskPointArray>::SharedPtr task_point_sub_;
 
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;
