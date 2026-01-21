@@ -294,6 +294,8 @@ public:
       this->declare_parameter<int>("ladtr_buffer_limit", 200));
     carry_ttl_sec_ = this->declare_parameter<double>("ladtr_buffer_ttl_sec", 45.0);
     carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
+    task_release_retry_sec_ = this->declare_parameter<double>("task_release_retry_sec", 2.0);
+    task_release_max_retries_ = this->declare_parameter<int>("task_release_max_retries", 5);
 
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     neighbor_timeout_timer_ = this->create_wall_timer(
@@ -314,6 +316,11 @@ public:
     ch_status_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
       std::bind(&UavNode::publishStatusCh, this));
+
+    auto task_release_retry = std::chrono::duration<double>(task_release_retry_sec_);
+    task_release_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(task_release_retry),
+      std::bind(&UavNode::taskReleaseRetryTick, this));
 
     if (mobility_enabled_) {
       auto dt = std::chrono::duration<double>(mobility_dt_sec_);
@@ -394,6 +401,14 @@ private:
     rclcpp::Time buffered_time;
   };
 
+  struct TaskReleasePending
+  {
+    std::string msg_id;
+    std::string payload;
+    rclcpp::Time last_send_time;
+    int attempts = 0;
+  };
+
   // ---------------- Weather ----------------
 
   void weatherCallback(const uav_msgs::msg::WeatherStatus::SharedPtr msg)
@@ -441,7 +456,7 @@ private:
     bool ready_for_battery =
       deployment_received_ &&
       start_mobility_received_ &&
-      (role_ == 1 || ch_deployment_reached_);
+      (role_ == 1 || member_release_received_);
 
     // If we haven't received deployment/motion yet, stay "idle":
     // - no drain
@@ -1144,6 +1159,43 @@ private:
       return;
     }
 
+    if (msg->flow_type == 1 && msg->control_type == "TASK_RELEASE" &&
+        (msg->dst_id == "broadcast" || msg->dst_id == uav_id_)) {
+      if (role_ != 0) {
+        return;
+      }
+      std::string payload_cluster;
+      std::vector<geometry_msgs::msg::Point> assigned_points;
+      if (!msg->payload.empty() &&
+          !parseTaskReleasePayload(msg->payload, payload_cluster, assigned_points)) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: TASK_RELEASE payload parse failed: \"%s\"",
+                    uav_id_.c_str(), msg->payload.c_str());
+        return;
+      }
+      if (!payload_cluster.empty() && payload_cluster != cluster_id_) {
+        return;
+      }
+      if (!assigned_points.empty()) {
+        assigned_task_points_ = assigned_points;
+      }
+      publishDelivered(*msg, rx_time);
+      maybePublishAck(*msg);
+      member_release_received_ = true;
+      ch_deployment_reached_ = true;
+      if (mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT && mobility_enabled_) {
+        auto it_ch = ch_poses_.find(my_ch_id_);
+        if (it_ch != ch_poses_.end()) {
+          initTaskMobility(it_ch->second);
+        }
+        mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+      }
+      RCLCPP_INFO(this->get_logger(),
+                  "[TASK-RELEASE] %s received TASK_RELEASE from %s",
+                  uav_id_.c_str(), msg->src_id.c_str());
+      return;
+    }
+
     // If I'm not the next hop, ignore.
     if (msg->next_hop_id != uav_id_) {
       return;
@@ -1161,6 +1213,11 @@ private:
     if (msg->dst_id == uav_id_) {
       publishDelivered(*msg, rx_time);
       maybePublishAck(*msg);
+
+      if (msg->flow_type == 1 && msg->control_type == "ACK") {
+        handleTaskReleaseAck(*msg);
+        return;
+      }
 
       // First, see if this is a control message for charging
       if (msg->flow_type == 1 && msg->control_type == "CHARGE_DECISION") {
@@ -1879,8 +1936,10 @@ private:
   void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
   {
     geometry_msgs::msg::Point start_point = pose_.position;
-    if (!cluster_task_points_.empty()) {
-      task_points_ = buildTspPath(start_point, cluster_task_points_);
+    const auto & source_points =
+      assigned_task_points_.empty() ? cluster_task_points_ : assigned_task_points_;
+    if (!source_points.empty()) {
+      task_points_ = buildTspPath(start_point, source_points);
       current_task_index_ = 0;
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: TSP path initialized with %zu task points for cluster %s.",
@@ -1991,8 +2050,13 @@ private:
         cluster_task_points_.push_back(tp.position);
       }
     }
-    if (role_ == 0 && ch_deployment_reached_ && !cluster_task_points_.empty()) {
-      task_points_ = buildTspPath(pose_.position, cluster_task_points_);
+    if (role_ == 0 && member_release_received_) {
+      const auto & source_points =
+        assigned_task_points_.empty() ? cluster_task_points_ : assigned_task_points_;
+      if (source_points.empty()) {
+        return;
+      }
+      task_points_ = buildTspPath(pose_.position, source_points);
       current_task_index_ = 0;
       if (mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
         RCLCPP_INFO(this->get_logger(),
@@ -2120,11 +2184,11 @@ private:
 
         case MobilityPhase::GO_TO_DEPLOYMENT:
         {
-          if (role_ == 0 && !ch_deployment_reached_) {
+          if (role_ == 0 && !member_release_received_) {
             held_by_ch = true;
             break;
           }
-          if (role_ == 0 && ch_deployment_reached_) {
+          if (role_ == 0 && member_release_received_) {
             auto it = ch_poses_.find(my_ch_id_);
             if (it != ch_poses_.end()) {
               initTaskMobility(it->second);
@@ -2154,6 +2218,7 @@ private:
                         pose_.position.z);
 
             if (role_ == 1) {
+              sendTaskReleaseToMembers();
               mobility_phase_ = MobilityPhase::IDLE;
             } else {
               // Member: start task mobility inside cluster
@@ -2360,12 +2425,6 @@ private:
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: CH %s reached deployment target (dist=%.2f).",
                   uav_id_.c_str(), my_ch_id_.c_str(), dist);
-      if (mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT && mobility_enabled_) {
-        auto it_ch = ch_poses_.find(my_ch_id_);
-        if (it_ch != ch_poses_.end()) {
-          initTaskMobility(it_ch->second);
-        }
-      }
     }
   }
 
@@ -2451,6 +2510,11 @@ private:
       deployment_ack_sent_ = false;
       start_mobility_received_ = false;
       ch_deployment_reached_ = false;
+      member_release_received_ = false;
+      release_sent_ = false;
+      assigned_task_points_.clear();
+      task_release_pending_.clear();
+      task_release_msg_to_member_.clear();
     }
 
     // 1) Store CH pose for later task mobility
@@ -2574,6 +2638,185 @@ private:
                 uav_id_.c_str(), ack.next_hop_id.c_str());
   }
 
+  void sendTaskReleaseToMembers()
+  {
+    if (role_ != 1 || release_sent_) {
+      return;
+    }
+    if (!traffic_pub_) {
+      return;
+    }
+
+    if (cluster_members_.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: no cluster members known to release.", uav_id_.c_str());
+      release_sent_ = true;
+      return;
+    }
+
+    std::vector<std::string> member_ids(cluster_members_.begin(), cluster_members_.end());
+    std::sort(member_ids.begin(), member_ids.end());
+    std::unordered_map<std::string, std::vector<geometry_msgs::msg::Point>> assignments;
+    if (!cluster_task_points_.empty()) {
+      for (size_t i = 0; i < cluster_task_points_.size(); ++i) {
+        const auto & member_id = member_ids[i % member_ids.size()];
+        assignments[member_id].push_back(cluster_task_points_[i]);
+      }
+    }
+
+    auto now = this->now();
+    for (const auto & member_id : member_ids) {
+      if (task_release_pending_.count(member_id) > 0) {
+        continue;
+      }
+      TaskReleasePending pending;
+      pending.msg_id = "TASK_REL_" + uav_id_ + "_" + member_id + "_" +
+                       std::to_string(msg_counter_++);
+      pending.payload = serializeTaskReleasePayload(cluster_id_, assignments[member_id]);
+      pending.last_send_time = now;
+      pending.attempts = 0;
+      task_release_pending_[member_id] = pending;
+      task_release_msg_to_member_[pending.msg_id] = member_id;
+
+      sendTaskRelease(member_id, task_release_pending_[member_id]);
+    }
+
+    release_sent_ = true;
+  }
+
+  void sendTaskRelease(const std::string & member_id, TaskReleasePending & pending)
+  {
+    if (!traffic_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = pending.msg_id;
+    msg.src_id = uav_id_;
+    msg.dst_id = member_id;
+    msg.flow_type = 1;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.control_type = "TASK_RELEASE";
+    msg.payload = pending.payload;
+    msg.requires_ack = true;
+
+    std::string direct_hop = resolveNextHop(member_id);
+    msg.next_hop_id = pickNextHop(member_id, direct_hop);
+    if (msg.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: cannot send TASK_RELEASE to %s (no route).",
+                  uav_id_.c_str(), member_id.c_str());
+    } else {
+      publishToBus(msg);
+      RCLCPP_INFO(this->get_logger(),
+                  "[TASK-RELEASE] CH %s sent TASK_RELEASE to %s via %s",
+                  uav_id_.c_str(), member_id.c_str(), msg.next_hop_id.c_str());
+    }
+
+    pending.last_send_time = this->now();
+    pending.attempts++;
+  }
+
+  std::string serializeTaskReleasePayload(
+    const std::string & cluster_id,
+    const std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    std::ostringstream oss;
+    oss << cluster_id;
+    for (const auto & pt : points) {
+      oss << ";" << pt.x << "," << pt.y << "," << pt.z;
+    }
+    return oss.str();
+  }
+
+  bool parseTaskReleasePayload(
+    const std::string & payload,
+    std::string & cluster_id,
+    std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    cluster_id.clear();
+    points.clear();
+    if (payload.empty()) {
+      return true;
+    }
+
+    std::stringstream ss(payload);
+    std::string token;
+    if (!std::getline(ss, token, ';')) {
+      return false;
+    }
+    cluster_id = token;
+
+    while (std::getline(ss, token, ';')) {
+      if (token.empty()) {
+        continue;
+      }
+      std::stringstream pt_stream(token);
+      std::string coord;
+      geometry_msgs::msg::Point pt;
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.x = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.y = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.z = std::stod(coord);
+      points.push_back(pt);
+    }
+    return true;
+  }
+
+  void handleTaskReleaseAck(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (role_ != 1) {
+      return;
+    }
+    if (msg.ref_msg_id.empty()) {
+      return;
+    }
+    auto it = task_release_msg_to_member_.find(msg.ref_msg_id);
+    if (it == task_release_msg_to_member_.end()) {
+      return;
+    }
+    const std::string member_id = it->second;
+    task_release_msg_to_member_.erase(it);
+    task_release_pending_.erase(member_id);
+    RCLCPP_INFO(this->get_logger(),
+                "[TASK-RELEASE] CH %s received ACK for %s",
+                uav_id_.c_str(), member_id.c_str());
+  }
+
+  void taskReleaseRetryTick()
+  {
+    if (role_ != 1 || task_release_pending_.empty()) {
+      return;
+    }
+
+    auto now = this->now();
+    for (auto it = task_release_pending_.begin(); it != task_release_pending_.end(); ) {
+      if (task_release_max_retries_ > 0 && it->second.attempts >= task_release_max_retries_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: giving up TASK_RELEASE to %s after %d attempts.",
+                    uav_id_.c_str(), it->first.c_str(), it->second.attempts);
+        task_release_msg_to_member_.erase(it->second.msg_id);
+        it = task_release_pending_.erase(it);
+        continue;
+      }
+
+      double elapsed = (now - it->second.last_send_time).seconds();
+      if (elapsed >= task_release_retry_sec_) {
+        sendTaskRelease(it->first, it->second);
+      }
+      ++it;
+    }
+  }
+
   // --- Mobility state machine ---
   enum class MobilityPhase {
     IDLE = 0,              // no movement
@@ -2584,6 +2827,8 @@ private:
   bool deployment_ack_sent_ = false;
   bool start_mobility_received_ = false;
   bool ch_deployment_reached_ = false;
+  bool member_release_received_ = false;
+  bool release_sent_ = false;
   uint64_t dep_ack_seq_ = 0;
 
 
@@ -2617,6 +2862,7 @@ private:
   std::vector<geometry_msgs::msg::Point> task_points_;
   std::vector<uav_msgs::msg::TaskPoint> last_task_points_;
   std::vector<geometry_msgs::msg::Point> cluster_task_points_;
+  std::vector<geometry_msgs::msg::Point> assigned_task_points_;
   size_t current_task_index_ = 0;
 
   // CH poses so members can know their CH center
@@ -2680,6 +2926,7 @@ private:
   rclcpp::TimerBase::SharedPtr buffer_retry_timer_;
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
+  rclcpp::TimerBase::SharedPtr task_release_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
@@ -2703,6 +2950,10 @@ private:
   size_t max_recent_hops_ = 5;
   BufferManager buffer_manager_;
   std::deque<BufferedMessage> carry_buffer_;
+  std::unordered_map<std::string, TaskReleasePending> task_release_pending_;
+  std::unordered_map<std::string, std::string> task_release_msg_to_member_;
+  double task_release_retry_sec_ = 2.0;
+  int task_release_max_retries_ = 5;
   bool task_telemetry_enable_ = true;
   int task_telemetry_packets_min_ = 1;
   int task_telemetry_packets_max_ = 3;
