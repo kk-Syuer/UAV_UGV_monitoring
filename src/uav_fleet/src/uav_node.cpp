@@ -245,7 +245,7 @@ public:
       "/coverage_planner/deployment", 10,
       std::bind(&UavNode::deploymentCallback, this, std::placeholders::_1));
     task_point_sub_ = this->create_subscription<uav_msgs::msg::TaskPointArray>(
-      "/coverage_planner/task_points", 10,
+      "/coverage_planner/task_points", rclcpp::QoS(1).transient_local(),
       std::bind(&UavNode::taskPointCallback, this, std::placeholders::_1));
 
     // ---- Timers ----
@@ -1195,6 +1195,12 @@ private:
       maybePublishAck(*msg);
       member_release_received_ = true;
       ch_deployment_reached_ = true;
+      if (!deployment_received_) {
+        deployment_received_ = true;
+      }
+      if (mobility_phase_ == MobilityPhase::IDLE && mobility_enabled_) {
+        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+      }
       if (mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT && mobility_enabled_) {
         auto it_ch = ch_poses_.find(my_ch_id_);
         if (it_ch != ch_poses_.end()) {
@@ -1203,7 +1209,7 @@ private:
         mobility_phase_ = MobilityPhase::TASK_MOBILITY;
       }
       RCLCPP_INFO(this->get_logger(),
-                  "[TASK-RELEASE] %s received TASK_RELEASE from %s",
+                  "[TASK-RELEASE] %s released by CH %s",
                   uav_id_.c_str(), msg->src_id.c_str());
       return;
     }
