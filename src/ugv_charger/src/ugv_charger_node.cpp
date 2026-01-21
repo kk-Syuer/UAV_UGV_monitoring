@@ -205,7 +205,7 @@ private:
     }
 
     // Only consider CONTROL_ALERT messages
-    if (msg->flow_type != 3) { // 3 = CONTROL_ALERT
+    if (msg->flow_type != 1) { // 1 = CONTROL
       return;
     }
 
