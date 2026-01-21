@@ -151,7 +151,7 @@ private:
             acked_uavs_.size() == expected_uavs_.size()) {
           all_deployed_ = true;
           RCLCPP_INFO(this->get_logger(),
-                      "All deployments ACKed – broadcasting START_MOBILITY");
+                      "All deployments ACKed – broadcasting MOTION_START");
           broadcastStartMobility();
         }
       }
@@ -282,20 +282,20 @@ private:
   }
 
   // --------------------------------------------------------------------------
-  // Broadcast START_MOBILITY when all DEPLOYMENT_ACKs arrived
+  // Broadcast MOTION_START when all DEPLOYMENT_ACKs arrived
   // --------------------------------------------------------------------------
   // Send motion start signal after all deployments are acknowledged.
   void broadcastStartMobility()
   {
     if (!control_pub_) {
       RCLCPP_ERROR(this->get_logger(),
-                   "Cannot broadcast START_MOBILITY: control_pub_ is null");
+                   "Cannot broadcast MOTION_START: control_pub_ is null");
       return;
     }
 
     for (const auto & u : expected_uavs_) {
       uav_msgs::msg::TrafficMessage msg;
-      msg.msg_id = "START_MOB_" + u + "_" +
+      msg.msg_id = "MOTION_START_" + u + "_" +
                    std::to_string(start_mobility_seq_++);
       msg.src_id = sink_id_;
       msg.dst_id = u;
@@ -306,12 +306,12 @@ private:
       msg.creation_time = this->now();
       msg.hop_count = 0;
 
-      msg.control_type = "START_MOBILITY";
+      msg.control_type = "MOTION_START";
       msg.payload = "";
 
       control_pub_->publish(msg);
       RCLCPP_INFO(this->get_logger(),
-                  "[MOB-START] sent START_MOBILITY to %s via %s",
+                  "[MOB-START] sent MOTION_START to %s via %s",
                   u.c_str(), uplink_ch_id_.c_str());
     }
   }
