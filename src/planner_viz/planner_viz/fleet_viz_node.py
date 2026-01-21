@@ -51,6 +51,8 @@ class FleetVizNode(Node):
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, task_point_qos)
         self.traffic_sub = self.create_subscription(
             TrafficMessage, '/fanet/network_bus', self.traffic_cb, 50)
+        self.traffic_raw_sub = self.create_subscription(
+            TrafficMessage, '/fanet/network_bus_raw', self.traffic_raw_cb, 50)
         self.delivered_sub = self.create_subscription(
             TrafficMessage, '/fanet/delivered', self.delivered_cb, 50)
         self.cluster_info_sub = self.create_subscription(
@@ -74,6 +76,8 @@ class FleetVizNode(Node):
         self.last_charge_decision_time = None
         self.last_charge_decision_target = None
         self.last_charge_decision_accepted = None
+        self.charge_request_ids = set()
+        self.charge_decision_ids = set()
 
         # Control-plane snapshots.
         self.cluster_info = {}
@@ -125,7 +129,7 @@ class FleetVizNode(Node):
         self.charge_time_mem_min = float(self.declare_parameter('charge_time_mem_min', 20.0).value)
 
         # Network stats for debug panels.
-        self.traffic_total = 0
+        self.generated_total = 0
         self.delivered_total = 0
         self.drop_total = 0
         self.ack_total = 0
@@ -138,6 +142,9 @@ class FleetVizNode(Node):
         self.msg_timestamps = deque()
         self.drop_timestamps = deque()
         self.delivered_timestamps = deque()
+        self.generated_ids = set()
+        self.delivered_ids = set()
+        self.dropped_ids = set()
 
         # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
@@ -205,25 +212,20 @@ class FleetVizNode(Node):
 
     def charge_request_cb(self, msg: ChargeRequest):
         """Track outstanding charging requests."""
-        # track outstanding charging requests to approximate queue size
         request_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
-        self.pending_charges[msg.uav_id] = {
-            'time': request_time,
-            'battery': msg.battery_level,
-            'role': int(msg.role),
-        }
-        self.last_charge_request_time = request_time
+        if msg.uav_id in self.pending_charges:
+            self.pending_charges[msg.uav_id]['time'] = request_time
+            self.pending_charges[msg.uav_id]['battery'] = msg.battery_level
+            self.pending_charges[msg.uav_id]['role'] = int(msg.role)
 
     def charge_decision_cb(self, msg: ChargeDecision):
         """Update scheduling policy and clear completed requests."""
         now = self._now_sec()
         self.latest_policy = msg.policy if msg.policy else 'n/a'
-        self.last_charge_decision_time = now
-        self.last_charge_decision_target = msg.uav_id
-        self.last_charge_decision_accepted = msg.accepted
-        # once a decision is made, remove from pending queue
-        if msg.uav_id in self.pending_charges:
-            self.pending_charges.pop(msg.uav_id)
+        if self.last_charge_decision_time is None:
+            self.last_charge_decision_time = now
+            self.last_charge_decision_target = msg.uav_id
+            self.last_charge_decision_accepted = msg.accepted
 
     def task_point_cb(self, msg: TaskPointArray):
         self.task_points = list(msg.tasks)
@@ -236,6 +238,20 @@ class FleetVizNode(Node):
 
     def delivered_cb(self, msg: TrafficMessage):
         now = self._now_sec()
+        if msg.control_type == 'CHARGE_DECISION':
+            if msg.msg_id and msg.msg_id in self.charge_decision_ids:
+                return
+            if msg.msg_id:
+                self.charge_decision_ids.add(msg.msg_id)
+            self.last_charge_decision_time = now
+            self.last_charge_decision_target = msg.dst_id
+            self.last_charge_decision_accepted = 'REJECT' not in (msg.payload or '')
+            if msg.dst_id in self.pending_charges:
+                self.pending_charges.pop(msg.dst_id)
+        if msg.msg_id and msg.msg_id in self.delivered_ids:
+            return
+        if msg.msg_id:
+            self.delivered_ids.add(msg.msg_id)
         self.delivered_total += 1
         self.last_delivered_time = now
         self._record_timestamp(self.delivered_timestamps, now)
@@ -252,34 +268,36 @@ class FleetVizNode(Node):
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
         now = self._now_sec()
-        self.traffic_total += 1
         self.control_type_counts[msg.control_type] += 1
-        self.last_msg_time = now
-        self._record_timestamp(self.msg_timestamps, now)
 
         if msg.control_type == 'DROP':
-            self.drop_total += 1
-            self.drop_reason_counts[msg.drop_reason or 'UNKNOWN'] += 1
+            ref_id = msg.ref_msg_id
+            if ref_id and ref_id not in self.dropped_ids:
+                self.dropped_ids.add(ref_id)
+                self.drop_total += 1
+                self.drop_reason_counts[msg.drop_reason or 'UNKNOWN'] += 1
             self.last_drop_time = now
             self._record_timestamp(self.drop_timestamps, now)
             return
         if msg.control_type == 'ACK':
             self.ack_total += 1
         if msg.control_type == 'CHARGE_REQUEST':
+            if msg.msg_id and msg.msg_id in self.charge_request_ids:
+                return
+            if msg.msg_id:
+                self.charge_request_ids.add(msg.msg_id)
             request_time = msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
-            self.pending_charges[msg.src_id] = {
-                'time': request_time,
-                'battery': None,
-                'role': None,
-            }
+            if msg.src_id not in self.pending_charges:
+                self.pending_charges[msg.src_id] = {
+                    'time': request_time,
+                    'battery': None,
+                    'role': None,
+                }
+            else:
+                self.pending_charges[msg.src_id]['time'] = request_time
             self.last_charge_request_time = request_time
             return
         if msg.control_type == 'CHARGE_DECISION':
-            self.last_charge_decision_time = now
-            self.last_charge_decision_target = msg.dst_id
-            self.last_charge_decision_accepted = None
-            if msg.dst_id in self.pending_charges:
-                self.pending_charges.pop(msg.dst_id)
             return
         if msg.control_type in ('DEPLOYMENT', 'DEPLOYMENT_CMD'):
             parts = msg.payload.split(',')
@@ -321,6 +339,16 @@ class FleetVizNode(Node):
             self.ugv_pose = Pose()
         self.ugv_pose.position.x = x
         self.ugv_pose.position.y = y
+
+    def traffic_raw_cb(self, msg: TrafficMessage):
+        now = self._now_sec()
+        if msg.msg_id and msg.msg_id in self.generated_ids:
+            return
+        if msg.msg_id:
+            self.generated_ids.add(msg.msg_id)
+        self.generated_total += 1
+        self.last_msg_time = now
+        self._record_timestamp(self.msg_timestamps, now)
 
     @staticmethod
     def role_label(role: int) -> str:
@@ -502,7 +530,7 @@ class FleetVizNode(Node):
         msg_rate = len(self.msg_timestamps) / self.rate_window_sec
         drop_rate = len(self.drop_timestamps) / self.rate_window_sec
         delivered_rate = len(self.delivered_timestamps) / self.rate_window_sec
-        drop_ratio = (self.drop_total / self.traffic_total) if self.traffic_total > 0 else 0.0
+        drop_ratio = (self.drop_total / self.generated_total) if self.generated_total > 0 else 0.0
         top_controls = sorted(
             self.control_type_counts.items(), key=lambda item: item[1], reverse=True
         )[:3]
@@ -511,12 +539,12 @@ class FleetVizNode(Node):
         )[:3]
         net_lines = [
             self._title_line('Network routing'),
-            self._line(f"  bus msgs: {self.traffic_total}"),
+            self._line(f"  generated: {self.generated_total}"),
             self._line(f"  delivered: {self.delivered_total}"),
             self._line(f"  drops: {self.drop_total} ({drop_ratio:.1%})"),
             self._line(f"  acks: {self.ack_total}"),
             self._title_line(f"Rates (last {self.rate_window_sec:.0f}s)"),
-            self._line(f"  bus: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s"),
+            self._line(f"  generated: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s"),
             self._line(f"  drops: {drop_rate:.1f}/s"),
             self._title_line("Recent activity"),
             self._line(f"  Last msg age: {self._format_age(self.last_msg_time)}"),
