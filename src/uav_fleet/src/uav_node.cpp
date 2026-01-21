@@ -2461,6 +2461,16 @@ private:
 
     auto it = ch_poses_.find(my_ch_id_);
     if (it == ch_poses_.end()) {
+      double vx = info.velocity.linear.x;
+      double vy = info.velocity.linear.y;
+      double vz = info.velocity.linear.z;
+      double speed = std::sqrt(vx * vx + vy * vy + vz * vz);
+      if (speed <= 0.1) {
+        ch_deployment_reached_ = true;
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: CH %s deployment pose unknown; marking reached (speed=%.2f).",
+                    uav_id_.c_str(), my_ch_id_.c_str(), speed);
+      }
       return;
     }
 
