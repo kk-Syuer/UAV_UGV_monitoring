@@ -245,7 +245,7 @@ public:
       "/coverage_planner/deployment", 10,
       std::bind(&UavNode::deploymentCallback, this, std::placeholders::_1));
     task_point_sub_ = this->create_subscription<uav_msgs::msg::TaskPointArray>(
-      "/coverage_planner/task_points", 10,
+      "/coverage_planner/task_points", rclcpp::QoS(1).transient_local(),
       std::bind(&UavNode::taskPointCallback, this, std::placeholders::_1));
 
     // ---- Timers ----
