@@ -298,6 +298,7 @@ public:
     task_release_max_retries_ = this->declare_parameter<int>("task_release_max_retries", 5);
     charge_request_retry_sec_ = this->declare_parameter<double>("charge_request_retry_sec", 2.0);
     charge_request_max_retries_ = this->declare_parameter<int>("charge_request_max_retries", 0);
+    charge_decision_timeout_sec_ = this->declare_parameter<double>("charge_decision_timeout_sec", 10.0);
 
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     neighbor_timeout_timer_ = this->create_wall_timer(
@@ -421,6 +422,7 @@ private:
     std::string msg_id;
     float battery_level = 0.0f;
     rclcpp::Time last_send_time;
+    rclcpp::Time last_ack_time;
     int attempts = 0;
     bool acknowledged = false;
   };
@@ -662,6 +664,7 @@ private:
     pending.msg_id = uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
     pending.battery_level = battery_percent;
     pending.last_send_time = now;
+    pending.last_ack_time = rclcpp::Time(0, 0, now.get_clock_type());
     pending.attempts = 0;
     pending.acknowledged = false;
     charge_request_pending_ = pending;
@@ -2852,6 +2855,7 @@ private:
       return;
     }
     charge_request_pending_->acknowledged = true;
+    charge_request_pending_->last_ack_time = this->now();
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: received ACK for CHARGE_REQUEST msg_id=%s",
                 uav_id_.c_str(), msg.ref_msg_id.c_str());
@@ -2860,9 +2864,6 @@ private:
   void chargeRequestRetryTick()
   {
     if (!waiting_for_charge_response_ || !charge_request_pending_.has_value()) {
-      return;
-    }
-    if (charge_request_pending_->acknowledged) {
       return;
     }
     if (charge_request_max_retries_ > 0 &&
@@ -2877,7 +2878,18 @@ private:
 
     auto now = this->now();
     double elapsed = (now - charge_request_pending_->last_send_time).seconds();
-    if (elapsed >= charge_request_retry_sec_) {
+    if (!charge_request_pending_->acknowledged) {
+      if (elapsed >= charge_request_retry_sec_) {
+        sendChargeRequest(*charge_request_pending_);
+      }
+      return;
+    }
+
+    double ack_elapsed = (now - charge_request_pending_->last_ack_time).seconds();
+    if (ack_elapsed >= charge_decision_timeout_sec_) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: no CHARGE_DECISION after ACK; resending CHARGE_REQUEST msg_id=%s",
+                  uav_id_.c_str(), charge_request_pending_->msg_id.c_str());
       sendChargeRequest(*charge_request_pending_);
     }
   }
@@ -3083,6 +3095,7 @@ private:
   std::optional<ChargeRequestPending> charge_request_pending_;
   double charge_request_retry_sec_ = 2.0;
   int charge_request_max_retries_ = 0;
+  double charge_decision_timeout_sec_ = 10.0;
   bool task_telemetry_enable_ = true;
   int task_telemetry_packets_min_ = 1;
   int task_telemetry_packets_max_ = 3;
