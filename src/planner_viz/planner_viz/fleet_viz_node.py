@@ -560,6 +560,13 @@ class FleetVizNode(Node):
             queue_lines.append(self._line(
                 f"  Last decision: {self.last_charge_decision_target} ({decision_state})"
             ))
+        if self.uav_states:
+            queue_lines.append(self._title_line('Fleet status (batt %)'))
+            for uid in sorted(self.uav_states.keys()):
+                st = self.uav_states[uid]
+                queue_lines.append(self._line(
+                    f"  {uid} [{self.role_label(st.role)}] | {st.battery_level:.1f}%"
+                ))
         if self.pending_charges:
             queue_lines.append(self._title_line('Waiting'))
             ordered = sorted(
