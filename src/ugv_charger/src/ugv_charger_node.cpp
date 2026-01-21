@@ -243,7 +243,7 @@ private:
     publishDelivered(*msg, now);
     maybePublishAck(*msg);
 
-    if (msg->control_type == "MOTION_START" || msg->control_type == "START_MOBILITY") {
+    if (msg->control_type == "MOTION_START") {
       motion_start_received_ = true;
       last_pose_time_ = now;
       RCLCPP_INFO(this->get_logger(),
