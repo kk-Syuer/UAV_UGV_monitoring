@@ -1155,6 +1155,13 @@ private:
     }
     rclcpp::Time rx_time = this->now();
 
+    const bool is_broadcast = (msg->dst_id == "broadcast");
+    const bool addressed_to_me =
+      msg->next_hop_id.empty() || msg->next_hop_id == uav_id_;
+    if (!is_broadcast && !addressed_to_me) {
+      return;
+    }
+
     if (std::find(msg->recent_hops.begin(), msg->recent_hops.end(), uav_id_) != msg->recent_hops.end()) {
       publishDrop(msg->msg_id, "LOOP_DETECTED");
       return;
