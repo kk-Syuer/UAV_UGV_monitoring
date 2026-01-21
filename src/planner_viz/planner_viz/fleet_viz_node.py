@@ -15,6 +15,8 @@ from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
 
 from geometry_msgs.msg import Pose
+from rclpy.qos import DurabilityPolicy
+from rclpy.qos import QoSProfile
 from uav_msgs.msg import ChargeDecision
 from uav_msgs.msg import ChargeRequest
 from uav_msgs.msg import ClusterInfo
@@ -44,8 +46,9 @@ class FleetVizNode(Node):
 
         self.charge_decision_sub = self.create_subscription(
             ChargeDecision, '/ugv/charge_decisions', self.charge_decision_cb, 50)
+        task_point_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.task_point_sub = self.create_subscription(
-            TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, 10)
+            TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, task_point_qos)
         self.traffic_sub = self.create_subscription(
             TrafficMessage, '/fanet/network_bus', self.traffic_cb, 50)
         self.delivered_sub = self.create_subscription(
