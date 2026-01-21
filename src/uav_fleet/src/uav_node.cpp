@@ -296,6 +296,8 @@ public:
     carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
     task_release_retry_sec_ = this->declare_parameter<double>("task_release_retry_sec", 2.0);
     task_release_max_retries_ = this->declare_parameter<int>("task_release_max_retries", 5);
+    charge_request_retry_sec_ = this->declare_parameter<double>("charge_request_retry_sec", 2.0);
+    charge_request_max_retries_ = this->declare_parameter<int>("charge_request_max_retries", 0);
 
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     neighbor_timeout_timer_ = this->create_wall_timer(
@@ -321,6 +323,11 @@ public:
     task_release_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(task_release_retry),
       std::bind(&UavNode::taskReleaseRetryTick, this));
+
+    auto charge_request_retry = std::chrono::duration<double>(charge_request_retry_sec_);
+    charge_request_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(charge_request_retry),
+      std::bind(&UavNode::chargeRequestRetryTick, this));
 
     if (mobility_enabled_) {
       auto dt = std::chrono::duration<double>(mobility_dt_sec_);
@@ -407,6 +414,15 @@ private:
     std::string payload;
     rclcpp::Time last_send_time;
     int attempts = 0;
+  };
+
+  struct ChargeRequestPending
+  {
+    std::string msg_id;
+    float battery_level = 0.0f;
+    rclcpp::Time last_send_time;
+    int attempts = 0;
+    bool acknowledged = false;
   };
 
   // ---------------- Weather ----------------
@@ -634,12 +650,21 @@ private:
     }
     // Set flag to avoid duplicate requests while waiting for decision
     waiting_for_charge_response_ = true;
+    charge_request_pending_.reset();
 
     auto now = this->now();
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: requesting charge via network (battery=%.1f%%)",
                 uav_id_.c_str(), battery_percent);
+
+    ChargeRequestPending pending;
+    pending.msg_id = uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
+    pending.battery_level = battery_percent;
+    pending.last_send_time = now;
+    pending.attempts = 0;
+    pending.acknowledged = false;
+    charge_request_pending_ = pending;
 
     // 1) Publish a ChargeRequest for monitoring (unchanged)
     uav_msgs::msg::ChargeRequest cr;
@@ -649,34 +674,7 @@ private:
     cr.stamp = now;
     charge_request_pub_->publish(cr);
 
-    // 2) Send a CONTROL_ALERT message through the network to the UGV
-    uav_msgs::msg::TrafficMessage msg;
-    msg.msg_id = uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
-    msg.src_id = uav_id_;
-    msg.dst_id = ugv_id_;       // final destination: UGV
-    msg.flow_type = 1;           // CONTROL_ALERT
-    msg.creation_time = now;
-    msg.hop_count = 0;
-
-    // Let routing decide, as for any other dst:
-    // - members will rely on their CH
-    // - CHs will use routing_rules / next_hop_to_sink_
-    if (role_ == 0) {  // MEMBER
-      msg.next_hop_id = my_ch_id_;
-    } else {           // CH
-      msg.next_hop_id = pickNextHop(ugv_id_, resolveNextHop(ugv_id_));
-    }
-
-    // Optional control metadata to describe the control alert type.
-    msg.control_type = "CHARGE_REQUEST";
-    // For now payload is empty; UGV will look up status from /fanet/status
-
-    RCLCPP_INFO(this->get_logger(),
-                "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
-                uav_id_.c_str(), msg.msg_id.c_str(),
-                msg.dst_id.c_str(), msg.next_hop_id.c_str());
-
-    publishToBus(msg);
+    sendChargeRequest(*charge_request_pending_);
   }
 
   void publishFailureTraffic(const uav_msgs::msg::FailureEvent & failure)
@@ -730,6 +728,7 @@ private:
 
     waiting_for_charge_response_ = false;
     has_charge_slot_ = false;  // we start charging immediately
+    charge_request_pending_.reset();
 
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
@@ -1216,6 +1215,7 @@ private:
 
       if (msg->flow_type == 1 && msg->control_type == "ACK") {
         handleTaskReleaseAck(*msg);
+        handleChargeRequestAck(*msg);
         return;
       }
 
@@ -2817,6 +2817,86 @@ private:
                 uav_id_.c_str(), member_id.c_str());
   }
 
+  void handleChargeRequestAck(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (!charge_request_pending_.has_value()) {
+      return;
+    }
+    if (msg.ref_msg_id.empty()) {
+      return;
+    }
+    if (msg.ref_msg_id != charge_request_pending_->msg_id) {
+      return;
+    }
+    if (charge_request_pending_->acknowledged) {
+      return;
+    }
+    charge_request_pending_->acknowledged = true;
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: received ACK for CHARGE_REQUEST msg_id=%s",
+                uav_id_.c_str(), msg.ref_msg_id.c_str());
+  }
+
+  void chargeRequestRetryTick()
+  {
+    if (!waiting_for_charge_response_ || !charge_request_pending_.has_value()) {
+      return;
+    }
+    if (charge_request_pending_->acknowledged) {
+      return;
+    }
+    if (charge_request_max_retries_ > 0 &&
+        charge_request_pending_->attempts >= charge_request_max_retries_) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: giving up CHARGE_REQUEST after %d attempts.",
+                  uav_id_.c_str(), charge_request_pending_->attempts);
+      waiting_for_charge_response_ = false;
+      charge_request_pending_.reset();
+      return;
+    }
+
+    auto now = this->now();
+    double elapsed = (now - charge_request_pending_->last_send_time).seconds();
+    if (elapsed >= charge_request_retry_sec_) {
+      sendChargeRequest(*charge_request_pending_);
+    }
+  }
+
+  void sendChargeRequest(ChargeRequestPending & pending)
+  {
+    // 2) Send a CONTROL_ALERT message through the network to the UGV
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = pending.msg_id;
+    msg.src_id = uav_id_;
+    msg.dst_id = ugv_id_;       // final destination: UGV
+    msg.flow_type = 1;          // CONTROL_ALERT
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.requires_ack = true;
+
+    // Let routing decide, as for any other dst:
+    // - members will rely on their CH
+    // - CHs will use routing_rules / next_hop_to_sink_
+    if (role_ == 0) {  // MEMBER
+      msg.next_hop_id = my_ch_id_;
+    } else {           // CH
+      msg.next_hop_id = pickNextHop(ugv_id_, resolveNextHop(ugv_id_));
+    }
+
+    // Optional control metadata to describe the control alert type.
+    msg.control_type = "CHARGE_REQUEST";
+    // For now payload is empty; UGV will look up status from /fanet/status
+
+    RCLCPP_INFO(this->get_logger(),
+                "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
+                uav_id_.c_str(), msg.msg_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str());
+
+    publishToBus(msg);
+    pending.last_send_time = this->now();
+    pending.attempts++;
+  }
+
   void taskReleaseRetryTick()
   {
     if (role_ != 1 || task_release_pending_.empty()) {
@@ -2952,6 +3032,7 @@ private:
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
   rclcpp::TimerBase::SharedPtr task_release_timer_;
+  rclcpp::TimerBase::SharedPtr charge_request_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
@@ -2979,6 +3060,9 @@ private:
   std::unordered_map<std::string, std::string> task_release_msg_to_member_;
   double task_release_retry_sec_ = 2.0;
   int task_release_max_retries_ = 5;
+  std::optional<ChargeRequestPending> charge_request_pending_;
+  double charge_request_retry_sec_ = 2.0;
+  int charge_request_max_retries_ = 0;
   bool task_telemetry_enable_ = true;
   int task_telemetry_packets_min_ = 1;
   int task_telemetry_packets_max_ = 3;
