@@ -1,6 +1,6 @@
 from collections import defaultdict, deque
 import os
-from typing import Dict
+from typing import Any, Dict
 
 import rclpy
 from rclpy.node import Node
@@ -65,8 +65,12 @@ class FleetVizNode(Node):
         ]
 
         # Queue + scheduling summary.
-        self.pending_charges: Dict[str, float] = {}
+        self.pending_charges: Dict[str, Dict[str, Any]] = {}
         self.latest_policy = 'n/a'
+        self.last_charge_request_time = None
+        self.last_charge_decision_time = None
+        self.last_charge_decision_target = None
+        self.last_charge_decision_accepted = None
 
         # Control-plane snapshots.
         self.cluster_info = {}
@@ -199,11 +203,21 @@ class FleetVizNode(Node):
     def charge_request_cb(self, msg: ChargeRequest):
         """Track outstanding charging requests."""
         # track outstanding charging requests to approximate queue size
-        self.pending_charges[msg.uav_id] = msg.stamp.sec + msg.stamp.nanosec * 1e-9
+        request_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
+        self.pending_charges[msg.uav_id] = {
+            'time': request_time,
+            'battery': msg.battery_level,
+            'role': int(msg.role),
+        }
+        self.last_charge_request_time = request_time
 
     def charge_decision_cb(self, msg: ChargeDecision):
         """Update scheduling policy and clear completed requests."""
+        now = self._now_sec()
         self.latest_policy = msg.policy if msg.policy else 'n/a'
+        self.last_charge_decision_time = now
+        self.last_charge_decision_target = msg.uav_id
+        self.last_charge_decision_accepted = msg.accepted
         # once a decision is made, remove from pending queue
         if msg.uav_id in self.pending_charges:
             self.pending_charges.pop(msg.uav_id)
@@ -249,11 +263,18 @@ class FleetVizNode(Node):
         if msg.control_type == 'ACK':
             self.ack_total += 1
         if msg.control_type == 'CHARGE_REQUEST':
-            self.pending_charges[msg.src_id] = (
-                msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
-            )
+            request_time = msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
+            self.pending_charges[msg.src_id] = {
+                'time': request_time,
+                'battery': None,
+                'role': None,
+            }
+            self.last_charge_request_time = request_time
             return
         if msg.control_type == 'CHARGE_DECISION':
+            self.last_charge_decision_time = now
+            self.last_charge_decision_target = msg.dst_id
+            self.last_charge_decision_accepted = None
             if msg.dst_id in self.pending_charges:
                 self.pending_charges.pop(msg.dst_id)
             return
@@ -403,12 +424,13 @@ class FleetVizNode(Node):
     def _status_lines(self):
         info_lines = []
         if self.weather:
-            info_lines.append(self._title_line('Weather'))
+            info_lines.append(self._title_line(
+                f"Weather ({self.weather_state(self.weather)})"
+            ))
             info_lines.append(self._line(f"  Rain: {self.weather.rain_intensity:.1f} mm/h"))
             info_lines.append(self._line(
                 f"  Wind: {self.weather.wind_speed:.1f} m/s @ {self.weather.wind_direction_deg:.0f}°"))
             info_lines.append(self._line(f"  Temp: {self.weather.temperature_c:.1f} °C"))
-            info_lines.append(self._line(f"  State: {self.weather_state(self.weather)}"))
         else:
             info_lines.append(self._title_line('Weather'))
             info_lines.append(self._line('  (no data)'))
@@ -519,6 +541,8 @@ class FleetVizNode(Node):
         queue_lines = [
             self._title_line('Charging queue'),
             self._line(f"  pending requests: {len(self.pending_charges)}"),
+            self._line(f"  Last request age: {self._format_age(self.last_charge_request_time)}"),
+            self._line(f"  Last decision age: {self._format_age(self.last_charge_decision_time)}"),
             self._title_line("Scheduling"),
             self._line(f"  {self.latest_policy}"),
             self._title_line("Spots"),
@@ -527,11 +551,38 @@ class FleetVizNode(Node):
                 f" {self.target_utilization:.2f})"),
             self._line(f"  spots now: {spots_now}")
         ]
+        if self.last_charge_decision_target:
+            decision_state = (
+                "accepted" if self.last_charge_decision_accepted
+                else "rejected" if self.last_charge_decision_accepted is False
+                else "sent"
+            )
+            queue_lines.append(self._line(
+                f"  Last decision: {self.last_charge_decision_target} ({decision_state})"
+            ))
+        if self.uav_states:
+            queue_lines.append(self._title_line('Fleet status (batt %)'))
+            for uid in sorted(self.uav_states.keys()):
+                st = self.uav_states[uid]
+                queue_lines.append(self._line(
+                    f"  {uid} [{self.role_label(st.role)}] | {st.battery_level:.1f}%"
+                ))
         if self.pending_charges:
             queue_lines.append(self._title_line('Waiting'))
-            ordered = sorted(self.pending_charges.items(), key=lambda item: item[1])
-            for uid, _ in ordered:
-                queue_lines.append(self._line(f"    - {uid}"))
+            ordered = sorted(
+                self.pending_charges.items(),
+                key=lambda item: item[1].get('time') or 0.0
+            )
+            for uid, meta in ordered:
+                role_val = meta.get('role')
+                role_label = self.role_label(int(role_val)) if role_val is not None else 'UNK'
+                battery = meta.get('battery')
+                if battery is None:
+                    queue_lines.append(self._line(f"    - {uid} [{role_label}]"))
+                else:
+                    queue_lines.append(self._line(
+                        f"    - {uid} [{role_label}] | {battery:.1f}%"
+                    ))
         return queue_lines
 
     # --- plotting ---
