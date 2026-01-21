@@ -1160,14 +1160,13 @@ private:
       return;
     }
 
-    if ((msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START") &&
-        msg->dst_id == "broadcast") {
+    if (msg->control_type == "MOTION_START" && msg->dst_id == "broadcast") {
       start_mobility_received_ = true;
       last_pose_time_ = this->now();
       last_pose_ = pose_;
       RCLCPP_INFO(this->get_logger(),
-                  "[MOB-START] %s received broadcast %s from %s",
-                  uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
+                  "[MOB-START] %s received broadcast MOTION_START from %s",
+                  uav_id_.c_str(), msg->src_id.c_str());
       return;
     }
 
@@ -1247,7 +1246,7 @@ private:
       // receive start mobility / motion start barrier
       if (msg->flow_type == 1 &&
           (msg->dst_id == uav_id_ || msg->dst_id == "broadcast") &&
-          (msg->control_type == "START_MOBILITY" || msg->control_type == "MOTION_START")) {
+          msg->control_type == "MOTION_START") {
 
         start_mobility_received_ = true;
         // Reset timing so the first mobility step after the barrier uses the
@@ -1255,8 +1254,8 @@ private:
         last_pose_time_ = this->now();
         last_pose_ = pose_;
         RCLCPP_INFO(this->get_logger(),
-                    "[MOB-START] %s received %s from %s",
-                    uav_id_.c_str(), msg->control_type.c_str(), msg->src_id.c_str());
+                    "[MOB-START] %s received MOTION_START from %s",
+                    uav_id_.c_str(), msg->src_id.c_str());
         return;
       }
 
@@ -1319,7 +1318,7 @@ private:
 
       uav_msgs::msg::TrafficMessage fwd = *msg;
 
-      if (fwd.control_type == "START_MOBILITY" || fwd.control_type == "MOTION_START") {
+      if (fwd.control_type == "MOTION_START") {
         fwd.next_hop_id = msg->dst_id;
       } else if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
         // If the destination is one of my cluster members, send directly down to it.
@@ -2134,7 +2133,7 @@ private:
     }
     if (!start_mobility_received_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
-                           "UAV %s: waiting for START_MOBILITY/MOTION_START; holding position.",
+                           "UAV %s: waiting for MOTION_START; holding position.",
                            uav_id_.c_str());
       return;
     }

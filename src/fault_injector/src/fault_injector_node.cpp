@@ -103,6 +103,7 @@ private:
 
     // Respect whitelisted critical control traffic.
     if (msg->control_type == "DROP" ||
+        msg->control_type == "MOTION_START" ||
         (protect_deployment_ &&
          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) ||
         (protect_charge_decision_ && msg->control_type == "CHARGE_DECISION"))
