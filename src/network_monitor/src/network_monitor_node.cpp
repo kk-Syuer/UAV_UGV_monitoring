@@ -773,7 +773,7 @@ private:
     }
   }
 
-  double percentile(std::vector<double> values, double pct)
+  double percentile(std::vector<double> values, double pct) const
   {
     if (values.empty()) {
       return -1.0;
