@@ -264,6 +264,24 @@ private:
         return;
       }
 
+      auto existing = std::find_if(queue_.begin(), queue_.end(),
+        [&](const QueueEntry & queued) {
+          return queued.uav_id == uav_id || queued.request_msg_id == msg->msg_id;
+        });
+
+      if (existing != queue_.end()) {
+        existing->role = it->second.role;
+        existing->battery_level = it->second.battery_level;
+        existing->request_time = now;
+        existing->request_msg_id = msg->msg_id;
+        RCLCPP_INFO(this->get_logger(),
+                    "UGV: updated CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
+                    "Queue size remains: %zu",
+                    existing->uav_id.c_str(), existing->role,
+                    existing->battery_level, queue_.size());
+        return;
+      }
+
       QueueEntry entry;
       entry.uav_id = uav_id;
       entry.role = it->second.role;
@@ -272,7 +290,6 @@ private:
       entry.request_msg_id = msg->msg_id;
 
       queue_.push_back(entry);
-
 
       RCLCPP_INFO(this->get_logger(),
                   "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
@@ -592,6 +609,7 @@ private:
     ack.msg_id = ugv_id_ + "_ACK_" + msg.msg_id + "_" + std::to_string(msg_counter_++);
     ack.src_id = ugv_id_;
     ack.dst_id = msg.src_id;
+    ack.ref_msg_id = msg.msg_id;
     ack.flow_type = 1;
     ack.control_type = "ACK";
     ack.payload = "ref_msg_id=" + msg.msg_id;
