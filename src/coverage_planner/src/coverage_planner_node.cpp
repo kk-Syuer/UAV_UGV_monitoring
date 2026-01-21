@@ -80,7 +80,8 @@ public:
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
     task_point_pub_ = this->create_publisher<uav_msgs::msg::TaskPointArray>(
-      "/coverage_planner/task_points", 10);
+      "/coverage_planner/task_points",
+      rclcpp::QoS(1).transient_local());
     accept_direct_deployment_ = this->declare_parameter<bool>(
       "accept_direct_deployment", false);
 
@@ -90,6 +91,8 @@ public:
       x_min_, x_max_, y_min_, y_max_, comm_radius_ch_, service_radius_ch_,
       this->get_logger(), deployment_pub_);
     coverage_planner_->initializeIdealLayouts();
+
+    publishTaskPoints();
 
     traffic_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/network_bus_raw", 50);
