@@ -404,6 +404,7 @@ private:
   struct TaskReleasePending
   {
     std::string msg_id;
+    std::string payload;
     rclcpp::Time last_send_time;
     int attempts = 0;
   };
@@ -1163,8 +1164,20 @@ private:
       if (role_ != 0) {
         return;
       }
-      if (!msg->payload.empty() && msg->payload != cluster_id_) {
+      std::string payload_cluster;
+      std::vector<geometry_msgs::msg::Point> assigned_points;
+      if (!msg->payload.empty() &&
+          !parseTaskReleasePayload(msg->payload, payload_cluster, assigned_points)) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: TASK_RELEASE payload parse failed: \"%s\"",
+                    uav_id_.c_str(), msg->payload.c_str());
         return;
+      }
+      if (!payload_cluster.empty() && payload_cluster != cluster_id_) {
+        return;
+      }
+      if (!assigned_points.empty()) {
+        assigned_task_points_ = assigned_points;
       }
       publishDelivered(*msg, rx_time);
       maybePublishAck(*msg);
@@ -1923,8 +1936,10 @@ private:
   void initTaskMobility(const geometry_msgs::msg::Pose & ch_pose)
   {
     geometry_msgs::msg::Point start_point = pose_.position;
-    if (!cluster_task_points_.empty()) {
-      task_points_ = buildTspPath(start_point, cluster_task_points_);
+    const auto & source_points =
+      assigned_task_points_.empty() ? cluster_task_points_ : assigned_task_points_;
+    if (!source_points.empty()) {
+      task_points_ = buildTspPath(start_point, source_points);
       current_task_index_ = 0;
       RCLCPP_INFO(this->get_logger(),
                   "UAV %s: TSP path initialized with %zu task points for cluster %s.",
@@ -2035,8 +2050,13 @@ private:
         cluster_task_points_.push_back(tp.position);
       }
     }
-    if (role_ == 0 && member_release_received_ && !cluster_task_points_.empty()) {
-      task_points_ = buildTspPath(pose_.position, cluster_task_points_);
+    if (role_ == 0 && member_release_received_) {
+      const auto & source_points =
+        assigned_task_points_.empty() ? cluster_task_points_ : assigned_task_points_;
+      if (source_points.empty()) {
+        return;
+      }
+      task_points_ = buildTspPath(pose_.position, source_points);
       current_task_index_ = 0;
       if (mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
         RCLCPP_INFO(this->get_logger(),
@@ -2492,6 +2512,7 @@ private:
       ch_deployment_reached_ = false;
       member_release_received_ = false;
       release_sent_ = false;
+      assigned_task_points_.clear();
       task_release_pending_.clear();
       task_release_msg_to_member_.clear();
     }
@@ -2633,14 +2654,25 @@ private:
       return;
     }
 
+    std::vector<std::string> member_ids(cluster_members_.begin(), cluster_members_.end());
+    std::sort(member_ids.begin(), member_ids.end());
+    std::unordered_map<std::string, std::vector<geometry_msgs::msg::Point>> assignments;
+    if (!cluster_task_points_.empty()) {
+      for (size_t i = 0; i < cluster_task_points_.size(); ++i) {
+        const auto & member_id = member_ids[i % member_ids.size()];
+        assignments[member_id].push_back(cluster_task_points_[i]);
+      }
+    }
+
     auto now = this->now();
-    for (const auto & member_id : cluster_members_) {
+    for (const auto & member_id : member_ids) {
       if (task_release_pending_.count(member_id) > 0) {
         continue;
       }
       TaskReleasePending pending;
       pending.msg_id = "TASK_REL_" + uav_id_ + "_" + member_id + "_" +
                        std::to_string(msg_counter_++);
+      pending.payload = serializeTaskReleasePayload(cluster_id_, assignments[member_id]);
       pending.last_send_time = now;
       pending.attempts = 0;
       task_release_pending_[member_id] = pending;
@@ -2666,7 +2698,7 @@ private:
     msg.creation_time = this->now();
     msg.hop_count = 0;
     msg.control_type = "TASK_RELEASE";
-    msg.payload = cluster_id_;
+    msg.payload = pending.payload;
     msg.requires_ack = true;
 
     std::string direct_hop = resolveNextHop(member_id);
@@ -2684,6 +2716,60 @@ private:
 
     pending.last_send_time = this->now();
     pending.attempts++;
+  }
+
+  std::string serializeTaskReleasePayload(
+    const std::string & cluster_id,
+    const std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    std::ostringstream oss;
+    oss << cluster_id;
+    for (const auto & pt : points) {
+      oss << ";" << pt.x << "," << pt.y << "," << pt.z;
+    }
+    return oss.str();
+  }
+
+  bool parseTaskReleasePayload(
+    const std::string & payload,
+    std::string & cluster_id,
+    std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    cluster_id.clear();
+    points.clear();
+    if (payload.empty()) {
+      return true;
+    }
+
+    std::stringstream ss(payload);
+    std::string token;
+    if (!std::getline(ss, token, ';')) {
+      return false;
+    }
+    cluster_id = token;
+
+    while (std::getline(ss, token, ';')) {
+      if (token.empty()) {
+        continue;
+      }
+      std::stringstream pt_stream(token);
+      std::string coord;
+      geometry_msgs::msg::Point pt;
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.x = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.y = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.z = std::stod(coord);
+      points.push_back(pt);
+    }
+    return true;
   }
 
   void handleTaskReleaseAck(const uav_msgs::msg::TrafficMessage & msg)
@@ -2776,6 +2862,7 @@ private:
   std::vector<geometry_msgs::msg::Point> task_points_;
   std::vector<uav_msgs::msg::TaskPoint> last_task_points_;
   std::vector<geometry_msgs::msg::Point> cluster_task_points_;
+  std::vector<geometry_msgs::msg::Point> assigned_task_points_;
   size_t current_task_index_ = 0;
 
   // CH poses so members can know their CH center
