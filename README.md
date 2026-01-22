@@ -51,7 +51,7 @@ The **coverage planner** computes deployment targets for the sink, UGV, cluster 
 ```mermaid
 flowchart TD
     A[Start deployment cycle] --> B[Place sink at origin]
-    B --> C[Select CH IDs (first num_ch UAVs)]
+    B --> C[Select CH IDs: first N UAVs]
     C --> D{Task points available?}
     D -->|Yes| E[Cluster task points (k-means)]
     E --> F[Compute CH service poses]
