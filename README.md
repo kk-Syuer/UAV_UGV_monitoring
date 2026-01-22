@@ -219,6 +219,18 @@ The system automatically records **experiment‑ready metrics**:
 * Decision latency
 * Failure causes (drop, timeout, energy)
 
+### QoS Metrics (`qos_metrics.csv`)
+
+The network monitor aggregates per‑flow QoS stats (keyed by `flow_type` + `control_type`) and
+exports the values used to compute QoS:
+
+* `generated`, `delivered`, `dropped` – total counts per category
+* `pdr` – packet delivery ratio (`delivered / generated`)
+* `delay_mean_ms`, `delay_p95_ms` – end‑to‑end delay mean and 95th percentile
+* `jitter_ms` – mean absolute inter‑arrival delay delta
+* `throughput_bps`, `generated_bps` – delivered vs generated throughput in bits/sec
+* `qos_score` – weighted score derived from PDR, delay, and jitter targets
+
 ### UAV State Time Series (`status_timeseries.csv`)
 
 * Battery level
