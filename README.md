@@ -88,6 +88,12 @@ small CH backbone table (no global topology knowledge). Each UAV performs:
   If no next hop is found, messages can be buffered for store–carry–forward retries with TTL.
 * **Safety guards** – loop detection via recent‑hop history, hop‑count increments, and TTL expiry
   prevent routing storms and infinite circulation.
+NOT routed through FANET (direct ROS topics)
+
+Some important signals bypass the overlay:
+UAV status publication (e.g., UavStatus) is on a direct ROS topic and consumed directly by UGV / monitor / viz.
+Weather is  a direct topic (WeatherStatus)
+Monitoring/logging topics are direct
 
 ---
 
