@@ -74,7 +74,7 @@ small CH backbone table (no global topology knowledge). Each UAV performs:
 * **Neighbor discovery via status beacons** – routing decisions use the most recent `/fanet/status`
   table and drop stale neighbors after a timeout.
 * **Greedy geographic forwarding (first choice)** – the actual selector used before any fallbacks
-  is `selectGreedyNextHop(...)` (no LADTR). It chooses among current neighbors that make positive
+  is `selectGreedyNextHop(...)`. It chooses among current neighbors that make positive
   progress toward the destination and are within comms range, then scores them by forward progress
   plus a link‑expiration heuristic derived from relative motion, with penalties for charging or
   leaving‑soon neighbors.
@@ -186,7 +186,7 @@ stateDiagram-v2
           |
           v
 +-------------------+        +---------------------+
-| FANET Bus(Out)|------> | UAV / UGV / Sink    |
+| FANET Bus(Out)    |------> | UAV / UGV / Sink    |
 +-------------------+        +---------------------+
                                         |
                                         v
