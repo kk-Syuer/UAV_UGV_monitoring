@@ -7,7 +7,9 @@ from launch import LaunchDescription
 from launch.actions import DeclareLaunchArgument, OpaqueFunction
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
+from launch_ros.parameter_descriptions import ParameterValue
 from ament_index_python.packages import get_package_share_directory
+from rclpy.parameter import Parameter
 
 
 def _load_yaml(path: str, fallback_root: str | None = None) -> dict:
@@ -94,7 +96,7 @@ def _make_nodes(context, *args, **kwargs):
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
         "max_runtime_sec": float(_get(cfg, ["monitor", "max_runtime_sec"], 0.0)),
         "stop_on_backbone_loss": bool(_get(cfg, ["monitor", "stop_on_backbone_loss"], False)),
-        "backbone_ids": ch_ids,
+        "backbone_ids": ParameterValue(ch_ids, value_type=Parameter.Type.STRING_ARRAY),
     }
     nodes.append(Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
@@ -188,7 +190,7 @@ def _make_nodes(context, *args, **kwargs):
             name=f"coverage_planner_{run_id}",
             output="screen",
             parameters=[{
-                "uav_ids": uav_ids,
+                "uav_ids": ParameterValue(uav_ids, value_type=Parameter.Type.STRING_ARRAY),
                 "num_ch": len(ch_ids),
                 "ugv_id": ugv_id,
             }],
