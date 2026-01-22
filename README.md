@@ -53,7 +53,7 @@ flowchart TD
     A[Start deployment cycle] --> B[Place sink at origin]
     B --> C[Select CH IDs: first N UAVs]
     C --> D{Task points available?}
-    D -->|Yes| E[Cluster task points (k-means)]
+    D -->|Yes| E[Cluster task points k-means]
     E --> F[Compute CH service poses]
     D -->|No| G[Use hex lattice layout]
     F --> H[Tighten CH connectivity]
@@ -91,9 +91,6 @@ Each UAV performs:
 
 * **Sink Gateway**
   Collects all delivered data and control packets.
-
-* **User Device**
-  Generates external traffic to stress the network.
 
 ---
 
