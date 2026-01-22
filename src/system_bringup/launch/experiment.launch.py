@@ -224,10 +224,7 @@ def _make_nodes(context, *args, **kwargs):
                 parameters=[{
                     "cluster_id": cfg_entry["cluster_id"],
                     "ch_id": cfg_entry["ch_id"],
-                    "member_ids": ParameterValue(
-                        [str(member_id) for member_id in cfg_entry["member_ids"]],
-                        value_type=Parameter.Type.STRING_ARRAY,
-                    ),
+                    "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
                 }],
             ))
 
