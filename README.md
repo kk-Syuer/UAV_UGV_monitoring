@@ -31,6 +31,41 @@ This separation allows us to **inject failures without modifying node logic** an
 
 ---
 
+### 1.1 Deployment Point Computation (Coverage Planner)
+
+The **coverage planner** computes deployment targets for the sink, UGV, cluster heads (CHs), and member UAVs during the initial deployment cycle:
+
+1. **Sink placement** is fixed at the origin `(0, 0)` on first deployment.
+2. **CH placement** follows a task-driven layout:
+   * Task points are clustered (k‑means style) into `num_ch` clusters.
+   * Each cluster head target is moved toward the farthest task until all tasks fit within the CH service radius.
+3. **Fallback CH layout** (if task clustering fails) uses a **hexagonal lattice** centered at the origin, with greedy assignment to nearest available lattice points.
+4. **Connectivity tightening** post-processes CH targets:
+   * Pulls CHs toward task anchors,
+   * Ensures overlap between nearest neighbors,
+   * Keeps at least one CH within comms radius of the sink,
+   * Clamps positions to the configured area bounds.
+5. **UGV placement** is the geometric median of CH positions (Weiszfeld-style iteration), clamped to bounds, and nudged closer if it falls outside comms range.
+6. **Member placement** assigns each member UAV near its CH with a random polar offset within a bounded radius, clamped to bounds.
+
+```mermaid
+flowchart TD
+    A[Start deployment cycle] --> B[Place sink at origin]
+    B --> C[Select CH IDs (first num_ch UAVs)]
+    C --> D{Task points available?}
+    D -->|Yes| E[Cluster task points (k-means)]
+    E --> F[Compute CH service poses]
+    D -->|No| G[Use hex lattice layout]
+    F --> H[Tighten CH connectivity]
+    G --> H
+    H --> I[Compute UGV geometric median]
+    I --> J[Clamp/adjust UGV for comms]
+    J --> K[Place member UAVs near CHs]
+    K --> L[Publish deployments]
+```
+
+---
+
 ### 2. Routing Model (No Global Knowledge)
 
 Each UAV performs:
