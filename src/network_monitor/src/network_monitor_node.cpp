@@ -40,6 +40,7 @@ struct MsgRecord {
   bool dropped = false;
   std::string drop_reason;
   std::string dropper_id;
+  size_t payload_bytes = 0;
 };
 
 enum class ChargeOutcome {
@@ -83,6 +84,19 @@ struct UavState
   double z = 0.0;
 };
 
+struct QosAggregate
+{
+  size_t generated = 0;
+  size_t delivered = 0;
+  size_t dropped = 0;
+  double generated_bytes = 0.0;
+  double delivered_bytes = 0.0;
+  std::vector<std::pair<rclcpp::Time, double>> delays_ms;
+  std::unordered_map<std::string, size_t> drop_reasons;
+  rclcpp::Time first_delivered;
+  rclcpp::Time last_delivered;
+};
+
 // Aggregates network telemetry for traffic, charging, and failures.
 class NetworkMonitorNode : public rclcpp::Node
 {
@@ -102,6 +116,12 @@ public:
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
     max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
     stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
+    qos_target_pdr_ = this->declare_parameter<double>("qos_target_pdr", 0.95);
+    qos_target_delay_ms_ = this->declare_parameter<double>("qos_target_delay_ms", 200.0);
+    qos_target_jitter_ms_ = this->declare_parameter<double>("qos_target_jitter_ms", 50.0);
+    qos_weight_pdr_ = this->declare_parameter<double>("qos_weight_pdr", 0.5);
+    qos_weight_delay_ = this->declare_parameter<double>("qos_weight_delay", 0.3);
+    qos_weight_jitter_ = this->declare_parameter<double>("qos_weight_jitter", 0.2);
     backbone_ids_ = this->declare_parameter<std::vector<std::string>>(
       "backbone_ids", std::vector<std::string>{});
     output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
@@ -211,6 +231,7 @@ private:
       rec.src_id = msg->src_id;
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
+      rec.payload_bytes = msg->payload.size();
     }
     if (rec.first_seen_bus_time.nanoseconds() == 0) {
       rec.first_seen_bus_time = now;
@@ -237,6 +258,7 @@ private:
       rec.src_id = msg->src_id;
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
+      rec.payload_bytes = msg->payload.size();
       rec.first_seen_bus_time = this->now();
       total_generated_++;
 
@@ -283,6 +305,7 @@ private:
       rec.src_id = msg->src_id;
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
+      rec.payload_bytes = msg->payload.size();
     }
 
     if (rec.delivered) {
@@ -562,6 +585,7 @@ private:
   {
     reconcileCausality();
     writeMessagesCsv(final_flush);
+    writeQosMetricsCsv(final_flush);
     writeChargeEventsCsv(final_flush);
     writeStatusTimeseriesRow();
     writeSummaryJson();
@@ -602,7 +626,7 @@ private:
     if (need_header) {
       out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
           << "delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
-          << "dropped,drop_reason,dropper_id,ack_time" << std::endl;
+          << "payload_bytes,dropped,drop_reason,dropper_id,ack_time" << std::endl;
     }
 
     for (const auto & [msg_id, rec] : records_) {
@@ -624,12 +648,70 @@ private:
           << rec.forward_count << ','
           << rec.hop_count << ','
           << rec.ttl_hops << ','
+          << rec.payload_bytes << ','
           << (rec.dropped ? "true" : "false") << ','
           << rec.drop_reason << ','
           << rec.dropper_id << ','
           << ack_time
           << std::endl;
       exported_messages_.insert(msg_id);
+    }
+  }
+
+  void writeQosMetricsCsv(bool final_flush)
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "qos_metrics.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    if (need_header) {
+      out << "run_id,flow_type,control_type,generated,delivered,dropped,pdr,"
+          << "delay_mean_ms,delay_p95_ms,jitter_ms,throughput_bps,generated_bps,qos_score"
+          << std::endl;
+    }
+
+    auto qos_stats = buildQosStats();
+    for (const auto & [key, stats] : qos_stats) {
+      if (!final_flush && exported_qos_keys_.count(key)) {
+        continue;
+      }
+      auto sep = key.find(':');
+      std::string flow_str = key.substr(0, sep);
+      std::string ctrl_str = (sep == std::string::npos) ? "" : key.substr(sep + 1);
+      int flow_val = 0;
+      try {
+        flow_val = std::stoi(flow_str);
+      } catch (...) {
+        flow_val = 0;
+      }
+      auto metrics = finalizeQosStats(stats, flow_val, ctrl_str);
+      out << run_id_ << ","
+          << metrics.flow_type << ","
+          << metrics.control_type << ","
+          << metrics.generated << ","
+          << metrics.delivered << ","
+          << metrics.dropped << ","
+          << metrics.pdr << ","
+          << metrics.delay_mean_ms << ","
+          << metrics.delay_p95_ms << ","
+          << metrics.jitter_ms << ","
+          << metrics.throughput_bps << ","
+          << metrics.generated_bps << ","
+          << metrics.qos_score
+          << std::endl;
+      exported_qos_keys_.insert(key);
     }
   }
 
@@ -691,7 +773,7 @@ private:
     }
   }
 
-  double percentile(std::vector<double> values, double pct)
+  double percentile(std::vector<double> values, double pct) const
   {
     if (values.empty()) {
       return -1.0;
@@ -705,6 +787,128 @@ private:
     }
     double weight = idx - lower;
     return values[lower] * (1.0 - weight) + values[upper] * weight;
+  }
+
+  double computeJitterMs(std::vector<std::pair<rclcpp::Time, double>> delays) const
+  {
+    if (delays.size() < 2) {
+      return -1.0;
+    }
+    std::sort(delays.begin(), delays.end(),
+              [](const auto & a, const auto & b) { return a.first < b.first; });
+    double sum = 0.0;
+    for (size_t i = 1; i < delays.size(); ++i) {
+      sum += std::abs(delays[i].second - delays[i - 1].second);
+    }
+    return sum / static_cast<double>(delays.size() - 1);
+  }
+
+  struct QosMetrics
+  {
+    int flow_type = 0;
+    std::string control_type;
+    size_t generated = 0;
+    size_t delivered = 0;
+    size_t dropped = 0;
+    double pdr = 0.0;
+    double delay_mean_ms = -1.0;
+    double delay_p95_ms = -1.0;
+    double jitter_ms = -1.0;
+    double throughput_bps = -1.0;
+    double generated_bps = -1.0;
+    double qos_score = 0.0;
+  };
+
+  QosMetrics finalizeQosStats(const QosAggregate & stats,
+                              int flow_type,
+                              const std::string & control_type) const
+  {
+    QosMetrics metrics;
+    metrics.flow_type = flow_type;
+    metrics.control_type = control_type;
+    metrics.generated = stats.generated;
+    metrics.delivered = stats.delivered;
+    metrics.dropped = stats.dropped;
+    metrics.pdr = stats.generated == 0
+      ? 0.0
+      : static_cast<double>(stats.delivered) / static_cast<double>(stats.generated);
+
+    std::vector<double> delays_ms;
+    delays_ms.reserve(stats.delays_ms.size());
+    for (const auto & [time, delay_ms] : stats.delays_ms) {
+      (void)time;
+      delays_ms.push_back(delay_ms);
+    }
+    if (!delays_ms.empty()) {
+      double sum = 0.0;
+      for (double v : delays_ms) sum += v;
+      metrics.delay_mean_ms = sum / static_cast<double>(delays_ms.size());
+      metrics.delay_p95_ms = percentile(delays_ms, 95.0);
+    }
+    metrics.jitter_ms = computeJitterMs(stats.delays_ms);
+
+    double duration_sec = -1.0;
+    if (stats.first_delivered.nanoseconds() != 0 &&
+        stats.last_delivered.nanoseconds() != 0) {
+      duration_sec = (stats.last_delivered - stats.first_delivered).seconds();
+    }
+    if (duration_sec <= 0.0) {
+      duration_sec = (this->now() - start_time_).seconds();
+    }
+    if (duration_sec > 0.0) {
+      metrics.throughput_bps = (stats.delivered_bytes * 8.0) / duration_sec;
+      metrics.generated_bps = (stats.generated_bytes * 8.0) / duration_sec;
+    }
+
+    double score_pdr = qos_target_pdr_ <= 0.0
+      ? 0.0
+      : std::min(metrics.pdr / qos_target_pdr_, 1.0);
+    double score_delay = (metrics.delay_mean_ms <= 0.0 || qos_target_delay_ms_ <= 0.0)
+      ? 0.0
+      : std::min(qos_target_delay_ms_ / metrics.delay_mean_ms, 1.0);
+    double score_jitter = (metrics.jitter_ms <= 0.0 || qos_target_jitter_ms_ <= 0.0)
+      ? 0.0
+      : std::min(qos_target_jitter_ms_ / metrics.jitter_ms, 1.0);
+
+    double weight_sum = qos_weight_pdr_ + qos_weight_delay_ + qos_weight_jitter_;
+    if (weight_sum <= 0.0) {
+      metrics.qos_score = 0.0;
+    } else {
+      metrics.qos_score = (score_pdr * qos_weight_pdr_ +
+                           score_delay * qos_weight_delay_ +
+                           score_jitter * qos_weight_jitter_) / weight_sum;
+    }
+    return metrics;
+  }
+
+  std::unordered_map<std::string, QosAggregate> buildQosStats()
+  {
+    std::unordered_map<std::string, QosAggregate> stats_map;
+    for (const auto & [msg_id, rec] : records_) {
+      std::string key = std::to_string(rec.flow_type) + ":" + rec.control_type;
+      auto & stats = stats_map[key];
+      stats.generated++;
+      stats.generated_bytes += static_cast<double>(rec.payload_bytes);
+
+      if (rec.delivered) {
+        stats.delivered++;
+        stats.delivered_bytes += static_cast<double>(rec.payload_bytes);
+        double delay_ms = (rec.delivered_time - rec.creation_time).seconds() * 1000.0;
+        stats.delays_ms.emplace_back(rec.delivered_time, delay_ms);
+        if (stats.first_delivered.nanoseconds() == 0) {
+          stats.first_delivered = rec.delivered_time;
+        }
+        stats.last_delivered = rec.delivered_time;
+      }
+
+      if (rec.dropped) {
+        stats.dropped++;
+        if (!rec.drop_reason.empty()) {
+          stats.drop_reasons[rec.drop_reason]++;
+        }
+      }
+    }
+    return stats_map;
   }
 
   void writeStatusTimeseriesRow()
@@ -759,15 +963,6 @@ private:
     std::vector<double> decision_latencies_ms;
     std::vector<double> waiting_times_ms;
     std::vector<double> energy_recovered;
-    struct NetStats {
-      size_t generated = 0;
-      size_t delivered = 0;
-      double forward_sum = 0.0;
-      std::vector<double> delays_ms;
-      std::unordered_map<std::string, size_t> drop_reasons;
-    };
-    std::unordered_map<std::string, NetStats> net_stats;
-
     for (const auto & [id, rec] : charge_records_) {
       switch (rec.outcome) {
         case ChargeOutcome::ACCEPTED: accepted++; break;
@@ -788,20 +983,6 @@ private:
       }
       if (rec.charge_completed && rec.end_battery >= 0.0 && rec.start_battery >= 0.0) {
         energy_recovered.push_back(rec.end_battery - rec.start_battery);
-      }
-    }
-
-    for (const auto & [msg_id, rec] : records_) {
-      std::string key = std::to_string(rec.flow_type) + ":" + rec.control_type;
-      auto & stats = net_stats[key];
-      stats.generated++;
-      if (rec.delivered) {
-        stats.delivered++;
-        stats.forward_sum += static_cast<double>(rec.forward_count);
-        stats.delays_ms.push_back((rec.delivered_time - rec.creation_time).seconds() * 1000.0);
-      }
-      if (rec.dropped && !rec.drop_reason.empty()) {
-        stats.drop_reasons[rec.drop_reason]++;
       }
     }
 
@@ -857,20 +1038,23 @@ private:
         << "    }\n"
         << "  },\n"
         << "  \"network\": {\n"
+        << "    \"qos_targets\": {\n"
+        << "      \"pdr\": " << qos_target_pdr_ << ",\n"
+        << "      \"delay_ms\": " << qos_target_delay_ms_ << ",\n"
+        << "      \"jitter_ms\": " << qos_target_jitter_ms_ << "\n"
+        << "    },\n"
+        << "    \"qos_weights\": {\n"
+        << "      \"pdr\": " << qos_weight_pdr_ << ",\n"
+        << "      \"delay\": " << qos_weight_delay_ << ",\n"
+        << "      \"jitter\": " << qos_weight_jitter_ << "\n"
+        << "    },\n"
         << "    \"by_category\": [\n";
 
     bool first_cat = true;
-    for (const auto & [key, stats] : net_stats) {
+    auto qos_stats = buildQosStats();
+    for (const auto & [key, stats] : qos_stats) {
       if (!first_cat) out << ",\n";
       first_cat = false;
-      double pdr = stats.generated == 0 ? 0.0 : static_cast<double>(stats.delivered) / static_cast<double>(stats.generated);
-      double delay_mean = -1.0;
-      if (!stats.delays_ms.empty()) {
-        double sum = 0.0;
-        for (double v : stats.delays_ms) sum += v;
-        delay_mean = sum / static_cast<double>(stats.delays_ms.size());
-      }
-      double forward_mean = stats.delivered == 0 ? -1.0 : stats.forward_sum / static_cast<double>(stats.delivered);
       auto sep = key.find(':');
       std::string flow_str = key.substr(0, sep);
       std::string ctrl_str = (sep == std::string::npos) ? "" : key.substr(sep + 1);
@@ -880,12 +1064,19 @@ private:
       } catch (...) {
         flow_val = 0;
       }
-      out << "      {\"flow_type\": " << flow_val
-          << ", \"control_type\": \"" << ctrl_str << "\",\n"
-          << "       \"generated\": " << stats.generated << ",\n"
-          << "       \"delivered\": " << stats.delivered << ",\n"
-          << "       \"pdr\": " << pdr << ",\n"
-          << "       \"delay_ms\": {\"mean\": " << delay_mean << ", \"p95\": " << percentile(stats.delays_ms, 95.0) << "},\n"
+      QosMetrics metrics = finalizeQosStats(stats, flow_val, ctrl_str);
+      out << "      {\"flow_type\": " << metrics.flow_type
+          << ", \"control_type\": \"" << metrics.control_type << "\",\n"
+          << "       \"generated\": " << metrics.generated << ",\n"
+          << "       \"delivered\": " << metrics.delivered << ",\n"
+          << "       \"dropped\": " << metrics.dropped << ",\n"
+          << "       \"pdr\": " << metrics.pdr << ",\n"
+          << "       \"delay_ms\": {\"mean\": " << metrics.delay_mean_ms
+          << ", \"p95\": " << metrics.delay_p95_ms << "},\n"
+          << "       \"jitter_ms\": " << metrics.jitter_ms << ",\n"
+          << "       \"throughput_bps\": " << metrics.throughput_bps << ",\n"
+          << "       \"generated_bps\": " << metrics.generated_bps << ",\n"
+          << "       \"qos_score\": " << metrics.qos_score << ",\n"
           << "       \"drops\": {";
       bool first_reason = true;
       for (const auto & [reason, count] : stats.drop_reasons) {
@@ -893,8 +1084,7 @@ private:
         first_reason = false;
         out << "\"" << reason << "\": " << count;
       }
-      out << "},\n"
-          << "       \"overhead\": {\"avg_forward_count_delivered\": " << forward_mean << "}\n"
+      out << "}\n"
           << "      }";
     }
     out << "\n    ]\n"
@@ -951,11 +1141,18 @@ private:
   double status_sample_period_sec_ = 1.0;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
+  std::unordered_set<std::string> exported_qos_keys_;
 
   rclcpp::Time start_time_;
   double max_runtime_sec_ = 0.0;
   bool stop_on_backbone_loss_ = false;
   std::vector<std::string> backbone_ids_;
+  double qos_target_pdr_ = 0.95;
+  double qos_target_delay_ms_ = 200.0;
+  double qos_target_jitter_ms_ = 50.0;
+  double qos_weight_pdr_ = 0.5;
+  double qos_weight_delay_ = 0.3;
+  double qos_weight_jitter_ = 0.2;
 };
 
 int main(int argc, char ** argv)
