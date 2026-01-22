@@ -70,7 +70,7 @@ def _make_nodes(context, *args, **kwargs):
     # Common network params
     neighbor_timeout = float(_get(cfg, ["network", "neighbor_timeout_sec"], 3.0))
     comm_radius = float(_get(cfg, ["network", "comm_radius_m"], 400.0))
-    ch_ids = _get(cfg, ["uavs", "ch_ids"], []) or []
+    ch_ids = [str(ch_id) for ch_id in (_get(cfg, ["uavs", "ch_ids"], []) or [])]
     members = _get(cfg, ["uavs", "members"], []) or []
 
     # Fleet visualizer (optional)
@@ -181,7 +181,7 @@ def _make_nodes(context, *args, **kwargs):
     # Coverage planner (optional)
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
         member_ids = [str(m.get("id")) for m in members]
-        uav_ids = [str(ch_id) for ch_id in ch_ids] + member_ids
+        uav_ids = ch_ids + member_ids
         nodes.append(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
@@ -222,7 +222,7 @@ def _make_nodes(context, *args, **kwargs):
                 parameters=[{
                     "cluster_id": cfg_entry["cluster_id"],
                     "ch_id": cfg_entry["ch_id"],
-                    "member_ids": cfg_entry["member_ids"],
+                    "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
                 }],
             ))
 
