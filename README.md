@@ -68,13 +68,24 @@ flowchart TD
 
 ### 2. Routing Model (No Global Knowledge)
 
-Each UAV performs:
+Routing is **purely distributed** and **state‑light**, built around local neighbor state and a
+small CH backbone table (no global topology knowledge). Each UAV performs:
 
-* Local neighbor discovery
-* Greedy next‑hop selection
-* Charging‑aware routing penalty
-* Loop guard + TTL enforcement
-* Store–carry–forward buffering
+* **Neighbor discovery via status beacons** – routing decisions use the most recent `/fanet/status`
+  table and drop stale neighbors after a timeout.
+* **Greedy geographic forwarding** – for a destination with a known pose, the next hop is chosen
+  to maximize *forward progress* (reduce distance to the destination), while also considering a
+  link‑expiration heuristic based on relative motion.
+* **Charging‑aware penalties** – neighbors that are charging or about to leave are penalized in
+  the greedy score to avoid routing through unstable relays.
+* **Backbone/table fallback** – if greedy selection fails, CHs use `next_hop_to_sink` and optional
+  per‑destination rules (routing table) computed by the coverage planner. Members always forward
+  to their CH first.
+* **Location‑Aided DTN (LADTR)** – when enabled, a lightweight “progress neighbor” heuristic is
+  used to forward toward the destination; otherwise messages can be buffered for store–carry–
+  forward retries with TTL.
+* **Safety guards** – loop detection via recent‑hop history, hop‑count increments, and TTL expiry
+  prevent routing storms and infinite circulation.
 
 ---
 
