@@ -73,17 +73,19 @@ small CH backbone table (no global topology knowledge). Each UAV performs:
 
 * **Neighbor discovery via status beacons** – routing decisions use the most recent `/fanet/status`
   table and drop stale neighbors after a timeout.
-* **Greedy geographic forwarding** – for a destination with a known pose, the next hop is chosen
-  to maximize *forward progress* (reduce distance to the destination), while also considering a
-  link‑expiration heuristic based on relative motion.
+* **Greedy geographic forwarding (first choice)** – the actual selector used before any fallbacks
+  is `selectGreedyNextHop(...)` (no LADTR). It chooses among current neighbors that make positive
+  progress toward the destination and are within comms range, then scores them by forward progress
+  plus a link‑expiration heuristic derived from relative motion, with penalties for charging or
+  leaving‑soon neighbors.
 * **Charging‑aware penalties** – neighbors that are charging or about to leave are penalized in
   the greedy score to avoid routing through unstable relays.
 * **Backbone/table fallback** – if greedy selection fails, CHs use `next_hop_to_sink` and optional
   per‑destination rules (routing table) computed by the coverage planner. Members always forward
   to their CH first.
-* **Location‑Aided DTN (LADTR)** – when enabled, a lightweight “progress neighbor” heuristic is
-  used to forward toward the destination; otherwise messages can be buffered for store–carry–
-  forward retries with TTL.
+* **LADTR fallback** – only after the greedy selector fails, the router optionally tries a
+  Location‑Aided DTN “progress neighbor” heuristic to pick a next hop toward the destination.
+  If no next hop is found, messages can be buffered for store–carry–forward retries with TTL.
 * **Safety guards** – loop detection via recent‑hop history, hop‑count increments, and TTL expiry
   prevent routing storms and infinite circulation.
 NOT routed through FANET (direct ROS topics)
