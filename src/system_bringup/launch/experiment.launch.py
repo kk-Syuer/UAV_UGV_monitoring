@@ -73,6 +73,19 @@ def _make_nodes(context, *args, **kwargs):
     ch_ids = _get(cfg, ["uavs", "ch_ids"], []) or []
     members = _get(cfg, ["uavs", "members"], []) or []
 
+    # Fleet visualizer (optional)
+    if _bool_from_str(_get(cfg, ["planner_viz", "enable"], True), True):
+        viz_headless = _bool_from_str(_get(cfg, ["planner_viz", "headless"], False), False)
+        viz_env = {"FLEET_VIZ_HEADLESS": "1"} if viz_headless else {}
+        nodes.append(Node(
+            package=_get(cfg, ["executables", "planner_viz_pkg"], "planner_viz"),
+            executable=_get(cfg, ["executables", "planner_viz_exec"], "fleet_viz"),
+            name=f"fleet_viz_{run_id}",
+            output="screen",
+            parameters=[{}],
+            additional_env=viz_env,
+        ))
+
     # Monitor
     monitor_params = {
         "run_id": run_id,
@@ -179,19 +192,6 @@ def _make_nodes(context, *args, **kwargs):
                 "num_ch": len(ch_ids),
                 "ugv_id": ugv_id,
             }],
-        ))
-
-    # Fleet visualizer (optional)
-    if _bool_from_str(_get(cfg, ["planner_viz", "enable"], True), True):
-        viz_headless = _bool_from_str(_get(cfg, ["planner_viz", "headless"], False), False)
-        viz_env = {"FLEET_VIZ_HEADLESS": "1"} if viz_headless else {}
-        nodes.append(Node(
-            package=_get(cfg, ["executables", "planner_viz_pkg"], "planner_viz"),
-            executable=_get(cfg, ["executables", "planner_viz_exec"], "fleet_viz"),
-            name=f"fleet_viz_{run_id}",
-            output="screen",
-            parameters=[{}],
-            additional_env=viz_env,
         ))
 
     # Cluster head manager(s) (optional)
