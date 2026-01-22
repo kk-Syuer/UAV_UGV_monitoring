@@ -78,6 +78,8 @@ class FleetVizNode(Node):
         self.last_charge_decision_accepted = None
         self.charge_request_ids = set()
         self.charge_decision_ids = set()
+        self.control_msg_ids = set()
+        self.ack_ids = set()
 
         # Control-plane snapshots.
         self.cluster_info = {}
@@ -268,7 +270,9 @@ class FleetVizNode(Node):
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
         now = self._now_sec()
-        self.control_type_counts[msg.control_type] += 1
+        if msg.msg_id and msg.msg_id not in self.control_msg_ids:
+            self.control_msg_ids.add(msg.msg_id)
+            self.control_type_counts[msg.control_type] += 1
 
         if msg.control_type == 'DROP':
             ref_id = msg.ref_msg_id
@@ -280,7 +284,9 @@ class FleetVizNode(Node):
             self._record_timestamp(self.drop_timestamps, now)
             return
         if msg.control_type == 'ACK':
-            self.ack_total += 1
+            if msg.msg_id and msg.msg_id not in self.ack_ids:
+                self.ack_ids.add(msg.msg_id)
+                self.ack_total += 1
         if msg.control_type == 'CHARGE_REQUEST':
             if msg.msg_id and msg.msg_id in self.charge_request_ids:
                 return
