@@ -41,6 +41,7 @@ struct MsgRecord {
   std::string drop_reason;
   std::string dropper_id;
   size_t payload_bytes = 0;
+  bool generated_counted = false;
 };
 
 enum class ChargeOutcome {
@@ -260,7 +261,10 @@ private:
       rec.creation_time = rclcpp::Time(msg->creation_time);
       rec.payload_bytes = msg->payload.size();
       rec.first_seen_bus_time = this->now();
-      total_generated_++;
+      if (!rec.generated_counted) {
+        total_generated_++;
+        rec.generated_counted = true;
+      }
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
@@ -306,6 +310,11 @@ private:
       rec.dst_id = msg->dst_id;
       rec.creation_time = rclcpp::Time(msg->creation_time);
       rec.payload_bytes = msg->payload.size();
+    }
+
+    if (!rec.generated_counted) {
+      total_generated_++;
+      rec.generated_counted = true;
     }
 
     if (rec.delivered) {
