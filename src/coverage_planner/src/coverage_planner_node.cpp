@@ -1641,19 +1641,13 @@ private:
   std::string chooseBootstrapNextHop(const uav_msgs::msg::UavDeployment & dep)
   {
     if (dep.uav_id == "sink_gateway" || dep.uav_id == ugv_id_) {
-      // Infrastructure nodes: inject via bootstrap CH if we have one,
-      // otherwise send directly to them.
-      if (!bootstrap_ch_id_.empty()) {
-        return bootstrap_ch_id_;
-      }
+      // Infrastructure nodes: send directly to the target so they can accept
+      // the deployment before any routing table exists.
       return dep.uav_id;
     }
 
     if (dep.role == 1) {
-      // CH deployment: route via bootstrap CH if set, otherwise directly
-      if (!bootstrap_ch_id_.empty()) {
-        return bootstrap_ch_id_;
-      }
+      // CH deployment: send directly to the CH so it can bootstrap routing.
       return dep.uav_id;
     }
 
