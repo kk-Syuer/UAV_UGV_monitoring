@@ -31,7 +31,7 @@ This separation allows us to **inject failures without modifying node logic** an
 
 ---
 
-### 1.1 Deployment Point Computation (Coverage Planner)
+### 2. Deployment Point Computation (Coverage Planner)
 
 The **coverage planner** computes deployment targets for the sink, UGV, cluster heads (CHs), and member UAVs during the initial deployment cycle:
 
@@ -67,14 +67,17 @@ flowchart TD
 ---
 
 
-Some important signals bypass the overlay:
-UAV status publication (e.g., UavStatus) is on a direct ROS topic and consumed directly by UGV / monitor / viz.
-Weather is  a direct topic (WeatherStatus)
-Monitoring/logging topics are direct
+### 3. Direct Topics (Out-of-Band)
+
+Some important signals bypass the FANET overlay:
+
+* UAV status publication (e.g., `UavStatus`) is a direct ROS topic consumed by the UGV, monitor, and visualization tools.
+* Weather updates (`WeatherStatus`) are direct ROS topics.
+* Monitoring/logging topics are published directly.
 
 ---
 
-### 3. Roles in the System
+### 4. Roles in the System
 
 * **Member UAVs**
   Perform area scanning and generate search telemetry when reaching task points.
@@ -94,23 +97,24 @@ Monitoring/logging topics are direct
 
 The FANET simulation uses **centralized, event-driven routing** that is computed by a dedicated routing manager and consumed by every network endpoint. Routing decisions are explicit, observable, and logged for traceability.
 
-### 1) Core Routing Components
+### 1. Core Routing Components
 
 * **Routing Manager (`routing_manager_node`)**
   * Subscribes to UAV/UGV **status beacons** on `/fanet/status` and **routing events** on `/fanet/routing_event`.
-  * Builds a backbone graph of **cluster heads (CHs)** and runs Dijkstra to compute **next-hop tables** for every active node.
+  * Builds a backbone graph of **cluster heads (CHs)** and assigns non-CH endpoints to the nearest reachable CH gateway.
+  * Runs Dijkstra on the CH backbone to compute **next-hop tables** for every active node.
   * Publishes a full **routing table** per node on `/fanet/routing_table`, including next hops for CH-to-CH, CH-to-endpoint, and endpoint-to-CH gateway traffic.
   * Uses hysteresis and CH-movement thresholds to avoid route flapping, and periodically recomputes routes even without events.
 
 * **Coverage Planner**
-  * Computes the **initial deployment** and bootstraps **CH routes to the sink and UGV** (direct if in range, otherwise via CH backbone).
+  * Computes the **initial deployment** and bootstraps **CH routes to the sink and UGV** via `UavDeployment` messages (direct if in range, otherwise via CH backbone).
   * Recomputes CH backbone routes when CHs change `backbone_active` state, and republishes deployment messages with updated next hops.
 
 * **Network Endpoints (UAVs, Sink Gateway, UGV Charger)**
   * Subscribe to `/fanet/routing_table` and **cache per-node next hops** for control and data traffic.
   * Resolve the next hop locally before transmitting traffic on `/fanet/network_bus_raw`.
 
-### 2) Routing Data Flow
+### 2. Routing Data Flow
 
 ```mermaid
 flowchart LR
@@ -127,7 +131,7 @@ flowchart LR
     Sink --> Bus
 ```
 
-### 3) Routing Logging & Eventing
+### 3. Routing Logging & Eventing
 
 * **Routing manager logs** every computed route (`[routing] src -> dst via next_hop`) for traceability.
 * **Endpoints publish routing events** (e.g., `NO_ROUTE_CONTROL`) to `/fanet/routing_event` whenever they detect an unreachable destination.
@@ -135,7 +139,7 @@ flowchart LR
 
 ---
 
-### 4. Charging Protocol Evaluation
+## Charging Protocol Evaluation
 
 Charging is treated as a **networked control problem**:
 
@@ -154,7 +158,7 @@ This enables **direct comparison of charging policies under network stress**.
 
 ---
 
-### 5. Weather‑Driven Fault Injection
+## Weather‑Driven Fault Injection
 
 A dedicated **fault injector** models packet drops as a function of:
 
