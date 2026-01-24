@@ -192,6 +192,10 @@ class FleetVizNode(Node):
     def status_cb(self, msg: UavStatus):
         """Cache latest UAV status for plotting."""
         self.uav_states[msg.uav_id] = msg
+        if msg.uav_id == 'ugv' or msg.uav_id.startswith('ugv_'):
+            self.ugv_pose = msg.pose
+        elif msg.uav_id == 'sink_gateway':
+            self.sink_pose = msg.pose
 
     def deployment_cb(self, msg: UavDeployment):
         """Capture sink/UGV deployments for map anchors."""
@@ -439,24 +443,26 @@ class FleetVizNode(Node):
             info_lines.append(self._title_line('Weather'))
             info_lines.append(self._line('  (no data)'))
 
-        if self.uav_states:
+        fleet_states = {
+            uid: st for uid, st in self.uav_states.items()
+            if uid != 'sink_gateway' and not uid.startswith('ugv')
+        }
+        if fleet_states:
             info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
-            num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
-            num_mem = sum(1 for st in self.uav_states.values() if st.role == 0)
-            num_backbone = sum(1 for st in self.uav_states.values() if st.backbone_active)
-            avg_capacity = sum(st.battery_capacity for st in self.uav_states.values()) / len(
-                self.uav_states
+            num_ch = sum(1 for st in fleet_states.values() if st.role == 1)
+            num_mem = sum(1 for st in fleet_states.values() if st.role == 0)
+            avg_capacity = sum(st.battery_capacity for st in fleet_states.values()) / len(
+                fleet_states
             )
             info_lines.append(self._line(
-                f"  UAVs: {len(self.uav_states)} | CH: {num_ch} | MEM: {num_mem} | "
-                f"Backbone: {num_backbone}"
+                f"  UAVs: {len(fleet_states)} | CH: {num_ch} | MEM: {num_mem}"
             ))
             info_lines.append(self._line(
                 f"  Comm radius (CH): {self.comm_radius_ch:.1f} m | "
                 f"Avg capacity: {avg_capacity:.1f}"
             ))
-            for uid in sorted(self.uav_states.keys()):
-                st = self.uav_states[uid]
+            for uid in sorted(fleet_states.keys()):
+                st = fleet_states[uid]
                 px = st.pose.position.x
                 py = st.pose.position.y
                 info_lines.append(self._line(
