@@ -17,8 +17,6 @@ from matplotlib.widgets import Button
 from geometry_msgs.msg import Pose
 from rclpy.qos import DurabilityPolicy
 from rclpy.qos import QoSProfile
-from uav_msgs.msg import ChargeDecision
-from uav_msgs.msg import ChargeRequest
 from uav_msgs.msg import ClusterInfo
 from uav_msgs.msg import TaskPointArray
 from uav_msgs.msg import TrafficMessage
@@ -41,11 +39,6 @@ class FleetVizNode(Node):
         self.weather_sub = self.create_subscription(
             WeatherStatus, '/environment/weather', self.weather_cb, 10)
 
-        self.charge_request_sub = self.create_subscription(
-            ChargeRequest, '/uav_fleet/charge_requests', self.charge_request_cb, 50)
-
-        self.charge_decision_sub = self.create_subscription(
-            ChargeDecision, '/ugv/charge_decisions', self.charge_decision_cb, 50)
         task_point_qos = QoSProfile(depth=1, durability=DurabilityPolicy.TRANSIENT_LOCAL)
         self.task_point_sub = self.create_subscription(
             TaskPointArray, '/coverage_planner/task_points', self.task_point_cb, task_point_qos)
@@ -69,9 +62,9 @@ class FleetVizNode(Node):
             'cyan', 'magenta', 'orange', 'lime', 'yellow', 'plum', 'deepskyblue', 'white'
         ]
 
-        # Queue + scheduling summary.
+        # Queue + scheduling summary (fanet-sourced).
         self.pending_charges: Dict[str, Dict[str, Any]] = {}
-        self.latest_policy = 'n/a'
+        self.latest_policy = 'n/a (fanet)'
         self.last_charge_request_time = None
         self.last_charge_decision_time = None
         self.last_charge_decision_target = None
@@ -211,23 +204,6 @@ class FleetVizNode(Node):
     def weather_cb(self, msg: WeatherStatus):
         """Cache current weather for the info panel."""
         self.weather = msg
-
-    def charge_request_cb(self, msg: ChargeRequest):
-        """Track outstanding charging requests."""
-        request_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
-        if msg.uav_id in self.pending_charges:
-            self.pending_charges[msg.uav_id]['time'] = request_time
-            self.pending_charges[msg.uav_id]['battery'] = msg.battery_level
-            self.pending_charges[msg.uav_id]['role'] = int(msg.role)
-
-    def charge_decision_cb(self, msg: ChargeDecision):
-        """Update scheduling policy and clear completed requests."""
-        now = self._now_sec()
-        self.latest_policy = msg.policy if msg.policy else 'n/a'
-        if self.last_charge_decision_time is None:
-            self.last_charge_decision_time = now
-            self.last_charge_decision_target = msg.uav_id
-            self.last_charge_decision_accepted = msg.accepted
 
     def task_point_cb(self, msg: TaskPointArray):
         self.task_points = list(msg.tasks)
@@ -612,8 +588,13 @@ class FleetVizNode(Node):
             )
             for uid, meta in ordered:
                 role_val = meta.get('role')
-                role_label = self.role_label(int(role_val)) if role_val is not None else 'UNK'
                 battery = meta.get('battery')
+                status = self.uav_states.get(uid)
+                if role_val is None and status is not None:
+                    role_val = status.role
+                if battery is None and status is not None:
+                    battery = status.battery_level
+                role_label = self.role_label(int(role_val)) if role_val is not None else 'UNK'
                 if battery is None:
                     queue_lines.append(self._line(f"    - {uid} [{role_label}]"))
                 else:
