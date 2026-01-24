@@ -204,6 +204,10 @@ public:
       this->declare_parameter<double>("uav_speed_mps", 15.3);
     tasks_per_round_ =
       this->declare_parameter<int>("tasks_per_round", 8);
+    deployment_arrival_eps_ =
+      this->declare_parameter<double>("deployment_arrival_eps", 1.0);
+    deployment_arrival_ticks_required_ =
+      std::max(1, this->declare_parameter<int>("deployment_arrival_ticks", 3));
     mobility_phase_ = MobilityPhase::IDLE;
     deployment_goal_pose_.position.x = 0.0;
     deployment_goal_pose_.position.y = 0.0;
@@ -486,7 +490,7 @@ private:
     bool ready_for_battery =
       deployment_received_ &&
       start_mobility_received_ &&
-      (role_ == 1 || member_release_received_);
+      (role_ == 1 || released_by_ch_);
 
     // If we haven't received deployment/motion yet, stay "idle":
     // - no drain
@@ -985,15 +989,6 @@ private:
       updateChDeploymentReached(state);
     }
 
-    if (role_ == 1 &&
-        !release_sent_ &&
-        deployment_received_ &&
-        start_mobility_received_ &&
-        mobility_phase_ == MobilityPhase::IDLE &&
-        cluster_members_.count(msg->uav_id) > 0)
-    {
-      sendTaskReleaseToMembers();
-    }
   }
 
   void pruneNeighbors()
@@ -1182,6 +1177,9 @@ private:
       if (role_ != 0) {
         return;
       }
+      if (msg->src_id != my_ch_id_) {
+        return;
+      }
       std::string payload_cluster;
       std::vector<geometry_msgs::msg::Point> assigned_points;
       if (!msg->payload.empty() &&
@@ -1199,24 +1197,22 @@ private:
       }
       publishDelivered(*msg, rx_time);
       maybePublishAck(*msg);
-      member_release_received_ = true;
-      ch_deployment_reached_ = true;
+      released_by_ch_ = true;
       if (!deployment_received_) {
         deployment_received_ = true;
       }
-      if (mobility_phase_ == MobilityPhase::IDLE && mobility_enabled_) {
-        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
-      }
-      if (mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT && mobility_enabled_) {
-        auto it_ch = ch_poses_.find(my_ch_id_);
-        if (it_ch != ch_poses_.end()) {
-          initTaskMobility(it_ch->second);
-        }
+      refreshClusterTaskPoints();
+      if (task_points_.empty()) {
+        mobility_phase_ = MobilityPhase::IDLE;
+        RCLCPP_WARN(this->get_logger(),
+                    "[RELEASE] %s released by CH %s; no tasks assigned, staying idle",
+                    uav_id_.c_str(), msg->src_id.c_str());
+      } else {
         mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+        RCLCPP_INFO(this->get_logger(),
+                    "[RELEASE] %s released by CH %s; starting task mobility",
+                    uav_id_.c_str(), msg->src_id.c_str());
       }
-      RCLCPP_INFO(this->get_logger(),
-                  "[TASK-RELEASE] %s released by CH %s",
-                  uav_id_.c_str(), msg->src_id.c_str());
       return;
     }
 
@@ -1347,7 +1343,7 @@ private:
       if (!release_sent_ &&
           deployment_received_ &&
           start_mobility_received_ &&
-          mobility_phase_ == MobilityPhase::IDLE &&
+          deployment_arrival_ticks_ >= deployment_arrival_ticks_required_ &&
           !cluster_members_.empty())
       {
         sendTaskReleaseToMembers();
@@ -2065,7 +2061,7 @@ private:
         cluster_task_points_.push_back(tp.position);
       }
     }
-    if (role_ == 0 && member_release_received_) {
+    if (role_ == 0 && released_by_ch_) {
       const auto & source_points =
         assigned_task_points_.empty() ? cluster_task_points_ : assigned_task_points_;
       if (source_points.empty()) {
@@ -2073,7 +2069,13 @@ private:
       }
       task_points_ = buildTspPath(pose_.position, source_points);
       current_task_index_ = 0;
-      if (mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
+      if (mobility_phase_ != MobilityPhase::TASK_MOBILITY && mobility_enabled_) {
+        mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+        RCLCPP_INFO(this->get_logger(),
+                    "UAV %s: task mobility activated with %zu task points.",
+                    uav_id_.c_str(),
+                    task_points_.size());
+      } else if (mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
         RCLCPP_INFO(this->get_logger(),
                     "UAV %s: refreshed TSP path with %zu task points.",
                     uav_id_.c_str(),
@@ -2199,21 +2201,16 @@ private:
 
         case MobilityPhase::GO_TO_DEPLOYMENT:
         {
-          if (role_ == 0 && !member_release_received_) {
+          if (role_ == 0 && !released_by_ch_) {
             held_by_ch = true;
             break;
           }
-          if (role_ == 0 && member_release_received_) {
-            auto it = ch_poses_.find(my_ch_id_);
-            if (it != ch_poses_.end()) {
-              initTaskMobility(it->second);
+          if (role_ == 0 && released_by_ch_) {
+            if (task_points_.empty()) {
+              mobility_phase_ = MobilityPhase::IDLE;
             } else {
-              geometry_msgs::msg::Pose fallback_pose;
-              fallback_pose.position = pose_.position;
-              fallback_pose.orientation.w = 1.0;
-              initTaskMobility(fallback_pose);
+              mobility_phase_ = MobilityPhase::TASK_MOBILITY;
             }
-            mobility_phase_ = MobilityPhase::TASK_MOBILITY;
             break;
           }
           bool reached = stepTowards2D(
@@ -2232,16 +2229,21 @@ private:
                         pose_.position.y,
                         pose_.position.z);
 
-            if (role_ == 1) {
+            if (role_ != 1) {
+              break;
+            }
+          }
+          if (role_ == 1) {
+            double dist_to_goal = distance2d(pose_.position, deployment_goal_pose_.position);
+            if (dist_to_goal <= deployment_arrival_eps_) {
+              deployment_arrival_ticks_++;
+            } else {
+              deployment_arrival_ticks_ = 0;
+            }
+            if (!release_sent_ &&
+                deployment_arrival_ticks_ >= deployment_arrival_ticks_required_) {
               sendTaskReleaseToMembers();
               mobility_phase_ = MobilityPhase::IDLE;
-            } else {
-              // Member: start task mobility inside cluster
-              auto it = ch_poses_.find(my_ch_id_);
-              if (it != ch_poses_.end()) {
-                initTaskMobility(it->second);
-              }
-              mobility_phase_ = MobilityPhase::TASK_MOBILITY;
             }
           }
           break;
@@ -2535,11 +2537,12 @@ private:
       deployment_ack_sent_ = false;
       start_mobility_received_ = false;
       ch_deployment_reached_ = false;
-      member_release_received_ = false;
+      released_by_ch_ = false;
       release_sent_ = false;
       assigned_task_points_.clear();
       task_release_pending_.clear();
       task_release_msg_to_member_.clear();
+      deployment_arrival_ticks_ = 0;
     }
 
     // 1) Update cluster metadata for routing + task release targeting.
@@ -2708,8 +2711,7 @@ private:
     msg.payload = pending.payload;
     msg.requires_ack = true;
 
-    std::string direct_hop = resolveNextHop(member_id);
-    msg.next_hop_id = pickNextHop(member_id, direct_hop);
+    msg.next_hop_id = member_id;
     if (msg.next_hop_id.empty()) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot send TASK_RELEASE to %s (no route).",
@@ -2720,8 +2722,8 @@ private:
     bool sent = publishToBus(msg);
     if (sent) {
       RCLCPP_INFO(this->get_logger(),
-                  "[TASK-RELEASE] CH %s sent TASK_RELEASE to %s via %s",
-                  uav_id_.c_str(), member_id.c_str(), msg.next_hop_id.c_str());
+                  "[RELEASE] CH %s releasing member %s",
+                  uav_id_.c_str(), member_id.c_str());
     } else {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: TASK_RELEASE to %s failed to send via %s (unreachable).",
@@ -2933,7 +2935,7 @@ private:
   bool deployment_ack_sent_ = false;
   bool start_mobility_received_ = false;
   bool ch_deployment_reached_ = false;
-  bool member_release_received_ = false;
+  bool released_by_ch_ = false;
   bool release_sent_ = false;
   uint64_t dep_ack_seq_ = 0;
 
@@ -2962,6 +2964,9 @@ private:
   double mobility_dt_sec_;
   double uav_speed_mps_;
   int tasks_per_round_;
+  double deployment_arrival_eps_ = 1.0;
+  int deployment_arrival_ticks_required_ = 1;
+  int deployment_arrival_ticks_ = 0;
 
   rclcpp::TimerBase::SharedPtr mobility_timer_;
 
