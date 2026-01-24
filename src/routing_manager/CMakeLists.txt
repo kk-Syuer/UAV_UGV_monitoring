@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(sink_gateway)
+project(routing_manager)
 
 if(NOT CMAKE_CXX_STANDARD)
   set(CMAKE_CXX_STANDARD 14)
@@ -11,9 +11,9 @@ find_package(uav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
 find_package(std_msgs REQUIRED)
 
-add_executable(sink_gateway_node src/sink_gateway_node.cpp)
+add_executable(routing_manager_node src/routing_manager_node.cpp)
 
-ament_target_dependencies(sink_gateway_node
+ament_target_dependencies(routing_manager_node
   rclcpp
   uav_msgs
   geometry_msgs
@@ -21,7 +21,7 @@ ament_target_dependencies(sink_gateway_node
 )
 
 install(TARGETS
-  sink_gateway_node
+  routing_manager_node
   DESTINATION lib/${PROJECT_NAME}
 )
 

@@ -164,6 +164,21 @@ def _make_nodes(context, *args, **kwargs):
         parameters=[sink_params],
     ))
 
+    routing_params = {
+        "comm_range_m": comm_radius,
+        "recompute_period_sec": float(_get(cfg, ["routing", "recompute_period_sec"], 2.0)),
+        "hysteresis_margin_m": float(_get(cfg, ["routing", "hysteresis_margin_m"], 3.0)),
+        "ch_move_threshold_m": float(_get(cfg, ["routing", "ch_move_threshold_m"], 7.5)),
+        "status_timeout_sec": float(_get(cfg, ["routing", "status_timeout_sec"], 5.0)),
+    }
+    nodes.append(Node(
+        package=_get(cfg, ["executables", "routing_pkg"], "routing_manager"),
+        executable=_get(cfg, ["executables", "routing_exec"], "routing_manager_node"),
+        name=f"routing_manager_{run_id}",
+        output="screen",
+        parameters=[routing_params],
+    ))
+
     # UGV charger
     ugv_params = {
         "ugv_id": ugv_id,
