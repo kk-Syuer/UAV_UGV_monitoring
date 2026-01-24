@@ -631,7 +631,11 @@ private:
     ack.control_type = "DEPLOYMENT_ACK";
     ack.payload = "";
 
-    if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
+    if (ack.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: no route to sink for DEPLOYMENT_ACK, sending without next hop.",
+                  ugv_id_.c_str());
+    } else if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: dropping DEPLOYMENT_ACK msg_id=%s (next hop unreachable)",
                   ugv_id_.c_str(), ack.msg_id.c_str());
