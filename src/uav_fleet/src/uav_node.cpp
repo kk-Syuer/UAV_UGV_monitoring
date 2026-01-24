@@ -17,6 +17,8 @@
 #include "uav_msgs/msg/weather_status.hpp"
 #include "uav_msgs/msg/task_point_array.hpp"
 #include "uav_msgs/msg/task_point.hpp"
+#include "uav_msgs/msg/routing_table.hpp"
+#include "std_msgs/msg/string.hpp"
 
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -221,6 +223,8 @@ public:
       "/fanet/network_bus_raw", 10);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 10);
+    routing_event_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/fanet/routing_event", 10);
     charge_request_pub_ = this->create_publisher<uav_msgs::msg::ChargeRequest>(
       "/uav_fleet/charge_requests", 10);
     failure_pub_ = this->create_publisher<uav_msgs::msg::FailureEvent>(
@@ -247,6 +251,9 @@ public:
     task_point_sub_ = this->create_subscription<uav_msgs::msg::TaskPointArray>(
       "/coverage_planner/task_points", rclcpp::QoS(1).transient_local(),
       std::bind(&UavNode::taskPointCallback, this, std::placeholders::_1));
+    routing_table_sub_ = this->create_subscription<uav_msgs::msg::RoutingTable>(
+      "/fanet/routing_table", 20,
+      std::bind(&UavNode::routingTableCallback, this, std::placeholders::_1));
 
     // ---- Timers ----
     status_timer_ = this->create_wall_timer(
@@ -285,13 +292,16 @@ public:
       rng_.seed(std::random_device{}());
     }
 
-    // Location-aided DTN routing parameters
-    location_aided_routing_ =
-      this->declare_parameter<bool>("ladtr_enabled", true);
+    // Location-aided DTN routing is disabled in centralized routing mode.
+    bool ladtr_enabled = this->declare_parameter<bool>("ladtr_enabled", false);
+    location_aided_routing_ = false;
+    if (ladtr_enabled) {
+      RCLCPP_WARN(this->get_logger(),
+                  "LADTR routing disabled (centralized routing manager active).");
+    }
     location_progress_threshold_m_ =
       this->declare_parameter<double>("ladtr_progress_threshold_m", 5.0);
-    carry_buffer_limit_ = static_cast<size_t>(
-      this->declare_parameter<int>("ladtr_buffer_limit", 200));
+    carry_buffer_limit_ = 0;
     carry_ttl_sec_ = this->declare_parameter<double>("ladtr_buffer_ttl_sec", 45.0);
     carry_retry_period_sec_ = this->declare_parameter<double>("ladtr_retry_period_sec", 1.0);
     task_release_retry_sec_ = this->declare_parameter<double>("task_release_retry_sec", 2.0);
@@ -310,10 +320,12 @@ public:
       std::bind(&UavNode::bufferTick, this));
     buffer_manager_.configure(buffer_max_msgs_, buffer_ttl_sec_, buffer_retry_period_sec_);
 
-    auto carry_retry = std::chrono::duration<double>(carry_retry_period_sec_);
-    ladtr_retry_timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(carry_retry),
-      std::bind(&UavNode::flushBufferedMessagesTimer, this));
+    if (location_aided_routing_ && carry_buffer_limit_ > 0) {
+      auto carry_retry = std::chrono::duration<double>(carry_retry_period_sec_);
+      ladtr_retry_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(carry_retry),
+        std::bind(&UavNode::flushBufferedMessagesTimer, this));
+    }
 
     auto status_period = std::chrono::duration<double>(status_period_sec_);
     ch_status_timer_ = this->create_wall_timer(
@@ -805,8 +817,7 @@ private:
       // First hop is my CH
       msg.next_hop_id = my_ch_id_;
     } else { // CH
-      // CH sends using LADTR when enabled, otherwise next_hop_to_sink_
-      msg.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
+      msg.next_hop_id = resolveNextHop(default_dst_id_);
     }
 
     msg.flow_type = 0;       // TEXT
@@ -1036,6 +1047,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot send STATUS_CH (no next hop to %s)",
                   uav_id_.c_str(), default_dst_id_.c_str());
+      publishRoutingEvent("NO_ROUTE_STATUS_CH", default_dst_id_, next_hop);
       return;
     }
 
@@ -1120,20 +1132,8 @@ private:
     msg.payload = req->text;
     msg.control_type = "DEBUG_TEXT:" + uav_id_;  // initial path is myself
 
-    // ---- NEW ROUTING LOGIC ----
-    if (role_ == 0) {
-      // MEMBER: always send to its CH first
-      msg.next_hop_id = my_ch_id_;
-    } else {
-      // CH:
-      // If destination is one of my cluster members, send directly down to it.
-      if (cluster_members_.find(msg.dst_id) != cluster_members_.end()) {
-        msg.next_hop_id = msg.dst_id;
-      } else {
-        // Otherwise, use LADTR when available (fallback to backbone routing).
-        msg.next_hop_id = pickNextHop(msg.dst_id, resolveNextHop(msg.dst_id));
-      }
-    }
+    // ---- Centralized routing logic ----
+    msg.next_hop_id = resolveNextHop(msg.dst_id);
 
     RCLCPP_INFO(this->get_logger(),
                 "[DEBUG TX] msg_id=%s src=%s dst=%s next_hop=%s text=\"%s\"",
@@ -1294,72 +1294,18 @@ private:
       return;
     }
 
-    // I'm not final destination; if I'm a CH, I may forward
+    // I'm not final destination; only CHs forward using centralized routing.
     if (role_ == 1) { // CH
-      // Multi-hop DEPLOYMENT forwarding along CH backbone
-      if (msg->flow_type == 1 &&
-          (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD") &&
-          msg->dst_id != uav_id_)
-      {
-          // Use backbone routing
-          std::string next_hop = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id),
-                                             &msg->recent_hops, &rx_time);
-
-          if (next_hop.empty()) {
-              RCLCPP_WARN(this->get_logger(),
-                          "[FWD-DEPLOY] CH %s: no route to %s, dropping msg %s",
-                          uav_id_.c_str(), msg->dst_id.c_str(), msg->msg_id.c_str());
-              publishDrop(msg->msg_id, "NO_REACHABLE_NEIGHBOR");
-              return;
-          }
-
-          msg->next_hop_id = next_hop;
-
-          RCLCPP_INFO(this->get_logger(),
-                      "[FWD-DEPLOY] CH %s forwarding DEPLOYMENT to %s via %s",
-                      uav_id_.c_str(), msg->dst_id.c_str(), next_hop.c_str());
-
-          publishToBus(*msg, true);
-          return;
-      }
-
       uav_msgs::msg::TrafficMessage fwd = *msg;
+      fwd.next_hop_id = resolveNextHop(msg->dst_id);
 
-      if (fwd.control_type == "MOTION_START") {
-        fwd.next_hop_id = msg->dst_id;
-      } else if (cluster_members_.find(msg->dst_id) != cluster_members_.end()) {
-        // If the destination is one of my cluster members, send directly down to it.
-        fwd.next_hop_id = msg->dst_id;
-      } else {
-        // Otherwise, use LADTR first, then fall back to backbone routing.
-        if (location_aided_routing_) {
-          auto ladtr = selectLadtrNextHop(msg->dst_id);
-          if (ladtr && !ladtr->empty()) {
-            fwd.next_hop_id = *ladtr;
-            RCLCPP_INFO(this->get_logger(),
-                        "[LADTR] %s forwarding msg_id=%s via %s toward %s",
-                        uav_id_.c_str(), fwd.msg_id.c_str(), fwd.next_hop_id.c_str(),
-                        msg->dst_id.c_str());
-            publishToBus(fwd);
-            return;
-          }
-        }
-
-        fwd.next_hop_id = pickNextHop(msg->dst_id, resolveNextHop(msg->dst_id),
-                                      &msg->recent_hops, &rx_time);
-        if (fwd.next_hop_id.empty() && location_aided_routing_) {
-          if (tryLocationAidedForward(fwd)) {
-            return;
-          }
-          publishToBus(fwd, true);
-          return;
-          } else if (fwd.next_hop_id.empty()) {
-            RCLCPP_WARN(this->get_logger(),
-                        "[FWD] CH %s dropping msg_id=%s: no route to %s",
-                        uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
-            publishDrop(fwd.msg_id, "NO_REACHABLE_NEIGHBOR");
-            return;
-          }
+      if (fwd.next_hop_id.empty()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[FWD] CH %s dropping msg_id=%s: no route to %s",
+                    uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
+        publishDrop(fwd.msg_id, "NO_ROUTE");
+        publishRoutingEvent("NO_ROUTE", msg->dst_id, fwd.next_hop_id);
+        return;
       }
 
       if (fwd.control_type.rfind("DEBUG_TEXT:", 0) == 0) { // starts with DEBUG_TEXT:
@@ -1418,6 +1364,45 @@ private:
     }
   }
 
+  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
+  {
+    if (msg->node_id != uav_id_) {
+      return;
+    }
+
+    routing_table_.clear();
+    const size_t count = std::min(msg->destinations.size(), msg->next_hops.size());
+    for (size_t i = 0; i < count; ++i) {
+      if (msg->destinations[i].empty()) {
+        continue;
+      }
+      if (!msg->next_hops[i].empty()) {
+        routing_table_[msg->destinations[i]] = msg->next_hops[i];
+      }
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s: routing table updated (%zu entries)",
+                uav_id_.c_str(), routing_table_.size());
+  }
+
+  void publishRoutingEvent(const std::string & reason,
+                           const std::string & dst_id,
+                           const std::string & next_hop) const
+  {
+    if (!routing_event_pub_) {
+      return;
+    }
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << "node=" << uav_id_
+        << " dst=" << dst_id
+        << " next_hop=" << (next_hop.empty() ? "UNREACHABLE" : next_hop)
+        << " reason=" << reason;
+    msg.data = oss.str();
+    routing_event_pub_->publish(msg);
+  }
+
   void deploymentCallback(const uav_msgs::msg::UavDeployment::SharedPtr msg)
   {
     if (!accept_direct_deployment_) {
@@ -1462,34 +1447,16 @@ private:
   // Resolve a destination into the next hop using cluster membership and routing table.
   std::string resolveNextHop(const std::string & dst) const
   {
-      // CASE 1: destination is known as member of a CH
-      auto itc = cluster_parent_.find(dst);
-      if (itc != cluster_parent_.end()) {
-          const std::string & parent = itc->second;
- 
-          // if CH == me → direct downlink
-          if (parent == uav_id_) {
-              return dst; 
-          }
-
-          // otherwise → route toward that CH
-          auto it2 = routing_table_.find(parent);
-          if (it2 != routing_table_.end()) {
-              return it2->second;
-          }
-
-          // fallback: send directly to the parent CH
-          return parent;
+      if (role_ == 0) {
+        return my_ch_id_;
       }
 
-      // CASE 2: explicit route exists
       auto it = routing_table_.find(dst);
       if (it != routing_table_.end()) {
-          return it->second;
+        return it->second;
       }
 
-      // CASE 3: default route toward sink
-      return next_hop_to_sink_;
+      return "";
   }
 
   std::optional<std::string> selectLadtrNextHop(const std::string & dst) const
@@ -1517,19 +1484,9 @@ private:
                           const std::vector<std::string> * recent_hops = nullptr,
                           const rclcpp::Time * now_override = nullptr) const
   {
-    rclcpp::Time now = now_override ? *now_override : this->now();
-    auto greedy = selectGreedyNextHop(dst, recent_hops, now);
-    if (greedy) {
-      return *greedy;
-    }
-
-    auto ladtr = selectLadtrNextHop(dst);
-    if (ladtr) {
-      return *ladtr;
-    }
-    if (!fallback.empty()) {
-      return fallback;
-    }
+    (void)fallback;
+    (void)recent_hops;
+    (void)now_override;
     return resolveNextHop(dst);
   }
 
@@ -1793,6 +1750,12 @@ private:
   bool publishToBus(uav_msgs::msg::TrafficMessage msg, bool allow_buffer = false)
   {
     const bool is_drop_msg = (msg.control_type == "DROP");
+    if (msg.next_hop_id.empty() && msg.dst_id != "broadcast") {
+      if (!is_drop_msg) {
+        publishRoutingEvent("NO_NEXT_HOP", msg.dst_id, msg.next_hop_id);
+      }
+      return false;
+    }
     if (!msg.next_hop_id.empty() && !neighborReachable(msg.next_hop_id, this->now())) {
       if (allow_buffer && shouldBuffer(msg)) {
         buffer_manager_.enqueue(msg, this->now(),
@@ -1812,6 +1775,7 @@ private:
                     msg.next_hop_id.c_str());
       } else {
         publishDrop(msg.msg_id, "UNREACHABLE_NEXT_HOP");
+        publishRoutingEvent("UNREACHABLE_NEXT_HOP", msg.dst_id, msg.next_hop_id);
       }
       return false;
     }
@@ -1840,6 +1804,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "[DROP] %s could not forward drop report for msg=%s (reason=%s): no route",
                   uav_id_.c_str(), msg_id.c_str(), reason.c_str());
+      publishRoutingEvent("NO_ROUTE_DROP", monitor_id_, drop.next_hop_id);
       return;
     }
     publishToBus(drop);
@@ -1885,6 +1850,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "[ACK] %s could not ACK msg_id=%s (no route to %s)",
                   uav_id_.c_str(), msg.msg_id.c_str(), ack.dst_id.c_str());
+      publishRoutingEvent("NO_ROUTE_ACK", ack.dst_id, ack.next_hop_id);
       return;
     }
 
@@ -2599,13 +2565,9 @@ private:
     my_ch_id_   = (role_ == 0) ? ch_id : uav_id_;
     refreshClusterTaskPoints();
 
-    // Backbone routing info
-    if (!next_sink.empty() && next_sink != "-") {
-      next_hop_to_sink_ = next_sink;
-    }
-    if (role_ == 1 && !next_ugv.empty() && next_ugv != "-") {
-      routing_table_[ugv_id_] = next_ugv;
-    }
+    // Routing is now centralized; ignore embedded next-hop hints.
+    (void)next_sink;
+    (void)next_ugv;
 
     // 4) Set deployment goal pose and start boot movement
     if (!is_duplicate) {
@@ -2634,16 +2596,14 @@ private:
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: DEPLOYMENT via network -> role=%d cluster=%s ch=%s "
-                "pos=(%.1f,%.1f,%.1f) next_sink=%s next_ugv=%s",
+                "pos=(%.1f,%.1f,%.1f)",
                 uav_id_.c_str(),
                 role_,
                 cluster_id_.c_str(),
                 my_ch_id_.c_str(),
                 deployment_goal_pose_.position.x,
                 deployment_goal_pose_.position.y,
-                deployment_goal_pose_.position.z,
-                next_hop_to_sink_.empty() ? "-" : next_hop_to_sink_.c_str(),
-                routing_table_.count(ugv_id_) ? routing_table_[ugv_id_].c_str() : "-");
+                deployment_goal_pose_.position.z);
   }
 
   void sendDeploymentAck()
@@ -2662,26 +2622,13 @@ private:
     ack.dst_id = default_dst_id_;  // expected sink id (usually "sink_gateway")
 
     // First hop into the network
-    if (role_ == 0) {
-      // MEMBER: prefer its CH as the first hop toward the sink
-      if (!my_ch_id_.empty() && neighbors_.count(my_ch_id_) > 0) {
-        ack.next_hop_id = my_ch_id_;
-      } else {
-        // Fallback: resolve next hop to sink using any available route
-        ack.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
-        if (ack.next_hop_id.empty()) {
-          RCLCPP_WARN(this->get_logger(),
-                      "UAV %s: cannot send DEPLOYMENT_ACK, no route to sink.",
-                      uav_id_.c_str());
-          return;
-        }
-        RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: CH %s unreachable, sending DEPLOYMENT_ACK via %s",
-                    uav_id_.c_str(), my_ch_id_.c_str(), ack.next_hop_id.c_str());
-      }
-    } else {
-      // CH (or other roles): use LADTR first, then routing towards sink
-      ack.next_hop_id = pickNextHop(default_dst_id_, next_hop_to_sink_);
+    ack.next_hop_id = resolveNextHop(default_dst_id_);
+    if (ack.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: cannot send DEPLOYMENT_ACK, no route to sink.",
+                  uav_id_.c_str());
+      publishRoutingEvent("NO_ROUTE_DEPLOYMENT_ACK", default_dst_id_, ack.next_hop_id);
+      return;
     }
 
     ack.flow_type = 1;
@@ -2930,7 +2877,7 @@ private:
 
     // Let routing decide, as for any other dst:
     // - members will rely on their CH
-    // - CHs will use routing_rules / next_hop_to_sink_
+    // - CHs will use centralized routing tables
     if (role_ == 0) {  // MEMBER
       msg.next_hop_id = my_ch_id_;
     } else {           // CH
@@ -3069,6 +3016,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeRequest>::SharedPtr charge_request_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr routing_event_pub_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr neighbor_status_sub_;
@@ -3077,6 +3025,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr  weather_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
   rclcpp::Subscription<uav_msgs::msg::TaskPointArray>::SharedPtr task_point_sub_;
+  rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
 
   rclcpp::TimerBase::SharedPtr status_timer_;
   rclcpp::TimerBase::SharedPtr heartbeat_timer_;

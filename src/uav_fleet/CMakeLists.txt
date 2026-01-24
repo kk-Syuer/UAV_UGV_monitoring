@@ -9,6 +9,7 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(uav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(uav_node src/uav_node.cpp)
 
@@ -16,6 +17,7 @@ ament_target_dependencies(uav_node
   rclcpp
   uav_msgs
   geometry_msgs
+  std_msgs
 )
 
 install(TARGETS
