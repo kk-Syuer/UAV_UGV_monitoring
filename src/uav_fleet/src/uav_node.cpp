@@ -2764,10 +2764,9 @@ private:
     ack.next_hop_id = resolveNextHop(default_dst_id_);
     if (ack.next_hop_id.empty()) {
       RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: cannot send DEPLOYMENT_ACK, no route to sink.",
+                  "UAV %s: no route to sink for DEPLOYMENT_ACK, sending without next hop.",
                   uav_id_.c_str());
       publishRoutingEvent("NO_ROUTE_DEPLOYMENT_ACK", default_dst_id_, ack.next_hop_id);
-      return;
     }
 
     ack.flow_type = 1;
