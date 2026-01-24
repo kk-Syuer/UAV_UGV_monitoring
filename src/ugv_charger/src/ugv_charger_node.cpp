@@ -310,6 +310,9 @@ private:
     if (msg->dst_id != ugv_id_) {
       return;
     }
+    if (!msg->next_hop_id.empty() && msg->next_hop_id != ugv_id_) {
+      return;
+    }
 
     auto now = this->now();
     if (msg->control_type == "ACK") {
