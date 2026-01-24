@@ -207,7 +207,7 @@ public:
     deployment_arrival_eps_ =
       this->declare_parameter<double>("deployment_arrival_eps", 1.0);
     deployment_arrival_ticks_required_ =
-      std::max(1, this->declare_parameter<int>("deployment_arrival_ticks", 3));
+      std::max<int>(1, this->declare_parameter<int>("deployment_arrival_ticks", 3));
     mobility_phase_ = MobilityPhase::IDLE;
     deployment_goal_pose_.position.x = 0.0;
     deployment_goal_pose_.position.y = 0.0;
