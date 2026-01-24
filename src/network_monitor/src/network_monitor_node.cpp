@@ -1,16 +1,19 @@
 #include <algorithm>
 #include <chrono>
+#include <deque>
 #include <exception>
 #include <filesystem>
 #include <fstream>
 #include <memory>
 #include <cmath>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <unordered_set>
 #include <vector>
 
 #include "rclcpp/rclcpp.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
@@ -117,6 +120,7 @@ public:
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
     max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
     stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
+    rate_window_sec_ = this->declare_parameter<double>("network_stats_window_sec", 10.0);
     qos_target_pdr_ = this->declare_parameter<double>("qos_target_pdr", 0.95);
     qos_target_delay_ms_ = this->declare_parameter<double>("qos_target_delay_ms", 200.0);
     qos_target_jitter_ms_ = this->declare_parameter<double>("qos_target_jitter_ms", 50.0);
@@ -166,6 +170,12 @@ public:
       std::chrono::duration<double>(status_sample_period_sec_),
       std::bind(&NetworkMonitorNode::writeStatusTimeseriesRow, this));
 
+    stats_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/network_monitor/stats", 10);
+    stats_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(0.5),
+      std::bind(&NetworkMonitorNode::publishNetworkStats, this));
+
     shutdown_check_timer_ = this->create_wall_timer(
       std::chrono::seconds(1),
       std::bind(&NetworkMonitorNode::checkShutdownConditions, this));
@@ -187,9 +197,21 @@ private:
   // Track first-seen messages to compute end-to-end delay.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    rclcpp::Time now = this->now();
+    if (!msg->msg_id.empty() &&
+        seen_control_msg_ids_.insert(msg->msg_id).second) {
+      control_type_counts_[msg->control_type]++;
+    }
+
     if (msg->control_type == "DROP") {
       if (!msg->ref_msg_id.empty()) {
         drop_by_ref_[msg->ref_msg_id] = {msg->drop_reason, msg->src_id};
+        if (dropped_ids_.insert(msg->ref_msg_id).second) {
+          drop_total_++;
+          drop_reason_counts_[msg->drop_reason.empty() ? "UNKNOWN" : msg->drop_reason]++;
+          last_drop_time_ = now;
+          recordTimestamp(drop_timestamps_, now);
+        }
 
         auto it_charge = charge_records_.find(msg->ref_msg_id);
         if (it_charge != charge_records_.end() &&
@@ -205,12 +227,13 @@ private:
 
     if (msg->control_type == "ACK") {
       if (!msg->ref_msg_id.empty()) {
-        ack_by_ref_[msg->ref_msg_id] = this->now();
+        if (ack_by_ref_.insert({msg->ref_msg_id, now}).second) {
+          ack_total_++;
+        }
       }
       return;
     }
 
-    rclcpp::Time now = this->now();
     if (msg->control_type == "CHARGE_REQUEST") {
       auto & rec = charge_records_[msg->msg_id];
       rec.request_msg_id = msg->msg_id;
@@ -265,6 +288,8 @@ private:
         total_generated_++;
         rec.generated_counted = true;
       }
+      last_msg_time_ = this->now();
+      recordTimestamp(generated_timestamps_, last_msg_time_);
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
@@ -330,6 +355,8 @@ private:
     double delay_sec = (rec.delivered_time - rec.creation_time).seconds();
     total_delivered_++;
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
+    last_delivered_time_ = delivered_wall_time;
+    recordTimestamp(delivered_timestamps_, delivered_wall_time);
 
     if (msg->flow_type == 0 && msg->control_type == "SEARCH_TELEMETRY") {
       telemetry_delivered_++;
@@ -516,6 +543,90 @@ private:
         }
       }
     }
+  }
+
+  // ---- Network stats publishing ----
+  void recordTimestamp(std::deque<rclcpp::Time> & timestamps, const rclcpp::Time & now)
+  {
+    timestamps.push_back(now);
+    pruneTimestamps(timestamps, now);
+  }
+
+  void pruneTimestamps(std::deque<rclcpp::Time> & timestamps, const rclcpp::Time & now)
+  {
+    rclcpp::Time cutoff = now - rclcpp::Duration::from_seconds(rate_window_sec_);
+    while (!timestamps.empty() && timestamps.front() < cutoff) {
+      timestamps.pop_front();
+    }
+  }
+
+  double ageSeconds(const rclcpp::Time & stamp, const rclcpp::Time & now) const
+  {
+    if (stamp.nanoseconds() == 0) {
+      return -1.0;
+    }
+    double age = (now - stamp).seconds();
+    return age < 0.0 ? 0.0 : age;
+  }
+
+  void publishNetworkStats()
+  {
+    if (!stats_pub_) {
+      return;
+    }
+    rclcpp::Time now = this->now();
+    pruneTimestamps(generated_timestamps_, now);
+    pruneTimestamps(drop_timestamps_, now);
+    pruneTimestamps(delivered_timestamps_, now);
+
+    double msg_rate = rate_window_sec_ > 0.0
+      ? static_cast<double>(generated_timestamps_.size()) / rate_window_sec_
+      : 0.0;
+    double drop_rate = rate_window_sec_ > 0.0
+      ? static_cast<double>(drop_timestamps_.size()) / rate_window_sec_
+      : 0.0;
+    double delivered_rate = rate_window_sec_ > 0.0
+      ? static_cast<double>(delivered_timestamps_.size()) / rate_window_sec_
+      : 0.0;
+
+    std::ostringstream out;
+    out << "{";
+    out << "\"generated_total\":" << total_generated_ << ",";
+    out << "\"delivered_total\":" << total_delivered_ << ",";
+    out << "\"drop_total\":" << drop_total_ << ",";
+    out << "\"ack_total\":" << ack_total_ << ",";
+    out << "\"generated_rate\":" << msg_rate << ",";
+    out << "\"delivered_rate\":" << delivered_rate << ",";
+    out << "\"drop_rate\":" << drop_rate << ",";
+    out << "\"window_sec\":" << rate_window_sec_ << ",";
+    out << "\"last_msg_age\":" << ageSeconds(last_msg_time_, now) << ",";
+    out << "\"last_drop_age\":" << ageSeconds(last_drop_time_, now) << ",";
+    out << "\"last_delivered_age\":" << ageSeconds(last_delivered_time_, now) << ",";
+    out << "\"control_type_counts\":{";
+    bool first = true;
+    for (const auto & pair : control_type_counts_) {
+      if (!first) {
+        out << ",";
+      }
+      first = false;
+      out << "\"" << pair.first << "\":" << pair.second;
+    }
+    out << "},";
+    out << "\"drop_reason_counts\":{";
+    first = true;
+    for (const auto & pair : drop_reason_counts_) {
+      if (!first) {
+        out << ",";
+      }
+      first = false;
+      out << "\"" << pair.first << "\":" << pair.second;
+    }
+    out << "}";
+    out << "}";
+
+    std_msgs::msg::String msg;
+    msg.data = out.str();
+    stats_pub_->publish(msg);
   }
 
   void checkShutdownConditions()
@@ -1110,11 +1221,23 @@ private:
   size_t total_generated_;
   size_t total_delivered_;
   double avg_delay_sec_;
+  size_t drop_total_ = 0;
+  size_t ack_total_ = 0;
   size_t telemetry_delivered_ = 0;
   double telemetry_avg_delay_sec_ = 0.0;
   size_t telemetry_dropped_ = 0;
   std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
   std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
+  std::unordered_map<std::string, size_t> control_type_counts_;
+  std::unordered_map<std::string, size_t> drop_reason_counts_;
+  std::unordered_set<std::string> seen_control_msg_ids_;
+  std::unordered_set<std::string> dropped_ids_;
+  std::deque<rclcpp::Time> generated_timestamps_;
+  std::deque<rclcpp::Time> drop_timestamps_;
+  std::deque<rclcpp::Time> delivered_timestamps_;
+  rclcpp::Time last_msg_time_;
+  rclcpp::Time last_drop_time_;
+  rclcpp::Time last_delivered_time_;
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_raw_sub_;
@@ -1146,7 +1269,9 @@ private:
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
+  rclcpp::TimerBase::SharedPtr stats_timer_;
   rclcpp::TimerBase::SharedPtr shutdown_check_timer_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stats_pub_;
   double status_sample_period_sec_ = 1.0;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
@@ -1156,6 +1281,7 @@ private:
   double max_runtime_sec_ = 0.0;
   bool stop_on_backbone_loss_ = false;
   std::vector<std::string> backbone_ids_;
+  double rate_window_sec_ = 10.0;
   double qos_target_pdr_ = 0.95;
   double qos_target_delay_ms_ = 200.0;
   double qos_target_jitter_ms_ = 50.0;

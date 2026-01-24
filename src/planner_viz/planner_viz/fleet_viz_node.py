@@ -1,4 +1,4 @@
-from collections import defaultdict, deque
+import json
 import os
 from typing import Any, Dict
 
@@ -17,6 +17,7 @@ from matplotlib.widgets import Button
 from geometry_msgs.msg import Pose
 from rclpy.qos import DurabilityPolicy
 from rclpy.qos import QoSProfile
+from std_msgs.msg import String
 from uav_msgs.msg import ClusterInfo
 from uav_msgs.msg import TaskPointArray
 from uav_msgs.msg import TrafficMessage
@@ -48,6 +49,8 @@ class FleetVizNode(Node):
             TrafficMessage, '/fanet/network_bus_raw', self.traffic_raw_cb, 50)
         self.delivered_sub = self.create_subscription(
             TrafficMessage, '/fanet/delivered', self.delivered_cb, 50)
+        self.network_stats_sub = self.create_subscription(
+            String, '/network_monitor/stats', self.network_stats_cb, 10)
         self.cluster_info_sub = self.create_subscription(
             ClusterInfo, '/ch_manager/cluster_info', self.cluster_info_cb, 20)
 
@@ -71,8 +74,6 @@ class FleetVizNode(Node):
         self.last_charge_decision_accepted = None
         self.charge_request_ids = set()
         self.charge_decision_ids = set()
-        self.control_msg_ids = set()
-        self.ack_ids = set()
 
         # Control-plane snapshots.
         self.cluster_info = {}
@@ -123,23 +124,23 @@ class FleetVizNode(Node):
         self.flight_time_mem_min = float(self.declare_parameter('flight_time_mem_min', 45.0).value)
         self.charge_time_mem_min = float(self.declare_parameter('charge_time_mem_min', 20.0).value)
 
-        # Network stats for debug panels.
-        self.generated_total = 0
-        self.delivered_total = 0
-        self.drop_total = 0
-        self.ack_total = 0
-        self.control_type_counts = defaultdict(int)
-        self.drop_reason_counts = defaultdict(int)
-        self.last_msg_time = None
-        self.last_drop_time = None
-        self.last_delivered_time = None
-        self.rate_window_sec = 10.0
-        self.msg_timestamps = deque()
-        self.drop_timestamps = deque()
-        self.delivered_timestamps = deque()
-        self.generated_ids = set()
-        self.delivered_ids = set()
-        self.dropped_ids = set()
+        # Network stats for debug panels (fed by network_monitor).
+        self.monitor_stats = {
+            'generated_total': 0,
+            'delivered_total': 0,
+            'drop_total': 0,
+            'ack_total': 0,
+            'generated_rate': 0.0,
+            'delivered_rate': 0.0,
+            'drop_rate': 0.0,
+            'window_sec': 10.0,
+            'last_msg_age': None,
+            'last_drop_age': None,
+            'last_delivered_age': None,
+            'control_type_counts': {},
+            'drop_reason_counts': {},
+        }
+        self.last_monitor_stats_time = None
 
         # Timer to refresh plot periodically.
         self.timer = self.create_timer(0.2, self.update_plot)
@@ -191,6 +192,10 @@ class FleetVizNode(Node):
     def status_cb(self, msg: UavStatus):
         """Cache latest UAV status for plotting."""
         self.uav_states[msg.uav_id] = msg
+        if msg.uav_id == 'ugv' or msg.uav_id.startswith('ugv_'):
+            self.ugv_pose = msg.pose
+        elif msg.uav_id == 'sink_gateway':
+            self.sink_pose = msg.pose
 
     def deployment_cb(self, msg: UavDeployment):
         """Capture sink/UGV deployments for map anchors."""
@@ -226,13 +231,6 @@ class FleetVizNode(Node):
             self.last_charge_decision_accepted = 'REJECT' not in (msg.payload or '')
             if msg.dst_id in self.pending_charges:
                 self.pending_charges.pop(msg.dst_id)
-        if msg.msg_id and msg.msg_id in self.delivered_ids:
-            return
-        if msg.msg_id:
-            self.delivered_ids.add(msg.msg_id)
-        self.delivered_total += 1
-        self.last_delivered_time = now
-        self._record_timestamp(self.delivered_timestamps, now)
 
     def color_for_cluster(self, cluster_id: str) -> str:
         """Deterministic color mapping for cluster IDs."""
@@ -245,24 +243,10 @@ class FleetVizNode(Node):
 
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
-        now = self._now_sec()
-        if msg.msg_id and msg.msg_id not in self.control_msg_ids:
-            self.control_msg_ids.add(msg.msg_id)
-            self.control_type_counts[msg.control_type] += 1
-
         if msg.control_type == 'DROP':
-            ref_id = msg.ref_msg_id
-            if ref_id and ref_id not in self.dropped_ids:
-                self.dropped_ids.add(ref_id)
-                self.drop_total += 1
-                self.drop_reason_counts[msg.drop_reason or 'UNKNOWN'] += 1
-            self.last_drop_time = now
-            self._record_timestamp(self.drop_timestamps, now)
             return
         if msg.control_type == 'ACK':
-            if msg.msg_id and msg.msg_id not in self.ack_ids:
-                self.ack_ids.add(msg.msg_id)
-                self.ack_total += 1
+            return
         if msg.control_type == 'CHARGE_REQUEST':
             if msg.msg_id and msg.msg_id in self.charge_request_ids:
                 return
@@ -323,14 +307,28 @@ class FleetVizNode(Node):
         self.ugv_pose.position.y = y
 
     def traffic_raw_cb(self, msg: TrafficMessage):
-        now = self._now_sec()
-        if msg.msg_id and msg.msg_id in self.generated_ids:
+        return
+
+    def network_stats_cb(self, msg: String):
+        try:
+            payload = json.loads(msg.data)
+        except json.JSONDecodeError as exc:
+            self.get_logger().warning(f"Failed to parse network stats: {exc}")
             return
-        if msg.msg_id:
-            self.generated_ids.add(msg.msg_id)
-        self.generated_total += 1
-        self.last_msg_time = now
-        self._record_timestamp(self.msg_timestamps, now)
+        self.monitor_stats['generated_total'] = payload.get('generated_total', 0)
+        self.monitor_stats['delivered_total'] = payload.get('delivered_total', 0)
+        self.monitor_stats['drop_total'] = payload.get('drop_total', 0)
+        self.monitor_stats['ack_total'] = payload.get('ack_total', 0)
+        self.monitor_stats['generated_rate'] = payload.get('generated_rate', 0.0)
+        self.monitor_stats['delivered_rate'] = payload.get('delivered_rate', 0.0)
+        self.monitor_stats['drop_rate'] = payload.get('drop_rate', 0.0)
+        self.monitor_stats['window_sec'] = payload.get('window_sec', 10.0)
+        self.monitor_stats['last_msg_age'] = payload.get('last_msg_age', None)
+        self.monitor_stats['last_drop_age'] = payload.get('last_drop_age', None)
+        self.monitor_stats['last_delivered_age'] = payload.get('last_delivered_age', None)
+        self.monitor_stats['control_type_counts'] = payload.get('control_type_counts', {})
+        self.monitor_stats['drop_reason_counts'] = payload.get('drop_reason_counts', {})
+        self.last_monitor_stats_time = self._now_sec()
 
     @staticmethod
     def role_label(role: int) -> str:
@@ -371,15 +369,6 @@ class FleetVizNode(Node):
     def _now_sec(self) -> float:
         return self.get_clock().now().nanoseconds * 1e-9
 
-    def _record_timestamp(self, timestamps: deque, now: float) -> None:
-        timestamps.append(now)
-        self._prune_timestamps(timestamps, now)
-
-    def _prune_timestamps(self, timestamps: deque, now: float) -> None:
-        cutoff = now - self.rate_window_sec
-        while timestamps and timestamps[0] < cutoff:
-            timestamps.popleft()
-
     def _format_age(self, last_time: float) -> str:
         if last_time is None:
             return "n/a"
@@ -387,6 +376,12 @@ class FleetVizNode(Node):
         if age < 0:
             age = 0.0
         return f"{age:.1f}s"
+
+    @staticmethod
+    def _format_age_seconds(age_sec: float) -> str:
+        if age_sec is None or age_sec < 0:
+            return "n/a"
+        return f"{age_sec:.1f}s"
 
     def _line(self, text: str, size: int = 9, weight: str = 'normal', spacing: float = 1.0):
         return {
@@ -448,24 +443,26 @@ class FleetVizNode(Node):
             info_lines.append(self._title_line('Weather'))
             info_lines.append(self._line('  (no data)'))
 
-        if self.uav_states:
+        fleet_states = {
+            uid: st for uid, st in self.uav_states.items()
+            if uid != 'sink_gateway' and not uid.startswith('ugv')
+        }
+        if fleet_states:
             info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
-            num_ch = sum(1 for st in self.uav_states.values() if st.role == 1)
-            num_mem = sum(1 for st in self.uav_states.values() if st.role == 0)
-            num_backbone = sum(1 for st in self.uav_states.values() if st.backbone_active)
-            avg_capacity = sum(st.battery_capacity for st in self.uav_states.values()) / len(
-                self.uav_states
+            num_ch = sum(1 for st in fleet_states.values() if st.role == 1)
+            num_mem = sum(1 for st in fleet_states.values() if st.role == 0)
+            avg_capacity = sum(st.battery_capacity for st in fleet_states.values()) / len(
+                fleet_states
             )
             info_lines.append(self._line(
-                f"  UAVs: {len(self.uav_states)} | CH: {num_ch} | MEM: {num_mem} | "
-                f"Backbone: {num_backbone}"
+                f"  UAVs: {len(fleet_states)} | CH: {num_ch} | MEM: {num_mem}"
             ))
             info_lines.append(self._line(
                 f"  Comm radius (CH): {self.comm_radius_ch:.1f} m | "
                 f"Avg capacity: {avg_capacity:.1f}"
             ))
-            for uid in sorted(self.uav_states.keys()):
-                st = self.uav_states[uid]
+            for uid in sorted(fleet_states.keys()):
+                st = fleet_states[uid]
                 px = st.pose.position.x
                 py = st.pose.position.y
                 info_lines.append(self._line(
@@ -505,33 +502,51 @@ class FleetVizNode(Node):
         return info_lines
 
     def _network_lines(self):
-        now = self._now_sec()
-        self._prune_timestamps(self.msg_timestamps, now)
-        self._prune_timestamps(self.drop_timestamps, now)
-        self._prune_timestamps(self.delivered_timestamps, now)
-        msg_rate = len(self.msg_timestamps) / self.rate_window_sec
-        drop_rate = len(self.drop_timestamps) / self.rate_window_sec
-        delivered_rate = len(self.delivered_timestamps) / self.rate_window_sec
-        drop_ratio = (self.drop_total / self.generated_total) if self.generated_total > 0 else 0.0
+        drop_ratio = (
+            self.monitor_stats['drop_total'] / self.monitor_stats['generated_total']
+            if self.monitor_stats['generated_total'] > 0 else 0.0
+        )
         top_controls = sorted(
-            self.control_type_counts.items(), key=lambda item: item[1], reverse=True
-        )[:3]
+            self.monitor_stats['control_type_counts'].items(),
+            key=lambda item: item[1],
+            reverse=True
+        )[:6]
         top_drop_reasons = sorted(
-            self.drop_reason_counts.items(), key=lambda item: item[1], reverse=True
+            self.monitor_stats['drop_reason_counts'].items(),
+            key=lambda item: item[1],
+            reverse=True
         )[:3]
+        window_sec = self.monitor_stats.get('window_sec', 10.0)
         net_lines = [
-            self._title_line('Network routing'),
-            self._line(f"  generated: {self.generated_total}"),
-            self._line(f"  delivered: {self.delivered_total}"),
-            self._line(f"  drops: {self.drop_total} ({drop_ratio:.1%})"),
-            self._line(f"  acks: {self.ack_total}"),
-            self._title_line(f"Rates (last {self.rate_window_sec:.0f}s)"),
-            self._line(f"  generated: {msg_rate:.1f}/s | delivered: {delivered_rate:.1f}/s"),
-            self._line(f"  drops: {drop_rate:.1f}/s"),
+            self._title_line('Network routing (monitor)'),
+            self._line(f"  generated: {self.monitor_stats['generated_total']}"),
+            self._line(f"  delivered: {self.monitor_stats['delivered_total']}"),
+            self._line(f"  drops: {self.monitor_stats['drop_total']} ({drop_ratio:.1%})"),
+            self._line(f"  acks: {self.monitor_stats['ack_total']}"),
+            self._title_line(f"Rates (last {window_sec:.0f}s)"),
+            self._line(
+                "  generated: "
+                f"{self.monitor_stats['generated_rate']:.1f}/s | "
+                f"delivered: {self.monitor_stats['delivered_rate']:.1f}/s"
+            ),
+            self._line(f"  drops: {self.monitor_stats['drop_rate']:.1f}/s"),
             self._title_line("Recent activity"),
-            self._line(f"  Last msg age: {self._format_age(self.last_msg_time)}"),
-            self._line(f"  Last drop age: {self._format_age(self.last_drop_time)}"),
-            self._line(f"  Last deliver age: {self._format_age(self.last_delivered_time)}"),
+            self._line(
+                "  Last msg age: "
+                f"{self._format_age_seconds(self.monitor_stats['last_msg_age'])}"
+            ),
+            self._line(
+                "  Last drop age: "
+                f"{self._format_age_seconds(self.monitor_stats['last_drop_age'])}"
+            ),
+            self._line(
+                "  Last deliver age: "
+                f"{self._format_age_seconds(self.monitor_stats['last_delivered_age'])}"
+            ),
+            self._line(
+                "  Monitor update age: "
+                f"{self._format_age(self.last_monitor_stats_time)}"
+            ),
             self._title_line("Top control types")
         ]
         if top_controls:
