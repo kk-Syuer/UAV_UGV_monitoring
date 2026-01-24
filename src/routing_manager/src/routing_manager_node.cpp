@@ -3,6 +3,7 @@
 #include <limits>
 #include <memory>
 #include <queue>
+#include <stdexcept>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -52,6 +53,17 @@ double distance2d(const geometry_msgs::msg::Point & a, const geometry_msgs::msg:
   const double dx = a.x - b.x;
   const double dy = a.y - b.y;
   return std::sqrt(dx * dx + dy * dy);
+}
+
+enum class NodeClass
+{
+  BackboneCh,
+  Endpoint
+};
+
+bool isBackboneCh(uint8_t role)
+{
+  return role == 1;
 }
 }  // namespace
 
@@ -166,18 +178,32 @@ private:
                 return a.id < b.id;
               });
 
-    std::unordered_map<std::string, size_t> index;
-    index.reserve(active_nodes.size());
+    std::vector<NodeClass> node_class(active_nodes.size(), NodeClass::Endpoint);
+    std::vector<size_t> ch_node_indices;
+    std::vector<size_t> endpoint_indices;
+    ch_node_indices.reserve(active_nodes.size());
+    endpoint_indices.reserve(active_nodes.size());
+
     for (size_t i = 0; i < active_nodes.size(); ++i) {
-      index[active_nodes[i].id] = i;
+      if (isBackboneCh(active_nodes[i].role)) {
+        node_class[i] = NodeClass::BackboneCh;
+        ch_node_indices.push_back(i);
+      } else {
+        node_class[i] = NodeClass::Endpoint;
+        endpoint_indices.push_back(i);
+      }
     }
 
-    std::vector<std::vector<std::pair<size_t, double>>> graph(active_nodes.size());
+    std::vector<int> ch_graph_index(active_nodes.size(), -1);
+    for (size_t i = 0; i < ch_node_indices.size(); ++i) {
+      ch_graph_index[ch_node_indices[i]] = static_cast<int>(i);
+    }
 
-    for (size_t i = 0; i < active_nodes.size(); ++i) {
-      for (size_t j = i + 1; j < active_nodes.size(); ++j) {
-        const auto & a = active_nodes[i];
-        const auto & b = active_nodes[j];
+    std::vector<std::vector<std::pair<size_t, double>>> ch_graph(ch_node_indices.size());
+    for (size_t a_idx = 0; a_idx < ch_node_indices.size(); ++a_idx) {
+      for (size_t b_idx = a_idx + 1; b_idx < ch_node_indices.size(); ++b_idx) {
+        const auto & a = active_nodes[ch_node_indices[a_idx]];
+        const auto & b = active_nodes[ch_node_indices[b_idx]];
         double dist = distance2d(a.pose.position, b.pose.position);
 
         bool connected = false;
@@ -186,27 +212,93 @@ private:
         bool was_connected = (state_it != link_state_.end()) ? state_it->second : false;
 
         if (was_connected) {
-          connected = dist <= (comm_range_m_ + hysteresis_margin_m_);
+          connected = dist <= comm_range_m_;
         } else {
           connected = dist <= (comm_range_m_ - hysteresis_margin_m_);
         }
 
         link_state_[key] = connected;
         if (connected) {
-          graph[i].push_back({j, dist});
-          graph[j].push_back({i, dist});
+          ch_graph[a_idx].push_back({b_idx, dist});
+          ch_graph[b_idx].push_back({a_idx, dist});
         }
       }
     }
 
-    std::vector<bool> can_forward(active_nodes.size(), false);
-    for (size_t i = 0; i < active_nodes.size(); ++i) {
-      can_forward[i] = (active_nodes[i].role == 1);
+    std::vector<int> gateway_index(active_nodes.size(), -1);
+    for (size_t endpoint_idx : endpoint_indices) {
+      double best_dist = std::numeric_limits<double>::infinity();
+      int best_gateway = -1;
+      const auto & endpoint = active_nodes[endpoint_idx];
+      for (size_t ch_idx : ch_node_indices) {
+        const auto & ch = active_nodes[ch_idx];
+        double dist = distance2d(endpoint.pose.position, ch.pose.position);
+        if (dist <= comm_range_m_ && dist < best_dist) {
+          best_dist = dist;
+          best_gateway = static_cast<int>(ch_idx);
+        }
+      }
+      gateway_index[endpoint_idx] = best_gateway;
+    }
+
+    std::vector<std::vector<int>> ch_next_hops(ch_node_indices.size());
+    for (size_t src_ch = 0; src_ch < ch_node_indices.size(); ++src_ch) {
+      ch_next_hops[src_ch] = computeRoutesForSource(src_ch, ch_graph);
     }
 
     for (size_t src_idx = 0; src_idx < active_nodes.size(); ++src_idx) {
-      auto table = computeRoutesForSource(src_idx, graph, can_forward);
-      publishTable(active_nodes, src_idx, table);
+      std::vector<int> next_hops(active_nodes.size(), -1);
+      if (node_class[src_idx] == NodeClass::Endpoint) {
+        int gateway = gateway_index[src_idx];
+        if (gateway >= 0) {
+          for (size_t dst_idx = 0; dst_idx < active_nodes.size(); ++dst_idx) {
+            if (dst_idx == src_idx) {
+              continue;
+            }
+            next_hops[dst_idx] = gateway;
+          }
+        }
+      } else {
+        int src_ch_graph = ch_graph_index[src_idx];
+        if (src_ch_graph >= 0) {
+          for (size_t dst_idx = 0; dst_idx < active_nodes.size(); ++dst_idx) {
+            if (dst_idx == src_idx) {
+              continue;
+            }
+            if (node_class[dst_idx] == NodeClass::BackboneCh) {
+              int dst_ch_graph = ch_graph_index[dst_idx];
+              if (dst_ch_graph >= 0 && dst_ch_graph < static_cast<int>(ch_next_hops[src_ch_graph].size())) {
+                int hop_ch_graph = ch_next_hops[src_ch_graph][dst_ch_graph];
+                if (hop_ch_graph >= 0 &&
+                    hop_ch_graph < static_cast<int>(ch_node_indices.size())) {
+                  next_hops[dst_idx] = static_cast<int>(ch_node_indices[hop_ch_graph]);
+                }
+              }
+              continue;
+            }
+
+            int dst_gateway = gateway_index[dst_idx];
+            if (dst_gateway < 0) {
+              continue;
+            }
+            if (dst_gateway == static_cast<int>(src_idx)) {
+              next_hops[dst_idx] = static_cast<int>(dst_idx);
+              continue;
+            }
+            int dst_gateway_graph = ch_graph_index[dst_gateway];
+            if (dst_gateway_graph >= 0 &&
+                dst_gateway_graph < static_cast<int>(ch_next_hops[src_ch_graph].size())) {
+              int hop_ch_graph = ch_next_hops[src_ch_graph][dst_gateway_graph];
+              if (hop_ch_graph >= 0 &&
+                  hop_ch_graph < static_cast<int>(ch_node_indices.size())) {
+                next_hops[dst_idx] = static_cast<int>(ch_node_indices[hop_ch_graph]);
+              }
+            }
+          }
+        }
+      }
+
+      publishTable(active_nodes, node_class, src_idx, next_hops);
     }
 
     last_recompute_time_ = now;
@@ -214,8 +306,7 @@ private:
 
   std::vector<int> computeRoutesForSource(
     size_t src_idx,
-    const std::vector<std::vector<std::pair<size_t, double>>> & graph,
-    const std::vector<bool> & can_forward)
+    const std::vector<std::vector<std::pair<size_t, double>>> & graph)
   {
     const size_t n = graph.size();
     std::vector<double> dist(n, std::numeric_limits<double>::infinity());
@@ -238,10 +329,6 @@ private:
       const double cost = entry.cost;
       const size_t u = entry.idx;
       if (cost > dist[u]) {
-        continue;
-      }
-
-      if (u != src_idx && !can_forward[u]) {
         continue;
       }
 
@@ -279,6 +366,7 @@ private:
   }
 
   void publishTable(const std::vector<NodeInfo> & nodes,
+                    const std::vector<NodeClass> & node_class,
                     size_t src_idx,
                     const std::vector<int> & next_hops)
   {
@@ -294,6 +382,15 @@ private:
       }
       msg.destinations.push_back(nodes[i].id);
       if (next_hops[i] >= 0 && static_cast<size_t>(next_hops[i]) < nodes.size()) {
+        if (node_class[src_idx] == NodeClass::Endpoint &&
+            node_class[static_cast<size_t>(next_hops[i])] == NodeClass::Endpoint) {
+          RCLCPP_FATAL(this->get_logger(),
+                       "[routing] invalid endpoint hop %s -> %s via %s",
+                       msg.node_id.c_str(),
+                       nodes[i].id.c_str(),
+                       nodes[static_cast<size_t>(next_hops[i])].id.c_str());
+          throw std::runtime_error("RoutingManager produced endpoint-to-endpoint hop");
+        }
         msg.next_hops.push_back(nodes[static_cast<size_t>(next_hops[i])].id);
       } else {
         msg.next_hops.push_back("");
