@@ -510,7 +510,7 @@ class FleetVizNode(Node):
             self.monitor_stats['control_type_counts'].items(),
             key=lambda item: item[1],
             reverse=True
-        )[:3]
+        )[:6]
         top_drop_reasons = sorted(
             self.monitor_stats['drop_reason_counts'].items(),
             key=lambda item: item[1],
