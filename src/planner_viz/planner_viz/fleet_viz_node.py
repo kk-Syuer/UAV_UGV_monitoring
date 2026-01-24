@@ -192,7 +192,7 @@ class FleetVizNode(Node):
     def status_cb(self, msg: UavStatus):
         """Cache latest UAV status for plotting."""
         self.uav_states[msg.uav_id] = msg
-        if msg.uav_id == 'ugv':
+        if msg.uav_id == 'ugv' or msg.uav_id.startswith('ugv_'):
             self.ugv_pose = msg.pose
         elif msg.uav_id == 'sink_gateway':
             self.sink_pose = msg.pose
@@ -445,7 +445,7 @@ class FleetVizNode(Node):
 
         fleet_states = {
             uid: st for uid, st in self.uav_states.items()
-            if uid not in ('sink_gateway', 'ugv')
+            if uid != 'sink_gateway' and not uid.startswith('ugv')
         }
         if fleet_states:
             info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
