@@ -128,6 +128,9 @@ private:
     if (msg->dst_id != sink_id_) {
       return;
     }
+    if (!msg->next_hop_id.empty() && msg->next_hop_id != sink_id_) {
+      return;
+    }
 
     publishDelivered(*msg, now);
     maybePublishAck(*msg);
