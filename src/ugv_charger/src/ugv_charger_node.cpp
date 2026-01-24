@@ -623,6 +623,12 @@ private:
 
     (void)suggested_next_hop;
     ack.next_hop_id = resolveNextHop(sink_id_);
+    if (ack.next_hop_id.empty() && !uplink_ch_id_.empty()) {
+      ack.next_hop_id = uplink_ch_id_;
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV %s: using uplink CH %s for DEPLOYMENT_ACK",
+                  ugv_id_.c_str(), uplink_ch_id_.c_str());
+    }
 
     ack.flow_type = 1;
     ack.creation_time = this->now();
@@ -635,6 +641,19 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: no route to sink for DEPLOYMENT_ACK, sending without next hop.",
                   ugv_id_.c_str());
+    } else if (!neighborReachable(ack.next_hop_id)) {
+      if (!uplink_ch_id_.empty() && uplink_ch_id_ != ack.next_hop_id &&
+          neighborReachable(uplink_ch_id_)) {
+        RCLCPP_INFO(this->get_logger(),
+                    "UGV %s: fallback to uplink CH %s for DEPLOYMENT_ACK",
+                    ugv_id_.c_str(), uplink_ch_id_.c_str());
+        ack.next_hop_id = uplink_ch_id_;
+      } else if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UGV %s: dropping DEPLOYMENT_ACK msg_id=%s (next hop unreachable)",
+                    ugv_id_.c_str(), ack.msg_id.c_str());
+        return;
+      }
     } else if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: dropping DEPLOYMENT_ACK msg_id=%s (next hop unreachable)",
