@@ -90,6 +90,51 @@ Monitoring/logging topics are direct
 
 ---
 
+## Routing Architecture & Logging
+
+The FANET simulation uses **centralized, event-driven routing** that is computed by a dedicated routing manager and consumed by every network endpoint. Routing decisions are explicit, observable, and logged for traceability.
+
+### 1) Core Routing Components
+
+* **Routing Manager (`routing_manager_node`)**
+  * Subscribes to UAV/UGV **status beacons** on `/fanet/status` and **routing events** on `/fanet/routing_event`.
+  * Builds a backbone graph of **cluster heads (CHs)** and runs Dijkstra to compute **next-hop tables** for every active node.
+  * Publishes a full **routing table** per node on `/fanet/routing_table`, including next hops for CH-to-CH, CH-to-endpoint, and endpoint-to-CH gateway traffic.
+  * Uses hysteresis and CH-movement thresholds to avoid route flapping, and periodically recomputes routes even without events.
+
+* **Coverage Planner**
+  * Computes the **initial deployment** and bootstraps **CH routes to the sink and UGV** (direct if in range, otherwise via CH backbone).
+  * Recomputes CH backbone routes when CHs change `backbone_active` state, and republishes deployment messages with updated next hops.
+
+* **Network Endpoints (UAVs, Sink Gateway, UGV Charger)**
+  * Subscribe to `/fanet/routing_table` and **cache per-node next hops** for control and data traffic.
+  * Resolve the next hop locally before transmitting traffic on `/fanet/network_bus_raw`.
+
+### 2) Routing Data Flow
+
+```mermaid
+flowchart LR
+    Status[/fanet/status/] --> RM[Routing Manager]
+    Events[/fanet/routing_event/] --> RM
+    RM --> Tables[/fanet/routing_table/]
+
+    Tables --> UAV[UAV Nodes]
+    Tables --> UGV[UGV Charger]
+    Tables --> Sink[Sink Gateway]
+
+    UAV --> Bus[/fanet/network_bus_raw/]
+    UGV --> Bus
+    Sink --> Bus
+```
+
+### 3) Routing Logging & Eventing
+
+* **Routing manager logs** every computed route (`[routing] src -> dst via next_hop`) for traceability.
+* **Endpoints publish routing events** (e.g., `NO_ROUTE_CONTROL`) to `/fanet/routing_event` whenever they detect an unreachable destination.
+* These logs/events are used to trigger **event-driven recomputes** and to diagnose routing gaps during experiments.
+
+---
+
 ### 4. Charging Protocol Evaluation
 
 Charging is treated as a **networked control problem**:
