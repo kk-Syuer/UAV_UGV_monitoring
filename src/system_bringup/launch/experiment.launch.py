@@ -164,21 +164,6 @@ def _make_nodes(context, *args, **kwargs):
         parameters=[sink_params],
     ))
 
-    routing_params = {
-        "comm_range_m": comm_radius,
-        "recompute_period_sec": float(_get(cfg, ["routing", "recompute_period_sec"], 2.0)),
-        "hysteresis_margin_m": float(_get(cfg, ["routing", "hysteresis_margin_m"], 3.0)),
-        "ch_move_threshold_m": float(_get(cfg, ["routing", "ch_move_threshold_m"], 7.5)),
-        "status_timeout_sec": float(_get(cfg, ["routing", "status_timeout_sec"], 5.0)),
-    }
-    nodes.append(Node(
-        package=_get(cfg, ["executables", "routing_pkg"], "routing_manager"),
-        executable=_get(cfg, ["executables", "routing_exec"], "routing_manager_node"),
-        name=f"routing_manager_{run_id}",
-        output="screen",
-        parameters=[routing_params],
-    ))
-
     # UGV charger
     ugv_params = {
         "ugv_id": ugv_id,
@@ -192,54 +177,6 @@ def _make_nodes(context, *args, **kwargs):
         output="screen",
         parameters=[ugv_params],
     ))
-
-    # Coverage planner (optional)
-    if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
-        member_ids = [str(m.get("id")) for m in members]
-        uav_ids = ch_ids + member_ids
-        nodes.append(Node(
-            package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
-            executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
-            name=f"coverage_planner_{run_id}",
-            output="screen",
-            parameters=[{
-                "uav_ids": uav_ids,
-                "num_ch": len(ch_ids),
-                "ugv_id": ugv_id,
-            }],
-        ))
-
-    # Cluster head manager(s) (optional)
-    if _bool_from_str(_get(cfg, ["ch_manager", "enable"], True), True):
-        clusters = _get(cfg, ["ch_manager", "clusters"], []) or []
-        if clusters:
-            cluster_configs = clusters
-        else:
-            cluster_prefix = str(_get(cfg, ["ch_manager", "cluster_prefix"], "cluster"))
-            member_map: dict[str, list[str]] = {}
-            for member in members:
-                my_ch = str(member.get("my_ch_id", ""))
-                member_map.setdefault(my_ch, []).append(str(member.get("id")))
-            cluster_configs = [
-                {
-                    "cluster_id": f"{cluster_prefix}_{idx + 1}",
-                    "ch_id": str(ch_id),
-                    "member_ids": member_map.get(str(ch_id), []),
-                }
-                for idx, ch_id in enumerate(ch_ids)
-            ]
-        for cfg_entry in cluster_configs:
-            nodes.append(Node(
-                package=_get(cfg, ["executables", "ch_manager_pkg"], "ch_manager"),
-                executable=_get(cfg, ["executables", "ch_manager_exec"], "ch_manager_node"),
-                name=f"ch_manager_{cfg_entry['cluster_id']}",
-                output="screen",
-                parameters=[{
-                    "cluster_id": cfg_entry["cluster_id"],
-                    "ch_id": cfg_entry["ch_id"],
-                    "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
-                }],
-            ))
 
     # User device traffic (optional)
     if _bool_from_str(_get(cfg, ["traffic", "user_device_enable"], True), True):
@@ -293,6 +230,69 @@ def _make_nodes(context, *args, **kwargs):
             output="screen",
             parameters=[shared_uav_params, {"uav_id": uid, "role": role, "my_ch_id": my_ch}],
         ))
+
+    routing_params = {
+        "comm_range_m": comm_radius,
+        "recompute_period_sec": float(_get(cfg, ["routing", "recompute_period_sec"], 2.0)),
+        "hysteresis_margin_m": float(_get(cfg, ["routing", "hysteresis_margin_m"], 3.0)),
+        "ch_move_threshold_m": float(_get(cfg, ["routing", "ch_move_threshold_m"], 7.5)),
+        "status_timeout_sec": float(_get(cfg, ["routing", "status_timeout_sec"], 5.0)),
+    }
+    nodes.append(Node(
+        package=_get(cfg, ["executables", "routing_pkg"], "routing_manager"),
+        executable=_get(cfg, ["executables", "routing_exec"], "routing_manager_node"),
+        name=f"routing_manager_{run_id}",
+        output="screen",
+        parameters=[routing_params],
+    ))
+
+    # Coverage planner (optional)
+    if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
+        member_ids = [str(m.get("id")) for m in members]
+        uav_ids = ch_ids + member_ids
+        nodes.append(Node(
+            package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
+            executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
+            name=f"coverage_planner_{run_id}",
+            output="screen",
+            parameters=[{
+                "uav_ids": uav_ids,
+                "num_ch": len(ch_ids),
+                "ugv_id": ugv_id,
+            }],
+        ))
+
+    # Cluster head manager(s) (optional)
+    if _bool_from_str(_get(cfg, ["ch_manager", "enable"], True), True):
+        clusters = _get(cfg, ["ch_manager", "clusters"], []) or []
+        if clusters:
+            cluster_configs = clusters
+        else:
+            cluster_prefix = str(_get(cfg, ["ch_manager", "cluster_prefix"], "cluster"))
+            member_map: dict[str, list[str]] = {}
+            for member in members:
+                my_ch = str(member.get("my_ch_id", ""))
+                member_map.setdefault(my_ch, []).append(str(member.get("id")))
+            cluster_configs = [
+                {
+                    "cluster_id": f"{cluster_prefix}_{idx + 1}",
+                    "ch_id": str(ch_id),
+                    "member_ids": member_map.get(str(ch_id), []),
+                }
+                for idx, ch_id in enumerate(ch_ids)
+            ]
+        for cfg_entry in cluster_configs:
+            nodes.append(Node(
+                package=_get(cfg, ["executables", "ch_manager_pkg"], "ch_manager"),
+                executable=_get(cfg, ["executables", "ch_manager_exec"], "ch_manager_node"),
+                name=f"ch_manager_{cfg_entry['cluster_id']}",
+                output="screen",
+                parameters=[{
+                    "cluster_id": cfg_entry["cluster_id"],
+                    "ch_id": cfg_entry["ch_id"],
+                    "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
+                }],
+            ))
 
     return nodes
 
