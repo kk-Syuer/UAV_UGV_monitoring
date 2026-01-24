@@ -4,6 +4,7 @@
 #include <unordered_map>
 #include <deque>
 #include <optional>
+#include <list>
 #include <cmath>
 #include <limits>
 
@@ -313,6 +314,9 @@ public:
     charge_request_retry_sec_ = this->declare_parameter<double>("charge_request_retry_sec", 2.0);
     charge_request_max_retries_ = this->declare_parameter<int>("charge_request_max_retries", 0);
     charge_decision_timeout_sec_ = this->declare_parameter<double>("charge_decision_timeout_sec", 10.0);
+    ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
+    control_dedup_cache_size_ = static_cast<size_t>(
+      this->declare_parameter<int>("control_dedup_cache_size", 200));
 
     auto hello_period = std::chrono::duration<double>(hello_period_sec_);
     neighbor_timeout_timer_ = this->create_wall_timer(
@@ -336,15 +340,15 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
       std::bind(&UavNode::publishStatusCh, this));
 
-    auto task_release_retry = std::chrono::duration<double>(task_release_retry_sec_);
-    task_release_timer_ = this->create_wall_timer(
-      std::chrono::duration_cast<std::chrono::nanoseconds>(task_release_retry),
-      std::bind(&UavNode::taskReleaseRetryTick, this));
-
     auto charge_request_retry = std::chrono::duration<double>(charge_request_retry_sec_);
     charge_request_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(charge_request_retry),
       std::bind(&UavNode::chargeRequestRetryTick, this));
+
+    auto ack_retry = std::chrono::duration<double>(ack_retry_period_sec_);
+    ack_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry),
+      std::bind(&UavNode::resendPendingAcks, this));
 
     if (mobility_enabled_) {
       auto dt = std::chrono::duration<double>(mobility_dt_sec_);
@@ -441,6 +445,15 @@ private:
     rclcpp::Time last_ack_time;
     int attempts = 0;
     bool acknowledged = false;
+  };
+
+  struct PendingAck
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    rclcpp::Time last_send_time;
+    int attempts = 0;
+    int max_retries = 0;
+    double retry_interval_sec = 1.0;
   };
 
   // ---------------- Weather ----------------
@@ -1174,6 +1187,10 @@ private:
 
     if (msg->flow_type == 1 && msg->control_type == "TASK_RELEASE" &&
         (msg->dst_id == "broadcast" || msg->dst_id == uav_id_)) {
+      if (msg->dst_id == uav_id_ && msg->requires_ack && isDuplicateControlMessage(*msg)) {
+        maybePublishAck(*msg);
+        return;
+      }
       if (role_ != 0) {
         return;
       }
@@ -1231,10 +1248,21 @@ private:
 
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
+      if (msg->flow_type == 1 && msg->requires_ack &&
+          msg->control_type != "ACK" &&
+          isDuplicateControlMessage(*msg)) {
+        maybePublishAck(*msg);
+        return;
+      }
+
       publishDelivered(*msg, rx_time);
       maybePublishAck(*msg);
 
       if (msg->flow_type == 1 && msg->control_type == "ACK") {
+        const std::string acked_id = extractAckedMsgId(*msg);
+        if (!acked_id.empty()) {
+          pending_acks_.erase(acked_id);
+        }
         handleTaskReleaseAck(*msg);
         handleChargeRequestAck(*msg);
         return;
@@ -1822,6 +1850,114 @@ private:
     delivered_pub_->publish(delivered);
   }
 
+  std::string extractAckedMsgId(const uav_msgs::msg::TrafficMessage & msg) const
+  {
+    if (!msg.ref_msg_id.empty()) {
+      return msg.ref_msg_id;
+    }
+    if (msg.payload.rfind("ref_msg_id=", 0) == 0) {
+      return msg.payload.substr(std::string("ref_msg_id=").size());
+    }
+    return msg.payload;
+  }
+
+  bool isDuplicateControlMessage(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (msg.flow_type != 1 || msg.control_type == "ACK" || !msg.requires_ack) {
+      return false;
+    }
+    std::string key = msg.src_id + "|" + msg.msg_id;
+    auto it = control_dedup_index_.find(key);
+    if (it != control_dedup_index_.end()) {
+      control_dedup_order_.splice(control_dedup_order_.end(), control_dedup_order_, it->second);
+      return true;
+    }
+    control_dedup_order_.push_back(key);
+    control_dedup_index_[key] = std::prev(control_dedup_order_.end());
+    if (control_dedup_order_.size() > control_dedup_cache_size_) {
+      const auto & oldest = control_dedup_order_.front();
+      control_dedup_index_.erase(oldest);
+      control_dedup_order_.pop_front();
+    }
+    return false;
+  }
+
+  void registerPendingAck(const uav_msgs::msg::TrafficMessage & msg,
+                          int max_retries,
+                          double retry_interval_sec)
+  {
+    if (msg.flow_type != 1 || !msg.requires_ack || msg.msg_id.empty()) {
+      return;
+    }
+    PendingAck pending;
+    pending.msg = msg;
+    pending.last_send_time = this->now();
+    pending.attempts = 1;
+    pending.max_retries = max_retries;
+    pending.retry_interval_sec = retry_interval_sec;
+    pending_acks_[msg.msg_id] = pending;
+  }
+
+  void refreshPendingNextHop(PendingAck & pending)
+  {
+    if (pending.msg.control_type == "CHARGE_REQUEST") {
+      if (role_ == 0) {
+        pending.msg.next_hop_id = my_ch_id_;
+      } else {
+        pending.msg.next_hop_id = pickNextHop(ugv_id_, resolveNextHop(ugv_id_));
+      }
+    } else if (pending.msg.control_type == "TASK_RELEASE") {
+      pending.msg.next_hop_id = pending.msg.dst_id;
+    }
+  }
+
+  void handleAckTimeout(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (msg.control_type == "TASK_RELEASE") {
+      auto it = task_release_msg_to_member_.find(msg.msg_id);
+      if (it != task_release_msg_to_member_.end()) {
+        task_release_pending_.erase(it->second);
+        task_release_msg_to_member_.erase(it);
+      }
+    }
+    if (msg.control_type == "CHARGE_REQUEST" &&
+        charge_request_pending_.has_value() &&
+        charge_request_pending_->msg_id == msg.msg_id) {
+      waiting_for_charge_response_ = false;
+      charge_request_pending_.reset();
+    }
+  }
+
+  void resendPendingAcks()
+  {
+    if (pending_acks_.empty()) {
+      return;
+    }
+    auto now = this->now();
+    for (auto it = pending_acks_.begin(); it != pending_acks_.end(); ) {
+      auto & pending = it->second;
+      if (pending.max_retries > 0 && pending.attempts >= pending.max_retries) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "UAV %s: giving up on %s msg_id=%s after %d attempts.",
+                     uav_id_.c_str(),
+                     pending.msg.control_type.c_str(),
+                     pending.msg.msg_id.c_str(),
+                     pending.attempts);
+        handleAckTimeout(pending.msg);
+        it = pending_acks_.erase(it);
+        continue;
+      }
+      double elapsed = (now - pending.last_send_time).seconds();
+      if (elapsed >= pending.retry_interval_sec) {
+        refreshPendingNextHop(pending);
+        publishToBus(pending.msg);
+        pending.last_send_time = now;
+        pending.attempts++;
+      }
+      ++it;
+    }
+  }
+
   void maybePublishAck(const uav_msgs::msg::TrafficMessage & msg)
   {
     if (!msg.requires_ack) {
@@ -1835,7 +1971,7 @@ private:
     ack.ref_msg_id = msg.msg_id;
     ack.flow_type = 1;
     ack.control_type = "ACK";
-    ack.payload = "ref_msg_id=" + msg.msg_id;
+    ack.payload = msg.msg_id;
     ack.creation_time = this->now();
     ack.hop_count = 0;
     ack.ttl = 6;
@@ -2720,6 +2856,7 @@ private:
     }
 
     bool sent = publishToBus(msg);
+    registerPendingAck(msg, task_release_max_retries_, task_release_retry_sec_);
     if (sent) {
       RCLCPP_INFO(this->get_logger(),
                   "[RELEASE] CH %s releasing member %s",
@@ -2796,10 +2933,11 @@ private:
     if (role_ != 1) {
       return;
     }
-    if (msg.ref_msg_id.empty()) {
+    const std::string acked_id = extractAckedMsgId(msg);
+    if (acked_id.empty()) {
       return;
     }
-    auto it = task_release_msg_to_member_.find(msg.ref_msg_id);
+    auto it = task_release_msg_to_member_.find(acked_id);
     if (it == task_release_msg_to_member_.end()) {
       return;
     }
@@ -2816,10 +2954,11 @@ private:
     if (!charge_request_pending_.has_value()) {
       return;
     }
-    if (msg.ref_msg_id.empty()) {
+    const std::string acked_id = extractAckedMsgId(msg);
+    if (acked_id.empty()) {
       return;
     }
-    if (msg.ref_msg_id != charge_request_pending_->msg_id) {
+    if (acked_id != charge_request_pending_->msg_id) {
       return;
     }
     if (charge_request_pending_->acknowledged) {
@@ -2829,7 +2968,7 @@ private:
     charge_request_pending_->last_ack_time = this->now();
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: received ACK for CHARGE_REQUEST msg_id=%s",
-                uav_id_.c_str(), msg.ref_msg_id.c_str());
+                uav_id_.c_str(), acked_id.c_str());
   }
 
   void chargeRequestRetryTick()
@@ -2837,22 +2976,18 @@ private:
     if (!waiting_for_charge_response_ || !charge_request_pending_.has_value()) {
       return;
     }
-    if (charge_request_max_retries_ > 0 &&
-        charge_request_pending_->attempts >= charge_request_max_retries_) {
+
+    auto now = this->now();
+    if (!charge_request_pending_->acknowledged &&
+        pending_acks_.find(charge_request_pending_->msg_id) == pending_acks_.end()) {
       RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: giving up CHARGE_REQUEST after %d attempts.",
-                  uav_id_.c_str(), charge_request_pending_->attempts);
+                  "UAV %s: giving up CHARGE_REQUEST msg_id=%s after ACK timeout.",
+                  uav_id_.c_str(), charge_request_pending_->msg_id.c_str());
       waiting_for_charge_response_ = false;
       charge_request_pending_.reset();
       return;
     }
-
-    auto now = this->now();
-    double elapsed = (now - charge_request_pending_->last_send_time).seconds();
     if (!charge_request_pending_->acknowledged) {
-      if (elapsed >= charge_request_retry_sec_) {
-        sendChargeRequest(*charge_request_pending_);
-      }
       return;
     }
 
@@ -2861,6 +2996,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: no CHARGE_DECISION after ACK; resending CHARGE_REQUEST msg_id=%s",
                   uav_id_.c_str(), charge_request_pending_->msg_id.c_str());
+      charge_request_pending_->acknowledged = false;
       sendChargeRequest(*charge_request_pending_);
     }
   }
@@ -2896,33 +3032,9 @@ private:
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     publishToBus(msg);
+    registerPendingAck(msg, charge_request_max_retries_, charge_request_retry_sec_);
     pending.last_send_time = this->now();
     pending.attempts++;
-  }
-
-  void taskReleaseRetryTick()
-  {
-    if (role_ != 1 || task_release_pending_.empty()) {
-      return;
-    }
-
-    auto now = this->now();
-    for (auto it = task_release_pending_.begin(); it != task_release_pending_.end(); ) {
-      if (task_release_max_retries_ > 0 && it->second.attempts >= task_release_max_retries_) {
-        RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: giving up TASK_RELEASE to %s after %d attempts.",
-                    uav_id_.c_str(), it->first.c_str(), it->second.attempts);
-        task_release_msg_to_member_.erase(it->second.msg_id);
-        it = task_release_pending_.erase(it);
-        continue;
-      }
-
-      double elapsed = (now - it->second.last_send_time).seconds();
-      if (elapsed >= task_release_retry_sec_) {
-        sendTaskRelease(it->first, it->second);
-      }
-      ++it;
-    }
   }
 
   // --- Mobility state machine ---
@@ -3039,8 +3151,8 @@ private:
   rclcpp::TimerBase::SharedPtr buffer_retry_timer_;
   rclcpp::TimerBase::SharedPtr ch_status_timer_;
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
-  rclcpp::TimerBase::SharedPtr task_release_timer_;
   rclcpp::TimerBase::SharedPtr charge_request_timer_;
+  rclcpp::TimerBase::SharedPtr ack_retry_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
@@ -3064,6 +3176,10 @@ private:
   size_t max_recent_hops_ = 5;
   BufferManager buffer_manager_;
   std::deque<BufferedMessage> carry_buffer_;
+  std::unordered_map<std::string, PendingAck> pending_acks_;
+  std::list<std::string> control_dedup_order_;
+  std::unordered_map<std::string, std::list<std::string>::iterator> control_dedup_index_;
+  size_t control_dedup_cache_size_ = 200;
   std::unordered_map<std::string, TaskReleasePending> task_release_pending_;
   std::unordered_map<std::string, std::string> task_release_msg_to_member_;
   double task_release_retry_sec_ = 2.0;
@@ -3072,6 +3188,7 @@ private:
   double charge_request_retry_sec_ = 2.0;
   int charge_request_max_retries_ = 0;
   double charge_decision_timeout_sec_ = 10.0;
+  double ack_retry_period_sec_ = 0.5;
   bool task_telemetry_enable_ = true;
   int task_telemetry_packets_min_ = 1;
   int task_telemetry_packets_max_ = 3;
