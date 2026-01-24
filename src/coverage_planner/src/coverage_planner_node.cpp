@@ -84,6 +84,9 @@ public:
       rclcpp::QoS(1).transient_local());
     accept_direct_deployment_ = this->declare_parameter<bool>(
       "accept_direct_deployment", false);
+    deployment_cmd_retry_sec_ = this->declare_parameter<double>("deployment_cmd_retry_sec", 2.0);
+    deployment_cmd_max_retries_ = this->declare_parameter<int>("deployment_cmd_max_retries", 5);
+    ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
 
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
 
@@ -101,6 +104,11 @@ public:
     // Timer: handles initial deployment and later routing recomputes.
     timer_ = this->create_wall_timer(
       2s, std::bind(&CoveragePlannerNode::periodicUpdate, this));
+
+    auto ack_retry = std::chrono::duration<double>(ack_retry_period_sec_);
+    ack_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry),
+      std::bind(&CoveragePlannerNode::resendPendingAcks, this));
 
     // Initialize backbone_active state for the *first num_ch_* UAVs (planned CHs)
     int n = std::min<int>(num_ch_, static_cast<int>(uav_ids_.size()));
@@ -137,6 +145,15 @@ private:
     double x{};
     double y{};
     int cluster_index{-1};
+  };
+
+  struct PendingAck
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    rclcpp::Time last_send_time;
+    int attempts = 0;
+    int max_retries = 0;
+    double retry_interval_sec = 1.0;
   };
 
   struct ClusterPlan
@@ -1518,6 +1535,60 @@ private:
   }
 
   // Convert a UavDeployment into a routed control message.
+  std::string extractAckedMsgId(const uav_msgs::msg::TrafficMessage & msg) const
+  {
+    if (!msg.ref_msg_id.empty()) {
+      return msg.ref_msg_id;
+    }
+    if (msg.payload.rfind("ref_msg_id=", 0) == 0) {
+      return msg.payload.substr(std::string("ref_msg_id=").size());
+    }
+    return msg.payload;
+  }
+
+  void registerPendingAck(const uav_msgs::msg::TrafficMessage & msg,
+                          int max_retries,
+                          double retry_interval_sec)
+  {
+    if (msg.flow_type != 1 || !msg.requires_ack || msg.msg_id.empty()) {
+      return;
+    }
+    PendingAck pending;
+    pending.msg = msg;
+    pending.last_send_time = this->now();
+    pending.attempts = 1;
+    pending.max_retries = max_retries;
+    pending.retry_interval_sec = retry_interval_sec;
+    pending_control_acks_[msg.msg_id] = pending;
+  }
+
+  void resendPendingAcks()
+  {
+    if (pending_control_acks_.empty() || !traffic_pub_) {
+      return;
+    }
+    auto now = this->now();
+    for (auto it = pending_control_acks_.begin(); it != pending_control_acks_.end(); ) {
+      auto & pending = it->second;
+      if (pending.max_retries > 0 && pending.attempts >= pending.max_retries) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Coverage planner: giving up on %s msg_id=%s after %d attempts.",
+                     pending.msg.control_type.c_str(),
+                     pending.msg.msg_id.c_str(),
+                     pending.attempts);
+        it = pending_control_acks_.erase(it);
+        continue;
+      }
+      double elapsed = (now - pending.last_send_time).seconds();
+      if (elapsed >= pending.retry_interval_sec) {
+        traffic_pub_->publish(pending.msg);
+        pending.last_send_time = now;
+        pending.attempts++;
+      }
+      ++it;
+    }
+  }
+
   void sendDeploymentTraffic(const uav_msgs::msg::UavDeployment & dep)
   {
     if (!traffic_pub_) {
@@ -1537,6 +1608,7 @@ private:
     msg.flow_type = 1;  // CONTROL_ALERT (see TrafficMessage.msg)
     msg.creation_time = this->now();
     msg.hop_count = 0;
+    msg.requires_ack = true;
 
     msg.control_type = "DEPLOYMENT_CMD";
 
@@ -1556,6 +1628,7 @@ private:
     msg.payload = oss.str();
 
     traffic_pub_->publish(msg);
+    registerPendingAck(msg, deployment_cmd_max_retries_, deployment_cmd_retry_sec_);
 
     RCLCPP_INFO(this->get_logger(),
                 "[NET-DEPLOY] to=%s next_hop=%s payload=\"%s\"",
@@ -1642,6 +1715,14 @@ private:
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
+    if (msg->control_type == "ACK") {
+      const std::string acked_id = extractAckedMsgId(*msg);
+      if (!acked_id.empty()) {
+        pending_control_acks_.erase(acked_id);
+      }
+      return;
+    }
+
     if (msg->control_type == "DEPLOYMENT_ACK") {
       auto it = pending_acks_.find(msg->src_id);
       if (it == pending_acks_.end()) {
@@ -1704,11 +1785,15 @@ private:
   std::string sink_id_ = "sink_gateway";
   std::string ugv_id_ = "ugv";
   uint64_t deployment_seq_ = 0;
+  double deployment_cmd_retry_sec_ = 2.0;
+  int deployment_cmd_max_retries_ = 5;
+  double ack_retry_period_sec_ = 0.5;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_pub_;
 
   rclcpp::Publisher<uav_msgs::msg::UavDeployment>::SharedPtr deployment_pub_;
   rclcpp::Publisher<uav_msgs::msg::TaskPointArray>::SharedPtr task_point_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr ack_retry_timer_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
 
@@ -1730,6 +1815,7 @@ private:
   std::unordered_set<std::string> expected_devices_;
   std::unordered_set<std::string> discovered_devices_;
   std::unordered_set<std::string> pending_acks_;
+  std::unordered_map<std::string, PendingAck> pending_control_acks_;
   std::unordered_map<std::string, uav_msgs::msg::UavDeployment> last_deployments_;
 };
 

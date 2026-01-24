@@ -24,8 +24,6 @@ public:
 
     enabled_ = this->declare_parameter<bool>("enabled", true);
     drop_delivered_ = this->declare_parameter<bool>("drop_delivered", false);
-    protect_deployment_ = this->declare_parameter<bool>("protect_deployment", true);
-    protect_charge_decision_ = this->declare_parameter<bool>("protect_charge_decision", true);
 
     p0_ = this->declare_parameter<double>("p0", 0.0);
     aw_ = this->declare_parameter<double>("aw", 0.15);
@@ -97,17 +95,6 @@ private:
     }
 
     if (!enabled_) {
-      forward(*msg, is_delivered_stream);
-      return;
-    }
-
-    // Respect whitelisted critical control traffic.
-    if (msg->control_type == "DROP" ||
-        msg->control_type == "MOTION_START" ||
-        (protect_deployment_ &&
-         (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) ||
-        (protect_charge_decision_ && msg->control_type == "CHARGE_DECISION"))
-    {
       forward(*msg, is_delivered_stream);
       return;
     }
@@ -185,8 +172,6 @@ private:
   // Params
   bool enabled_{true};
   bool drop_delivered_{false};
-  bool protect_deployment_{true};
-  bool protect_charge_decision_{true};
   double p0_{0.0};
   double aw_{0.0};
   double ar_{0.0};

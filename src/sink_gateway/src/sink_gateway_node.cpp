@@ -560,9 +560,10 @@ private:
     ack.msg_id = sink_id_ + "_ACK_" + msg.msg_id;
     ack.src_id = sink_id_;
     ack.dst_id = msg.src_id;
+    ack.ref_msg_id = msg.msg_id;
     ack.flow_type = 1;
     ack.control_type = "ACK";
-    ack.payload = "ref_msg_id=" + msg.msg_id;
+    ack.payload = msg.msg_id;
     ack.creation_time = this->now();
     ack.hop_count = 0;
     ack.ttl = 4;
