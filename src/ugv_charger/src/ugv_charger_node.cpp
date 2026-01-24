@@ -623,6 +623,12 @@ private:
 
     (void)suggested_next_hop;
     ack.next_hop_id = resolveNextHop(sink_id_);
+    if (ack.next_hop_id.empty() && !uplink_ch_id_.empty()) {
+      ack.next_hop_id = uplink_ch_id_;
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV %s: using uplink CH %s for DEPLOYMENT_ACK",
+                  ugv_id_.c_str(), uplink_ch_id_.c_str());
+    }
 
     ack.flow_type = 1;
     ack.creation_time = this->now();
