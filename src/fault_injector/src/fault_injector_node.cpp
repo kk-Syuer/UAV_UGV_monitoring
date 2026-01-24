@@ -94,7 +94,7 @@ private:
       return;
     }
 
-    if (!enabled_) {
+    if (!enabled_ || msg->control_type == "FAILURE_EVENT") {
       forward(*msg, is_delivered_stream);
       return;
     }

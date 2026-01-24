@@ -714,6 +714,12 @@ private:
     if (!traffic_pub_) {
       return;
     }
+    if (battery_energy_ <= 0.0f) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: battery depleted; skipping FAILURE_EVENT traffic message.",
+                  uav_id_.c_str());
+      return;
+    }
 
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = uav_id_ + "_failure_" + std::to_string(msg_counter_++);
@@ -1773,6 +1779,12 @@ private:
 
   bool publishToBus(uav_msgs::msg::TrafficMessage msg, bool allow_buffer = false)
   {
+    if (battery_energy_ <= 0.0f) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "UAV %s: battery depleted; skipping send of msg_id=%s (ctrl=%s).",
+                           uav_id_.c_str(), msg.msg_id.c_str(), msg.control_type.c_str());
+      return false;
+    }
     const bool is_drop_msg = (msg.control_type == "DROP");
     if (msg.next_hop_id.empty() && msg.dst_id != "broadcast") {
       if (!is_drop_msg) {
@@ -1808,6 +1820,9 @@ private:
 
   void publishDrop(const std::string & msg_id, const std::string & reason)
   {
+    if (battery_energy_ <= 0.0f) {
+      return;
+    }
     if (msg_id.find("_DROP_") != std::string::npos) {
       return;
     }
