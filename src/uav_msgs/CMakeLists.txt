@@ -18,6 +18,8 @@ find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
 
+set(ROSIDL_TYPESUPPORT "rosidl_typesupport_cpp")
+
 rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/UavStatus.msg"
   "msg/Heartbeat.msg"
@@ -34,6 +36,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/WeatherStatus.msg"
   "msg/FailureEvent.msg"  
   "msg/UavDeployment.msg"
+  "msg/RoutingTable.msg"
 
   DEPENDENCIES builtin_interfaces geometry_msgs
 )

@@ -8,9 +8,11 @@
 
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
+#include "uav_msgs/msg/routing_table.hpp"
 
 using std::placeholders::_1;
 using namespace std::chrono_literals;
@@ -71,9 +73,15 @@ public:
     // Control messages are injected into /fanet/network_bus_raw.
     control_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/network_bus_raw", 100);
+    routing_event_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/fanet/routing_event", 10);
 
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/fanet/status", 10);
+
+    routing_table_sub_ = this->create_subscription<uav_msgs::msg::RoutingTable>(
+      "/fanet/routing_table", 20,
+      std::bind(&SinkGatewayNode::routingTableCallback, this, std::placeholders::_1));
 
     RCLCPP_INFO(this->get_logger(),
                 "Sink gateway started with id='%s', ugv_id='%s', uplink_ch_id='%s', "
@@ -179,7 +187,14 @@ private:
     msg.msg_id = sink_id_ + "_ctrl_" + target_uav_id_ + "_" + std::to_string(msg_counter_++);
     msg.src_id = sink_id_;
     msg.dst_id = target_uav_id_;
-    msg.next_hop_id = uplink_ch_id_;
+    msg.next_hop_id = resolveNextHop(target_uav_id_);
+    if (msg.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "[SINK TX] CONTROL no route to %s",
+                  target_uav_id_.c_str());
+      publishRoutingEvent("NO_ROUTE_CONTROL", target_uav_id_, msg.next_hop_id);
+      return;
+    }
 
     // CONTROL_ALERT
     msg.flow_type = 1;
@@ -299,8 +314,14 @@ private:
                    std::to_string(start_mobility_seq_++);
       msg.src_id = sink_id_;
       msg.dst_id = u;
-      // enter backbone via uplink CH
-      msg.next_hop_id = uplink_ch_id_;
+      msg.next_hop_id = resolveNextHop(u);
+      if (msg.next_hop_id.empty()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[MOB-START] no route to %s",
+                    u.c_str());
+        publishRoutingEvent("NO_ROUTE_MOTION_START", u, msg.next_hop_id);
+        continue;
+      }
 
       msg.flow_type = 1;  // CONTROL_ALERT
       msg.creation_time = this->now();
@@ -337,6 +358,51 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "[STATUS_CH] from %s pos=(%.1f, %.1f) batt=%.1f state=%s", s.id.c_str(),
                 s.x, s.y, s.battery, s.state.c_str());
+  }
+
+  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
+  {
+    if (msg->node_id != sink_id_) {
+      return;
+    }
+
+    routing_table_.clear();
+    const size_t count = std::min(msg->destinations.size(), msg->next_hops.size());
+    for (size_t i = 0; i < count; ++i) {
+      if (!msg->destinations[i].empty() && !msg->next_hops[i].empty()) {
+        routing_table_[msg->destinations[i]] = msg->next_hops[i];
+      }
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "Sink routing table updated (%zu entries)",
+                routing_table_.size());
+  }
+
+  std::string resolveNextHop(const std::string & dst) const
+  {
+    auto it = routing_table_.find(dst);
+    if (it != routing_table_.end()) {
+      return it->second;
+    }
+    return "";
+  }
+
+  void publishRoutingEvent(const std::string & reason,
+                           const std::string & dst_id,
+                           const std::string & next_hop) const
+  {
+    if (!routing_event_pub_) {
+      return;
+    }
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << "node=" << sink_id_
+        << " dst=" << dst_id
+        << " next_hop=" << (next_hop.empty() ? "UNREACHABLE" : next_hop)
+        << " reason=" << reason;
+    msg.data = oss.str();
+    routing_event_pub_->publish(msg);
   }
 
   void handleChDead(const std::string & ch_id)
@@ -451,6 +517,7 @@ private:
 
   std::unordered_map<std::string, ChStatus> ch_status_table_;
   std::unordered_set<std::string> active_ch_ids_;
+  std::unordered_map<std::string, std::string> routing_table_;
   double ch_timeout_sec_ = 0.0;
   double status_period_sec_ = 1.0;
   double comm_radius_m_ = 0.0;
@@ -476,8 +543,10 @@ private:
 
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
+  rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr    control_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr            routing_event_pub_;
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr         status_pub_;
   rclcpp::TimerBase::SharedPtr                                   control_timer_;
 
@@ -501,7 +570,7 @@ private:
     ack.next_hop_id = msg.src_id.empty() ? "" : msg.src_id;
 
     if (ack.next_hop_id.empty()) {
-      ack.next_hop_id = uplink_ch_id_;
+      ack.next_hop_id = resolveNextHop(ack.dst_id);
     }
 
     if (!ack.next_hop_id.empty()) {
@@ -510,6 +579,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "[ACK] Sink could not ACK msg_id=%s (no next hop)",
                   msg.msg_id.c_str());
+      publishRoutingEvent("NO_ROUTE_ACK", ack.dst_id, ack.next_hop_id);
     }
   }
 
