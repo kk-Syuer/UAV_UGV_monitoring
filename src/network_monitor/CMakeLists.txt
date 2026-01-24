@@ -7,12 +7,14 @@ endif()
 
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
+find_package(std_msgs REQUIRED)
 find_package(uav_msgs REQUIRED)
 
 add_executable(network_monitor_node src/network_monitor_node.cpp)
 
 ament_target_dependencies(network_monitor_node
   rclcpp
+  std_msgs
   uav_msgs
 )
 
