@@ -15,7 +15,8 @@ file(REMOVE_RECURSE
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
 set(ROSIDL_TYPESUPPORT "rosidl_typesupport_cpp")
-set(ROSIDL_DEFAULT_GENERATORS_DISABLE_C_TYPESUPPORT TRUE)
+set(ROSIDL_DEFAULT_GENERATORS_DISABLE_C_TYPESUPPORT ON CACHE BOOL
+  "Disable C typesupport generation for ROSIDL default generators" FORCE)
 find_package(rosidl_typesupport_cpp REQUIRED)
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
