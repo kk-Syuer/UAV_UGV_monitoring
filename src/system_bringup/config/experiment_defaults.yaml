@@ -8,6 +8,12 @@ network:
   neighbor_timeout_sec: 3.0
   comm_radius_m: 400.0
 
+routing:
+  recompute_period_sec: 2.0
+  hysteresis_margin_m: 3.0
+  ch_move_threshold_m: 7.5
+  status_timeout_sec: 5.0
+
 monitor:
   max_runtime_sec: 0.0
   stop_on_backbone_loss: false
