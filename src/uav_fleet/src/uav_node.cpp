@@ -608,6 +608,8 @@ private:
 
       failure_pub_->publish(fe);
       publishFailureTraffic(fe);
+      scheduleShutdownAfterFailure();
+      return;
     }
 
     // If low and not waiting or scheduled, request a charge slot.
@@ -748,6 +750,47 @@ private:
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     publishToBus(msg);
+  }
+
+  void scheduleShutdownAfterFailure()
+  {
+    if (shutdown_scheduled_) {
+      return;
+    }
+    shutdown_scheduled_ = true;
+
+    auto cancel_timer = [](const rclcpp::TimerBase::SharedPtr & timer) {
+      if (timer) {
+        timer->cancel();
+      }
+    };
+
+    cancel_timer(status_timer_);
+    cancel_timer(heartbeat_timer_);
+    cancel_timer(traffic_timer_);
+    cancel_timer(neighbor_timeout_timer_);
+    cancel_timer(buffer_retry_timer_);
+    cancel_timer(ch_status_timer_);
+    cancel_timer(ladtr_retry_timer_);
+    cancel_timer(charge_request_timer_);
+    cancel_timer(ack_retry_timer_);
+    cancel_timer(mobility_timer_);
+
+    RCLCPP_WARN(this->get_logger(),
+                "UAV %s: battery depleted; stopping node after failure notification.",
+                uav_id_.c_str());
+
+    shutdown_timer_ = this->create_wall_timer(
+      200ms,
+      [this]() {
+        if (shutdown_timer_) {
+          shutdown_timer_->cancel();
+        }
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: shutting down after battery failure.",
+                    uav_id_.c_str());
+        rclcpp::shutdown();
+      });
   }
 
   void handleChargeDecisionFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
@@ -3084,6 +3127,7 @@ private:
   float battery_threshold_percent_;
   double charging_duration_sec_;
   bool reported_battery_dead_ = false;
+  bool shutdown_scheduled_ = false;
 
   // === Mobility ===
   bool mobility_enabled_;
@@ -3167,6 +3211,7 @@ private:
   rclcpp::TimerBase::SharedPtr ladtr_retry_timer_;
   rclcpp::TimerBase::SharedPtr charge_request_timer_;
   rclcpp::TimerBase::SharedPtr ack_retry_timer_;
+  rclcpp::TimerBase::SharedPtr shutdown_timer_;
 
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Service<uav_msgs::srv::SendDebugText>::SharedPtr debug_service_;
