@@ -14,6 +14,8 @@
 #include "uav_msgs/msg/charge_decision.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
+#include "uav_msgs/msg/routing_table.hpp"
+#include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/twist.hpp"
 
@@ -120,6 +122,8 @@ public:
       "/fanet/network_bus_raw", 100);
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
       "/fanet/status", 50);
+    routing_event_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/fanet/routing_event", 10);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
                 "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
@@ -137,6 +141,9 @@ public:
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
       "/fanet/status", 100,
       std::bind(&UgvChargerNode::statusCallback, this, std::placeholders::_1));
+    routing_table_sub_ = this->create_subscription<uav_msgs::msg::RoutingTable>(
+      "/fanet/routing_table", 20,
+      std::bind(&UgvChargerNode::routingTableCallback, this, std::placeholders::_1));
 
     // Scheduler loop assigns charging slots at a steady cadence.
     scheduler_timer_ = this->create_wall_timer(
@@ -229,6 +236,51 @@ private:
     info.pose = msg->pose;
     info.comm_radius_m = static_cast<float>(comm_radius_m_);
     recomputeChargingSpots();
+  }
+
+  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
+  {
+    if (msg->node_id != ugv_id_) {
+      return;
+    }
+
+    routing_table_.clear();
+    const size_t count = std::min(msg->destinations.size(), msg->next_hops.size());
+    for (size_t i = 0; i < count; ++i) {
+      if (!msg->destinations[i].empty() && !msg->next_hops[i].empty()) {
+        routing_table_[msg->destinations[i]] = msg->next_hops[i];
+      }
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV %s: routing table updated (%zu entries)",
+                ugv_id_.c_str(), routing_table_.size());
+  }
+
+  std::string resolveNextHop(const std::string & dst) const
+  {
+    auto it = routing_table_.find(dst);
+    if (it != routing_table_.end()) {
+      return it->second;
+    }
+    return "";
+  }
+
+  void publishRoutingEvent(const std::string & reason,
+                           const std::string & dst_id,
+                           const std::string & next_hop) const
+  {
+    if (!routing_event_pub_) {
+      return;
+    }
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << "node=" << ugv_id_
+        << " dst=" << dst_id
+        << " next_hop=" << (next_hop.empty() ? "UNREACHABLE" : next_hop)
+        << " reason=" << reason;
+    msg.data = oss.str();
+    routing_event_pub_->publish(msg);
   }
 
   // Handle control messages routed through the mesh.
@@ -532,13 +584,8 @@ private:
     ack.src_id = ugv_id_;
     ack.dst_id = sink_id_;
 
-    if (!suggested_next_hop.empty() && suggested_next_hop != "-") {
-      ack.next_hop_id = suggested_next_hop;
-    } else if (!uplink_ch_id_.empty()) {
-      ack.next_hop_id = uplink_ch_id_;
-    } else {
-      ack.next_hop_id = sink_id_;
-    }
+    (void)suggested_next_hop;
+    ack.next_hop_id = resolveNextHop(sink_id_);
 
     ack.flow_type = 1;
     ack.creation_time = this->now();
@@ -617,19 +664,12 @@ private:
     ack.hop_count = 0;
     ack.ttl = 6;
     ack.requires_ack = false;
-    ack.next_hop_id = sink_id_;
-
-    if (ack.dst_id != sink_id_) {
-      ack.next_hop_id = msg.src_id;
-      if (!neighborReachable(ack.next_hop_id)) {
-        ack.next_hop_id = uplink_ch_id_;
-      }
-    }
-
-    if (!neighborReachable(ack.next_hop_id)) {
+    ack.next_hop_id = resolveNextHop(ack.dst_id);
+    if (ack.next_hop_id.empty() || !neighborReachable(ack.next_hop_id)) {
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: cannot ACK msg_id=%s (no reachable next hop)",
                   ugv_id_.c_str(), msg.msg_id.c_str());
+      publishRoutingEvent("NO_ROUTE_ACK", ack.dst_id, ack.next_hop_id);
       return;
     }
 
@@ -717,7 +757,10 @@ private:
     drop.creation_time = this->now();
     drop.hop_count = 0;
     drop.ttl = 4;
-    drop.next_hop_id = "";
+    drop.next_hop_id = resolveNextHop(sink_id_);
+    if (drop.next_hop_id.empty()) {
+      publishRoutingEvent("NO_ROUTE_DROP", sink_id_, drop.next_hop_id);
+    }
     control_pub_->publish(drop);
   }
 
@@ -726,6 +769,7 @@ private:
   {
     if (msg.next_hop_id.empty()) {
       publishDrop(msg.msg_id, drop_reason);
+      publishRoutingEvent(drop_reason, msg.dst_id, msg.next_hop_id);
       return false;
     }
 
@@ -733,25 +777,9 @@ private:
       return true;
     }
 
-    // Fallback chain: uplink CH -> sink
-    if (!uplink_ch_id_.empty() && neighborReachable(uplink_ch_id_)) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: next hop %s unreachable for msg %s, falling back to uplink %s",
-                  ugv_id_.c_str(), msg.next_hop_id.c_str(), msg.msg_id.c_str(), uplink_ch_id_.c_str());
-      msg.next_hop_id = uplink_ch_id_;
-      return true;
-    }
-
-    if (neighborReachable(sink_id_)) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: next hop %s unreachable for msg %s, falling back to sink %s",
-                  ugv_id_.c_str(), msg.next_hop_id.c_str(), msg.msg_id.c_str(), sink_id_.c_str());
-      msg.next_hop_id = sink_id_;
-      return true;
-    }
-
     msg.next_hop_id.clear();
     publishDrop(msg.msg_id, drop_reason);
+    publishRoutingEvent(drop_reason, msg.dst_id, msg.next_hop_id);
     return false;
   }
 
@@ -901,6 +929,7 @@ private:
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
+  rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
   rclcpp::TimerBase::SharedPtr status_timer_;
@@ -910,6 +939,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr control_pub_;
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr routing_event_pub_;
   uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
@@ -959,6 +989,7 @@ private:
   std::vector<ChargingSession> active_sessions_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
+  std::unordered_map<std::string, std::string> routing_table_;
 
   // Map each UAV to its CH, based on deployments
   std::unordered_map<std::string, std::string> uav_to_ch_;
@@ -975,28 +1006,14 @@ private:
     msg.src_id = ugv_id_;
     msg.dst_id = job.uav_id;
 
-    // Decide first hop:
-    //  - If we know this UAV's CH from deployments:
-    //      * For CHs: CH is itself -> direct (ugv -> uav_i)
-    //      * For members: CH is their cluster head -> ugv -> CH
-    //  - Otherwise: if status says CH, try direct to dst
-    //  - Fallback: fixed uplink_ch_id_ (best-effort backbone entry)
-    std::string first_hop;
-    auto it = uav_to_ch_.find(job.uav_id);
-    if (it != uav_to_ch_.end()) {
-      first_hop = it->second;
-    } else {
-      auto it_status = uav_status_.find(job.uav_id);
-      if (it_status != uav_status_.end() && it_status->second.role == 1) {
-        first_hop = job.uav_id;
-      } else {
-        first_hop = uplink_ch_id_;
-      }
+    msg.next_hop_id = resolveNextHop(job.uav_id);
+    if (msg.next_hop_id.empty()) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV %s: no route to %s for CHARGE_DECISION",
+                  ugv_id_.c_str(), job.uav_id.c_str());
+      publishRoutingEvent("NO_ROUTE_CHARGE_DECISION", job.uav_id, msg.next_hop_id);
+      return;
     }
-    if (first_hop.empty()) {
-      first_hop = job.uav_id;
-    }
-    msg.next_hop_id = first_hop;
 
     msg.flow_type = 1;              // CONTROL_ALERT
     msg.creation_time = now;

@@ -8,12 +8,16 @@ endif()
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(uav_msgs REQUIRED)
+find_package(geometry_msgs REQUIRED)
+find_package(std_msgs REQUIRED)
 
 add_executable(ugv_charger_node src/ugv_charger_node.cpp)
 
 ament_target_dependencies(ugv_charger_node
   rclcpp
   uav_msgs
+  geometry_msgs
+  std_msgs
 )
 
 install(TARGETS

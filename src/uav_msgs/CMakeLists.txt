@@ -34,6 +34,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/WeatherStatus.msg"
   "msg/FailureEvent.msg"  
   "msg/UavDeployment.msg"
+  "msg/RoutingTable.msg"
 
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
