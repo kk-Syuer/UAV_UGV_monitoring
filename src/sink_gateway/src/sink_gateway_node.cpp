@@ -245,21 +245,23 @@ private:
 
     // Decide the first hop from the sink into the ad-hoc network.
     // We reuse uplink_ch_id_ as the "bootstrap CH" (typically uav_1).
-    std::string next_hop;
+    std::string next_hop = resolveNextHop(msg->uav_id);
 
-    if (msg->uav_id == ugv_id_) {
-      // UGV: send via the bootstrap CH near the UGV.
-      next_hop = uplink_ch_id_;
-    } else if (msg->role == 1) {
-      // CH deployment: first packet always goes through the bootstrap CH.
-      // If this CH *is* the bootstrap, it will just receive it directly.
-      next_hop = uplink_ch_id_;
-    } else if (msg->role == 0) {
-      // MEMBER: first hop is its cluster head.
-      next_hop = msg->ch_id;
-    } else {
-      // Any other role: fall back to bootstrap CH.
-      next_hop = uplink_ch_id_;
+    if (next_hop.empty()) {
+      if (msg->uav_id == ugv_id_) {
+        // UGV: send via the bootstrap CH near the UGV.
+        next_hop = uplink_ch_id_;
+      } else if (msg->role == 1) {
+        // CH deployment: first packet always goes through the bootstrap CH.
+        // If this CH *is* the bootstrap, it will just receive it directly.
+        next_hop = uplink_ch_id_;
+      } else if (msg->role == 0) {
+        // MEMBER: first hop is its cluster head.
+        next_hop = msg->ch_id;
+      } else {
+        // Any other role: fall back to bootstrap CH.
+        next_hop = uplink_ch_id_;
+      }
     }
 
     tm.next_hop_id = next_hop;
@@ -568,11 +570,7 @@ private:
     ack.hop_count = 0;
     ack.ttl = 4;
     ack.requires_ack = false;
-    ack.next_hop_id = msg.src_id.empty() ? "" : msg.src_id;
-
-    if (ack.next_hop_id.empty()) {
-      ack.next_hop_id = resolveNextHop(ack.dst_id);
-    }
+    ack.next_hop_id = resolveNextHop(ack.dst_id);
 
     if (!ack.next_hop_id.empty()) {
       control_pub_->publish(ack);
