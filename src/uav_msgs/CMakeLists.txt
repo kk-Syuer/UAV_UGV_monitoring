@@ -14,6 +14,7 @@ file(REMOVE_RECURSE
 # uncomment the following section in order to fill in
 # further dependencies manually.
 # find_package(<dependency> REQUIRED)
+set(ROSIDL_TYPESUPPORT "rosidl_typesupport_cpp")
 find_package(rosidl_default_generators REQUIRED)
 find_package(builtin_interfaces REQUIRED)
 find_package(geometry_msgs REQUIRED)
@@ -34,6 +35,7 @@ rosidl_generate_interfaces(${PROJECT_NAME}
   "msg/WeatherStatus.msg"
   "msg/FailureEvent.msg"  
   "msg/UavDeployment.msg"
+  "msg/RoutingTable.msg"
 
   DEPENDENCIES builtin_interfaces geometry_msgs
 )
