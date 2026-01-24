@@ -11,6 +11,8 @@ executables:
   injector_exec: fault_injector_node
   sink_pkg: sink_gateway
   sink_exec: sink_gateway_node
+  routing_pkg: routing_manager
+  routing_exec: routing_manager_node
   ugv_pkg: ugv_charger
   ugv_exec: ugv_charger_node
   planner_pkg: coverage_planner
