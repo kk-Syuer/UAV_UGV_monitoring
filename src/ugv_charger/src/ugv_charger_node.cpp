@@ -632,14 +632,15 @@ private:
     ack.payload = "";
 
     if (ack.next_hop_id.empty()) {
+      ack.next_hop_id = "ch0";
       RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: no route to sink for DEPLOYMENT_ACK, sending without next hop.",
-                  ugv_id_.c_str());
-    } else if (!ensureReachableOrDrop(ack, "UNREACHABLE_DEPLOYMENT_ACK")) {
+                  "UGV %s: no route to sink for DEPLOYMENT_ACK, falling back to %s.",
+                  ugv_id_.c_str(), ack.next_hop_id.c_str());
+    } else if (!neighborReachable(ack.next_hop_id)) {
+      ack.next_hop_id = "ch0";
       RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: dropping DEPLOYMENT_ACK msg_id=%s (next hop unreachable)",
-                  ugv_id_.c_str(), ack.msg_id.c_str());
-      return;
+                  "UGV %s: DEPLOYMENT_ACK next hop unreachable, falling back to %s.",
+                  ugv_id_.c_str(), ack.next_hop_id.c_str());
     }
 
     control_pub_->publish(ack);
