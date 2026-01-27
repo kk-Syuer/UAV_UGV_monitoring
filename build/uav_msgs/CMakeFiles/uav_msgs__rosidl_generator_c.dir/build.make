@@ -96,6 +96,7 @@ rosidl_generator_c/uav_msgs/msg/uav_status.h: rosidl_adapter/uav_msgs/action/Doc
 rosidl_generator_c/uav_msgs/msg/uav_status.h: rosidl_adapter/uav_msgs/msg/WeatherStatus.idl
 rosidl_generator_c/uav_msgs/msg/uav_status.h: rosidl_adapter/uav_msgs/msg/FailureEvent.idl
 rosidl_generator_c/uav_msgs/msg/uav_status.h: rosidl_adapter/uav_msgs/msg/UavDeployment.idl
+rosidl_generator_c/uav_msgs/msg/uav_status.h: rosidl_adapter/uav_msgs/msg/RoutingTable.idl
 rosidl_generator_c/uav_msgs/msg/uav_status.h: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
 rosidl_generator_c/uav_msgs/msg/uav_status.h: /opt/ros/humble/share/builtin_interfaces/msg/Time.idl
 rosidl_generator_c/uav_msgs/msg/uav_status.h: /opt/ros/humble/share/geometry_msgs/msg/Accel.idl
@@ -333,6 +334,18 @@ rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__struct.h: rosidl_generato
 rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__type_support.h: rosidl_generator_c/uav_msgs/msg/uav_status.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__type_support.h
 
+rosidl_generator_c/uav_msgs/msg/routing_table.h: rosidl_generator_c/uav_msgs/msg/uav_status.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/routing_table.h
+
+rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.h: rosidl_generator_c/uav_msgs/msg/uav_status.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.h
+
+rosidl_generator_c/uav_msgs/msg/detail/routing_table__struct.h: rosidl_generator_c/uav_msgs/msg/uav_status.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/routing_table__struct.h
+
+rosidl_generator_c/uav_msgs/msg/detail/routing_table__type_support.h: rosidl_generator_c/uav_msgs/msg/uav_status.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/routing_table__type_support.h
+
 rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c: rosidl_generator_c/uav_msgs/msg/uav_status.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c
 
@@ -374,6 +387,9 @@ rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.c: rosidl_genera
 
 rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c: rosidl_generator_c/uav_msgs/msg/uav_status.h
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c
+
+rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c: rosidl_generator_c/uav_msgs/msg/uav_status.h
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c
 
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c.o: CMakeFiles/uav_msgs__rosidl_generator_c.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c.o: rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c
@@ -571,6 +587,20 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/deta
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c.s"
 	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c -o CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c.s
 
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o: CMakeFiles/uav_msgs__rosidl_generator_c.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o: rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o: CMakeFiles/uav_msgs__rosidl_generator_c.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building C object CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o -MF CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o.d -o CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c
+
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing C source to CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.i"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c > CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.i
+
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling C source to assembly CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.s"
+	/usr/bin/cc $(C_DEFINES) $(C_INCLUDES) $(C_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c -o CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.s
+
 # Object files for target uav_msgs__rosidl_generator_c
 uav_msgs__rosidl_generator_c_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_status__functions.c.o" \
@@ -586,7 +616,8 @@ uav_msgs__rosidl_generator_c_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/action/detail/dock_and_charge__functions.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c.o" \
 "CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.c.o" \
-"CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c.o"
+"CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c.o" \
+"CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o"
 
 # External object files for target uav_msgs__rosidl_generator_c
 uav_msgs__rosidl_generator_c_EXTERNAL_OBJECTS =
@@ -605,6 +636,7 @@ libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/
 libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.c.o
 libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/failure_event__functions.c.o
 libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/uav_deployment__functions.c.o
+libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c.o
 libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/build.make
 libuav_msgs__rosidl_generator_c.so: /opt/ros/humble/lib/libgeometry_msgs__rosidl_generator_c.so
 libuav_msgs__rosidl_generator_c.so: /opt/ros/humble/lib/libstd_msgs__rosidl_generator_c.so
@@ -614,7 +646,7 @@ libuav_msgs__rosidl_generator_c.so: /opt/ros/humble/lib/libbuiltin_interfaces__r
 libuav_msgs__rosidl_generator_c.so: /opt/ros/humble/lib/librosidl_runtime_c.so
 libuav_msgs__rosidl_generator_c.so: /opt/ros/humble/lib/librcutils.so
 libuav_msgs__rosidl_generator_c.so: CMakeFiles/uav_msgs__rosidl_generator_c.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Linking C shared library libuav_msgs__rosidl_generator_c.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Linking C shared library libuav_msgs__rosidl_generator_c.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/uav_msgs__rosidl_generator_c.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -653,6 +685,10 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/heartbeat__functions.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/heartbeat__struct.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/heartbeat__type_support.h
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.c
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/routing_table__functions.h
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/routing_table__struct.h
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/routing_table__type_support.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.c
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/task_point__functions.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/task_point__struct.h
@@ -679,6 +715,7 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/detail/weather_status__type_support.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/failure_event.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/heartbeat.h
+CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/routing_table.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/task_point.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/task_point_array.h
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/depend: rosidl_generator_c/uav_msgs/msg/traffic_message.h

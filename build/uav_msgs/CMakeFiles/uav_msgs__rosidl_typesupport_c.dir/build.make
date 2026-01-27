@@ -89,6 +89,7 @@ rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: rosidl_adapter/u
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: rosidl_adapter/uav_msgs/msg/WeatherStatus.idl
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: rosidl_adapter/uav_msgs/msg/FailureEvent.idl
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: rosidl_adapter/uav_msgs/msg/UavDeployment.idl
+rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: rosidl_adapter/uav_msgs/msg/RoutingTable.idl
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: /opt/ros/humble/share/builtin_interfaces/msg/Time.idl
 rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp: /opt/ros/humble/share/geometry_msgs/msg/Accel.idl
@@ -199,6 +200,9 @@ rosidl_typesupport_c/uav_msgs/msg/failure_event__type_support.cpp: rosidl_typesu
 
 rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp: rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp
 	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp
+
+rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp: rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp
+	@$(CMAKE_COMMAND) -E touch_nocreate rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp
 
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp.o: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/flags.make
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp.o: rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp
@@ -396,6 +400,20 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/
 	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp.s"
 	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp -o CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp.s
 
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/flags.make
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o: rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/compiler_depend.ts
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Building CXX object CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -MD -MT CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o -MF CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o.d -o CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o -c /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp
+
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.i: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Preprocessing CXX source to CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.i"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -E /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp > CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.i
+
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.s: cmake_force
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green "Compiling CXX source to assembly CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.s"
+	/usr/bin/c++ $(CXX_DEFINES) $(CXX_INCLUDES) $(CXX_FLAGS) -S /home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp -o CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.s
+
 # Object files for target uav_msgs__rosidl_typesupport_c
 uav_msgs__rosidl_typesupport_c_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_status__type_support.cpp.o" \
@@ -411,7 +429,8 @@ uav_msgs__rosidl_typesupport_c_OBJECTS = \
 "CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/action/dock_and_charge__type_support.cpp.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/weather_status__type_support.cpp.o" \
 "CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/failure_event__type_support.cpp.o" \
-"CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp.o"
+"CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp.o" \
+"CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o"
 
 # External object files for target uav_msgs__rosidl_typesupport_c
 uav_msgs__rosidl_typesupport_c_EXTERNAL_OBJECTS =
@@ -430,6 +449,7 @@ libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.
 libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/weather_status__type_support.cpp.o
 libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/failure_event__type_support.cpp.o
 libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/uav_deployment__type_support.cpp.o
+libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp.o
 libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/build.make
 libuav_msgs__rosidl_typesupport_c.so: libuav_msgs__rosidl_generator_c.so
 libuav_msgs__rosidl_typesupport_c.so: /opt/ros/humble/lib/libgeometry_msgs__rosidl_typesupport_c.so
@@ -446,7 +466,7 @@ libuav_msgs__rosidl_typesupport_c.so: /opt/ros/humble/lib/libunique_identifier_m
 libuav_msgs__rosidl_typesupport_c.so: /opt/ros/humble/lib/librosidl_runtime_c.so
 libuav_msgs__rosidl_typesupport_c.so: /opt/ros/humble/lib/librcutils.so
 libuav_msgs__rosidl_typesupport_c.so: CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/link.txt
-	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_16) "Linking CXX shared library libuav_msgs__rosidl_typesupport_c.so"
+	@$(CMAKE_COMMAND) -E cmake_echo_color --switch=$(COLOR) --green --bold --progress-dir=/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/CMakeFiles --progress-num=$(CMAKE_PROGRESS_17) "Linking CXX shared library libuav_msgs__rosidl_typesupport_c.so"
 	$(CMAKE_COMMAND) -E cmake_link_script CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/link.txt --verbose=$(VERBOSE)
 
 # Rule to build all files generated by this target.
@@ -463,6 +483,7 @@ CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_m
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/cluster_info__type_support.cpp
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/failure_event__type_support.cpp
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/heartbeat__type_support.cpp
+CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/routing_table__type_support.cpp
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/task_point__type_support.cpp
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/task_point_array__type_support.cpp
 CMakeFiles/uav_msgs__rosidl_typesupport_c.dir/depend: rosidl_typesupport_c/uav_msgs/msg/traffic_message__type_support.cpp

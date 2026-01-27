@@ -84,6 +84,7 @@ CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/action/Do
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/WeatherStatus.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/FailureEvent.msg
 CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/UavDeployment.msg
+CMakeFiles/uav_msgs: /home/vboxuser/UAV_UGV_netmonitoring/src/uav_msgs/msg/RoutingTable.msg
 CMakeFiles/uav_msgs: /opt/ros/humble/share/builtin_interfaces/msg/Duration.idl
 CMakeFiles/uav_msgs: /opt/ros/humble/share/builtin_interfaces/msg/Time.idl
 CMakeFiles/uav_msgs: /opt/ros/humble/share/geometry_msgs/msg/Accel.idl

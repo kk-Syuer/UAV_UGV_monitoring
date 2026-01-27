@@ -16,6 +16,8 @@ file(REMOVE_RECURSE
   "../rosidl_generator_py/uav_msgs/msg/_failure_event_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_heartbeat.py"
   "../rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c"
+  "../rosidl_generator_py/uav_msgs/msg/_routing_table.py"
+  "../rosidl_generator_py/uav_msgs/msg/_routing_table_s.c"
   "../rosidl_generator_py/uav_msgs/msg/_task_point.py"
   "../rosidl_generator_py/uav_msgs/msg/_task_point_array.py"
   "../rosidl_generator_py/uav_msgs/msg/_task_point_array_s.c"

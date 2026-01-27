@@ -10,6 +10,8 @@ msg/FailureEvent.idl
 msg/FailureEvent.msg
 msg/Heartbeat.idl
 msg/Heartbeat.msg
+msg/RoutingTable.idl
+msg/RoutingTable.msg
 msg/TaskPoint.idl
 msg/TaskPoint.msg
 msg/TaskPointArray.idl

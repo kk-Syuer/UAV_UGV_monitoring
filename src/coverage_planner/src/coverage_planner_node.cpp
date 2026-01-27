@@ -464,7 +464,7 @@ private:
 
     if (task_points_.empty()) {
       // Default: generate scattered random points within the area.
-      std::uniform_int_distribution<int> num_points_dist(16, 29);
+      std::uniform_int_distribution<int> num_points_dist(5, 15);
       const int num_points = num_points_dist(rng_);
       std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
       std::uniform_real_distribution<double> y_dist(y_min_, y_max_);

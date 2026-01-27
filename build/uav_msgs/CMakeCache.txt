@@ -252,6 +252,9 @@ PYTHON_LIBRARY_DEBUG:FILEPATH=PYTHON_LIBRARY_DEBUG-NOTFOUND
 //Path to a program.
 Python3_EXECUTABLE:FILEPATH=/usr/bin/python3
 
+//Disable C typesupport generation for ROSIDL default generators
+ROSIDL_DEFAULT_GENERATORS_DISABLE_C_TYPESUPPORT:BOOL=ON
+
 //Name of the computer/site where compile is being run
 SITE:STRING=ubuntu22
 

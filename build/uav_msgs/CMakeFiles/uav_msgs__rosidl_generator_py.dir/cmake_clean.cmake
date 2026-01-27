@@ -11,6 +11,8 @@ file(REMOVE_RECURSE
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_failure_event_s.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c.o"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_heartbeat_s.c.o.d"
+  "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_routing_table_s.c.o"
+  "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_routing_table_s.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_task_point_array_s.c.o"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_task_point_array_s.c.o.d"
   "CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_task_point_s.c.o"
