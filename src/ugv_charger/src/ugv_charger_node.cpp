@@ -958,6 +958,7 @@ private:
 
     while (available_spots > 0 && !queue_.empty()) {
       size_t idx = chooseNextIndex(now);
+      DecisionRationale rationale = buildDecisionRationale(idx, now);
       QueueEntry job = queue_[idx];
       queue_.erase(queue_.begin() + static_cast<long>(idx));
 
@@ -970,6 +971,7 @@ private:
       decision.uav_id = job.uav_id;
       decision.accepted = true;
       decision.slot_start_time = slot_start_time;
+      decision.priority = job.role;
       decision.policy = policy_name_;
 
       charge_decision_pub_->publish(decision);
@@ -982,7 +984,7 @@ private:
                   slot_start_time.seconds(), slot_end_time.seconds(),
                   queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
       // Also send the decision through the routed network as a control message
-      sendDecisionControlMessage(job, now);
+      sendDecisionControlMessage(job, now, rationale);
 
       active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time});
 
@@ -993,6 +995,48 @@ private:
       }
     }
 
+  }
+
+  struct DecisionRationale
+  {
+    double tte_sec = -1.0;
+    double score = -1.0;
+    size_t rank_index = 0;
+    size_t queue_size = 0;
+  };
+
+  double estimateTimeToEmptySec(const QueueEntry & entry) const
+  {
+    double drain = (entry.role == 1) ? drain_percent_ch_ : drain_percent_member_;
+    if (drain <= 0.0) {
+      return -1.0;
+    }
+    return entry.battery_level / drain;
+  }
+
+  double computeDynamicScore(const QueueEntry & entry, const rclcpp::Time & now) const
+  {
+    double role_term = (entry.role == 1 ? 1.0 : 0.0);
+    double batt_term = (100.0 - entry.battery_level);
+    double wait_sec = (now - entry.request_time).seconds();
+    if (wait_sec < 0.0) {
+      wait_sec = 0.0;
+    }
+    return w_role_ * role_term + w_batt_ * batt_term + w_wait_ * wait_sec;
+  }
+
+  DecisionRationale buildDecisionRationale(size_t idx, const rclcpp::Time & now) const
+  {
+    DecisionRationale rationale;
+    rationale.rank_index = idx;
+    rationale.queue_size = queue_.size();
+    if (idx >= queue_.size()) {
+      return rationale;
+    }
+    const auto & entry = queue_[idx];
+    rationale.tte_sec = estimateTimeToEmptySec(entry);
+    rationale.score = computeDynamicScore(entry, now);
+    return rationale;
   }
 
   // ------------- Policy-specific selection -------------
@@ -1143,13 +1187,15 @@ private:
   std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
   // Send a routed control message so the UAV receives its decision.
   void sendDecisionControlMessage(const QueueEntry & job,
-                                  const rclcpp::Time & now)
+                                  const rclcpp::Time & now,
+                                  const DecisionRationale & rationale)
   {
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = ugv_id_ + "_charge_decision_" + job.uav_id + "_" +
                  std::to_string(now.nanoseconds());
     msg.src_id = ugv_id_;
     msg.dst_id = job.uav_id;
+    msg.ref_msg_id = job.request_msg_id;
 
     msg.next_hop_id = resolveNextHop(job.uav_id);
     if (msg.next_hop_id.empty()) {
@@ -1166,7 +1212,14 @@ private:
     msg.requires_ack = true;
 
     msg.control_type = "CHARGE_DECISION";
-    msg.payload = "ref_msg_id=" + job.request_msg_id;
+    std::ostringstream payload;
+    payload << "policy=" << policy_name_
+            << ";priority=" << static_cast<int>(job.role)
+            << ";rank_index=" << rationale.rank_index
+            << ";queue_size=" << rationale.queue_size
+            << ";tte_sec=" << rationale.tte_sec
+            << ";score=" << rationale.score;
+    msg.payload = payload.str();
 
     if (!ensureReachableOrDrop(msg, "UNREACHABLE_CHARGE_DECISION_NEXT_HOP")) {
       RCLCPP_WARN(this->get_logger(),

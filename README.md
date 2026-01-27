@@ -244,6 +244,14 @@ The system automatically records **experiment‑ready metrics**:
 * Success vs failure
 * Decision latency
 * Failure causes (drop, timeout, energy)
+* Decision rationale (policy, rank, TTE, score, priority)
+* Decision-time network context (control PDR, delay, drop reasons)
+
+### Charging Queue Dynamics (`charge_queue_timeseries.csv`)
+
+* Queue length over time (overall + CH/member split)
+* Active charging count and UGV dock utilization
+* Mean queueing delay per role (CH vs member)
 
 ### QoS Metrics (`qos_metrics.csv`)
 
@@ -270,6 +278,7 @@ exports the values used to compute QoS:
 * Delay statistics (mean / p95)
 * Drop breakdown
 * Charging success rate
+* Per-UAV fairness stats (rejections, timeouts, max waiting time)
 
 All outputs are written to:
 
