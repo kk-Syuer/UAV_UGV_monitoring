@@ -109,13 +109,14 @@ def _make_nodes(context, *args, **kwargs):
         ),
         "backbone_ids": ch_ids,
     }
-    nodes.append(Node(
+    monitor_node = Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
         executable=_get(cfg, ["executables", "monitor_exec"], "network_monitor_node"),
         name=f"network_monitor_{run_id}",
         output="screen",
         parameters=[monitor_params],
-    ))
+    )
+    nodes.append(monitor_node)
 
     # Weather
     if use_weather:
@@ -352,6 +353,12 @@ def _make_nodes(context, *args, **kwargs):
                 target_action=fleet_node,
                 on_exit=[OpaqueFunction(function=_handle_fleet_exit)],
             )))
+
+    if monitor_node is not None:
+        nodes.append(RegisterEventHandler(OnProcessExit(
+            target_action=monitor_node,
+            on_exit=[EmitEvent(event=Shutdown(reason="network monitor exited"))],
+        )))
 
     return nodes
 

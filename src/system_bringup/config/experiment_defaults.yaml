@@ -23,10 +23,6 @@ shutdown:
   after_sec: 0.0
   on_fleet_loss: false
 
-shutdown:
-  after_sec: 0.0
-  on_fleet_loss: false
-
 weather:
   enable: true
   publish_period_sec: 1.0
