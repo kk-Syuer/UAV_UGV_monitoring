@@ -1,5 +1,5 @@
-protocol,sessions,success_rate,median_wait_ms,median_decision_ms,median_energy
-dynamic,22,0.18181818181818182,996.139,366.905,-1.0
-fcfs,227,0.2290748898678414,995.657,418.319,-1.0
-two_ch_two_uav,70,0.0,-1.0,-1.0,-1.0
-ugv_dynamic,11,0.0,-1.0,-1.0,-1.0
+protocol,sessions,success_rate,median_wait_ms,median_decision_ms,median_energy_recovered,control_delivery_rate_to_sink,control_delivery_rate_to_ugv,avg_alive_members
+ugv_dynamic,66,0.15151515151515152,981.862,386.321,-1.0,0.7542372881355932,1.0,4251.0
+ugv_edf,33,0.12121212121212122,-1.0,408.3,-1.0,0.9530075187969925,1.0,3279.0
+ugv_fcfs,48,0.16666666666666666,997.041,266.196,-1.0,0.9342928660826032,1.0,3277.0
+ugv_role_priority,69,0.14492753623188406,-1.0,363.971,-1.0,0.943875616230565,0.9866666666666667,3673.0
