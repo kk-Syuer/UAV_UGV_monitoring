@@ -50,6 +50,12 @@ ch_manager:
   enable: true
   cluster_prefix: cluster
 
+recovery_manager:
+  enable: true
+  status_timeout_sec: 5.0
+  heartbeat_timeout_sec: 4.0
+  recovery_cooldown_sec: 2.0
+
 traffic:
   user_device_enable: true
 

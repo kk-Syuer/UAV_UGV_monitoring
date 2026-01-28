@@ -5,7 +5,7 @@ string next_hop_id          # for this hop, who we are sending to (empty for bro
 string last_hop_id          # who forwarded this packet most recently
 
 uint8 flow_type             # 0=DATA, 1=CONTROL
-string control_type         # NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, TASK_RELEASE, DROP, DEBUG_TEXT, STATUS_CH
+string control_type         # NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, TASK_RELEASE, TASK_ASSIGN, CLUSTER_REASSIGN, NEW_DEPLOYMENT, RECOVERY_START, RECOVERY_DONE, DROP, DEBUG_TEXT, STATUS_CH
 uint32 seq                  # sequence number (per src + control_type)
 uint32 hop_count
 uint32 ttl                  # max hops allowed (0 = unlimited)
