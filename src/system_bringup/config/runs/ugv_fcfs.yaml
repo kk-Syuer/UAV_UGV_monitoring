@@ -1,0 +1,102 @@
+global:
+  run_id: ugv_fcfs
+  output_dir: /tmp/fanet_logs
+
+executables:
+  monitor_pkg: network_monitor
+  monitor_exec: network_monitor_node
+  weather_pkg: weather_server
+  weather_exec: weather_node
+  injector_pkg: fault_injector
+  injector_exec: fault_injector_node
+  sink_pkg: sink_gateway
+  sink_exec: sink_gateway_node
+  routing_pkg: routing_manager
+  routing_exec: routing_manager_node
+  ugv_pkg: ugv_charger
+  ugv_exec: ugv_charger_node
+  planner_pkg: coverage_planner
+  planner_exec: coverage_planner_node
+  planner_viz_pkg: planner_viz
+  planner_viz_exec: fleet_viz
+  ch_manager_pkg: ch_manager
+  ch_manager_exec: ch_manager_node
+  user_device_pkg: user_devices_sim
+  user_device_exec: user_device_node
+  uav_pkg: uav_fleet
+  uav_exec: uav_node
+
+network:
+  neighbor_timeout_sec: 3.0
+  comm_radius_m: 400.0
+
+monitor:
+  flush_period_sec: 2.0
+  status_sample_period_sec: 1.0
+  max_runtime_sec: 3600.0
+  stop_on_backbone_loss: false
+
+weather:
+  enable: true
+  publish_period_sec: 1.0
+  wind_mean: 0.0
+  rain_mean: 0.0
+  temp_c: 18.0
+
+fault_injector:
+  enable: true
+  drop_mode: bus
+  p0: 0.0
+  aw: 0.25
+  ar: 0.35
+  at: 0.10
+  p_max: 0.6
+  wind_max: 20.0
+  rain_max: 1.0
+  temp_opt: 18.0
+  temp_span: 20.0
+  drop_control_multiplier: 0.2
+  drop_data_multiplier: 1.0
+
+sink:
+  sink_id: sink_gateway
+  uplink_ch_id: ch0
+
+ugv:
+  ugv_id: ugv_1
+  charging_policy: fcfs
+
+coverage_planner:
+  enable: true
+
+planner_viz:
+  enable: true
+
+ch_manager:
+  enable: true
+  cluster_prefix: cluster
+
+traffic:
+  user_device_enable: true
+
+task_telemetry:
+  enable: true
+  packets_min: 1
+  packets_max: 3
+  payload_bytes_min: 50
+  payload_bytes_max: 200
+  send_prob: 1.0
+  ttl_hops: 16
+  flow_label: SEARCH_TELEMETRY
+
+uavs:
+  ch_ids:
+    - ch0
+    - ch1
+  members:
+    - id: uav1
+      role: 0
+      my_ch_id: ch0
+    - id: uav2
+      role: 0
+      my_ch_id: ch1
