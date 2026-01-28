@@ -1,0 +1,5 @@
+protocol,sessions,success_rate,median_wait_ms,median_decision_ms,median_energy
+dynamic,22,0.18181818181818182,996.139,366.905,-1.0
+fcfs,227,0.2290748898678414,995.657,418.319,-1.0
+two_ch_two_uav,70,0.0,-1.0,-1.0,-1.0
+ugv_dynamic,11,0.0,-1.0,-1.0,-1.0

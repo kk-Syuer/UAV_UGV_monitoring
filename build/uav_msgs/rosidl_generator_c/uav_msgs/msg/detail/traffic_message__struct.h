@@ -49,7 +49,7 @@ typedef struct uav_msgs__msg__TrafficMessage
   rosidl_runtime_c__String last_hop_id;
   /// 0=DATA, 1=CONTROL
   uint8_t flow_type;
-  /// NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, TASK_RELEASE, DROP, DEBUG_TEXT, STATUS_CH
+  /// NONE, HEARTBEAT, CHARGE_REQUEST, CHARGE_DECISION, DEPLOYMENT, DEPLOYMENT_ACK, MOTION_START, TASK_RELEASE, TASK_ASSIGN, CLUSTER_REASSIGN, NEW_DEPLOYMENT, RECOVERY_START, RECOVERY_DONE, DROP, DEBUG_TEXT, STATUS_CH
   rosidl_runtime_c__String control_type;
   /// sequence number (per src + control_type)
   uint32_t seq;

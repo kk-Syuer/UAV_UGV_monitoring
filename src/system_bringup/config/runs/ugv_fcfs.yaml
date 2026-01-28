@@ -35,6 +35,7 @@ monitor:
   status_sample_period_sec: 1.0
   max_runtime_sec: 3600.0
   stop_on_backbone_loss: false
+  routing_table_empty_shutdown_sec: 10.0
 
 weather:
   enable: true
