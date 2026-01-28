@@ -104,6 +104,9 @@ def _make_nodes(context, *args, **kwargs):
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
         "max_runtime_sec": float(_get(cfg, ["monitor", "max_runtime_sec"], 0.0)),
         "stop_on_backbone_loss": bool(_get(cfg, ["monitor", "stop_on_backbone_loss"], False)),
+        "routing_table_empty_shutdown_sec": float(
+            _get(cfg, ["monitor", "routing_table_empty_shutdown_sec"], 10.0)
+        ),
         "backbone_ids": ch_ids,
     }
     nodes.append(Node(
