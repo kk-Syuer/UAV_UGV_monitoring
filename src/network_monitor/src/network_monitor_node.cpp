@@ -72,6 +72,18 @@ struct ChargeRecord
   ChargeOutcome outcome = ChargeOutcome::PENDING;
   std::string failure_reason;
 
+  uint8_t role = 0;
+  bool role_known = false;
+  std::string decision_policy;
+  int decision_priority = -1;
+  double decision_tte_sec = -1.0;
+  double decision_score = -1.0;
+  int decision_rank_index = -1;
+  int decision_queue_size = -1;
+  double decision_ctrl_pdr = -1.0;
+  double decision_ctrl_delay_mean_ms = -1.0;
+  double decision_ctrl_delay_p95_ms = -1.0;
+  std::string decision_ctrl_drop_reasons;
   double start_battery = -1.0;
   double end_battery = -1.0;
   bool charge_completed = false;
@@ -118,6 +130,8 @@ public:
     double csv_write_period_sec = this->declare_parameter<double>("csv_write_period_sec", 10.0);
     decision_timeout_sec_ = this->declare_parameter<double>("decision_timeout_sec", 30.0);
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
+    queue_stats_period_sec_ = this->declare_parameter<double>("queue_stats_period_sec", 1.0);
+    ugv_dock_capacity_ = this->declare_parameter<int>("ugv_dock_capacity", 1);
     max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
     stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
     rate_window_sec_ = this->declare_parameter<double>("network_stats_window_sec", 10.0);
@@ -169,6 +183,10 @@ public:
     status_timeseries_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(status_sample_period_sec_),
       std::bind(&NetworkMonitorNode::writeStatusTimeseriesRow, this));
+
+    queue_timeseries_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(queue_stats_period_sec_),
+      std::bind(&NetworkMonitorNode::writeChargeQueueTimeseriesRow, this));
 
     stats_pub_ = this->create_publisher<std_msgs::msg::String>(
       "/network_monitor/stats", 10);
@@ -240,6 +258,17 @@ private:
       rec.uav_id = msg->src_id;
       rec.ugv_id = msg->dst_id;
       rec.request_time = now;
+      auto role_it = latest_role_by_uav_.find(rec.uav_id);
+      if (role_it != latest_role_by_uav_.end()) {
+        rec.role = role_it->second;
+        rec.role_known = true;
+      } else {
+        auto st_it = uav_states_.find(rec.uav_id);
+        if (st_it != uav_states_.end()) {
+          rec.role = st_it->second.role;
+          rec.role_known = true;
+        }
+      }
       if (!isTerminalOutcome(rec.outcome) || rec.outcome == ChargeOutcome::PENDING) {
         rec.outcome = ChargeOutcome::PENDING;
       }
@@ -323,6 +352,8 @@ private:
       if (!accepted) {
         charge_rec.failure_reason = "REJECTED";
       }
+      parseDecisionRationale(msg->payload, charge_rec);
+      fillDecisionNetworkContext("CHARGE_DECISION", charge_rec);
       latest_request_by_uav_[charge_rec.uav_id] = msg->ref_msg_id;
     }
 
@@ -382,6 +413,7 @@ private:
   {
     rclcpp::Time t(msg->stamp);
     request_times_[msg->uav_id] = t;
+    latest_role_by_uav_[msg->uav_id] = msg->role;
 
     RCLCPP_INFO(this->get_logger(),
                 "[CHG-REQ] uav=%s role=%u batt=%.1f%% at t=%.1f",
@@ -501,6 +533,8 @@ private:
       return;
     }
     auto & rec = rec_it->second;
+    rec.role = msg->role;
+    rec.role_known = true;
     if (isTerminalOutcome(rec.outcome) && rec.outcome != ChargeOutcome::STARTED) {
       return;
     }
@@ -701,12 +735,85 @@ private:
     it_rec->second.failure_reason = reason;
   }
 
+  void parseDecisionRationale(const std::string & payload, ChargeRecord & rec)
+  {
+    if (payload.empty()) {
+      return;
+    }
+
+    std::stringstream ss(payload);
+    std::string token;
+    while (std::getline(ss, token, ';')) {
+      if (token.empty()) {
+        continue;
+      }
+      auto sep = token.find('=');
+      if (sep == std::string::npos) {
+        continue;
+      }
+      std::string key = token.substr(0, sep);
+      std::string value = token.substr(sep + 1);
+      if (key == "policy") {
+        rec.decision_policy = value;
+        continue;
+      }
+      try {
+        if (key == "priority") {
+          rec.decision_priority = std::stoi(value);
+        } else if (key == "rank_index") {
+          rec.decision_rank_index = std::stoi(value);
+        } else if (key == "queue_size") {
+          rec.decision_queue_size = std::stoi(value);
+        } else if (key == "tte_sec") {
+          rec.decision_tte_sec = std::stod(value);
+        } else if (key == "score") {
+          rec.decision_score = std::stod(value);
+        }
+      } catch (const std::exception &) {
+        continue;
+      }
+    }
+  }
+
+  void fillDecisionNetworkContext(const std::string & control_type, ChargeRecord & rec)
+  {
+    auto qos_stats = buildQosStats();
+    std::string key = "1:" + control_type;
+    auto it = qos_stats.find(key);
+    if (it == qos_stats.end()) {
+      return;
+    }
+    QosMetrics metrics = finalizeQosStats(it->second, 1, control_type);
+    rec.decision_ctrl_pdr = metrics.pdr;
+    rec.decision_ctrl_delay_mean_ms = metrics.delay_mean_ms;
+    rec.decision_ctrl_delay_p95_ms = metrics.delay_p95_ms;
+    rec.decision_ctrl_drop_reasons = formatDropReasons(it->second.drop_reasons);
+  }
+
+  std::string formatDropReasons(const std::unordered_map<std::string, size_t> & reasons) const
+  {
+    if (reasons.empty()) {
+      return "";
+    }
+    std::ostringstream out;
+    bool first = true;
+    for (const auto & pair : reasons) {
+      if (!first) {
+        out << "|";
+      }
+      first = false;
+      out << pair.first << ":" << pair.second;
+    }
+    return out.str();
+  }
+
   void writeOutputs(bool final_flush)
   {
     reconcileCausality();
     writeMessagesCsv(final_flush);
     writeQosMetricsCsv(final_flush);
     writeChargeEventsCsv(final_flush);
+    writeChargeQueueTimeseriesRow();
     writeStatusTimeseriesRow();
     writeSummaryJson();
   }
@@ -856,7 +963,11 @@ private:
     if (need_header) {
       out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
           << "request_time,decision_time,dock_start_time,decision_latency_ms,waiting_time_ms,"
-          << "charge_completed,start_battery,end_battery,energy_recovered" << std::endl;
+          << "charge_completed,start_battery,end_battery,energy_recovered,"
+          << "decision_policy,decision_priority,decision_tte_sec,decision_score,"
+          << "decision_rank_index,decision_queue_size,"
+          << "decision_ctrl_pdr,decision_ctrl_delay_mean_ms,decision_ctrl_delay_p95_ms,"
+          << "decision_ctrl_drop_reasons" << std::endl;
     }
 
     for (const auto & [id, rec] : charge_records_) {
@@ -887,7 +998,17 @@ private:
           << (rec.charge_completed ? "true" : "false") << ','
           << rec.start_battery << ','
           << rec.end_battery << ','
-          << energy_recovered
+          << energy_recovered << ','
+          << rec.decision_policy << ','
+          << rec.decision_priority << ','
+          << rec.decision_tte_sec << ','
+          << rec.decision_score << ','
+          << rec.decision_rank_index << ','
+          << rec.decision_queue_size << ','
+          << rec.decision_ctrl_pdr << ','
+          << rec.decision_ctrl_delay_mean_ms << ','
+          << rec.decision_ctrl_delay_p95_ms << ','
+          << rec.decision_ctrl_drop_reasons
           << std::endl;
       exported_charge_requests_.insert(id);
     }
@@ -1069,6 +1190,114 @@ private:
     }
   }
 
+  void writeChargeQueueTimeseriesRow()
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "charge_queue_timeseries.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    if (need_header) {
+      out << "run_id,time,queue_length,queue_length_ch,queue_length_member,queue_length_unknown,"
+          << "active_charging,ugv_dock_capacity,ugv_dock_utilization,"
+          << "mean_wait_ch_ms,mean_wait_member_ms" << std::endl;
+    }
+
+    size_t queue_length = 0;
+    size_t queue_ch = 0;
+    size_t queue_member = 0;
+    size_t queue_unknown = 0;
+    std::vector<double> wait_ch_ms;
+    std::vector<double> wait_member_ms;
+
+    for (const auto & [id, rec] : charge_records_) {
+      if (rec.request_time.nanoseconds() == 0) {
+        continue;
+      }
+      bool started = rec.dock_start_time.nanoseconds() != 0;
+      if (!started && !isTerminalOutcome(rec.outcome)) {
+        queue_length++;
+        if (rec.role_known) {
+          if (rec.role == 1) {
+            queue_ch++;
+          } else {
+            queue_member++;
+          }
+        } else {
+          queue_unknown++;
+        }
+      }
+
+      if (started) {
+        double wait_ms = (rec.dock_start_time - rec.request_time).seconds() * 1000.0;
+        if (wait_ms < 0.0) {
+          wait_ms = 0.0;
+        }
+        if (rec.role_known) {
+          if (rec.role == 1) {
+            wait_ch_ms.push_back(wait_ms);
+          } else {
+            wait_member_ms.push_back(wait_ms);
+          }
+        }
+      }
+    }
+
+    size_t active_charging = 0;
+    for (const auto & [uav_id, st] : uav_states_) {
+      if (st.charging_state == 2) {
+        active_charging++;
+      }
+    }
+
+    double mean_wait_ch = -1.0;
+    if (!wait_ch_ms.empty()) {
+      double sum = 0.0;
+      for (double v : wait_ch_ms) {
+        sum += v;
+      }
+      mean_wait_ch = sum / static_cast<double>(wait_ch_ms.size());
+    }
+
+    double mean_wait_member = -1.0;
+    if (!wait_member_ms.empty()) {
+      double sum = 0.0;
+      for (double v : wait_member_ms) {
+        sum += v;
+      }
+      mean_wait_member = sum / static_cast<double>(wait_member_ms.size());
+    }
+
+    double utilization = -1.0;
+    if (ugv_dock_capacity_ > 0) {
+      utilization = static_cast<double>(active_charging) / static_cast<double>(ugv_dock_capacity_);
+    }
+
+    out << run_id_ << ","
+        << this->now().seconds() << ","
+        << queue_length << ","
+        << queue_ch << ","
+        << queue_member << ","
+        << queue_unknown << ","
+        << active_charging << ","
+        << ugv_dock_capacity_ << ","
+        << utilization << ","
+        << mean_wait_ch << ","
+        << mean_wait_member
+        << std::endl;
+  }
+
   void writeSummaryJson()
   {
     std::error_code ec;
@@ -1157,6 +1386,60 @@ private:
         << "      \"mean\": " << mean_energy << "\n"
         << "    }\n"
         << "  },\n"
+        << "  \"charging_fairness\": {\n";
+
+    std::unordered_map<std::string, size_t> rejected_by_uav;
+    std::unordered_map<std::string, size_t> timeout_by_uav;
+    std::unordered_map<std::string, double> max_wait_ms_by_uav;
+    for (const auto & [id, rec] : charge_records_) {
+      if (!rec.uav_id.empty()) {
+        if (rec.outcome == ChargeOutcome::REJECTED) {
+          rejected_by_uav[rec.uav_id]++;
+        } else if (rec.outcome == ChargeOutcome::TIMEOUT) {
+          timeout_by_uav[rec.uav_id]++;
+        }
+        if (rec.request_time.nanoseconds() != 0 &&
+            rec.dock_start_time.nanoseconds() != 0) {
+          double wait_ms = (rec.dock_start_time - rec.request_time).seconds() * 1000.0;
+          if (wait_ms < 0.0) {
+            wait_ms = 0.0;
+          }
+          auto it_wait = max_wait_ms_by_uav.find(rec.uav_id);
+          if (it_wait == max_wait_ms_by_uav.end() || wait_ms > it_wait->second) {
+            max_wait_ms_by_uav[rec.uav_id] = wait_ms;
+          }
+        }
+      }
+    }
+
+    out << "    \"rejections_by_uav\": {";
+    bool first_reject = true;
+    for (const auto & pair : rejected_by_uav) {
+      if (!first_reject) out << ", ";
+      first_reject = false;
+      out << "\"" << pair.first << "\": " << pair.second;
+    }
+    out << "},\n";
+
+    out << "    \"timeouts_by_uav\": {";
+    bool first_timeout = true;
+    for (const auto & pair : timeout_by_uav) {
+      if (!first_timeout) out << ", ";
+      first_timeout = false;
+      out << "\"" << pair.first << "\": " << pair.second;
+    }
+    out << "},\n";
+
+    out << "    \"max_waiting_time_ms_by_uav\": {";
+    bool first_wait = true;
+    for (const auto & pair : max_wait_ms_by_uav) {
+      if (!first_wait) out << ", ";
+      first_wait = false;
+      out << "\"" << pair.first << "\": " << pair.second;
+    }
+    out << "}\n";
+
+    out << "  },\n"
         << "  \"network\": {\n"
         << "    \"qos_targets\": {\n"
         << "      \"pdr\": " << qos_target_pdr_ << ",\n"
@@ -1253,6 +1536,7 @@ private:
   // Charging
   std::unordered_map<std::string, ChargeRecord> charge_records_;
   std::unordered_map<std::string, std::string> latest_request_by_uav_;
+  std::unordered_map<std::string, uint8_t> latest_role_by_uav_;
   std::unordered_map<std::string, UavState> uav_states_;
   std::unordered_map<std::string, rclcpp::Time> request_times_;
   size_t total_charging_sessions_;
@@ -1269,10 +1553,13 @@ private:
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
+  rclcpp::TimerBase::SharedPtr queue_timeseries_timer_;
   rclcpp::TimerBase::SharedPtr stats_timer_;
   rclcpp::TimerBase::SharedPtr shutdown_check_timer_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stats_pub_;
   double status_sample_period_sec_ = 1.0;
+  double queue_stats_period_sec_ = 1.0;
+  int ugv_dock_capacity_ = 1;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
   std::unordered_set<std::string> exported_qos_keys_;
