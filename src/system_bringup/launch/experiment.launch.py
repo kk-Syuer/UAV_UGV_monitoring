@@ -167,6 +167,7 @@ def _make_nodes(context, *args, **kwargs):
     # UGV charger
     ugv_params = {
         "ugv_id": ugv_id,
+        "charging_policy": str(_get(cfg, ["ugv", "charging_policy"], "fcfs")),
     }
     ugv_pkg = _get(cfg, ["executables", "ugv_pkg"], "ugv_charger")
     ugv_exec = _get(cfg, ["executables", "ugv_exec"], "ugv_charger_node")
