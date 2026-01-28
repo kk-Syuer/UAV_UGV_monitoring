@@ -183,6 +183,10 @@ public:
       static_cast<float>(this->declare_parameter<double>("battery_threshold", 30.0));
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
+    ugv_reserve_energy_ =
+      static_cast<float>(this->declare_parameter<double>("ugv_reserve_energy", 12.0));
+    ugv_buffer_energy_ =
+      static_cast<float>(this->declare_parameter<double>("ugv_buffer_energy", 10.0));
 
     accept_direct_deployment_ =
       this->declare_parameter<bool>("accept_direct_deployment", false);
@@ -612,11 +616,35 @@ private:
       return;
     }
 
-    // If low and not waiting or scheduled, request a charge slot.
-    if (ready_for_battery && !is_charging_ && !waiting_for_charge_response_ && !has_charge_slot_ &&
-        battery_percent <= battery_threshold_percent_)
-    {
-      requestCharge(battery_percent);
+    if (ready_for_battery && !is_charging_ && !has_charge_slot_ &&
+        !emergency_landed_ && !emergency_recovery_active_) {
+      float dist_to_ugv_m = 0.0f;
+      float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_m);
+      bool ugv_range_known = energy_to_ugv >= 0.0f;
+      float emergency_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_)
+                                                 : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+      float request_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
+                                               : emergency_threshold;
+
+      bool ch_reachable = true;
+      if (role_ == 0) {
+        ch_reachable = neighbors_.find(my_ch_id_) != neighbors_.end();
+      }
+
+      bool emergency = battery_energy_ <= emergency_threshold;
+      bool request_needed = battery_energy_ <= request_threshold;
+
+      if (emergency || (!ch_reachable && request_needed)) {
+        if (ugv_range_known) {
+          startEmergencyReturnToUgv(dist_to_ugv_m, emergency ? "ENERGY_CRITICAL" : "CH_UNREACHABLE");
+        } else {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: low battery but UGV pose unknown; cannot start emergency recovery.",
+                      uav_id_.c_str());
+        }
+      } else if (request_needed && !waiting_for_charge_response_) {
+        requestCharge(battery_percent);
+      }
     }
 
     // Publish status
@@ -650,13 +678,19 @@ private:
         break;
     }
 
-    bool below_threshold = battery_percent <= battery_threshold_percent_;
+    float dist_to_ugv_m = 0.0f;
+    float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_m);
+    bool ugv_range_known = energy_to_ugv >= 0.0f;
+    float request_threshold = ugv_range_known
+      ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
+      : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+    bool below_threshold = battery_energy_ <= request_threshold;
     msg.intent_to_leave = below_threshold || waiting_for_charge_response_ ||
       has_charge_slot_ || charge_state_ == ChargeState::TO_UGV;
 
     float eta_sec = -1.0f;
     if (energy_consumption_rate > 0.0f && battery_capacity_ > 0.0f && battery_energy_ > 0.0f) {
-      float threshold_energy = battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+      float threshold_energy = request_threshold;
       float delta_energy = battery_energy_ - threshold_energy;
       if (delta_energy <= 0.0f) {
         eta_sec = 0.0f;
@@ -1234,6 +1268,20 @@ private:
       return;
     }
 
+    if (msg->flow_type == 1 && msg->control_type == "RECOVERY_START" && msg->dst_id == "broadcast") {
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY] %s received RECOVERY_START epoch=%s",
+                  uav_id_.c_str(), msg->payload.c_str());
+      return;
+    }
+
+    if (msg->flow_type == 1 && msg->control_type == "RECOVERY_DONE" && msg->dst_id == "broadcast") {
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY] %s received RECOVERY_DONE epoch=%s",
+                  uav_id_.c_str(), msg->payload.c_str());
+      return;
+    }
+
     if (msg->flow_type == 1 && msg->control_type == "TASK_RELEASE" &&
         (msg->dst_id == "broadcast" || msg->dst_id == uav_id_)) {
       if (msg->dst_id == uav_id_ && msg->requires_ack && isDuplicateControlMessage(*msg)) {
@@ -1320,6 +1368,77 @@ private:
       // First, see if this is a control message for charging
       if (msg->flow_type == 1 && msg->control_type == "CHARGE_DECISION") {
         handleChargeDecisionFromNetwork(msg);
+        return;
+      }
+
+      if (msg->flow_type == 1 && msg->control_type == "CLUSTER_REASSIGN") {
+        if (role_ != 0) {
+          return;
+        }
+        std::string new_ch = msg->payload;
+        if (!new_ch.empty() && new_ch != my_ch_id_) {
+          my_ch_id_ = new_ch;
+          cluster_parent_[uav_id_] = new_ch;
+          assigned_task_points_.clear();
+          released_by_ch_ = false;
+          mobility_phase_ = MobilityPhase::IDLE;
+          RCLCPP_WARN(this->get_logger(),
+                      "[RECOVERY] %s reassigned to CH=%s",
+                      uav_id_.c_str(), my_ch_id_.c_str());
+        }
+        return;
+      }
+
+      if (msg->flow_type == 1 && msg->control_type == "TASK_ASSIGN") {
+        if (role_ != 0) {
+          return;
+        }
+        std::vector<geometry_msgs::msg::Point> assigned_points;
+        if (!parseTaskAssignPayload(msg->payload, assigned_points)) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: TASK_ASSIGN payload parse failed: \"%s\"",
+                      uav_id_.c_str(), msg->payload.c_str());
+          return;
+        }
+        assigned_task_points_ = assigned_points;
+        released_by_ch_ = true;
+        if (!deployment_received_) {
+          deployment_received_ = true;
+        }
+        refreshClusterTaskPoints();
+        if (!task_points_.empty() && mobility_phase_ != MobilityPhase::TASK_MOBILITY) {
+          mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+        }
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] %s received TASK_ASSIGN (%zu points)",
+                    uav_id_.c_str(), assigned_task_points_.size());
+        return;
+      }
+
+      if (msg->flow_type == 1 && msg->control_type == "NEW_DEPLOYMENT") {
+        if (role_ != 1) {
+          return;
+        }
+        geometry_msgs::msg::Pose target;
+        if (!parseDeploymentPosePayload(msg->payload, target)) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: NEW_DEPLOYMENT payload parse failed: \"%s\"",
+                      uav_id_.c_str(), msg->payload.c_str());
+          return;
+        }
+        deployment_goal_pose_ = target;
+        deployment_goal_pose_.orientation.w = 1.0;
+        deployment_received_ = true;
+        start_mobility_received_ = true;
+        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+        release_sent_ = false;
+        deployment_arrival_ticks_ = 0;
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] CH %s new deployment target (%.1f, %.1f, %.1f)",
+                    uav_id_.c_str(),
+                    deployment_goal_pose_.position.x,
+                    deployment_goal_pose_.position.y,
+                    deployment_goal_pose_.position.z);
         return;
       }
 
@@ -2313,6 +2432,12 @@ private:
                            uav_id_.c_str());
       return;
     }
+    if (emergency_landed_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                           "UAV %s: emergency recovery complete; holding position.",
+                           uav_id_.c_str());
+      return;
+    }
     if (is_charging_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: charging in progress; mobility paused.",
@@ -2366,7 +2491,16 @@ private:
       if (reached) {
         pose_.position.x = charge_target_pose_.position.x;
         pose_.position.y = charge_target_pose_.position.y;
-        beginChargingSession(now);
+        if (emergency_recovery_active_) {
+          emergency_recovery_active_ = false;
+          emergency_landed_ = true;
+          charge_state_ = ChargeState::IDLE;
+          RCLCPP_WARN(this->get_logger(),
+                      "[RECOVERY] UAV %s: emergency landing at UGV complete.",
+                      uav_id_.c_str());
+        } else {
+          beginChargingSession(now);
+        }
       }
     } else if (charge_state_ == ChargeState::RETURNING) {
       handled_charge_motion = true;
@@ -2559,6 +2693,44 @@ private:
     if (r_norm > 1.0f) r_norm = 1.0f;
 
     return 1.0f + k_rain * r_norm;
+  }
+
+  float estimateEnergyToUgv(float & dist_m) const
+  {
+    if (!ugv_pose_known_ || uav_speed_mps_ <= 0.1f) {
+      dist_m = 0.0f;
+      return -1.0f;
+    }
+    dist_m = static_cast<float>(distance2d(pose_.position, ugv_pose_.position));
+    float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
+    float drain_est = base_drain * temperatureFactor(current_temperature_c_);
+    return (dist_m / static_cast<float>(uav_speed_mps_)) * drain_est;
+  }
+
+  void startEmergencyReturnToUgv(float dist_m, const std::string & reason)
+  {
+    if (charge_state_ == ChargeState::TO_UGV || is_charging_ || battery_energy_ <= 0.0f) {
+      return;
+    }
+    if (!resolveUgvPose(charge_target_pose_)) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: emergency recovery requested (%s) but UGV pose unknown.",
+                  uav_id_.c_str(), reason.c_str());
+      return;
+    }
+
+    emergency_recovery_active_ = true;
+    emergency_landed_ = false;
+    waiting_for_charge_response_ = false;
+    has_charge_slot_ = false;
+    charge_request_pending_.reset();
+
+    charge_departure_pose_ = pose_;
+    charge_state_ = ChargeState::TO_UGV;
+
+    RCLCPP_WARN(this->get_logger(),
+                "[RECOVERY] UAV %s: emergency return to UGV (%s, dist=%.1f m).",
+                uav_id_.c_str(), reason.c_str(), dist_m);
   }
 
   struct DeploymentInfo
@@ -2943,6 +3115,41 @@ private:
     return oss.str();
   }
 
+  bool parseTaskAssignPayload(
+    const std::string & payload,
+    std::vector<geometry_msgs::msg::Point> & points) const
+  {
+    points.clear();
+    if (payload.empty()) {
+      return true;
+    }
+
+    std::stringstream ss(payload);
+    std::string token;
+    while (std::getline(ss, token, ';')) {
+      if (token.empty()) {
+        continue;
+      }
+      std::stringstream pt_stream(token);
+      std::string coord;
+      geometry_msgs::msg::Point pt;
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.x = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.y = std::stod(coord);
+      if (!std::getline(pt_stream, coord, ',')) {
+        return false;
+      }
+      pt.z = std::stod(coord);
+      points.push_back(pt);
+    }
+    return true;
+  }
+
   bool parseTaskReleasePayload(
     const std::string & payload,
     std::string & cluster_id,
@@ -2982,6 +3189,26 @@ private:
       pt.z = std::stod(coord);
       points.push_back(pt);
     }
+    return true;
+  }
+
+  bool parseDeploymentPosePayload(const std::string & payload, geometry_msgs::msg::Pose & out) const
+  {
+    std::stringstream ss(payload);
+    std::string token;
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    out.position.x = std::stod(token);
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    out.position.y = std::stod(token);
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    out.position.z = std::stod(token);
+    out.orientation.w = 1.0;
     return true;
   }
 
@@ -3125,6 +3352,8 @@ private:
   float battery_capacity_;
   float battery_energy_;
   float battery_threshold_percent_;
+  float ugv_reserve_energy_;
+  float ugv_buffer_energy_;
   double charging_duration_sec_;
   bool reported_battery_dead_ = false;
   bool shutdown_scheduled_ = false;
@@ -3175,6 +3404,8 @@ private:
   bool waiting_for_charge_response_;
   bool is_charging_;
   bool has_charge_slot_;
+  bool emergency_recovery_active_ = false;
+  bool emergency_landed_ = false;
   rclcpp::Time charge_start_time_;
   rclcpp::Time charge_end_time_;
   float energy_at_charge_start_;

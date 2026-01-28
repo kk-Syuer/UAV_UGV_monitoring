@@ -253,6 +253,13 @@ The system automatically records **experiment‑ready metrics**:
 * Active charging count and UGV dock utilization
 * Mean queueing delay per role (CH vs member)
 
+### Recovery Events (`recovery_events.csv`)
+
+* Recovery epochs (`RECOVERY_START`, `RECOVERY_DONE`)
+* Cluster reassignment actions (`CLUSTER_REASSIGN` member → CH)
+* Task redistribution payload sizes (`TASK_ASSIGN` task counts)
+* Backbone redeployment commands (`NEW_DEPLOYMENT` CH target poses)
+
 ### QoS Metrics (`qos_metrics.csv`)
 
 The network monitor aggregates per‑flow QoS stats (keyed by `flow_type` + `control_type`) and
@@ -279,6 +286,7 @@ exports the values used to compute QoS:
 * Drop breakdown
 * Charging success rate
 * Per-UAV fairness stats (rejections, timeouts, max waiting time)
+* Recovery event counts (start/done, reassignments, task assigns, deployments)
 
 All outputs are written to:
 

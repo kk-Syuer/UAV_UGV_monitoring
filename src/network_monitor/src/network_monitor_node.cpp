@@ -47,6 +47,22 @@ struct MsgRecord {
   bool generated_counted = false;
 };
 
+struct RecoveryEvent
+{
+  std::string msg_id;
+  std::string control_type;
+  std::string src_id;
+  std::string dst_id;
+  int epoch = -1;
+  std::string member_id;
+  std::string ch_id;
+  int task_count = 0;
+  double x = 0.0;
+  double y = 0.0;
+  double z = 0.0;
+  rclcpp::Time creation_time;
+};
+
 enum class ChargeOutcome {
   PENDING,
   ACCEPTED,
@@ -273,6 +289,10 @@ private:
         rec.outcome = ChargeOutcome::PENDING;
       }
       latest_request_by_uav_[rec.uav_id] = msg->msg_id;
+    }
+
+    if (msg->flow_type == 1) {
+      trackRecoveryEvent(*msg);
     }
 
     auto & rec = records_[msg->msg_id];
@@ -813,6 +833,7 @@ private:
     writeMessagesCsv(final_flush);
     writeQosMetricsCsv(final_flush);
     writeChargeEventsCsv(final_flush);
+    writeRecoveryEventsCsv(final_flush);
     writeChargeQueueTimeseriesRow();
     writeStatusTimeseriesRow();
     writeSummaryJson();
@@ -1011,6 +1032,51 @@ private:
           << rec.decision_ctrl_drop_reasons
           << std::endl;
       exported_charge_requests_.insert(id);
+    }
+  }
+
+  void writeRecoveryEventsCsv(bool final_flush)
+  {
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "recovery_events.csv";
+    bool need_header = !std::filesystem::exists(path);
+    std::ofstream out(path, std::ios::app);
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+
+    if (need_header) {
+      out << "run_id,msg_id,control_type,src_id,dst_id,epoch,member_id,ch_id,"
+          << "task_count,x,y,z,creation_time" << std::endl;
+    }
+
+    for (const auto & [msg_id, rec] : recovery_events_) {
+      if (!final_flush && exported_recovery_events_.count(msg_id)) {
+        continue;
+      }
+      out << run_id_ << ','
+          << rec.msg_id << ','
+          << rec.control_type << ','
+          << rec.src_id << ','
+          << rec.dst_id << ','
+          << rec.epoch << ','
+          << rec.member_id << ','
+          << rec.ch_id << ','
+          << rec.task_count << ','
+          << rec.x << ','
+          << rec.y << ','
+          << rec.z << ','
+          << rec.creation_time.seconds()
+          << std::endl;
+      exported_recovery_events_.insert(msg_id);
     }
   }
 
@@ -1363,6 +1429,12 @@ private:
       return;
     }
 
+    size_t recovery_start = recovery_counts_["RECOVERY_START"];
+    size_t recovery_done = recovery_counts_["RECOVERY_DONE"];
+    size_t cluster_reassign = recovery_counts_["CLUSTER_REASSIGN"];
+    size_t task_assign = recovery_counts_["TASK_ASSIGN"];
+    size_t new_deployment = recovery_counts_["NEW_DEPLOYMENT"];
+
     out << "{\n"
         << "  \"run_id\": \"" << run_id_ << "\",\n"
         << "  \"charging\": {\n"
@@ -1491,8 +1563,108 @@ private:
           << "      }";
     }
     out << "\n    ]\n"
+        << "  },\n"
+        << "  \"recovery\": {\n"
+        << "    \"start\": " << recovery_start << ",\n"
+        << "    \"done\": " << recovery_done << ",\n"
+        << "    \"cluster_reassign\": " << cluster_reassign << ",\n"
+        << "    \"task_assign\": " << task_assign << ",\n"
+        << "    \"new_deployment\": " << new_deployment << "\n"
         << "  }\n"
         << "}\n";
+  }
+
+  void trackRecoveryEvent(const uav_msgs::msg::TrafficMessage & msg)
+  {
+    if (msg.msg_id.empty()) {
+      return;
+    }
+    if (recovery_events_.count(msg.msg_id) > 0) {
+      return;
+    }
+    if (msg.control_type != "RECOVERY_START" &&
+        msg.control_type != "RECOVERY_DONE" &&
+        msg.control_type != "CLUSTER_REASSIGN" &&
+        msg.control_type != "TASK_ASSIGN" &&
+        msg.control_type != "NEW_DEPLOYMENT") {
+      return;
+    }
+
+    RecoveryEvent rec;
+    rec.msg_id = msg.msg_id;
+    rec.control_type = msg.control_type;
+    rec.src_id = msg.src_id;
+    rec.dst_id = msg.dst_id;
+    rec.creation_time = rclcpp::Time(msg.creation_time);
+
+    if (msg.control_type == "RECOVERY_START" || msg.control_type == "RECOVERY_DONE") {
+      try {
+        rec.epoch = std::stoi(msg.payload);
+      } catch (...) {
+        rec.epoch = -1;
+      }
+    } else if (msg.control_type == "CLUSTER_REASSIGN") {
+      rec.member_id = msg.dst_id;
+      rec.ch_id = msg.payload;
+    } else if (msg.control_type == "TASK_ASSIGN") {
+      rec.member_id = msg.dst_id;
+      rec.task_count = countTaskAssignPoints(msg.payload);
+    } else if (msg.control_type == "NEW_DEPLOYMENT") {
+      rec.ch_id = msg.dst_id;
+      parseDeploymentPose(msg.payload, rec.x, rec.y, rec.z);
+    }
+
+    recovery_events_[msg.msg_id] = rec;
+    recovery_counts_[msg.control_type]++;
+  }
+
+  int countTaskAssignPoints(const std::string & payload) const
+  {
+    if (payload.empty()) {
+      return 0;
+    }
+    int count = 0;
+    std::stringstream ss(payload);
+    std::string token;
+    while (std::getline(ss, token, ';')) {
+      if (!token.empty()) {
+        count++;
+      }
+    }
+    return count;
+  }
+
+  void parseDeploymentPose(const std::string & payload, double & x, double & y, double & z) const
+  {
+    x = 0.0;
+    y = 0.0;
+    z = 0.0;
+    std::stringstream ss(payload);
+    std::string token;
+    if (!std::getline(ss, token, ',')) {
+      return;
+    }
+    try {
+      x = std::stod(token);
+    } catch (...) {
+      return;
+    }
+    if (!std::getline(ss, token, ',')) {
+      return;
+    }
+    try {
+      y = std::stod(token);
+    } catch (...) {
+      return;
+    }
+    if (!std::getline(ss, token, ',')) {
+      return;
+    }
+    try {
+      z = std::stod(token);
+    } catch (...) {
+      return;
+    }
   }
 
 
@@ -1512,6 +1684,9 @@ private:
   std::unordered_map<std::string, size_t> telemetry_drop_reasons_;
   std::unordered_map<uint8_t, std::unordered_map<std::string, size_t>> delivered_by_flow_control_;
   std::unordered_map<std::string, size_t> control_type_counts_;
+  std::unordered_map<std::string, RecoveryEvent> recovery_events_;
+  std::unordered_set<std::string> exported_recovery_events_;
+  std::unordered_map<std::string, size_t> recovery_counts_;
   std::unordered_map<std::string, size_t> drop_reason_counts_;
   std::unordered_set<std::string> seen_control_msg_ids_;
   std::unordered_set<std::string> dropped_ids_;
