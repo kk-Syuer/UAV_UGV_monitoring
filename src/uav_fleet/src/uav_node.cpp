@@ -184,9 +184,9 @@ public:
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
     ugv_reserve_energy_ =
-      static_cast<float>(this->declare_parameter<double>("ugv_reserve_energy", 8.0));
+      static_cast<float>(this->declare_parameter<double>("ugv_reserve_energy", 12.0));
     ugv_buffer_energy_ =
-      static_cast<float>(this->declare_parameter<double>("ugv_buffer_energy", 6.0));
+      static_cast<float>(this->declare_parameter<double>("ugv_buffer_energy", 10.0));
 
     accept_direct_deployment_ =
       this->declare_parameter<bool>("accept_direct_deployment", false);
