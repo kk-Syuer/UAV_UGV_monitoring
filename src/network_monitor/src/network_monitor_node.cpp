@@ -899,12 +899,14 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "messages.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !messages_file_initialized_;
+    std::ofstream out(path,
+                      messages_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    messages_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
@@ -952,12 +954,14 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "qos_metrics.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !qos_metrics_file_initialized_;
+    std::ofstream out(path,
+                      qos_metrics_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    qos_metrics_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,flow_type,control_type,generated,delivered,dropped,pdr,"
@@ -1009,12 +1013,14 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "charge_events.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !charge_events_file_initialized_;
+    std::ofstream out(path,
+                      charge_events_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    charge_events_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
@@ -1081,12 +1087,14 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "recovery_events.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !recovery_events_file_initialized_;
+    std::ofstream out(path,
+                      recovery_events_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    recovery_events_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,msg_id,control_type,src_id,dst_id,epoch,member_id,ch_id,"
@@ -1264,12 +1272,14 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "status_timeseries.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !status_timeseries_file_initialized_;
+    std::ofstream out(path,
+                      status_timeseries_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    status_timeseries_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z" << std::endl;
@@ -1302,12 +1312,15 @@ private:
     }
 
     auto path = std::filesystem::path(output_root_) / "charge_queue_timeseries.csv";
-    bool need_header = !std::filesystem::exists(path);
-    std::ofstream out(path, std::ios::app);
+    bool need_header = !charge_queue_timeseries_file_initialized_;
+    std::ofstream out(path,
+                      charge_queue_timeseries_file_initialized_ ? std::ios::app
+                                                                : (std::ios::out | std::ios::trunc));
     if (!out.is_open()) {
       RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
       return;
     }
+    charge_queue_timeseries_file_initialized_ = true;
 
     if (need_header) {
       out << "run_id,time,queue_length,queue_length_ch,queue_length_member,queue_length_unknown,"
@@ -1761,6 +1774,12 @@ private:
   std::string run_id_;
   std::string output_dir_;
   std::string output_root_;
+  bool messages_file_initialized_ = false;
+  bool qos_metrics_file_initialized_ = false;
+  bool charge_events_file_initialized_ = false;
+  bool recovery_events_file_initialized_ = false;
+  bool status_timeseries_file_initialized_ = false;
+  bool charge_queue_timeseries_file_initialized_ = false;
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
