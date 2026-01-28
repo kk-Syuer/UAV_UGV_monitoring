@@ -79,6 +79,8 @@ public:
     status_timeout_sec_ = this->declare_parameter<double>("status_timeout_sec", 5.0);
     ch_move_threshold_m_ = this->declare_parameter<double>("ch_move_threshold_m", 7.5);
     log_routes_ = this->declare_parameter<bool>("log_routes", true);
+    sink_id_ = this->declare_parameter<std::string>("sink_id", "sink_gateway");
+    ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
 
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
       "/fanet/status", 200,
@@ -90,6 +92,8 @@ public:
 
     routing_pub_ = this->create_publisher<uav_msgs::msg::RoutingTable>(
       "/fanet/routing_table", 50);
+    alert_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/routing_manager/alerts", 10);
 
     auto period = std::chrono::duration<double>(recompute_period_sec_);
     recompute_timer_ = this->create_wall_timer(
@@ -246,6 +250,20 @@ private:
       ch_next_hops[src_ch] = computeRoutesForSource(src_ch, ch_graph);
     }
 
+    int sink_index = -1;
+    int ugv_index = -1;
+    for (size_t i = 0; i < active_nodes.size(); ++i) {
+      if (active_nodes[i].id == sink_id_) {
+        sink_index = static_cast<int>(i);
+      }
+      if (active_nodes[i].id == ugv_id_) {
+        ugv_index = static_cast<int>(i);
+      }
+    }
+
+    bool sink_reachable = false;
+    bool ugv_reachable = false;
+
     for (size_t src_idx = 0; src_idx < active_nodes.size(); ++src_idx) {
       std::vector<int> next_hops(active_nodes.size(), -1);
       if (node_class[src_idx] == NodeClass::Endpoint) {
@@ -299,7 +317,18 @@ private:
       }
 
       publishTable(active_nodes, node_class, src_idx, next_hops);
+
+      if (node_class[src_idx] == NodeClass::BackboneCh) {
+        if (sink_index >= 0 && next_hops[static_cast<size_t>(sink_index)] >= 0) {
+          sink_reachable = true;
+        }
+        if (ugv_index >= 0 && next_hops[static_cast<size_t>(ugv_index)] >= 0) {
+          ugv_reachable = true;
+        }
+      }
     }
+
+    publishReachabilityAlerts(sink_reachable, ugv_reachable);
 
     last_recompute_time_ = now;
   }
@@ -407,6 +436,29 @@ private:
     routing_pub_->publish(msg);
   }
 
+  void publishReachabilityAlerts(bool sink_reachable, bool ugv_reachable)
+  {
+    if (!alert_pub_) {
+      return;
+    }
+
+    if (sink_reachable != sink_reachable_) {
+      std_msgs::msg::String msg;
+      msg.data = sink_reachable ? "SINK_REACHABLE" : "SINK_UNREACHABLE";
+      alert_pub_->publish(msg);
+      RCLCPP_WARN(this->get_logger(), "[routing] %s", msg.data.c_str());
+      sink_reachable_ = sink_reachable;
+    }
+
+    if (ugv_reachable != ugv_reachable_) {
+      std_msgs::msg::String msg;
+      msg.data = ugv_reachable ? "UGV_REACHABLE" : "UGV_UNREACHABLE";
+      alert_pub_->publish(msg);
+      RCLCPP_WARN(this->get_logger(), "[routing] %s", msg.data.c_str());
+      ugv_reachable_ = ugv_reachable;
+    }
+  }
+
   std::unordered_map<std::string, NodeInfo> nodes_;
   std::unordered_map<EdgeKey, bool, EdgeKeyHash> link_state_;
 
@@ -418,10 +470,15 @@ private:
   bool log_routes_ = true;
   bool recompute_due_ = true;
   rclcpp::Time last_recompute_time_;
+  std::string sink_id_;
+  std::string ugv_id_;
+  bool sink_reachable_ = true;
+  bool ugv_reachable_ = true;
 
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr event_sub_;
   rclcpp::Publisher<uav_msgs::msg::RoutingTable>::SharedPtr routing_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr alert_pub_;
   rclcpp::TimerBase::SharedPtr recompute_timer_;
 };
 

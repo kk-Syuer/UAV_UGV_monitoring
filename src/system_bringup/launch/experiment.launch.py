@@ -237,6 +237,8 @@ def _make_nodes(context, *args, **kwargs):
         "hysteresis_margin_m": float(_get(cfg, ["routing", "hysteresis_margin_m"], 3.0)),
         "ch_move_threshold_m": float(_get(cfg, ["routing", "ch_move_threshold_m"], 7.5)),
         "status_timeout_sec": float(_get(cfg, ["routing", "status_timeout_sec"], 5.0)),
+        "sink_id": sink_id,
+        "ugv_id": ugv_id,
     }
     nodes.append(Node(
         package=_get(cfg, ["executables", "routing_pkg"], "routing_manager"),
@@ -245,6 +247,23 @@ def _make_nodes(context, *args, **kwargs):
         output="screen",
         parameters=[routing_params],
     ))
+
+    if _bool_from_str(_get(cfg, ["recovery_manager", "enable"], True), True):
+        recovery_params = {
+            "comm_range_m": comm_radius,
+            "status_timeout_sec": float(_get(cfg, ["recovery_manager", "status_timeout_sec"], 5.0)),
+            "heartbeat_timeout_sec": float(_get(cfg, ["recovery_manager", "heartbeat_timeout_sec"], 4.0)),
+            "recovery_cooldown_sec": float(_get(cfg, ["recovery_manager", "recovery_cooldown_sec"], 2.0)),
+            "sink_id": sink_id,
+            "ugv_id": ugv_id,
+        }
+        nodes.append(Node(
+            package=_get(cfg, ["executables", "recovery_pkg"], "recovery_manager"),
+            executable=_get(cfg, ["executables", "recovery_exec"], "recovery_manager_node"),
+            name=f"recovery_manager_{run_id}",
+            output="screen",
+            parameters=[recovery_params],
+        ))
 
     # Coverage planner (optional)
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
