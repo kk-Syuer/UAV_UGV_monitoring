@@ -288,6 +288,30 @@ All outputs are written to:
 
 ---
 
+## Charging Protocol Comparison Plots
+
+Use the helper script to compare charging protocols across multiple runs. The script reads the
+`charge_events.csv` files produced by the network monitor and generates side-by-side charts
+for outcome distribution, queue waiting time, decision latency, energy recovered, and the
+network QoS context at decision time.
+
+```bash
+python3 tools/charging_protocol_compare.py \
+  --log-root log \
+  --output-dir analysis/charging_protocol_comparison
+```
+
+Optional: provide a CSV mapping run IDs to protocol labels if you want to override the
+`decision_policy` values stored in the logs.
+
+```csv
+run_id,protocol
+run_policy_a,priority_queue
+run_policy_b,greedy_tte
+```
+
+---
+
 ## System Bringup
 
 The entire system is launched via the **`system_bringup` package**.
