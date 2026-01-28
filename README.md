@@ -139,6 +139,51 @@ flowchart LR
 
 ---
 
+## Recovery Manager & Recovery Logic
+
+The **recovery manager** is a dedicated node (`recovery_manager_node`) that watches for
+cluster failures or backbone disconnections and then issues targeted control actions to
+restore connectivity and task coverage.
+
+### 1. Inputs & Failure Detection
+
+* **Status beacons** (`/fanet/status`) maintain per-UAV state, including CH/member roles,
+  battery, and poses.
+* **Heartbeats** (`/fanet/network_bus`) are tracked per CH to detect silent disconnects.
+* **Routing alerts** (`/routing_manager/alerts`) flag when the sink or UGV becomes
+  unreachable.
+* **Failure events** (`/uav_fleet/failure_events`) mark nodes as dead immediately.
+
+The manager runs a **watchdog timer** that:
+
+1. Marks CHs as dead if their status or heartbeat is stale past configured timeouts.
+2. Triggers recovery if any CH timeout occurs or if the sink/UGV is flagged unreachable.
+3. Enforces a cooldown between recovery epochs to avoid repeated thrashing.
+
+### 2. Recovery Epoch Flow
+
+When recovery triggers, the manager increments an epoch and performs:
+
+1. **Leader election** among alive CHs using a score based on backbone degree (neighbors
+   within comms range) and battery level.
+2. **Cluster reassignment**: each alive member rebinds to the closest CH (battery tie‑break),
+   emitting `CLUSTER_REASSIGN` control messages.
+3. **Task redistribution**: tasks are re‑clustered to CHs by distance, then assigned
+   round‑robin to each CH’s member set via `TASK_ASSIGN` messages.
+4. **Backbone bridging** (if sink/UGV unreachable): issues `NEW_DEPLOYMENT` commands to move
+   one or two CHs closer to the sink and/or UGV while preserving at least one CH‑to‑CH link
+   within comms range.
+5. **Recovery start/done broadcasts**: `RECOVERY_START`/`RECOVERY_DONE` messages mark the
+   epoch boundaries for monitoring and logging.
+
+### 3. Reliability of Control Actions
+
+Recovery control packets (cluster reassignments, task assignments, new deployments) are sent
+with **ACK tracking**: each message is retried on a timer up to a configurable max retry
+count, and ACKs remove them from the pending queue.
+
+---
+
 ## Charging Protocol Evaluation
 
 Charging is treated as a **networked control problem**:
@@ -146,6 +191,27 @@ Charging is treated as a **networked control problem**:
 * `ChargeRequest` and `ChargeDecision` packets are routed like any other traffic
 * Decisions may be delayed, dropped, or arrive too late
 * Charging success depends on **both network QoS and energy state**
+
+### Charging Policies & Queue Selection
+
+Charging requests are enqueued by the UGV charger, and the scheduler selects the next UAV
+whenever a dock spot is available. The policy is configured via `charging_policy`
+(default: `fcfs`), and the selected policy determines **which queue index is chosen**.
+
+Supported policies:
+
+* **FCFS (`fcfs`)** – first‑come, first‑served; always selects the front of the queue.
+* **Role priority (`role_priority`)** – prioritizes cluster heads (CHs) first; if no CH
+  is waiting, falls back to the earliest request.
+* **Earliest‑deadline‑first (`edf`)** – estimates time‑to‑empty (battery ÷ drain rate,
+  using separate drains for CH vs member) and selects the smallest estimate.
+* **Dynamic score (`dynamic_score`)** – computes a weighted score per entry using:
+  `w_role * is_ch + w_batt * (100 − battery%) + w_wait * wait_time` and selects the
+  highest score.
+
+The queue decision is embedded in the `CHARGE_DECISION` control payload with the policy
+name, queue size, rank index, and optional computed fields (`tte_sec`, `score`) so that
+downstream logs can attribute why a request was selected.
 
 The system records:
 
