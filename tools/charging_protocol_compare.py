@@ -74,6 +74,15 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
+def clean_output_dir(output_dir: Path) -> None:
+    if not output_dir.exists():
+        return
+    for path in output_dir.glob("*.png"):
+        path.unlink(missing_ok=True)
+    for path in output_dir.glob("*.csv"):
+        path.unlink(missing_ok=True)
+
+
 def load_protocol_map(path: Optional[Path]) -> Dict[str, str]:
     if path is None:
         return {}
@@ -501,6 +510,7 @@ def main() -> None:
     args = parse_args()
     output_dir: Path = args.output_dir
     output_dir.mkdir(parents=True, exist_ok=True)
+    clean_output_dir(output_dir)
 
     protocol_map = load_protocol_map(args.protocol_map)
     runs = collect_runs(args.log_root, args.run_ids, protocol_map)
