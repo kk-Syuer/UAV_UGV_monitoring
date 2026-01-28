@@ -910,7 +910,7 @@ private:
 
     if (need_header) {
       out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
-          << "delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
+          << "creation_time_s,delivered_time_s,delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
           << "payload_bytes,dropped,drop_reason,dropper_id,ack_time" << std::endl;
     }
 
@@ -922,12 +922,15 @@ private:
         ? (rec.delivered_time - rec.creation_time).seconds() * 1000.0
         : -1.0;
       double ack_time = rec.ack_time.nanoseconds() == 0 ? -1.0 : rec.ack_time.seconds();
+      double delivered_time = rec.delivered ? rec.delivered_time.seconds() : -1.0;
       out << run_id_ << ','
           << msg_id << ','
           << static_cast<int>(rec.flow_type) << ','
           << rec.control_type << ','
           << rec.src_id << ','
           << rec.dst_id << ','
+          << rec.creation_time.seconds() << ','
+          << delivered_time << ','
           << (rec.delivered ? "true" : "false") << ','
           << delay_ms << ','
           << rec.forward_count << ','
