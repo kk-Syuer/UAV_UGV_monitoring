@@ -636,10 +636,10 @@ private:
 
       if (emergency || (!ch_reachable && request_needed)) {
         if (ugv_range_known) {
-          startEmergencyReturnToUgv(dist_to_ugv_m, emergency ? \"ENERGY_CRITICAL\" : \"CH_UNREACHABLE\");
+          startEmergencyReturnToUgv(dist_to_ugv_m, emergency ? "ENERGY_CRITICAL" : "CH_UNREACHABLE");
         } else {
           RCLCPP_WARN(this->get_logger(),
-                      \"UAV %s: low battery but UGV pose unknown; cannot start emergency recovery.\",
+                      "UAV %s: low battery but UGV pose unknown; cannot start emergency recovery.",
                       uav_id_.c_str());
         }
       } else if (request_needed && !waiting_for_charge_response_) {
