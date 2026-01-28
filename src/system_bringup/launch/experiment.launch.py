@@ -4,7 +4,9 @@ import os
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, OpaqueFunction
+from launch.actions import DeclareLaunchArgument, EmitEvent, OpaqueFunction, RegisterEventHandler, TimerAction
+from launch.event_handlers import OnProcessExit
+from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
 from ament_index_python.packages import get_package_share_directory
@@ -52,6 +54,8 @@ def _make_nodes(context, *args, **kwargs):
     out_dir_arg = LaunchConfiguration("output_dir").perform(context)
     use_weather_arg = LaunchConfiguration("use_weather").perform(context)
     use_injector_arg = LaunchConfiguration("use_fault_injector").perform(context)
+    shutdown_after_arg = LaunchConfiguration("shutdown_after_sec").perform(context)
+    shutdown_on_fleet_loss_arg = LaunchConfiguration("shutdown_on_fleet_loss").perform(context)
 
     cfg = _load_yaml(cfg_path, fallback_root=get_package_share_directory("system_bringup"))
 
@@ -62,6 +66,12 @@ def _make_nodes(context, *args, **kwargs):
     # Optional overrides
     use_weather = _bool_from_str(use_weather_arg, _get(cfg, ["weather", "enable"], True))
     use_injector = _bool_from_str(use_injector_arg, _get(cfg, ["fault_injector", "enable"], True))
+    shutdown_after_sec = float(
+        shutdown_after_arg if shutdown_after_arg else _get(cfg, ["shutdown", "after_sec"], 0.0)
+    )
+    shutdown_on_fleet_loss = _bool_from_str(
+        shutdown_on_fleet_loss_arg, _get(cfg, ["shutdown", "on_fleet_loss"], False)
+    )
 
     # Package + executable names (adjust only if your exec names differ)
     # You said most nodes live in their own packages; bringup just launches them.
@@ -94,6 +104,9 @@ def _make_nodes(context, *args, **kwargs):
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
         "max_runtime_sec": float(_get(cfg, ["monitor", "max_runtime_sec"], 0.0)),
         "stop_on_backbone_loss": bool(_get(cfg, ["monitor", "stop_on_backbone_loss"], False)),
+        "routing_table_empty_shutdown_sec": float(
+            _get(cfg, ["monitor", "routing_table_empty_shutdown_sec"], 10.0)
+        ),
         "backbone_ids": ch_ids,
     }
     nodes.append(Node(
@@ -207,29 +220,34 @@ def _make_nodes(context, *args, **kwargs):
 
     uav_pkg = _get(cfg, ["executables", "uav_pkg"], "uav_fleet")
     uav_exec = _get(cfg, ["executables", "uav_exec"], "uav_node")
+    fleet_nodes = []
 
     # CH UAVs
     for ch_id in ch_ids:
-        nodes.append(Node(
+        node = Node(
             package=uav_pkg,
             executable=uav_exec,
             name=f"{ch_id}_{run_id}",
             output="screen",
             parameters=[shared_uav_params, {"uav_id": str(ch_id), "role": 1}],
-        ))
+        )
+        nodes.append(node)
+        fleet_nodes.append(node)
 
     # Member UAVs
     for m in members:
         uid = str(m.get("id"))
         role = int(m.get("role", 0))
         my_ch = str(m.get("my_ch_id", ""))
-        nodes.append(Node(
+        node = Node(
             package=uav_pkg,
             executable=uav_exec,
             name=f"{uid}_{run_id}",
             output="screen",
             parameters=[shared_uav_params, {"uav_id": uid, "role": role, "my_ch_id": my_ch}],
-        ))
+        )
+        nodes.append(node)
+        fleet_nodes.append(node)
 
     routing_params = {
         "comm_range_m": comm_radius,
@@ -313,6 +331,27 @@ def _make_nodes(context, *args, **kwargs):
                 }],
             ))
 
+    if shutdown_after_sec > 0:
+        nodes.append(TimerAction(
+            period=shutdown_after_sec,
+            actions=[EmitEvent(event=Shutdown(reason=f"shutdown_after_sec={shutdown_after_sec}"))],
+        ))
+
+    if shutdown_on_fleet_loss and fleet_nodes:
+        remaining = {"count": len(fleet_nodes)}
+
+        def _handle_fleet_exit(context, *args, **kwargs):
+            remaining["count"] -= 1
+            if remaining["count"] <= 0:
+                return [EmitEvent(event=Shutdown(reason="all fleet nodes exited"))]
+            return []
+
+        for fleet_node in fleet_nodes:
+            nodes.append(RegisterEventHandler(OnProcessExit(
+                target_action=fleet_node,
+                on_exit=[OpaqueFunction(function=_handle_fleet_exit)],
+            )))
+
     return nodes
 
 
@@ -326,5 +365,7 @@ def generate_launch_description():
         DeclareLaunchArgument("output_dir", default_value=""),
         DeclareLaunchArgument("use_weather", default_value=""),
         DeclareLaunchArgument("use_fault_injector", default_value=""),
+        DeclareLaunchArgument("shutdown_after_sec", default_value=""),
+        DeclareLaunchArgument("shutdown_on_fleet_loss", default_value=""),
         OpaqueFunction(function=_make_nodes),
     ])

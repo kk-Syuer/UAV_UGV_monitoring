@@ -17,6 +17,7 @@
 #include "uav_msgs/msg/traffic_message.hpp"
 #include "uav_msgs/msg/charge_request.hpp"
 #include "uav_msgs/msg/charge_decision.hpp"
+#include "uav_msgs/msg/routing_table.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
 
 using std::placeholders::_1;
@@ -150,6 +151,8 @@ public:
     ugv_dock_capacity_ = this->declare_parameter<int>("ugv_dock_capacity", 1);
     max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
     stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
+    routing_table_empty_shutdown_sec_ =
+      this->declare_parameter<double>("routing_table_empty_shutdown_sec", 10.0);
     rate_window_sec_ = this->declare_parameter<double>("network_stats_window_sec", 10.0);
     qos_target_pdr_ = this->declare_parameter<double>("qos_target_pdr", 0.95);
     qos_target_delay_ms_ = this->declare_parameter<double>("qos_target_delay_ms", 200.0);
@@ -187,6 +190,10 @@ public:
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
       "/fanet/status", 200,
       std::bind(&NetworkMonitorNode::statusCallback, this, _1));
+
+    routing_table_sub_ = this->create_subscription<uav_msgs::msg::RoutingTable>(
+      "/fanet/routing_table", 50,
+      std::bind(&NetworkMonitorNode::routingTableCallback, this, _1));
 
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
@@ -711,6 +718,19 @@ private:
         rclcpp::shutdown();
       }
     }
+
+    if (routing_table_empty_shutdown_sec_ > 0.0 && routing_table_seen_) {
+      if (routing_table_empty_since_.nanoseconds() > 0) {
+        const double empty_duration = (this->now() - routing_table_empty_since_).seconds();
+        if (empty_duration >= routing_table_empty_shutdown_sec_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[SHUTDOWN] routing table empty for %.1f sec (threshold %.1f).",
+                      empty_duration,
+                      routing_table_empty_shutdown_sec_);
+          rclcpp::shutdown();
+        }
+      }
+    }
   }
 
   bool isTerminalOutcome(ChargeOutcome outcome) const
@@ -753,6 +773,21 @@ private:
     }
     it_rec->second.outcome = outcome;
     it_rec->second.failure_reason = reason;
+  }
+
+  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
+  {
+    routing_table_seen_ = true;
+    if (!msg) {
+      return;
+    }
+    if (!msg->destinations.empty()) {
+      routing_table_empty_since_ = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
+      return;
+    }
+    if (routing_table_empty_since_.nanoseconds() == 0) {
+      routing_table_empty_since_ = this->now();
+    }
   }
 
   void parseDecisionRationale(const std::string & payload, ChargeRecord & rec)
@@ -1701,6 +1736,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_raw_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
+  rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
 
   // Failures
   size_t battery_dead_count_ = 0;
@@ -1735,6 +1771,8 @@ private:
   double status_sample_period_sec_ = 1.0;
   double queue_stats_period_sec_ = 1.0;
   int ugv_dock_capacity_ = 1;
+  rclcpp::Time routing_table_empty_since_{0, 0, RCL_ROS_TIME};
+  bool routing_table_seen_ = false;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
   std::unordered_set<std::string> exported_qos_keys_;
@@ -1742,6 +1780,7 @@ private:
   rclcpp::Time start_time_;
   double max_runtime_sec_ = 0.0;
   bool stop_on_backbone_loss_ = false;
+  double routing_table_empty_shutdown_sec_ = 10.0;
   std::vector<std::string> backbone_ids_;
   double rate_window_sec_ = 10.0;
   double qos_target_pdr_ = 0.95;

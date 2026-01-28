@@ -17,6 +17,11 @@ routing:
 monitor:
   max_runtime_sec: 0.0
   stop_on_backbone_loss: false
+  routing_table_empty_shutdown_sec: 10.0
+
+shutdown:
+  after_sec: 0.0
+  on_fleet_loss: false
 
 weather:
   enable: true
