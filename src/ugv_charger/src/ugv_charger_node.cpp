@@ -6,6 +6,7 @@
 #include <exception>
 #include <limits>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 #include <sstream>
 #include <algorithm>
@@ -16,6 +17,7 @@
 #include "uav_msgs/msg/uav_status.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
 #include "uav_msgs/msg/routing_table.hpp"
+#include "uav_msgs/msg/failure_event.hpp"
 #include "std_msgs/msg/string.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "geometry_msgs/msg/twist.hpp"
@@ -147,9 +149,14 @@ public:
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
       "/fanet/status", 100,
       std::bind(&UgvChargerNode::statusCallback, this, std::placeholders::_1));
+    failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
+      "/uav_fleet/failure_events", 100,
+      std::bind(&UgvChargerNode::failureCallback, this, std::placeholders::_1));
     routing_table_sub_ = this->create_subscription<uav_msgs::msg::RoutingTable>(
       "/fanet/routing_table", 20,
       std::bind(&UgvChargerNode::routingTableCallback, this, std::placeholders::_1));
+    queue_event_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/ugv/queue_events", 50);
 
     // Scheduler loop assigns charging slots at a steady cadence.
     scheduler_timer_ = this->create_wall_timer(
@@ -277,6 +284,56 @@ private:
                 ugv_id_.c_str(), routing_table_.size());
   }
 
+  void publishQueueEvent(const std::string & event,
+                         const std::string & uav_id,
+                         const std::string & reason,
+                         size_t queue_size_after)
+  {
+    if (!queue_event_pub_) {
+      return;
+    }
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << "event=" << event
+        << " uav_id=" << uav_id
+        << " reason=" << reason
+        << " queue_size=" << queue_size_after
+        << " stamp=" << this->now().seconds();
+    msg.data = oss.str();
+    queue_event_pub_->publish(msg);
+  }
+
+  // Remove stale charge requests when UAVs are declared dead.
+  void failureCallback(const uav_msgs::msg::FailureEvent::SharedPtr msg)
+  {
+    if (msg->uav_id.empty()) {
+      return;
+    }
+
+    if (msg->failure_type != 1) {
+      return;
+    }
+
+    dead_uavs_.insert(msg->uav_id);
+
+    size_t removed = 0;
+    for (auto it = queue_.begin(); it != queue_.end(); ) {
+      if (it->uav_id == msg->uav_id) {
+        it = queue_.erase(it);
+        ++removed;
+      } else {
+        ++it;
+      }
+    }
+
+    if (removed > 0) {
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV: cancelled %zu queued CHARGE_REQUEST(s) for %s due to BATTERY_DEAD",
+                  removed, msg->uav_id.c_str());
+      publishQueueEvent("QUEUE_CANCEL", msg->uav_id, "BATTERY_DEAD", queue_.size());
+    }
+  }
+
   std::string resolveNextHop(const std::string & dst) const
   {
     auto it = routing_table_.find(dst);
@@ -343,6 +400,14 @@ private:
 
     if (msg->control_type == "CHARGE_REQUEST") {
       const std::string & uav_id = msg->src_id;
+
+      if (dead_uavs_.find(uav_id) != dead_uavs_.end()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UGV: ignoring CHARGE_REQUEST from %s because UAV is marked BATTERY_DEAD.",
+                    uav_id.c_str());
+        publishQueueEvent("QUEUE_REJECT", uav_id, "BATTERY_DEAD", queue_.size());
+        return;
+      }
 
       // Lookup last known status for this UAV
       auto it = uav_status_.find(uav_id);
@@ -1110,6 +1175,7 @@ private:
 
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
+  rclcpp::Subscription<uav_msgs::msg::FailureEvent>::SharedPtr failure_sub_;
   rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
   rclcpp::Publisher<uav_msgs::msg::ChargeDecision>::SharedPtr charge_decision_pub_;
   rclcpp::TimerBase::SharedPtr scheduler_timer_;
@@ -1122,6 +1188,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_pub_;
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr routing_event_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr queue_event_pub_;
   uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
@@ -1179,6 +1246,7 @@ private:
 
   std::unordered_map<std::string, UavInfo> uav_status_;
   std::unordered_map<std::string, std::string> routing_table_;
+  std::unordered_set<std::string> dead_uavs_;
 
   // Map each UAV to its CH, based on deployments
   std::unordered_map<std::string, std::string> uav_to_ch_;
