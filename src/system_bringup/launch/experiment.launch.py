@@ -4,7 +4,7 @@ import os
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, EmitEvent, OpaqueFunction, RegisterEventHandler, TimerAction
+from launch.actions import DeclareLaunchArgument, EmitEvent, LogInfo, OpaqueFunction, RegisterEventHandler, TimerAction
 from launch.event_handlers import OnProcessExit
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
@@ -336,7 +336,10 @@ def _make_nodes(context, *args, **kwargs):
     if shutdown_after_sec > 0:
         nodes.append(TimerAction(
             period=shutdown_after_sec,
-            actions=[EmitEvent(event=Shutdown(reason=f"shutdown_after_sec={shutdown_after_sec}"))],
+            actions=[
+                LogInfo(msg=f"[LAUNCH_SHUTDOWN] reason=shutdown_after_sec value={shutdown_after_sec}"),
+                EmitEvent(event=Shutdown(reason=f"shutdown_after_sec={shutdown_after_sec}")),
+            ],
         ))
 
     if shutdown_on_fleet_loss and fleet_nodes:
@@ -345,7 +348,10 @@ def _make_nodes(context, *args, **kwargs):
         def _handle_fleet_exit(context, *args, **kwargs):
             remaining["count"] -= 1
             if remaining["count"] <= 0:
-                return [EmitEvent(event=Shutdown(reason="all fleet nodes exited"))]
+                return [
+                    LogInfo(msg="[LAUNCH_SHUTDOWN] reason=all_fleet_nodes_exited"),
+                    EmitEvent(event=Shutdown(reason="all fleet nodes exited")),
+                ]
             return []
 
         for fleet_node in fleet_nodes:
@@ -357,7 +363,10 @@ def _make_nodes(context, *args, **kwargs):
     if monitor_node is not None:
         nodes.append(RegisterEventHandler(OnProcessExit(
             target_action=monitor_node,
-            on_exit=[EmitEvent(event=Shutdown(reason="network monitor exited"))],
+            on_exit=[
+                LogInfo(msg="[LAUNCH_SHUTDOWN] reason=network_monitor_exited"),
+                EmitEvent(event=Shutdown(reason="network monitor exited")),
+            ],
         )))
 
     return nodes
