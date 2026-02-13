@@ -77,8 +77,9 @@ public:
     parseTaskPoints(task_strings);
     task_driven_layout_ = !task_points_.empty();
 
+    auto deployment_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
-      "/coverage_planner/deployment", 10);
+      "/coverage_planner/deployment", deployment_qos);
     task_point_pub_ = this->create_publisher<uav_msgs::msg::TaskPointArray>(
       "/coverage_planner/task_points",
       rclcpp::QoS(1).transient_local());

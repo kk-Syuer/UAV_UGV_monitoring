@@ -254,8 +254,9 @@ public:
     weather_sub_ = this->create_subscription<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10,
       std::bind(&UavNode::weatherCallback, this, std::placeholders::_1));
+    auto deployment_qos = rclcpp::QoS(rclcpp::KeepLast(1)).reliable().transient_local();
     deployment_sub_ = this->create_subscription<uav_msgs::msg::UavDeployment>(
-      "/coverage_planner/deployment", 10,
+      "/coverage_planner/deployment", deployment_qos,
       std::bind(&UavNode::deploymentCallback, this, std::placeholders::_1));
     task_point_sub_ = this->create_subscription<uav_msgs::msg::TaskPointArray>(
       "/coverage_planner/task_points", rclcpp::QoS(1).transient_local(),
@@ -1330,19 +1331,6 @@ private:
       return;
     }
 
-    // If I'm not the next hop, ignore.
-    if (msg->next_hop_id != uav_id_) {
-      return;
-    }
-
-    if (msg->flow_type == 1 &&
-        (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
-      DeploymentInfo info;
-      if (parseDeploymentPayload(msg->payload, info)) {
-        updateClusterMetadata(info, msg->dst_id);
-      }
-    }
-
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
       if (msg->flow_type == 1 && msg->requires_ack &&
@@ -1486,17 +1474,43 @@ private:
       return;
     }
 
+    // Forwarding path: only process traffic addressed to this node as next hop.
+    if (msg->next_hop_id != uav_id_) {
+      return;
+    }
+
+    if (msg->flow_type == 1 &&
+        (msg->control_type == "DEPLOYMENT" || msg->control_type == "DEPLOYMENT_CMD")) {
+      DeploymentInfo info;
+      if (parseDeploymentPayload(msg->payload, info)) {
+        updateClusterMetadata(info, msg->dst_id);
+      }
+    }
+
     // I'm not final destination; only CHs forward using centralized routing.
     if (role_ == 1) { // CH
       uav_msgs::msg::TrafficMessage fwd = *msg;
-      fwd.next_hop_id = resolveNextHop(msg->dst_id);
+      const std::string preferred_next_hop = resolveNextHop(msg->dst_id);
+      const bool loop_blocked = !preferred_next_hop.empty() &&
+        std::find(msg->recent_hops.begin(), msg->recent_hops.end(), preferred_next_hop) !=
+        msg->recent_hops.end();
+      fwd.next_hop_id = pickNextHop(msg->dst_id,
+                                 preferred_next_hop,
+                                 &msg->recent_hops,
+                                 &rx_time,
+                                 &msg->msg_id,
+                                 &msg->src_id);
 
       if (fwd.next_hop_id.empty()) {
+        const std::string drop_reason = loop_blocked ? "LOOP_AVOIDANCE_NO_PROGRESS" : "NO_ROUTE";
         RCLCPP_WARN(this->get_logger(),
-                    "[FWD] CH %s dropping msg_id=%s: no route to %s",
-                    uav_id_.c_str(), fwd.msg_id.c_str(), msg->dst_id.c_str());
-        publishDrop(fwd.msg_id, "NO_ROUTE");
-        publishRoutingEvent("NO_ROUTE", msg->dst_id, fwd.next_hop_id);
+                    "[FWD] msg_id=%s src=%s dst=%s reason=%s",
+                    fwd.msg_id.c_str(),
+                    fwd.src_id.c_str(),
+                    fwd.dst_id.c_str(),
+                    drop_reason.c_str());
+        publishDrop(fwd.msg_id, drop_reason);
+        publishRoutingEvent(drop_reason, msg->dst_id, fwd.next_hop_id);
         return;
       }
 
@@ -1674,12 +1688,40 @@ private:
 
   std::string pickNextHop(const std::string & dst, const std::string & fallback,
                           const std::vector<std::string> * recent_hops = nullptr,
-                          const rclcpp::Time * now_override = nullptr) const
+                          const rclcpp::Time * now_override = nullptr,
+                          const std::string * msg_id = nullptr,
+                          const std::string * src_id = nullptr) const
   {
-    (void)fallback;
-    (void)recent_hops;
-    (void)now_override;
-    return resolveNextHop(dst);
+    std::string preferred = resolveNextHop(dst);
+    if (preferred.empty()) {
+      preferred = fallback;
+    }
+
+    if (!preferred.empty() && recent_hops &&
+        std::find(recent_hops->begin(), recent_hops->end(), preferred) != recent_hops->end()) {
+      const rclcpp::Time now = now_override ? *now_override : this->now();
+      auto alternative = selectGreedyNextHop(dst, recent_hops, now);
+      if (alternative && *alternative != preferred) {
+        RCLCPP_WARN(this->get_logger(),
+                    "[ROUTE] msg_id=%s src=%s dst=%s reason=LOOP_AVOIDANCE_PREFERRED_IN_RECENT_HOPS preferred=%s alt=%s",
+                    msg_id ? msg_id->c_str() : "unknown",
+                    src_id ? src_id->c_str() : uav_id_.c_str(),
+                    dst.c_str(),
+                    preferred.c_str(),
+                    alternative->c_str());
+        return *alternative;
+      }
+
+      RCLCPP_WARN(this->get_logger(),
+                  "[ROUTE] msg_id=%s src=%s dst=%s reason=LOOP_AVOIDANCE_NO_PROGRESS preferred=%s",
+                  msg_id ? msg_id->c_str() : "unknown",
+                  src_id ? src_id->c_str() : uav_id_.c_str(),
+                  dst.c_str(),
+                  preferred.c_str());
+      return "";
+    }
+
+    return preferred;
   }
 
   std::optional<geometry_msgs::msg::Point> lookupNodePosition(const std::string & id) const
@@ -2238,7 +2280,12 @@ private:
       }
 
       uav_msgs::msg::TrafficMessage attempt = it->msg;
-      std::string nh = pickNextHop(attempt.dst_id, resolveNextHop(attempt.dst_id));
+      std::string nh = pickNextHop(attempt.dst_id,
+                                  resolveNextHop(attempt.dst_id),
+                                  &attempt.recent_hops,
+                                  &now,
+                                  &attempt.msg_id,
+                                  &attempt.src_id);
       if (!nh.empty()) {
         attempt.next_hop_id = nh;
         RCLCPP_INFO(this->get_logger(),

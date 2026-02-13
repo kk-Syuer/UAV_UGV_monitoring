@@ -143,14 +143,12 @@ private:
   void eventCallback(const std_msgs::msg::String::SharedPtr msg)
   {
     recompute_due_ = true;
-    RCLCPP_WARN(this->get_logger(), "[routing] event-driven recompute: %s", msg->data.c_str());
-    recomputeRoutes();
+    RCLCPP_WARN(this->get_logger(), "[routing] event-driven recompute requested: %s", msg->data.c_str());
   }
 
   void recomputeTimer()
   {
     if (!recompute_due_) {
-      recomputeRoutes();
       return;
     }
     recompute_due_ = false;
@@ -300,7 +298,21 @@ private:
               continue;
             }
             if (dst_gateway == static_cast<int>(src_idx)) {
-              next_hops[dst_idx] = static_cast<int>(dst_idx);
+              const double ch_to_endpoint_dist = distance2d(
+                active_nodes[src_idx].pose.position,
+                active_nodes[dst_idx].pose.position);
+              if (ch_to_endpoint_dist <= comm_range_m_) {
+                next_hops[dst_idx] = static_cast<int>(dst_idx);
+              } else {
+                next_hops[dst_idx] = -1;
+                RCLCPP_WARN(
+                  this->get_logger(),
+                  "[routing] CH %s cannot directly reach endpoint %s (d=%.1f m > range=%.1f m)",
+                  active_nodes[src_idx].id.c_str(),
+                  active_nodes[dst_idx].id.c_str(),
+                  ch_to_endpoint_dist,
+                  comm_range_m_);
+              }
               continue;
             }
             int dst_gateway_graph = ch_graph_index[dst_gateway];
