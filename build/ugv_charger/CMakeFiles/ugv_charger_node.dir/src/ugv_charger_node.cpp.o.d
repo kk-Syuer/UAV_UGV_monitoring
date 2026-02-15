@@ -179,7 +179,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: \
  /usr/include/c++/11/bits/enable_special_members.h \
  /usr/include/c++/11/bits/node_handle.h \
  /usr/include/c++/11/bits/unordered_map.h \
- /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/vector \
+ /usr/include/c++/11/bits/erase_if.h /usr/include/c++/11/unordered_set \
+ /usr/include/c++/11/bits/unordered_set.h /usr/include/c++/11/vector \
  /usr/include/c++/11/bits/stl_vector.h \
  /usr/include/c++/11/bits/stl_bvector.h \
  /usr/include/c++/11/bits/vector.tcc /usr/include/c++/11/sstream \
@@ -335,8 +336,7 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: \
  /opt/ros/humble/include/rcl/rcl/publisher.h \
  /opt/ros/humble/include/rcpputils/rcpputils/scope_exit.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/context.hpp \
- /usr/include/c++/11/typeindex /usr/include/c++/11/unordered_set \
- /usr/include/c++/11/bits/unordered_set.h \
+ /usr/include/c++/11/typeindex \
  /opt/ros/humble/include/rclcpp/rclcpp/init_options.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/macros.hpp \
@@ -656,6 +656,11 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__builder.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__traits.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__type_support.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
  /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \

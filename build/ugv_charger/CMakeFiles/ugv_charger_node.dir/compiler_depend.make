@@ -220,6 +220,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /usr/include/c++/11/bits/node_handle.h \
   /usr/include/c++/11/bits/unordered_map.h \
   /usr/include/c++/11/bits/erase_if.h \
+  /usr/include/c++/11/unordered_set \
+  /usr/include/c++/11/bits/unordered_set.h \
   /usr/include/c++/11/vector \
   /usr/include/c++/11/bits/stl_vector.h \
   /usr/include/c++/11/bits/stl_bvector.h \
@@ -396,8 +398,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /opt/ros/humble/include/rcpputils/rcpputils/scope_exit.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/context.hpp \
   /usr/include/c++/11/typeindex \
-  /usr/include/c++/11/unordered_set \
-  /usr/include/c++/11/bits/unordered_set.h \
   /opt/ros/humble/include/rclcpp/rclcpp/init_options.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/macros.hpp \
@@ -723,6 +723,11 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__type_support.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp \
+  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/string.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp \
   /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__builder.hpp \
@@ -740,8 +745,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__type_support.hpp:
 
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
-
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__type_support.hpp:
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__builder.hpp:
@@ -755,6 +758,16 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__traits.hpp:
 
 /opt/ros/humble/include/std_msgs/std_msgs/msg/detail/string__struct.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__traits.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__builder.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__struct.hpp:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/rosidl_generator_cpp__visibility_control.hpp:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/failure_event.hpp:
 
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/routing_table__type_support.hpp:
 
@@ -984,10 +997,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /opt/ros/humble/include/libstatistics_collector/libstatistics_collector/topic_statistics_collector/constants.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
-
-/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
-
 /usr/include/c++/11/bits/stl_heap.h:
 
 /opt/ros/humble/include/rcpputils/rcpputils/pointer_traits.hpp:
@@ -1001,6 +1010,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
 
 /usr/include/c++/11/bits/istream.tcc:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/failure_event__type_support.hpp:
 
 /usr/include/c++/11/bits/basic_ios.tcc:
 
@@ -1049,6 +1060,10 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__builder.hpp:
 
 /opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
+
+/usr/include/c++/11/bits/stl_vector.h:
+
+/usr/include/c++/11/bits/unordered_set.h:
 
 /usr/include/c++/11/bits/erase_if.h:
 
@@ -1182,6 +1197,8 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/tr1/legendre_function.tcc:
 
+/usr/include/c++/11/unordered_set:
+
 /usr/include/x86_64-linux-gnu/bits/types/__fpos64_t.h:
 
 /usr/include/time.h:
@@ -1215,8 +1232,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/include/x86_64-linux-gnu/bits/stdio_lim.h:
 
 /usr/include/x86_64-linux-gnu/bits/timex.h:
-
-/usr/include/c++/11/unordered_set:
 
 /usr/include/c++/11/bits/node_handle.h:
 
@@ -1395,12 +1410,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /usr/lib/gcc/x86_64-linux-gnu/11/include/stddef.h:
 
 /usr/include/c++/11/bits/stl_construct.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
-
-/usr/include/c++/11/bits/std_function.h:
-
-/usr/include/c++/11/bits/stl_tempbuf.h:
 
 /usr/include/x86_64-linux-gnu/sys/single_threaded.h:
 
@@ -1660,6 +1669,12 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 
 /usr/include/c++/11/bits/cxxabi_forced.h:
 
+/usr/include/c++/11/bits/stl_tempbuf.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/timer_t.h:
+
+/usr/include/c++/11/bits/std_function.h:
+
 /usr/include/c++/11/cstdlib:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
@@ -1691,6 +1706,10 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
 
 /usr/include/c++/11/bits/string_view.tcc:
+
+/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+
+/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
 
 /usr/include/strings.h:
 
@@ -2003,10 +2022,6 @@ CMakeFiles/ugv_charger_node.dir/src/ugv_charger_node.cpp.o: /home/vboxuser/UAV_U
 /opt/ros/humble/include/rcpputils/rcpputils/scope_exit.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/memory_strategy.hpp:
-
-/usr/include/c++/11/bits/stl_vector.h:
-
-/usr/include/c++/11/bits/unordered_set.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/visibility_control.hpp:
 
