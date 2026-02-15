@@ -19,6 +19,7 @@ from rclpy.qos import DurabilityPolicy
 from rclpy.qos import QoSProfile
 from std_msgs.msg import String
 from uav_msgs.msg import ClusterInfo
+from uav_msgs.msg import FailureEvent
 from uav_msgs.msg import TaskPointArray
 from uav_msgs.msg import TrafficMessage
 from uav_msgs.msg import UavDeployment
@@ -53,6 +54,8 @@ class FleetVizNode(Node):
             String, '/network_monitor/stats', self.network_stats_cb, 10)
         self.cluster_info_sub = self.create_subscription(
             ClusterInfo, '/ch_manager/cluster_info', self.cluster_info_cb, 20)
+        self.failure_sub = self.create_subscription(
+            FailureEvent, '/uav_fleet/failure_events', self.failure_cb, 20)
 
         # Cached state for plotting and info panels.
         self.uav_states = {}   # id -> last UavStatus
@@ -82,6 +85,7 @@ class FleetVizNode(Node):
         self.last_task_points_count = 0
         self.last_deployment_time = None
         self.last_deployment_target = None
+        self.dead_uavs: Dict[str, Dict[str, Any]] = {}
 
         # Plot setup for the main canvas and info panels.
         plt.ion()
@@ -192,10 +196,33 @@ class FleetVizNode(Node):
     def status_cb(self, msg: UavStatus):
         """Cache latest UAV status for plotting."""
         self.uav_states[msg.uav_id] = msg
+        if msg.battery_level <= 0.0 and msg.uav_id not in self.dead_uavs:
+            death_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
+            if death_time <= 0.0:
+                death_time = self._now_sec()
+            self.dead_uavs[msg.uav_id] = {
+                'time': death_time,
+                'reason': 'BATTERY_DEAD',
+                'description': 'Battery depleted (from status update)',
+            }
         if msg.uav_id == 'ugv' or msg.uav_id.startswith('ugv_'):
             self.ugv_pose = msg.pose
         elif msg.uav_id == 'sink_gateway':
             self.sink_pose = msg.pose
+
+    def failure_cb(self, msg: FailureEvent):
+        if msg.failure_type != 1:
+            return
+        death_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
+        if death_time <= 0.0:
+            death_time = self._now_sec()
+        self.dead_uavs[msg.uav_id] = {
+            'time': death_time,
+            'reason': 'BATTERY_DEAD',
+            'description': msg.description or 'Battery depleted',
+        }
+        if msg.uav_id in self.pending_charges:
+            self.pending_charges.pop(msg.uav_id)
 
     def deployment_cb(self, msg: UavDeployment):
         """Capture sink/UGV deployments for map anchors."""
@@ -445,7 +472,7 @@ class FleetVizNode(Node):
 
         fleet_states = {
             uid: st for uid, st in self.uav_states.items()
-            if uid != 'sink_gateway' and not uid.startswith('ugv')
+            if uid != 'sink_gateway' and not uid.startswith('ugv') and uid not in self.dead_uavs
         }
         if fleet_states:
             info_lines.append(self._title_line('Fleet status (pos [m], batt %)'))
@@ -471,6 +498,20 @@ class FleetVizNode(Node):
         else:
             info_lines.append(self._title_line('UAV status'))
             info_lines.append(self._line('  (no reports)'))
+
+        if self.dead_uavs:
+            info_lines.append(self._title_line('Death events'))
+            for uid in sorted(self.dead_uavs.keys()):
+                death_info = self.dead_uavs[uid]
+                info_lines.append(self._line(
+                    f"  {uid}: {death_info.get('reason', 'UNKNOWN')}"
+                ))
+                info_lines.append(self._line(
+                    f"    time: t={death_info.get('time', 0.0):.1f}s"
+                ))
+                info_lines.append(self._line(
+                    f"    desc: {death_info.get('description', 'n/a')}"
+                ))
 
         if self.ugv_pose:
             info_lines.append(self._title_line('UGV position'))
@@ -665,6 +706,8 @@ class FleetVizNode(Node):
 
         # draw UAVs
         for uav_id, st in self.uav_states.items():
+            if uav_id in self.dead_uavs:
+                continue
             x = st.pose.position.x
             y = st.pose.position.y
             color = self.color_for_cluster(st.cluster_id)
@@ -693,7 +736,10 @@ class FleetVizNode(Node):
         legend_handles = []
         if task_legend:
             legend_handles.append(task_legend)
-        cluster_ids = sorted({st.cluster_id for st in self.uav_states.values() if st.cluster_id})
+        cluster_ids = sorted({
+            st.cluster_id for uid, st in self.uav_states.items()
+            if st.cluster_id and uid not in self.dead_uavs
+        })
         for cluster_id in cluster_ids:
             legend_handles.append(Line2D(
                 [0], [0],
