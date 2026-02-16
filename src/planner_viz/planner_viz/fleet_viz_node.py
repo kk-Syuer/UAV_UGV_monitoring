@@ -86,6 +86,7 @@ class FleetVizNode(Node):
         self.last_deployment_time = None
         self.last_deployment_target = None
         self.dead_uavs: Dict[str, Dict[str, Any]] = {}
+        self.member_task_assignments: Dict[str, list] = {}
 
         # Plot setup for the main canvas and info panels.
         plt.ion()
@@ -239,6 +240,7 @@ class FleetVizNode(Node):
 
     def task_point_cb(self, msg: TaskPointArray):
         self.task_points = list(msg.tasks)
+        self.member_task_assignments.clear()
         self.last_task_points_time = self._now_sec()
         self.last_task_points_count = len(self.task_points)
 
@@ -334,7 +336,53 @@ class FleetVizNode(Node):
         self.ugv_pose.position.y = y
 
     def traffic_raw_cb(self, msg: TrafficMessage):
-        return
+        if msg.flow_type != 1:
+            return
+        if msg.control_type == 'CLUSTER_REASSIGN':
+            member_id = msg.dst_id
+            new_ch = (msg.payload or '').strip()
+            if not member_id or not new_ch:
+                return
+            state = self.uav_states.get(member_id)
+            if state is not None:
+                state.cluster_id = new_ch
+            self.cluster_info.pop(member_id, None)
+            return
+        if msg.control_type == 'TASK_ASSIGN':
+            member_id = msg.dst_id
+            payload = (msg.payload or '').strip()
+            if not member_id:
+                return
+            assigned = []
+            if payload:
+                for token in payload.split(';'):
+                    parts = token.split(',')
+                    if len(parts) < 2:
+                        continue
+                    try:
+                        x = float(parts[0])
+                        y = float(parts[1])
+                    except ValueError:
+                        continue
+                    assigned.append((x, y))
+            self.member_task_assignments[member_id] = assigned
+            return
+        if msg.control_type == 'NEW_DEPLOYMENT':
+            ch_id = msg.dst_id
+            parts = (msg.payload or '').split(',')
+            if len(parts) < 3:
+                return
+            try:
+                x = float(parts[0])
+                y = float(parts[1])
+                z = float(parts[2])
+            except ValueError:
+                return
+            state = self.uav_states.get(ch_id)
+            if state is not None:
+                state.pose.position.x = x
+                state.pose.position.y = y
+                state.pose.position.z = z
 
     def network_stats_cb(self, msg: String):
         try:
@@ -704,6 +752,21 @@ class FleetVizNode(Node):
             task_legend = self.ax.scatter([], [], marker='x', s=40, color='white',
                                           label='task point')
 
+        # draw assignment points from recovery first
+        assigned_legend = None
+        for member_id, points in self.member_task_assignments.items():
+            if not points:
+                continue
+            state = self.uav_states.get(member_id)
+            color = self.color_for_cluster(state.cluster_id if state else '')
+            for idx, (x, y) in enumerate(points):
+                self.ax.scatter(x, y, marker='.', s=22, color=color, alpha=0.9)
+                if idx == 0:
+                    self.ax.text(x, y - 6, f"{member_id}:assign", color=color, fontsize=6)
+            if assigned_legend is None:
+                assigned_legend = self.ax.scatter([], [], marker='.', s=22, color='white',
+                                                  label='recovery task assign')
+
         # draw UAVs
         for uav_id, st in self.uav_states.items():
             if uav_id in self.dead_uavs:
@@ -736,6 +799,8 @@ class FleetVizNode(Node):
         legend_handles = []
         if task_legend:
             legend_handles.append(task_legend)
+        if assigned_legend:
+            legend_handles.append(assigned_legend)
         cluster_ids = sorted({
             st.cluster_id for uid, st in self.uav_states.items()
             if st.cluster_id and uid not in self.dead_uavs

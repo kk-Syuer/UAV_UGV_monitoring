@@ -280,6 +280,7 @@ private:
 
     recomputeMembership(alive_chs);
     recomputeTasks(alive_chs);
+    planCoverageRedeployments(alive_chs);
 
     if (sink_unreachable_ || ugv_unreachable_) {
       planRedeployments(alive_chs);
@@ -351,6 +352,48 @@ private:
 
   void recomputeTasks(const std::vector<ChState> & alive_chs)
   {
+    const auto ch_tasks = buildTaskBuckets(alive_chs);
+
+    for (const auto & ch : alive_chs) {
+      std::vector<std::string> member_ids = membersForCh(ch.id);
+      if (member_ids.empty()) {
+        continue;
+      }
+      auto it_tasks = ch_tasks.find(ch.id);
+      if (it_tasks == ch_tasks.end() || it_tasks->second.empty()) {
+        continue;
+      }
+      const auto & tasks = it_tasks->second;
+      std::sort(member_ids.begin(), member_ids.end());
+      std::unordered_map<std::string, std::vector<TaskPoint>> assignments;
+      for (const auto & task : tasks) {
+        double best_dist = std::numeric_limits<double>::infinity();
+        std::string best_member;
+        for (const auto & member_id : member_ids) {
+          auto it_member = member_states_.find(member_id);
+          if (it_member == member_states_.end()) {
+            continue;
+          }
+          double dist = distance2d(task.position, it_member->second.pose.position);
+          if (dist < best_dist - 1e-6 ||
+              (std::abs(dist - best_dist) < 1e-6 && member_id < best_member)) {
+            best_dist = dist;
+            best_member = member_id;
+          }
+        }
+        if (!best_member.empty()) {
+          assignments[best_member].push_back(task);
+        }
+      }
+      for (const auto & kv : assignments) {
+        publishTaskAssign(kv.first, kv.second);
+      }
+    }
+  }
+
+  std::unordered_map<std::string, std::vector<TaskPoint>> buildTaskBuckets(
+    const std::vector<ChState> & alive_chs) const
+  {
     std::unordered_map<std::string, std::vector<TaskPoint>> ch_tasks;
     for (const auto & tp : task_points_) {
       double best_dist = std::numeric_limits<double>::infinity();
@@ -373,25 +416,38 @@ private:
         ch_tasks[best_ch].push_back(tp);
       }
     }
+    return ch_tasks;
+  }
 
+  void planCoverageRedeployments(const std::vector<ChState> & alive_chs)
+  {
+    if (alive_chs.empty() || task_points_.empty()) {
+      return;
+    }
+
+    const auto ch_tasks = buildTaskBuckets(alive_chs);
+    std::unordered_map<std::string, geometry_msgs::msg::Pose> overrides;
     for (const auto & ch : alive_chs) {
-      std::vector<std::string> member_ids = membersForCh(ch.id);
-      if (member_ids.empty()) {
+      auto it_tasks = ch_tasks.find(ch.id);
+      if (it_tasks == ch_tasks.end() || it_tasks->second.empty()) {
         continue;
       }
-      auto tasks = ch_tasks[ch.id];
-      if (tasks.empty()) {
+
+      geometry_msgs::msg::Pose target = ch.pose;
+      double sum_x = 0.0;
+      double sum_y = 0.0;
+      for (const auto & tp : it_tasks->second) {
+        sum_x += tp.position.x;
+        sum_y += tp.position.y;
+      }
+      target.position.x = sum_x / static_cast<double>(it_tasks->second.size());
+      target.position.y = sum_y / static_cast<double>(it_tasks->second.size());
+
+      if (!hasBackboneNeighbor(ch.id, target, alive_chs, overrides)) {
         continue;
       }
-      std::sort(member_ids.begin(), member_ids.end());
-      std::unordered_map<std::string, std::vector<TaskPoint>> assignments;
-      for (size_t i = 0; i < tasks.size(); ++i) {
-        const auto & member_id = member_ids[i % member_ids.size()];
-        assignments[member_id].push_back(tasks[i]);
-      }
-      for (const auto & kv : assignments) {
-        publishTaskAssign(kv.first, kv.second);
-      }
+      overrides[ch.id] = target;
+      publishNewDeployment(ch.id, target);
     }
   }
 
