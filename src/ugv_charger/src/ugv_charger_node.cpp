@@ -380,7 +380,12 @@ private:
       return;
     }
 
+    // CHARGE_REQUEST retries are expected when the requester has not
+    // observed a decision yet. We must process them idempotently instead of
+    // dropping as duplicates, otherwise a lost CHARGE_DECISION can starve the
+    // UAV until battery depletion.
     if (msg->requires_ack && msg->control_type != "ACK" &&
+        msg->control_type != "CHARGE_REQUEST" &&
         isDuplicateControlMessage(*msg)) {
       maybePublishAck(*msg);
       return;
