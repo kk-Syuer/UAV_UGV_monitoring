@@ -4,13 +4,12 @@
 
 This project implements a **fully simulated FANET (Flying Ad‑hoc Network)** for **UAV–UGV cooperative monitoring in disaster and flood scenarios**, with a strong focus on **network robustness, routing under mobility, charging logistics, and weather‑induced failures**.
 
-All network behavior (routing, buffering, drops, acknowledgements) is **explicitly modeled at application level**, enabling precise QoS measurement and reproducible experiments.
+All network behavior (routing, drops, acknowledgements) is **explicitly modeled at application level**, enabling precise QoS measurement and reproducible experiments.
 
 The project is structured to support:
 
 * Highly mobile UAV swarms
 * Dynamic network partitioning
-* Store–carry–forward routing
 * Energy‑aware charging via UGVs
 * Weather‑driven network instability
 * End‑to‑end QoS evaluation
