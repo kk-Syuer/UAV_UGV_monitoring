@@ -99,10 +99,8 @@ public:
     ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
     control_dedup_cache_size_ = static_cast<size_t>(
       this->declare_parameter<int>("control_dedup_cache_size", 200));
-    const double battery_threshold_percent =
-      this->declare_parameter<double>("battery_threshold", 30.0);
     charge_request_battery_gate_percent_ =
-      this->declare_parameter<double>("charge_request_battery_gate_percent", battery_threshold_percent);
+      this->declare_parameter<double>("battery_threshold", 30.0);
     charge_request_status_stale_sec_ =
       this->declare_parameter<double>("charge_request_status_stale_sec", 3.0);
 
@@ -458,7 +456,7 @@ private:
           info.battery_level > static_cast<float>(charge_request_battery_gate_percent_)) {
         bool removed = removeQueuedChargeRequest(uav_id);
         RCLCPP_INFO(this->get_logger(),
-                    "UGV: ignoring CHARGE_REQUEST from %s, battery %.1f%% above gate %.1f%% and intent_to_leave=false.",
+                    "UGV: ignoring CHARGE_REQUEST from %s, battery %.1f%% above UAV battery_threshold %.1f%% and intent_to_leave=false.",
                     uav_id.c_str(), info.battery_level, charge_request_battery_gate_percent_);
         if (removed) {
           publishQueueEvent("QUEUE_CANCEL", uav_id, "BATTERY_RECOVERED", queue_.size());
