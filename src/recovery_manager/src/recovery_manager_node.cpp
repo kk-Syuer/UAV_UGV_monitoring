@@ -359,10 +359,11 @@ private:
       if (member_ids.empty()) {
         continue;
       }
-      auto tasks = ch_tasks[ch.id];
-      if (tasks.empty()) {
+      auto it_tasks = ch_tasks.find(ch.id);
+      if (it_tasks == ch_tasks.end() || it_tasks->second.empty()) {
         continue;
       }
+      const auto & tasks = it_tasks->second;
       std::sort(member_ids.begin(), member_ids.end());
       std::unordered_map<std::string, std::vector<TaskPoint>> assignments;
       for (const auto & task : tasks) {
