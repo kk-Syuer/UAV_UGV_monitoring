@@ -99,6 +99,12 @@ public:
     ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
     control_dedup_cache_size_ = static_cast<size_t>(
       this->declare_parameter<int>("control_dedup_cache_size", 200));
+    const double battery_threshold_percent =
+      this->declare_parameter<double>("battery_threshold", 30.0);
+    charge_request_battery_gate_percent_ =
+      this->declare_parameter<double>("charge_request_battery_gate_percent", battery_threshold_percent);
+    charge_request_status_stale_sec_ =
+      this->declare_parameter<double>("charge_request_status_stale_sec", 3.0);
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -134,9 +140,10 @@ public:
       "/fanet/routing_event", 10);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s'",
+                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s', charge_gate=%.1f%%",
                 ugv_id_.c_str(), policy_name_.c_str(),
-                charging_duration_sec_, uplink_ch_id_.c_str());
+                charging_duration_sec_, uplink_ch_id_.c_str(),
+                charge_request_battery_gate_percent_);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 100);
 
@@ -197,8 +204,9 @@ public:
     recomputeChargingSpots();
 
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s",
-                ugv_id_.c_str(), policy_name_.c_str(), charging_duration_sec_);
+                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, charge_gate=%.1f%%",
+                ugv_id_.c_str(), policy_name_.c_str(), charging_duration_sec_,
+                charge_request_battery_gate_percent_);
   }
 
 private:
@@ -258,6 +266,9 @@ private:
     info.role = msg->role;
     info.battery_level = msg->battery_level;
     info.backbone_active = msg->backbone_active;
+    info.charging_state = msg->charging_state;
+    info.intent_to_leave = msg->intent_to_leave;
+    info.eta_to_leave_sec = msg->eta_to_leave_sec;
 
     info.last_seen = now;
     info.pose = msg->pose;
@@ -360,6 +371,20 @@ private:
     routing_event_pub_->publish(msg);
   }
 
+  bool removeQueuedChargeRequest(const std::string & uav_id)
+  {
+    bool removed = false;
+    for (auto it = queue_.begin(); it != queue_.end(); ) {
+      if (it->uav_id == uav_id) {
+        it = queue_.erase(it);
+        removed = true;
+      } else {
+        ++it;
+      }
+    }
+    return removed;
+  }
+
   // Handle control messages routed through the mesh.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
@@ -380,7 +405,12 @@ private:
       return;
     }
 
+    // CHARGE_REQUEST retries are expected when the requester has not
+    // observed a decision yet. We must process them idempotently instead of
+    // dropping as duplicates, otherwise a lost CHARGE_DECISION can starve the
+    // UAV until battery depletion.
     if (msg->requires_ack && msg->control_type != "ACK" &&
+        msg->control_type != "CHARGE_REQUEST" &&
         isDuplicateControlMessage(*msg)) {
       maybePublishAck(*msg);
       return;
@@ -418,14 +448,33 @@ private:
         return;
       }
 
+      const auto & info = it->second;
+      const double status_age_sec = (now - info.last_seen).seconds();
+      const bool status_fresh =
+        charge_request_status_stale_sec_ <= 0.0 || status_age_sec <= charge_request_status_stale_sec_;
+
+      if (status_fresh &&
+          !info.intent_to_leave &&
+          info.battery_level > static_cast<float>(charge_request_battery_gate_percent_)) {
+        bool removed = removeQueuedChargeRequest(uav_id);
+        RCLCPP_INFO(this->get_logger(),
+                    "UGV: ignoring CHARGE_REQUEST from %s, battery %.1f%% above gate %.1f%% and intent_to_leave=false.",
+                    uav_id.c_str(), info.battery_level, charge_request_battery_gate_percent_);
+        if (removed) {
+          publishQueueEvent("QUEUE_CANCEL", uav_id, "BATTERY_RECOVERED", queue_.size());
+        }
+        publishQueueEvent("QUEUE_REJECT", uav_id, "BATTERY_ABOVE_GATE", queue_.size());
+        return;
+      }
+
       auto existing = std::find_if(queue_.begin(), queue_.end(),
         [&](const QueueEntry & queued) {
           return queued.uav_id == uav_id || queued.request_msg_id == msg->msg_id;
         });
 
       if (existing != queue_.end()) {
-        existing->role = it->second.role;
-        existing->battery_level = it->second.battery_level;
+        existing->role = info.role;
+        existing->battery_level = info.battery_level;
         existing->request_time = now;
         existing->request_msg_id = msg->msg_id;
         RCLCPP_INFO(this->get_logger(),
@@ -438,8 +487,8 @@ private:
 
       QueueEntry entry;
       entry.uav_id = uav_id;
-      entry.role = it->second.role;
-      entry.battery_level = it->second.battery_level;
+      entry.role = info.role;
+      entry.battery_level = info.battery_level;
       entry.request_time = now;
       entry.request_msg_id = msg->msg_id;
 
@@ -1205,6 +1254,8 @@ private:
   int charge_decision_max_retries_ = 5;
   double ack_retry_period_sec_ = 0.5;
   size_t control_dedup_cache_size_ = 200;
+  double charge_request_battery_gate_percent_ = 45.0;
+  double charge_request_status_stale_sec_ = 3.0;
   Policy policy_;
   std::string policy_name_;
   double neighbor_timeout_sec_ = 0.0;

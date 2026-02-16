@@ -3277,9 +3277,15 @@ private:
 
     double ack_elapsed = (now - charge_request_pending_->last_ack_time).seconds();
     if (ack_elapsed >= charge_decision_timeout_sec_) {
+      const std::string previous_msg_id = charge_request_pending_->msg_id;
+      pending_acks_.erase(previous_msg_id);
+      charge_request_pending_->msg_id =
+        uav_id_ + "_charge_req_" + std::to_string(msg_counter_++);
+
       RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: no CHARGE_DECISION after ACK; resending CHARGE_REQUEST msg_id=%s",
-                  uav_id_.c_str(), charge_request_pending_->msg_id.c_str());
+                  "UAV %s: no CHARGE_DECISION after ACK; issuing new CHARGE_REQUEST old_msg_id=%s new_msg_id=%s",
+                  uav_id_.c_str(), previous_msg_id.c_str(),
+                  charge_request_pending_->msg_id.c_str());
       charge_request_pending_->acknowledged = false;
       sendChargeRequest(*charge_request_pending_);
     }
