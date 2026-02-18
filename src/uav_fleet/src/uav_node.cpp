@@ -183,6 +183,10 @@ public:
       static_cast<float>(this->declare_parameter<double>("battery_threshold", 30.0));
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
+    charger_power_w_member_ =
+      this->declare_parameter<double>("charger_power_w_member", 180.0);
+    charger_power_w_ch_ =
+      this->declare_parameter<double>("charger_power_w_ch", 180.0);
     ugv_reserve_energy_ =
       static_cast<float>(this->declare_parameter<double>("ugv_reserve_energy", 10.0));
     ugv_buffer_energy_ =
@@ -549,8 +553,24 @@ private:
 
     // ---- Normal behaviour AFTER deployment ----
     if (deployment_received_ && charge_state_ == ChargeState::CHARGING) {
-      // Charging: interpolate
-      if (now >= charge_end_time_) {
+      // Charging: increase battery using charger power model (Wh += W * dt / 3600).
+      if (last_charge_update_time_.nanoseconds() == 0 ||
+          last_charge_update_time_.get_clock_type() != now.get_clock_type()) {
+        last_charge_update_time_ = now;
+      }
+
+      double dt = (now - last_charge_update_time_).seconds();
+      if (dt < 0.0) {
+        dt = 0.0;
+      }
+      last_charge_update_time_ = now;
+
+      const double charger_power_w = (role_ == 1) ? charger_power_w_ch_ : charger_power_w_member_;
+      if (charger_power_w > 0.0 && dt > 0.0) {
+        battery_energy_ += static_cast<float>(charger_power_w * dt / 3600.0);
+      }
+
+      if (battery_energy_ >= battery_capacity_ || now >= charge_end_time_) {
         battery_energy_ = battery_capacity_;
         is_charging_ = false;
         charge_state_ = ChargeState::RETURNING;
@@ -559,16 +579,6 @@ private:
                     uav_id_.c_str(), battery_energy_,
                     charge_departure_pose_.position.x,
                     charge_departure_pose_.position.y);
-      } else {
-        double total = (charge_end_time_ - charge_start_time_).seconds();
-        double elapsed = (now - charge_start_time_).seconds();
-        if (total > 0.0 && elapsed >= 0.0) {
-          double frac = elapsed / total;
-          if (frac < 0.0) frac = 0.0;
-          if (frac > 1.0) frac = 1.0;
-          battery_energy_ = energy_at_charge_start_ +
-            static_cast<float>((battery_capacity_ - energy_at_charge_start_) * frac);
-        }
       }
     } else if (deployment_received_ && ready_for_battery) {
       // Not charging: drain battery based on role and temperature
@@ -942,11 +952,21 @@ private:
     charge_state_ = ChargeState::CHARGING;
     energy_at_charge_start_ = battery_energy_;
     charge_start_time_ = now;
-    charge_end_time_ = now + rclcpp::Duration::from_seconds(charging_duration_sec_);
+    last_charge_update_time_ = now;
+
+    const double charger_power_w = (role_ == 1) ? charger_power_w_ch_ : charger_power_w_member_;
+    double eta_sec = charging_duration_sec_;
+    if (charger_power_w > 0.0 && battery_energy_ < battery_capacity_) {
+      eta_sec = (static_cast<double>(battery_capacity_ - battery_energy_) / charger_power_w) * 3600.0;
+    }
+    if (!std::isfinite(eta_sec) || eta_sec <= 0.0) {
+      eta_sec = charging_duration_sec_;
+    }
+    charge_end_time_ = now + rclcpp::Duration::from_seconds(eta_sec);
 
     RCLCPP_INFO(this->get_logger(),
-                "UAV %s: starting charging session. ETA %.1f s.",
-                uav_id_.c_str(), charging_duration_sec_);
+                "UAV %s: starting charging session. ETA %.1f s (power=%.1fW).",
+                uav_id_.c_str(), eta_sec, charger_power_w);
   }
 
   void handleHelloMessage(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
@@ -3361,6 +3381,8 @@ private:
   float ugv_reserve_energy_;
   float ugv_buffer_energy_;
   double charging_duration_sec_;
+  double charger_power_w_member_ = 180.0;
+  double charger_power_w_ch_ = 180.0;
   bool reported_battery_dead_ = false;
   bool shutdown_scheduled_ = false;
 
@@ -3414,6 +3436,7 @@ private:
   bool emergency_landed_ = false;
   rclcpp::Time charge_start_time_;
   rclcpp::Time charge_end_time_;
+  rclcpp::Time last_charge_update_time_;
   float energy_at_charge_start_;
 
   uint64_t msg_counter_;

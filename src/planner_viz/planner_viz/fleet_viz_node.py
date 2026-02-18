@@ -682,7 +682,7 @@ class FleetVizNode(Node):
 
             queue_lines = [
                 self._title_line('Charging queue (UGV snapshot)'),
-                self._line(f"  snapshot age: {self._format_age(self.last_charging_snapshot_time)}"),
+                self._line(f"  snapshot age: {self._format_age(self.last_charging_snapshot_time)} (fresh)"),
                 self._title_line('Scheduling'),
                 self._line(f"  {policy}"),
                 self._title_line(f"Current Waiting List (Q): {len(waiting_queue)}"),
@@ -707,8 +707,24 @@ class FleetVizNode(Node):
                 batt = float(item.get('live_battery', 0.0))
                 batt = max(0.0, min(100.0, batt))
                 age_s = max(0.0, now - st)
+                reason = str(item.get('session_end_reason', 'in_progress'))
+                last_seen_batt = float(item.get('last_battery_seen', batt))
+                progress_age = float(item.get('last_progress_age', 0.0))
                 queue_lines.append(self._line(
-                    f"    - {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s | [{st:.1f}, {en:.1f}]"
+                    f"    - {uid} [{role}] | live {batt:.1f}% | last {last_seen_batt:.1f}% | "
+                    f"progress_age {progress_age:.1f}s | age {age_s:.1f}s | [{st:.1f}, {en:.1f}] | {reason}"
+                ))
+
+            recent_endings = self.charging_snapshot.get('recent_session_endings', [])
+            queue_lines.append(self._title_line(f"Recent session endings: {len(recent_endings)}"))
+            for item in recent_endings[:8]:
+                uid = item.get('uav_id', 'unknown')
+                reason = str(item.get('session_end_reason', 'n/a'))
+                duration = float(item.get('charge_duration_sec', 0.0))
+                ended_t = item.get('end')
+                end_age_s = max(0.0, now - float(ended_t)) if ended_t is not None else 0.0
+                queue_lines.append(self._line(
+                    f"    - {uid} | {reason} | duration {duration:.1f}s | ended {end_age_s:.1f}s ago"
                 ))
 
             queue_lines.append(self._title_line(f"UGV intake rejected: {len(rejected)}"))
@@ -771,6 +787,7 @@ class FleetVizNode(Node):
         load_mem = (self.charge_time_mem_min / load_mem_den) if load_mem_den > 0.0 else 0.0
         queue_lines = [
             self._title_line('Charging queue (fanet fallback)'),
+            self._line(f"  snapshot stale: {self._format_age(self.last_charging_snapshot_time)}"),
             self._line(f"  pending requests: {len(self.pending_charges)}"),
             self._line(f"  Last request age: {self._format_age(self.last_charge_request_time)}"),
             self._line(f"  Last decision age: {self._format_age(self.last_charge_decision_time)}"),
