@@ -68,6 +68,13 @@ int compute_required_charging_spots(
 class UgvChargerNode : public rclcpp::Node
 {
 public:
+  enum class ChargingModel
+  {
+    FIXED,
+    PERCENT_RATE,
+    ENERGY_WH
+  };
+
   UgvChargerNode()
   : Node("ugv_charger_node"),
     max_parallel_spots_(1)
@@ -76,6 +83,31 @@ public:
 
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
+    min_charge_time_sec_ = this->declare_parameter<double>("min_charge_time_sec", 1.0);
+    max_charge_time_sec_ = this->declare_parameter<double>("max_charge_time_sec", 3600.0);
+    full_soc_threshold_percent_ = this->declare_parameter<double>("full_soc_threshold_percent", 99.9);
+
+    std::string charging_model_name =
+      this->declare_parameter<std::string>("charging_model", "energy_wh");
+    if (charging_model_name == "percent_rate") {
+      charging_model_ = ChargingModel::PERCENT_RATE;
+    } else if (charging_model_name == "energy_wh") {
+      charging_model_ = ChargingModel::ENERGY_WH;
+    } else {
+      charging_model_ = ChargingModel::FIXED;
+      charging_model_name = "fixed";
+    }
+    charging_model_name_ = charging_model_name;
+
+    charge_rate_percent_per_sec_member_ =
+      this->declare_parameter<double>("charge_rate_percent_per_sec_member", 0.8);
+    charge_rate_percent_per_sec_ch_ =
+      this->declare_parameter<double>("charge_rate_percent_per_sec_ch", 0.8);
+
+    member_capacity_wh_ = this->declare_parameter<double>("member_capacity_wh", 240.0);
+    ch_capacity_wh_ = this->declare_parameter<double>("ch_capacity_wh", 480.0);
+    charger_power_w_member_ = this->declare_parameter<double>("charger_power_w_member", 180.0);
+    charger_power_w_ch_ = this->declare_parameter<double>("charger_power_w_ch", 180.0);
 
     std::string policy_name =
       this->declare_parameter<std::string>("charging_policy", "fcfs");
@@ -142,9 +174,9 @@ public:
       "/fanet/routing_event", 10);
     hello_period_sec_ = this->declare_parameter<double>("hello_period_sec", 1.0);
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, uplink_ch_id='%s', charge_gate=%.1f%%",
+                "UGV charger started. id='%s', policy='%s', charging_model='%s', charging_duration=%.1f s, uplink_ch_id='%s', charge_gate=%.1f%%",
                 ugv_id_.c_str(), policy_name_.c_str(),
-                charging_duration_sec_, uplink_ch_id_.c_str(),
+                charging_model_name_.c_str(), charging_duration_sec_, uplink_ch_id_.c_str(),
                 charge_request_battery_gate_percent_);
     delivered_pub_ = this->create_publisher<uav_msgs::msg::TrafficMessage>(
       "/fanet/delivered", 100);
@@ -211,8 +243,8 @@ public:
     recomputeChargingSpots();
 
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. id='%s', policy='%s', charging_duration=%.1f s, charge_gate=%.1f%%",
-                ugv_id_.c_str(), policy_name_.c_str(), charging_duration_sec_,
+                "UGV charger started. id='%s', policy='%s', charging_model='%s', charging_duration=%.1f s, charge_gate=%.1f%%",
+                ugv_id_.c_str(), policy_name_.c_str(), charging_model_name_.c_str(), charging_duration_sec_,
                 charge_request_battery_gate_percent_);
   }
 
@@ -497,7 +529,8 @@ private:
     oss << "{"
         << "\"stamp\":" << now.seconds()
         << ",\"ugv_id\":\"" << escapeJson(ugv_id_) << "\""
-        << ",\"policy\":\"" << escapeJson(policy_name_) << "\"";
+        << ",\"policy\":\"" << escapeJson(policy_name_) << "\""
+        << ",\"charging_model\":\"" << escapeJson(charging_model_name_) << "\"";
 
     oss << ",\"active_sessions\":[";
     for (size_t i = 0; i < active_sessions_.size(); ++i) {
@@ -1247,11 +1280,19 @@ private:
     // Remove finished charging sessions
     auto it = active_sessions_.begin();
     while (it != active_sessions_.end()) {
-      if (now >= it->end_time) {
+      bool reached_full_soc = false;
+      auto status_it = uav_status_.find(it->uav_id);
+      if (status_it != uav_status_.end() &&
+          status_it->second.battery_level >= static_cast<float>(full_soc_threshold_percent_)) {
+        reached_full_soc = true;
+      }
+
+      if (reached_full_soc || now >= it->end_time) {
         RCLCPP_INFO(this->get_logger(),
-                    "Charging session completed for %s at t=%.1f",
+                    "Charging session completed for %s at t=%.1f%s",
                     it->uav_id.c_str(),
-                    it->end_time.seconds());
+                    now.seconds(),
+                    reached_full_soc ? " (battery full)" : "");
         it = active_sessions_.erase(it);
       } else {
         ++it;
@@ -1284,8 +1325,10 @@ private:
       queue_.erase(queue_.begin() + static_cast<long>(idx));
 
       rclcpp::Time slot_start_time = now;
+      double charge_duration_sec = computeChargeDurationSec(job_role, job_battery);
+      const bool instant_completion = (charge_duration_sec <= 0.0);
       rclcpp::Time slot_end_time = slot_start_time +
-                                   rclcpp::Duration::from_seconds(charging_duration_sec_);
+                                   rclcpp::Duration::from_seconds(charge_duration_sec);
 
       // Publish ChargeDecision (direct, not routed yet)
       uav_msgs::msg::ChargeDecision decision;
@@ -1304,17 +1347,29 @@ private:
                          job_role,
                          job.request_msg_id);
 
-      RCLCPP_INFO(this->get_logger(),
-                  "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
-                  "Session: [%.1f, %.1f], queue size now: %zu, active sessions: %zu/%d",
-                  job.uav_id.c_str(), job_role, job_battery,
-                  policy_name_.c_str(),
-                  slot_start_time.seconds(), slot_end_time.seconds(),
-                  queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
+      if (instant_completion) {
+        RCLCPP_INFO(this->get_logger(),
+                    "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
+                    "Instant completion (duration=%.3fs), queue size now: %zu, active sessions: %zu/%d",
+                    job.uav_id.c_str(), job_role, job_battery,
+                    policy_name_.c_str(), charge_duration_sec,
+                    queue_.size(), active_sessions_.size(), max_parallel_spots_);
+      } else {
+        RCLCPP_INFO(this->get_logger(),
+                    "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
+                    "Session: [%.1f, %.1f] (duration=%.1fs), queue size now: %zu, active sessions: %zu/%d",
+                    job.uav_id.c_str(), job_role, job_battery,
+                    policy_name_.c_str(),
+                    slot_start_time.seconds(), slot_end_time.seconds(),
+                    charge_duration_sec,
+                    queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
+      }
       // Also send the decision through the routed network as a control message
       sendDecisionControlMessage(job, now, rationale);
 
-      active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time});
+      if (!instant_completion) {
+        active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time});
+      }
 
       if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
         available_spots = static_cast<size_t>(max_parallel_spots_ - active_sessions_.size());
@@ -1323,6 +1378,53 @@ private:
       }
     }
 
+  }
+
+  double clampChargeDurationSec(double raw_duration_sec) const
+  {
+    double sanitized = std::isfinite(raw_duration_sec) ? raw_duration_sec : charging_duration_sec_;
+    sanitized = std::max(0.0, sanitized);
+
+    double max_sec = max_charge_time_sec_;
+    if (max_sec <= 0.0) {
+      max_sec = charging_duration_sec_;
+    }
+
+    double min_sec = min_charge_time_sec_;
+    if (min_sec < 0.0) {
+      min_sec = 0.0;
+    }
+
+    if (max_sec < min_sec) {
+      std::swap(max_sec, min_sec);
+    }
+
+    return std::clamp(sanitized, min_sec, max_sec);
+  }
+
+  double computeChargeDurationSec(uint8_t role, float battery_percent) const
+  {
+    double soc = std::clamp(static_cast<double>(battery_percent), 0.0, 100.0);
+    double remaining_fraction = (100.0 - soc) / 100.0;
+    if (remaining_fraction <= 0.0) {
+      return 0.0;
+    }
+
+    double raw_duration_sec = charging_duration_sec_;
+    if (charging_model_ == ChargingModel::PERCENT_RATE) {
+      double rate = (role == 1) ? charge_rate_percent_per_sec_ch_ : charge_rate_percent_per_sec_member_;
+      if (rate > 0.0) {
+        raw_duration_sec = (100.0 - soc) / rate;
+      }
+    } else if (charging_model_ == ChargingModel::ENERGY_WH) {
+      double capacity_wh = (role == 1) ? ch_capacity_wh_ : member_capacity_wh_;
+      double charger_power_w = (role == 1) ? charger_power_w_ch_ : charger_power_w_member_;
+      if (capacity_wh > 0.0 && charger_power_w > 0.0) {
+        raw_duration_sec = remaining_fraction * capacity_wh / charger_power_w * 3600.0;
+      }
+    }
+
+    return clampChargeDurationSec(raw_duration_sec);
   }
 
   struct DecisionRationale
@@ -1584,6 +1686,17 @@ private:
   uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
+  double min_charge_time_sec_;
+  double max_charge_time_sec_;
+  double full_soc_threshold_percent_ = 99.9;
+  ChargingModel charging_model_ = ChargingModel::FIXED;
+  std::string charging_model_name_ = "fixed";
+  double charge_rate_percent_per_sec_member_ = 0.8;
+  double charge_rate_percent_per_sec_ch_ = 0.8;
+  double member_capacity_wh_ = 240.0;
+  double ch_capacity_wh_ = 480.0;
+  double charger_power_w_member_ = 180.0;
+  double charger_power_w_ch_ = 180.0;
   double target_utilization_;
   double flight_time_ch_min_;
   double charge_time_ch_min_;
