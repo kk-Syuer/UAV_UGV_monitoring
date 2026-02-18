@@ -1,4 +1,11 @@
 cmake_minimum_required(VERSION 3.8)
+
+# Avoid developer warning from ament_cmake's recursive globbing during
+# symlink-install by enforcing the modern policy behavior.
+if(POLICY CMP0009)
+  cmake_policy(SET CMP0009 NEW)
+endif()
+
 project(system_bringup)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
