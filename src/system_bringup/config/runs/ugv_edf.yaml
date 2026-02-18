@@ -65,7 +65,17 @@ sink:
 ugv:
   ugv_id: ugv_1
   charging_policy: edf
-
+battery:
+  # Keep UAV and UGV capacity assumptions aligned across nodes.
+  member_capacity_wh: 100.0
+  ch_capacity_wh: 200.0
+  # Drain units are Wh/s. Defaults target ~45 min member and ~90 min CH nominal endurance.
+  drain_rate_member: 0.037037
+  drain_rate_ch: 0.037037
+  # 2xspeed 0.074074
+  # 4xspees 0.148148
+  # 10xspeed 0.37037
+  # Fast-charging assumption: charger_power_w = 3600 * k * drain_rate, k=1.5
 coverage_planner:
   enable: true
 
