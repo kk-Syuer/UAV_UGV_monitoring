@@ -11,6 +11,7 @@
 #include <sstream>
 #include <algorithm>
 #include <utility>
+#include <iomanip>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -165,6 +166,8 @@ public:
       std::bind(&UgvChargerNode::routingTableCallback, this, std::placeholders::_1));
     queue_event_pub_ = this->create_publisher<std_msgs::msg::String>(
       "/ugv/queue_events", 50);
+    charging_snapshot_pub_ = this->create_publisher<std_msgs::msg::String>(
+      "/ugv/charging_snapshot", 10);
 
     // Scheduler loop assigns charging slots at a steady cadence.
     scheduler_timer_ = this->create_wall_timer(
@@ -180,6 +183,9 @@ public:
     ack_retry_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry),
       std::bind(&UgvChargerNode::resendPendingAcks, this));
+
+    charging_snapshot_timer_ = this->create_wall_timer(
+      1s, std::bind(&UgvChargerNode::publishChargingSnapshot, this));
 
     if (neighbor_timeout_sec_ > 0.0) {
       auto timeout_period = std::chrono::duration<double>(neighbor_timeout_sec_);
@@ -250,6 +256,37 @@ private:
     int attempts = 0;
     int max_retries = 0;
     double retry_interval_sec = 1.0;
+  };
+
+  struct RejectedRequest
+  {
+    std::string uav_id;
+    rclcpp::Time time;
+    std::string reason;
+  };
+
+  struct LastRequestState
+  {
+    bool valid = false;
+    std::string uav_id;
+    std::string msg_id;
+    rclcpp::Time time;
+    uint8_t role = 0;
+    float battery = 0.0f;
+    std::string status;
+  };
+
+  struct LastDecisionState
+  {
+    bool valid = false;
+    std::string uav_id;
+    bool accepted = false;
+    rclcpp::Time time;
+    rclcpp::Time slot_start;
+    rclcpp::Time slot_end;
+    std::string policy;
+    uint8_t priority = 0;
+    std::string msg_id;
   };
 
   // ------------- Callbacks -------------
@@ -386,6 +423,163 @@ private:
     return removed;
   }
 
+  static std::string escapeJson(const std::string & input)
+  {
+    std::string out;
+    out.reserve(input.size() + 8);
+    for (char c : input) {
+      switch (c) {
+        case '"': out += "\\\""; break;
+        case '\\': out += "\\\\"; break;
+        case '\n': out += "\\n"; break;
+        case '\r': out += "\\r"; break;
+        case '\t': out += "\\t"; break;
+        default: out.push_back(c); break;
+      }
+    }
+    return out;
+  }
+
+  void updateLastRequest(const std::string & uav_id,
+                         const std::string & msg_id,
+                         const rclcpp::Time & time,
+                         uint8_t role,
+                         float battery,
+                         const std::string & status)
+  {
+    last_request_.valid = true;
+    last_request_.uav_id = uav_id;
+    last_request_.msg_id = msg_id;
+    last_request_.time = time;
+    last_request_.role = role;
+    last_request_.battery = std::clamp(battery, 0.0f, 100.0f);
+    last_request_.status = status;
+  }
+
+  void appendRejectedRequest(const std::string & uav_id,
+                             const std::string & reason,
+                             const rclcpp::Time & now)
+  {
+    rejected_history_.push_back(RejectedRequest{uav_id, now, reason});
+    if (rejected_history_.size() > rejected_history_limit_) {
+      rejected_history_.pop_front();
+    }
+  }
+
+  void updateLastDecision(const std::string & uav_id,
+                          bool accepted,
+                          const rclcpp::Time & now,
+                          const rclcpp::Time & slot_start,
+                          const rclcpp::Time & slot_end,
+                          uint8_t priority,
+                          const std::string & msg_id)
+  {
+    last_decision_.valid = true;
+    last_decision_.uav_id = uav_id;
+    last_decision_.accepted = accepted;
+    last_decision_.time = now;
+    last_decision_.slot_start = slot_start;
+    last_decision_.slot_end = slot_end;
+    last_decision_.policy = policy_name_;
+    last_decision_.priority = priority;
+    last_decision_.msg_id = msg_id;
+  }
+
+  void publishChargingSnapshot()
+  {
+    if (!charging_snapshot_pub_) {
+      return;
+    }
+
+    const auto now = this->now();
+    std::ostringstream oss;
+    oss << std::fixed << std::setprecision(3);
+    oss << "{"
+        << "\"stamp\":" << now.seconds()
+        << ",\"ugv_id\":\"" << escapeJson(ugv_id_) << "\""
+        << ",\"policy\":\"" << escapeJson(policy_name_) << "\"";
+
+    oss << ",\"active_sessions\":[";
+    for (size_t i = 0; i < active_sessions_.size(); ++i) {
+      const auto & session = active_sessions_[i];
+      uint8_t live_role = 0;
+      float live_battery = 0.0f;
+      auto status_it = uav_status_.find(session.uav_id);
+      if (status_it != uav_status_.end()) {
+        live_role = status_it->second.role;
+        live_battery = std::clamp(status_it->second.battery_level, 0.0f, 100.0f);
+      }
+      if (i > 0) {
+        oss << ",";
+      }
+      oss << "{\"uav_id\":\"" << escapeJson(session.uav_id)
+          << "\",\"start\":" << session.start_time.seconds()
+          << ",\"end\":" << session.end_time.seconds()
+          << ",\"live_role\":" << static_cast<int>(live_role)
+          << ",\"live_battery\":" << live_battery
+          << "}";
+    }
+    oss << "]";
+
+    oss << ",\"waiting_queue\":[";
+    for (size_t i = 0; i < queue_.size(); ++i) {
+      const auto & entry = queue_[i];
+      auto [live_role, live_battery] = getLiveRoleAndBattery(entry);
+      if (i > 0) {
+        oss << ",";
+      }
+      oss << "{\"uav_id\":\"" << escapeJson(entry.uav_id)
+          << "\",\"request_time\":" << entry.request_time.seconds()
+          << ",\"live_role\":" << static_cast<int>(live_role)
+          << ",\"live_battery\":" << std::clamp(live_battery, 0.0f, 100.0f)
+          << "}";
+    }
+    oss << "]";
+
+    oss << ",\"rejected\":[";
+    size_t rej_idx = 0;
+    for (const auto & rej : rejected_history_) {
+      if (rej_idx++ > 0) {
+        oss << ",";
+      }
+      oss << "{\"uav_id\":\"" << escapeJson(rej.uav_id)
+          << "\",\"time\":" << rej.time.seconds()
+          << ",\"reason\":\"" << escapeJson(rej.reason) << "\"}";
+    }
+    oss << "]";
+
+    oss << ",\"last_request\":";
+    if (last_request_.valid) {
+      oss << "{\"uav_id\":\"" << escapeJson(last_request_.uav_id)
+          << "\",\"msg_id\":\"" << escapeJson(last_request_.msg_id)
+          << "\",\"time\":" << last_request_.time.seconds()
+          << ",\"role\":" << static_cast<int>(last_request_.role)
+          << ",\"battery\":" << std::clamp(last_request_.battery, 0.0f, 100.0f)
+          << ",\"status\":\"" << escapeJson(last_request_.status) << "\"}";
+    } else {
+      oss << "{}";
+    }
+
+    oss << ",\"last_decision\":";
+    if (last_decision_.valid) {
+      oss << "{\"uav_id\":\"" << escapeJson(last_decision_.uav_id)
+          << "\",\"accepted\":" << (last_decision_.accepted ? "true" : "false")
+          << ",\"time\":" << last_decision_.time.seconds()
+          << ",\"slot_start\":" << last_decision_.slot_start.seconds()
+          << ",\"slot_end\":" << last_decision_.slot_end.seconds()
+          << ",\"policy\":\"" << escapeJson(last_decision_.policy)
+          << "\",\"priority\":" << static_cast<int>(last_decision_.priority)
+          << ",\"msg_id\":\"" << escapeJson(last_decision_.msg_id) << "\"}";
+    } else {
+      oss << "{}";
+    }
+    oss << "}";
+
+    std_msgs::msg::String out;
+    out.data = oss.str();
+    charging_snapshot_pub_->publish(out);
+  }
+
   // Handle control messages routed through the mesh.
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
   {
@@ -433,6 +627,8 @@ private:
       const std::string & uav_id = msg->src_id;
 
       if (dead_uavs_.find(uav_id) != dead_uavs_.end()) {
+        updateLastRequest(uav_id, msg->msg_id, now, 0, 0.0f, "rejected");
+        appendRejectedRequest(uav_id, "BATTERY_DEAD", now);
         RCLCPP_WARN(this->get_logger(),
                     "UGV: ignoring CHARGE_REQUEST from %s because UAV is marked BATTERY_DEAD.",
                     uav_id.c_str());
@@ -443,6 +639,8 @@ private:
       // Lookup last known status for this UAV
       auto it = uav_status_.find(uav_id);
       if (it == uav_status_.end()) {
+        updateLastRequest(uav_id, msg->msg_id, now, 0, 0.0f, "rejected");
+        appendRejectedRequest(uav_id, "NO_STATUS", now);
         RCLCPP_WARN(this->get_logger(),
                     "UGV: received CHARGE_REQUEST from '%s' but no status known. Ignoring.",
                     uav_id.c_str());
@@ -457,6 +655,8 @@ private:
       if (status_fresh &&
           !info.intent_to_leave &&
           info.battery_level > static_cast<float>(charge_request_battery_gate_percent_)) {
+        updateLastRequest(uav_id, msg->msg_id, now, info.role, info.battery_level, "rejected");
+        appendRejectedRequest(uav_id, "BATTERY_ABOVE_GATE", now);
         bool removed = removeQueuedChargeRequest(uav_id);
         RCLCPP_INFO(this->get_logger(),
                     "UGV: ignoring CHARGE_REQUEST from %s, battery %.1f%% above UAV battery_threshold %.1f%% and intent_to_leave=false.",
@@ -478,6 +678,7 @@ private:
         existing->battery_level = info.battery_level;
         existing->request_time = now;
         existing->request_msg_id = msg->msg_id;
+        updateLastRequest(uav_id, msg->msg_id, now, info.role, info.battery_level, "updated");
         RCLCPP_INFO(this->get_logger(),
                     "UGV: updated CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
                     "Queue size remains: %zu",
@@ -494,6 +695,7 @@ private:
       entry.request_msg_id = msg->msg_id;
 
       queue_.push_back(entry);
+      updateLastRequest(uav_id, msg->msg_id, now, info.role, info.battery_level, "enqueued");
 
       RCLCPP_INFO(this->get_logger(),
                   "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
@@ -1094,6 +1296,13 @@ private:
       decision.policy = policy_name_;
 
       charge_decision_pub_->publish(decision);
+      updateLastDecision(job.uav_id,
+                         true,
+                         now,
+                         slot_start_time,
+                         slot_end_time,
+                         job_role,
+                         job.request_msg_id);
 
       RCLCPP_INFO(this->get_logger(),
                   "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
@@ -1371,6 +1580,7 @@ private:
   rclcpp::Publisher<uav_msgs::msg::UavStatus>::SharedPtr status_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr routing_event_pub_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr queue_event_pub_;
+  rclcpp::Publisher<std_msgs::msg::String>::SharedPtr charging_snapshot_pub_;
   uint64_t msg_counter_ = 0;
 
   double charging_duration_sec_;
@@ -1411,6 +1621,7 @@ private:
   bool motion_start_received_ = false;
   rclcpp::Time last_pose_time_;
   geometry_msgs::msg::Twist ugv_velocity_;
+  rclcpp::TimerBase::SharedPtr charging_snapshot_timer_;
 
   bool deployment_ack_sent_ = false;
   uint64_t dep_ack_seq_ = 0;
@@ -1428,6 +1639,10 @@ private:
   };
 
   std::vector<ChargingSession> active_sessions_;
+  std::deque<RejectedRequest> rejected_history_;
+  size_t rejected_history_limit_ = 20;
+  LastRequestState last_request_;
+  LastDecisionState last_decision_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
   std::unordered_map<std::string, std::string> routing_table_;
