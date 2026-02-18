@@ -104,8 +104,8 @@ public:
     charge_rate_percent_per_sec_ch_ =
       this->declare_parameter<double>("charge_rate_percent_per_sec_ch", 0.8);
 
-    member_capacity_wh_ = this->declare_parameter<double>("member_capacity_wh", 240.0);
-    ch_capacity_wh_ = this->declare_parameter<double>("ch_capacity_wh", 480.0);
+    member_capacity_wh_ = this->declare_parameter<double>("member_capacity_wh", 100.0);
+    ch_capacity_wh_ = this->declare_parameter<double>("ch_capacity_wh", 200.0);
     charger_power_w_member_ = this->declare_parameter<double>("charger_power_w_member", 180.0);
     charger_power_w_ch_ = this->declare_parameter<double>("charger_power_w_ch", 180.0);
 
@@ -137,6 +137,12 @@ public:
       this->declare_parameter<double>("battery_threshold", 30.0);
     charge_request_status_stale_sec_ =
       this->declare_parameter<double>("charge_request_status_stale_sec", 3.0);
+    active_session_status_stale_sec_ =
+      this->declare_parameter<double>("active_session_status_stale_sec", 4.0);
+    active_session_no_progress_sec_ =
+      this->declare_parameter<double>("active_session_no_progress_sec", 8.0);
+    active_session_progress_epsilon_percent_ =
+      this->declare_parameter<double>("active_session_progress_epsilon_percent", 0.01);
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -257,6 +263,10 @@ private:
     DYNAMIC_SCORE
   };
 
+  // Expected charging_state values in /fanet/status (UavStatus):
+  // 0=IDLE, 1=TO_UGV, 2=CHARGING, 3=RETURNING.
+  static constexpr uint8_t kChargingStateCharging = 2;
+
   struct QueueEntry
   {
     std::string uav_id;
@@ -270,6 +280,7 @@ private:
   {
     uint8_t role = 0;
     float battery_level = 0.0f;
+    float battery_capacity_wh = 0.0f;
     bool backbone_active = true; // whether this UAV is usable as backbone
 
     rclcpp::Time last_seen;
@@ -321,6 +332,25 @@ private:
     std::string msg_id;
   };
 
+
+  struct ChargingSession
+  {
+    std::string uav_id;
+    rclcpp::Time start_time;
+    rclcpp::Time end_time;
+    float last_battery_seen = 0.0f;
+    rclcpp::Time last_progress_time;
+  };
+
+  struct SessionEndRecord
+  {
+    std::string uav_id;
+    rclcpp::Time start_time;
+    rclcpp::Time end_time;
+    double duration_sec = 0.0;
+    std::string reason;
+  };
+
   // ------------- Callbacks -------------
 
   // Cache latest UAV status for policy scoring and dock sizing.
@@ -335,6 +365,7 @@ private:
     auto & info = uav_status_[msg->uav_id];
     info.role = msg->role;
     info.battery_level = msg->battery_level;
+    info.battery_capacity_wh = msg->battery_capacity;
     info.backbone_active = msg->backbone_active;
     info.charging_state = msg->charging_state;
     info.intent_to_leave = msg->intent_to_leave;
@@ -412,6 +443,18 @@ private:
                   "UGV: cancelled %zu queued CHARGE_REQUEST(s) for %s due to BATTERY_DEAD",
                   removed, msg->uav_id.c_str());
       publishQueueEvent("QUEUE_CANCEL", msg->uav_id, "BATTERY_DEAD", queue_.size());
+    }
+
+    for (auto it = active_sessions_.begin(); it != active_sessions_.end(); ) {
+      if (it->uav_id != msg->uav_id) {
+        ++it;
+        continue;
+      }
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV: terminating active charging session for %s due to BATTERY_DEAD",
+                  msg->uav_id.c_str());
+      rememberSessionEnd(*it, this->now(), "dead");
+      it = active_sessions_.erase(it);
     }
   }
 
@@ -545,12 +588,36 @@ private:
       if (i > 0) {
         oss << ",";
       }
+      const double last_progress_age = session.last_progress_time.nanoseconds() > 0
+        ? std::max(0.0, (now - session.last_progress_time).seconds())
+        : 0.0;
       oss << "{\"uav_id\":\"" << escapeJson(session.uav_id)
           << "\",\"start\":" << session.start_time.seconds()
           << ",\"end\":" << session.end_time.seconds()
+          << ",\"charge_duration_sec\":"
+          << std::max(0.0, (session.end_time - session.start_time).seconds())
+          << ",\"session_end_reason\":\"in_progress\""
+          << ",\"last_battery_seen\":" << std::clamp(session.last_battery_seen, 0.0f, 100.0f)
+          << ",\"last_progress_age\":" << last_progress_age
           << ",\"live_role\":" << static_cast<int>(live_role)
           << ",\"live_battery\":" << live_battery
           << "}";
+    }
+    oss << "]";
+
+    oss << ",\"recent_session_endings\":[";
+    for (size_t i = 0; i < session_end_history_.size(); ++i) {
+      const auto & ended = session_end_history_[i];
+      if (i > 0) {
+        oss << ",";
+      }
+      oss << "{\"uav_id\":\"" << escapeJson(ended.uav_id)
+          << "\",\"start\":" << ended.start_time.seconds()
+          << ",\"end\":" << ended.end_time.seconds()
+          << ",\"charge_duration_sec\":" << ended.duration_sec
+          << ",\"charging_model\":\"" << escapeJson(charging_model_name_)
+          << "\",\"session_end_reason\":\"" << escapeJson(ended.reason)
+          << "\"}";
     }
     oss << "]";
 
@@ -1277,22 +1344,78 @@ private:
   {
     auto now = this->now();
 
-    // Remove finished charging sessions
+    // Remove finished or invalid charging sessions
     auto it = active_sessions_.begin();
     while (it != active_sessions_.end()) {
       bool reached_full_soc = false;
+      bool is_dead = dead_uavs_.find(it->uav_id) != dead_uavs_.end();
+      bool stale_status = false;
+      bool no_progress_timeout = false;
+
       auto status_it = uav_status_.find(it->uav_id);
-      if (status_it != uav_status_.end() &&
-          status_it->second.battery_level >= static_cast<float>(full_soc_threshold_percent_)) {
-        reached_full_soc = true;
+      if (status_it != uav_status_.end()) {
+        const auto & status = status_it->second;
+        const double current_battery = std::clamp(static_cast<double>(status.battery_level), 0.0, 100.0);
+        if (current_battery >= full_soc_threshold_percent_) {
+          reached_full_soc = true;
+        }
+
+        if (active_session_status_stale_sec_ > 0.0) {
+          const double status_age_sec = (now - status.last_seen).seconds();
+          stale_status = status_age_sec > active_session_status_stale_sec_;
+        }
+
+        if (current_battery > static_cast<double>(it->last_battery_seen) +
+            active_session_progress_epsilon_percent_) {
+          it->last_battery_seen = static_cast<float>(current_battery);
+          it->last_progress_time = now;
+        }
+
+        if (active_session_no_progress_sec_ > 0.0 &&
+            status.charging_state == kChargingStateCharging &&
+            !reached_full_soc) {
+          const double progress_age_sec = (now - it->last_progress_time).seconds();
+          no_progress_timeout = progress_age_sec > active_session_no_progress_sec_;
+        }
+      } else if (active_session_status_stale_sec_ > 0.0) {
+        // If we have never seen status for this session, allow a grace window from slot start.
+        const double session_age_sec = (now - it->start_time).seconds();
+        stale_status = session_age_sec > active_session_status_stale_sec_;
       }
 
-      if (reached_full_soc || now >= it->end_time) {
+      std::string end_reason;
+      if (is_dead) {
+        end_reason = "dead";
+      } else if (stale_status) {
+        end_reason = "stale_status";
+      } else if (reached_full_soc) {
+        end_reason = "full_soc";
+      } else if (no_progress_timeout) {
+        end_reason = "timeout";
+      } else if (now >= it->end_time) {
+        end_reason = "ended_by_time";
+      }
+
+      if (!end_reason.empty()) {
+        double status_age_sec = -1.0;
+        double current_battery = static_cast<double>(it->last_battery_seen);
+        if (status_it != uav_status_.end()) {
+          status_age_sec = std::max(0.0, (now - status_it->second.last_seen).seconds());
+          current_battery = std::clamp(static_cast<double>(status_it->second.battery_level), 0.0, 100.0);
+        }
+        const double last_progress_age_sec = it->last_progress_time.nanoseconds() > 0
+          ? std::max(0.0, (now - it->last_progress_time).seconds())
+          : -1.0;
+
         RCLCPP_INFO(this->get_logger(),
-                    "Charging session completed for %s at t=%.1f%s",
+                    "Charging session ended: uav=%s reason=%s last_batt=%.3f curr_batt=%.3f progress_age=%.2fs status_age=%.2fs",
                     it->uav_id.c_str(),
-                    now.seconds(),
-                    reached_full_soc ? " (battery full)" : "");
+                    end_reason.c_str(),
+                    static_cast<double>(it->last_battery_seen),
+                    current_battery,
+                    last_progress_age_sec,
+                    status_age_sec);
+        rememberSessionEnd(*it, now, end_reason);
         it = active_sessions_.erase(it);
       } else {
         ++it;
@@ -1325,7 +1448,7 @@ private:
       queue_.erase(queue_.begin() + static_cast<long>(idx));
 
       rclcpp::Time slot_start_time = now;
-      double charge_duration_sec = computeChargeDurationSec(job_role, job_battery);
+      double charge_duration_sec = computeChargeDurationSec(job.uav_id, job_role, job_battery);
       const bool instant_completion = (charge_duration_sec <= 0.0);
       rclcpp::Time slot_end_time = slot_start_time +
                                    rclcpp::Duration::from_seconds(charge_duration_sec);
@@ -1368,7 +1491,12 @@ private:
       sendDecisionControlMessage(job, now, rationale);
 
       if (!instant_completion) {
-        active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time});
+        float initial_battery = job_battery;
+        auto status_it = uav_status_.find(job.uav_id);
+        if (status_it != uav_status_.end()) {
+          initial_battery = std::clamp(status_it->second.battery_level, 0.0f, 100.0f);
+        }
+        active_sessions_.push_back({job.uav_id, slot_start_time, slot_end_time, initial_battery, now});
       }
 
       if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
@@ -1378,6 +1506,22 @@ private:
       }
     }
 
+  }
+
+  void rememberSessionEnd(const ChargingSession & session,
+                          const rclcpp::Time & now,
+                          const std::string & reason)
+  {
+    SessionEndRecord rec;
+    rec.uav_id = session.uav_id;
+    rec.start_time = session.start_time;
+    rec.end_time = now;
+    rec.duration_sec = std::max(0.0, (now - session.start_time).seconds());
+    rec.reason = reason;
+    session_end_history_.push_back(rec);
+    if (session_end_history_.size() > session_end_history_limit_) {
+      session_end_history_.pop_front();
+    }
   }
 
   double clampChargeDurationSec(double raw_duration_sec) const
@@ -1402,7 +1546,7 @@ private:
     return std::clamp(sanitized, min_sec, max_sec);
   }
 
-  double computeChargeDurationSec(uint8_t role, float battery_percent) const
+  double computeChargeDurationSec(const std::string & uav_id, uint8_t role, float battery_percent) const
   {
     double soc = std::clamp(static_cast<double>(battery_percent), 0.0, 100.0);
     double remaining_fraction = (100.0 - soc) / 100.0;
@@ -1417,7 +1561,16 @@ private:
         raw_duration_sec = (100.0 - soc) / rate;
       }
     } else if (charging_model_ == ChargingModel::ENERGY_WH) {
-      double capacity_wh = (role == 1) ? ch_capacity_wh_ : member_capacity_wh_;
+      // Prefer per-UAV capacity reported in /fanet/status (same source as UAV charging model).
+      double capacity_wh = 0.0;
+      auto status_it = uav_status_.find(uav_id);
+      if (status_it != uav_status_.end()) {
+        capacity_wh = static_cast<double>(status_it->second.battery_capacity_wh);
+      }
+      if (capacity_wh <= 0.0) {
+        capacity_wh = (role == 1) ? ch_capacity_wh_ : member_capacity_wh_;
+      }
+
       double charger_power_w = (role == 1) ? charger_power_w_ch_ : charger_power_w_member_;
       if (capacity_wh > 0.0 && charger_power_w > 0.0) {
         raw_duration_sec = remaining_fraction * capacity_wh / charger_power_w * 3600.0;
@@ -1693,8 +1846,8 @@ private:
   std::string charging_model_name_ = "fixed";
   double charge_rate_percent_per_sec_member_ = 0.8;
   double charge_rate_percent_per_sec_ch_ = 0.8;
-  double member_capacity_wh_ = 240.0;
-  double ch_capacity_wh_ = 480.0;
+  double member_capacity_wh_ = 100.0;
+  double ch_capacity_wh_ = 200.0;
   double charger_power_w_member_ = 180.0;
   double charger_power_w_ch_ = 180.0;
   double target_utilization_;
@@ -1712,6 +1865,9 @@ private:
   size_t control_dedup_cache_size_ = 200;
   double charge_request_battery_gate_percent_ = 45.0;
   double charge_request_status_stale_sec_ = 3.0;
+  double active_session_status_stale_sec_ = 4.0;
+  double active_session_no_progress_sec_ = 8.0;
+  double active_session_progress_epsilon_percent_ = 0.01;
   Policy policy_;
   std::string policy_name_;
   double neighbor_timeout_sec_ = 0.0;
@@ -1744,14 +1900,9 @@ private:
   std::unordered_map<std::string, PendingAck> pending_acks_;
   std::list<std::string> control_dedup_order_;
   std::unordered_map<std::string, std::list<std::string>::iterator> control_dedup_index_;
-  struct ChargingSession
-  {
-    std::string uav_id;
-    rclcpp::Time start_time;
-    rclcpp::Time end_time;
-  };
-
   std::vector<ChargingSession> active_sessions_;
+  std::deque<SessionEndRecord> session_end_history_;
+  size_t session_end_history_limit_ = 30;
   std::deque<RejectedRequest> rejected_history_;
   size_t rejected_history_limit_ = 20;
   LastRequestState last_request_;
