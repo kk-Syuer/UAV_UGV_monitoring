@@ -1381,6 +1381,7 @@ private:
         // If we have never seen status for this session, allow a grace window from slot start.
         const double session_age_sec = (now - it->start_time).seconds();
         stale_status = session_age_sec > active_session_status_stale_sec_;
+<<<<<<< codex/fix-charging-and-session-cleanup-logic-7c8rsl
       }
 
       std::string end_reason;
@@ -1415,6 +1416,29 @@ private:
                     current_battery,
                     last_progress_age_sec,
                     status_age_sec);
+=======
+      }
+
+      std::string end_reason;
+      if (is_dead) {
+        end_reason = "dead";
+      } else if (stale_status) {
+        end_reason = "stale_status";
+      } else if (reached_full_soc) {
+        end_reason = "full_soc";
+      } else if (no_progress_timeout) {
+        end_reason = "timeout";
+      } else if (now >= it->end_time) {
+        end_reason = "ended_by_time";
+      }
+
+      if (!end_reason.empty()) {
+        RCLCPP_INFO(this->get_logger(),
+                    "Charging session ended for %s at t=%.1f (reason=%s)",
+                    it->uav_id.c_str(),
+                    now.seconds(),
+                    end_reason.c_str());
+>>>>>>> master
         rememberSessionEnd(*it, now, end_reason);
         it = active_sessions_.erase(it);
       } else {
