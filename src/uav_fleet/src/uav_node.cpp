@@ -1401,6 +1401,8 @@ private:
           cluster_parent_[uav_id_] = new_ch;
           assigned_task_points_.clear();
           released_by_ch_ = false;
+          fallback_mode_active_ = false;
+          fallback_target_label_.clear();
           mobility_phase_ = MobilityPhase::IDLE;
           RCLCPP_WARN(this->get_logger(),
                       "[RECOVERY] %s reassigned to CH=%s",
@@ -1422,6 +1424,8 @@ private:
         }
         assigned_task_points_ = assigned_points;
         released_by_ch_ = true;
+        fallback_mode_active_ = false;
+        fallback_target_label_.clear();
         if (!deployment_received_) {
           deployment_received_ = true;
         }
@@ -1432,6 +1436,35 @@ private:
         RCLCPP_WARN(this->get_logger(),
                     "[RECOVERY] %s received TASK_ASSIGN (%zu points)",
                     uav_id_.c_str(), assigned_task_points_.size());
+        return;
+      }
+
+      if (msg->flow_type == 1 && msg->control_type == "MEMBER_FALLBACK") {
+        if (role_ != 0) {
+          return;
+        }
+        std::string target_label;
+        geometry_msgs::msg::Pose target_pose;
+        if (!parseMemberFallbackPayload(msg->payload, target_label, target_pose)) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: MEMBER_FALLBACK payload parse failed: \"%s\"",
+                      uav_id_.c_str(), msg->payload.c_str());
+          return;
+        }
+        fallback_target_label_ = target_label;
+        fallback_target_pose_ = target_pose;
+        fallback_mode_active_ = true;
+        assigned_task_points_.clear();
+        task_points_.clear();
+        current_task_index_ = 0;
+        mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+        start_mobility_received_ = true;
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] %s entering fallback mode toward %s (%.1f, %.1f, %.1f)",
+                    uav_id_.c_str(), fallback_target_label_.c_str(),
+                    fallback_target_pose_.position.x,
+                    fallback_target_pose_.position.y,
+                    fallback_target_pose_.position.z);
         return;
       }
 
@@ -2542,6 +2575,19 @@ private:
 
     bool held_by_ch = false;
     if (!handled_charge_motion) {
+      if (fallback_mode_active_ && role_ == 0) {
+        bool reached = stepTowards2D(
+          fallback_target_pose_.position.x,
+          fallback_target_pose_.position.y);
+        if (reached) {
+          pose_.position.x = fallback_target_pose_.position.x;
+          pose_.position.y = fallback_target_pose_.position.y;
+          mobility_phase_ = MobilityPhase::IDLE;
+          RCLCPP_WARN(this->get_logger(),
+                      "[RECOVERY] UAV %s reached fallback %s point and is holding.",
+                      uav_id_.c_str(), fallback_target_label_.c_str());
+        }
+      } else {
       switch (mobility_phase_) {
         case MobilityPhase::IDLE:
           // nothing to do
@@ -2632,6 +2678,7 @@ private:
           }
           break;
         }
+      }
       }
     }
 
@@ -2751,6 +2798,32 @@ private:
     RCLCPP_WARN(this->get_logger(),
                 "[RECOVERY] UAV %s: emergency return to UGV (%s, dist=%.1f m).",
                 uav_id_.c_str(), reason.c_str(), dist_m);
+  }
+
+  bool parseMemberFallbackPayload(const std::string & payload,
+                                  std::string & target_label,
+                                  geometry_msgs::msg::Pose & target_pose) const
+  {
+    std::stringstream ss(payload);
+    std::string token;
+
+    if (!std::getline(ss, target_label, ',')) {
+      return false;
+    }
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    target_pose.position.x = std::stod(token);
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    target_pose.position.y = std::stod(token);
+    if (!std::getline(ss, token, ',')) {
+      return false;
+    }
+    target_pose.position.z = std::stod(token);
+    target_pose.orientation.w = 1.0;
+    return true;
   }
 
   struct DeploymentInfo
@@ -3434,6 +3507,9 @@ private:
   bool has_charge_slot_;
   bool emergency_recovery_active_ = false;
   bool emergency_landed_ = false;
+  bool fallback_mode_active_ = false;
+  geometry_msgs::msg::Pose fallback_target_pose_;
+  std::string fallback_target_label_;
   rclcpp::Time charge_start_time_;
   rclcpp::Time charge_end_time_;
   rclcpp::Time last_charge_update_time_;

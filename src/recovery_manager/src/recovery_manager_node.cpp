@@ -159,7 +159,16 @@ private:
     if (msg->flow_type == 1 && msg->control_type == "ACK") {
       const std::string acked_id = extractAckedMsgId(*msg);
       if (!acked_id.empty()) {
-        pending_acks_.erase(acked_id);
+        auto it = pending_acks_.find(acked_id);
+        if (it != pending_acks_.end()) {
+          RCLCPP_INFO(this->get_logger(),
+                      "[RECOVERY] ACK received msg_id=%s type=%s dst=%s attempts=%d",
+                      acked_id.c_str(),
+                      it->second.msg.control_type.c_str(),
+                      it->second.msg.dst_id.c_str(),
+                      it->second.attempts);
+          pending_acks_.erase(it);
+        }
       }
     }
   }
@@ -184,6 +193,7 @@ private:
     }
     if (ch_states_.count(msg->uav_id) > 0) {
       ch_states_[msg->uav_id].alive = false;
+      recovery_requested_ = true;
     }
     if (member_states_.count(msg->uav_id) > 0) {
       member_states_[msg->uav_id].alive = false;
@@ -204,6 +214,9 @@ private:
 
   void clusterInfoCallback(const uav_msgs::msg::ClusterInfo::SharedPtr msg)
   {
+    if (!msg->ch_id.empty()) {
+      ch_cluster_ids_[msg->ch_id] = msg->cluster_id;
+    }
     for (const auto & member_id : msg->member_ids) {
       auto & member = member_states_[member_id];
       member.id = member_id;
@@ -240,7 +253,7 @@ private:
       }
     }
 
-    if (!ch_timeout && !sink_unreachable_ && !ugv_unreachable_) {
+    if (!ch_timeout && !sink_unreachable_ && !ugv_unreachable_ && !recovery_requested_) {
       return;
     }
 
@@ -249,6 +262,7 @@ private:
     }
 
     last_recovery_time_ = now;
+    recovery_requested_ = false;
     runRecovery();
   }
 
@@ -264,8 +278,12 @@ private:
       }
     }
 
+    publishRecoveryStart(epoch_);
+
     if (alive_chs.empty()) {
-      RCLCPP_WARN(this->get_logger(), "[RECOVERY] no alive CHs. Aborting recovery.");
+      RCLCPP_WARN(this->get_logger(), "[RECOVERY] no alive CHs. Triggering member fallback.");
+      publishFallbackForMembers();
+      publishRecoveryDone(epoch_);
       return;
     }
 
@@ -276,14 +294,14 @@ private:
     RCLCPP_INFO(this->get_logger(), "[RECOVERY] leader elected: %s", leader_id.c_str());
     RCLCPP_INFO(this->get_logger(), "[RECOVERY] cluster count K=%zu", alive_chs.size());
 
-    publishRecoveryStart(epoch_);
-
     recomputeMembership(alive_chs);
     recomputeTasks(alive_chs);
     planCoverageRedeployments(alive_chs);
 
-    if (sink_unreachable_ || ugv_unreachable_) {
-      planRedeployments(alive_chs);
+    const bool sink_degraded = sink_unreachable_ || isEndpointDisconnected(alive_chs, sink_pose_known_, sink_pose_);
+    const bool ugv_degraded = ugv_unreachable_ || isEndpointDisconnected(alive_chs, ugv_pose_known_, ugv_pose_);
+    if (sink_degraded || ugv_degraded) {
+      planRedeployments(alive_chs, sink_degraded, ugv_degraded);
     }
 
     publishRecoveryDone(epoch_);
@@ -451,12 +469,29 @@ private:
     }
   }
 
-  void planRedeployments(const std::vector<ChState> & alive_chs)
+  bool isEndpointDisconnected(const std::vector<ChState> & alive_chs,
+                              bool endpoint_pose_known,
+                              const geometry_msgs::msg::Pose & endpoint_pose) const
   {
-    if (!sink_pose_known_ && sink_unreachable_) {
+    if (!endpoint_pose_known || alive_chs.empty()) {
+      return false;
+    }
+    for (const auto & ch : alive_chs) {
+      if (distance2d(ch.pose.position, endpoint_pose.position) <= comm_range_m_) {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  void planRedeployments(const std::vector<ChState> & alive_chs,
+                         bool sink_degraded,
+                         bool ugv_degraded)
+  {
+    if (!sink_pose_known_ && sink_degraded) {
       RCLCPP_WARN(this->get_logger(), "[RECOVERY] sink pose unknown; cannot bridge.");
     }
-    if (!ugv_pose_known_ && ugv_unreachable_) {
+    if (!ugv_pose_known_ && ugv_degraded) {
       RCLCPP_WARN(this->get_logger(), "[RECOVERY] UGV pose unknown; cannot bridge.");
     }
 
@@ -465,7 +500,7 @@ private:
       return;
     }
 
-    if (sink_unreachable_ && ugv_unreachable_) {
+    if (sink_degraded && ugv_degraded) {
       double best_cost = std::numeric_limits<double>::infinity();
       std::string best_one;
       geometry_msgs::msg::Pose best_pose;
@@ -525,11 +560,63 @@ private:
       return;
     }
 
-    if (sink_unreachable_ && sink_pose_known_) {
+    if (sink_degraded && sink_pose_known_) {
       publishBridgeToTarget("SINK", sink_pose_, candidates, alive_chs);
     }
-    if (ugv_unreachable_ && ugv_pose_known_) {
+    if (ugv_degraded && ugv_pose_known_) {
       publishBridgeToTarget("UGV", ugv_pose_, candidates, alive_chs);
+    }
+  }
+
+  void publishFallbackForMembers()
+  {
+    geometry_msgs::msg::Pose fallback_pose;
+    std::string target_label = "NONE";
+    if (ugv_pose_known_) {
+      fallback_pose = ugv_pose_;
+      target_label = "UGV";
+    } else if (sink_pose_known_) {
+      fallback_pose = sink_pose_;
+      target_label = "SINK";
+    }
+
+    if (target_label == "NONE") {
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY] fallback requested, but neither sink nor UGV pose is known.");
+      return;
+    }
+
+    for (const auto & kv : member_states_) {
+      const auto & member = kv.second;
+      if (!member.alive) {
+        continue;
+      }
+
+      uav_msgs::msg::TrafficMessage msg;
+      msg.msg_id = "MEMBER_FALLBACK_" + member.id + "_" + std::to_string(msg_counter_++);
+      msg.src_id = control_src_id_;
+      msg.dst_id = member.id;
+      msg.flow_type = 1;
+      msg.control_type = "MEMBER_FALLBACK";
+      msg.creation_time = this->now();
+      msg.hop_count = 0;
+      msg.ttl = control_ttl_;
+      msg.requires_ack = true;
+
+      std::ostringstream oss;
+      oss << target_label << ","
+          << fallback_pose.position.x << ","
+          << fallback_pose.position.y << ","
+          << fallback_pose.position.z;
+      msg.payload = oss.str();
+      msg.next_hop_id = member.id;
+      sendWithAck(msg);
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY] MEMBER_FALLBACK %s -> %s (%.1f, %.1f, %.1f)",
+                  member.id.c_str(), target_label.c_str(),
+                  fallback_pose.position.x,
+                  fallback_pose.position.y,
+                  fallback_pose.position.z);
     }
   }
 
@@ -626,9 +713,11 @@ private:
     msg.requires_ack = true;
     msg.next_hop_id = ch_id;
     sendWithAck(msg);
+    const std::string cluster_id =
+      ch_cluster_ids_.count(ch_id) > 0 ? ch_cluster_ids_.at(ch_id) : std::string("unknown");
     RCLCPP_WARN(this->get_logger(),
-                "[RECOVERY] CLUSTER_REASSIGN %s -> %s",
-                member_id.c_str(), ch_id.c_str());
+                "[RECOVERY] CLUSTER_REASSIGN member=%s new_ch=%s cluster=%s msg_id=%s",
+                member_id.c_str(), ch_id.c_str(), cluster_id.c_str(), msg.msg_id.c_str());
   }
 
   void publishTaskAssign(const std::string & member_id,
@@ -732,6 +821,13 @@ private:
     pending.max_retries = max_ack_retries_;
     pending.retry_interval_sec = ack_retry_period_sec_;
     pending_acks_[msg.msg_id] = pending;
+    RCLCPP_INFO(this->get_logger(),
+                "[RECOVERY] sent %s msg_id=%s dst=%s next_hop=%s requires_ack=%s",
+                msg.control_type.c_str(),
+                msg.msg_id.c_str(),
+                msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(),
+                msg.requires_ack ? "true" : "false");
   }
 
   void resendPendingAcks()
@@ -788,12 +884,14 @@ private:
 
   std::unordered_map<std::string, ChState> ch_states_;
   std::unordered_map<std::string, MemberState> member_states_;
+  std::unordered_map<std::string, std::string> ch_cluster_ids_;
   std::unordered_map<std::string, rclcpp::Time> last_heartbeat_;
   std::vector<TaskPoint> task_points_;
   std::unordered_map<std::string, PendingAck> pending_acks_;
 
   bool sink_unreachable_ = false;
   bool ugv_unreachable_ = false;
+  bool recovery_requested_ = false;
 
   int epoch_ = 0;
   int msg_counter_ = 0;

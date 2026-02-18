@@ -91,6 +91,9 @@ class FleetVizNode(Node):
         self.last_deployment_target = None
         self.dead_uavs: Dict[str, Dict[str, Any]] = {}
         self.member_task_assignments: Dict[str, list] = {}
+        self.member_ch_assignment: Dict[str, str] = {}
+        self.member_cluster_assignment: Dict[str, str] = {}
+        self.render_membership_snapshot = ''
 
         # Plot setup for the main canvas and info panels.
         plt.ion()
@@ -200,6 +203,12 @@ class FleetVizNode(Node):
 
     def status_cb(self, msg: UavStatus):
         """Cache latest UAV status for plotting."""
+        prev = self.uav_states.get(msg.uav_id)
+        if prev is not None and (prev.cluster_id != msg.cluster_id or prev.role != msg.role):
+            self.get_logger().info(
+                f"[VIZ] status cluster/role update for {msg.uav_id}: "
+                f"cluster {prev.cluster_id}->{msg.cluster_id}, role {prev.role}->{msg.role}"
+            )
         self.uav_states[msg.uav_id] = msg
         if msg.battery_level <= 0.0 and msg.uav_id not in self.dead_uavs:
             death_time = msg.stamp.sec + msg.stamp.nanosec * 1e-9
@@ -251,6 +260,18 @@ class FleetVizNode(Node):
     def cluster_info_cb(self, msg: ClusterInfo):
         self.cluster_info[msg.cluster_id] = msg
         self.last_cluster_info_time = self._now_sec()
+        updated = 0
+        for member_id, ch_id in list(self.member_ch_assignment.items()):
+            if ch_id == msg.ch_id:
+                self.member_cluster_assignment[member_id] = msg.cluster_id
+                st = self.uav_states.get(member_id)
+                if st is not None:
+                    st.cluster_id = msg.cluster_id
+                updated += 1
+        self.get_logger().info(
+            f"[VIZ] cluster_info update cluster={msg.cluster_id} ch={msg.ch_id} "
+            f"members={len(msg.member_ids)} patched_members={updated}"
+        )
 
     def delivered_cb(self, msg: TrafficMessage):
         now = self._now_sec()
@@ -276,6 +297,29 @@ class FleetVizNode(Node):
             return
         self.charging_snapshot = payload
         self.last_charging_snapshot_time = self._now_sec()
+
+    def _cluster_key_for_uav(self, uav_id: str, st: UavStatus) -> str:
+        if st.role == 1:
+            return uav_id
+        mapped_ch = self.member_ch_assignment.get(uav_id)
+        if mapped_ch:
+            return mapped_ch
+        if st.cluster_id:
+            return st.cluster_id
+        return uav_id
+
+    def _cluster_label_for_uav(self, uav_id: str, st: UavStatus) -> str:
+        if st.role == 1:
+            return f"CH {uav_id}"
+        mapped_ch = self.member_ch_assignment.get(uav_id)
+        mapped_cluster = self.member_cluster_assignment.get(uav_id)
+        if mapped_ch and mapped_cluster:
+            return f"{mapped_cluster} via {mapped_ch}"
+        if mapped_ch:
+            return f"CH {mapped_ch}"
+        if st.cluster_id:
+            return st.cluster_id
+        return uav_id
 
     def color_for_cluster(self, cluster_id: str) -> str:
         """Deterministic color mapping for cluster IDs."""
@@ -359,10 +403,24 @@ class FleetVizNode(Node):
             new_ch = (msg.payload or '').strip()
             if not member_id or not new_ch:
                 return
+            cluster_id = ''
+            for info in self.cluster_info.values():
+                if info.ch_id == new_ch:
+                    cluster_id = info.cluster_id
+                    break
+            prev_ch = self.member_ch_assignment.get(member_id, '')
+            prev_cluster = self.member_cluster_assignment.get(member_id, '')
+            self.member_ch_assignment[member_id] = new_ch
+            if cluster_id:
+                self.member_cluster_assignment[member_id] = cluster_id
             state = self.uav_states.get(member_id)
-            if state is not None:
-                state.cluster_id = new_ch
-            self.cluster_info.pop(member_id, None)
+            if state is not None and cluster_id:
+                state.cluster_id = cluster_id
+            self.get_logger().warning(
+                f"[VIZ] CLUSTER_REASSIGN received member={member_id} ch={new_ch} "
+                f"cluster={cluster_id or 'unknown'} prev_ch={prev_ch or 'n/a'} "
+                f"prev_cluster={prev_cluster or 'n/a'} render_state_updated=yes"
+            )
             return
         if msg.control_type == 'TASK_ASSIGN':
             member_id = msg.dst_id
@@ -382,6 +440,9 @@ class FleetVizNode(Node):
                         continue
                     assigned.append((x, y))
             self.member_task_assignments[member_id] = assigned
+            self.get_logger().info(
+                f"[VIZ] TASK_ASSIGN received member={member_id} points={len(assigned)} render_state_updated=yes"
+            )
             return
         if msg.control_type == 'NEW_DEPLOYMENT':
             ch_id = msg.dst_id
@@ -399,6 +460,9 @@ class FleetVizNode(Node):
                 state.pose.position.x = x
                 state.pose.position.y = y
                 state.pose.position.z = z
+            self.get_logger().info(
+                f"[VIZ] NEW_DEPLOYMENT received ch={ch_id} target=({x:.1f},{y:.1f},{z:.1f}) render_state_updated=yes"
+            )
 
     def network_stats_cb(self, msg: String):
         try:
@@ -889,7 +953,8 @@ class FleetVizNode(Node):
             if not points:
                 continue
             state = self.uav_states.get(member_id)
-            color = self.color_for_cluster(state.cluster_id if state else '')
+            key = self._cluster_key_for_uav(member_id, state) if state else ''
+            color = self.color_for_cluster(key)
             for idx, (x, y) in enumerate(points):
                 self.ax.scatter(x, y, marker='.', s=22, color=color, alpha=0.9)
                 if idx == 0:
@@ -904,13 +969,15 @@ class FleetVizNode(Node):
                 continue
             x = st.pose.position.x
             y = st.pose.position.y
-            color = self.color_for_cluster(st.cluster_id)
+            cluster_key = self._cluster_key_for_uav(uav_id, st)
+            color = self.color_for_cluster(cluster_key)
             role_tag = self.role_label(st.role)
+            cluster_label = self._cluster_label_for_uav(uav_id, st)
 
             if st.role == 1:
                 # CH: red + service radius
                 self.ax.scatter(x, y, c=color, s=30)
-                self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
+                self.ax.text(x, y + 3, f"{uav_id} ({role_tag}, {cluster_label})", color=color, fontsize=8)
 
                 # service_radius is in the status; comm radius is a viz parameter
                 service_circle = plt.Circle((x, y), st.service_radius, linestyle='--',
@@ -925,25 +992,25 @@ class FleetVizNode(Node):
             else:
                 # member: green
                 self.ax.scatter(x, y, c=color, s=20)
-                self.ax.text(x, y + 3, f"{uav_id} ({role_tag})", color=color, fontsize=8)
+                self.ax.text(x, y + 3, f"{uav_id} ({role_tag}, {cluster_label})", color=color, fontsize=8)
 
         legend_handles = []
         if task_legend:
             legend_handles.append(task_legend)
         if assigned_legend:
             legend_handles.append(assigned_legend)
-        cluster_ids = sorted({
-            st.cluster_id for uid, st in self.uav_states.items()
-            if st.cluster_id and uid not in self.dead_uavs
+        cluster_keys = sorted({
+            self._cluster_key_for_uav(uid, st) for uid, st in self.uav_states.items()
+            if uid not in self.dead_uavs
         })
-        for cluster_id in cluster_ids:
+        for cluster_key in cluster_keys:
             legend_handles.append(Line2D(
                 [0], [0],
                 marker='o',
                 color='none',
-                label=f"cluster {cluster_id}",
-                markerfacecolor=self.color_for_cluster(cluster_id),
-                markeredgecolor=self.color_for_cluster(cluster_id),
+                label=f"group {cluster_key}",
+                markerfacecolor=self.color_for_cluster(cluster_key),
+                markeredgecolor=self.color_for_cluster(cluster_key),
                 markersize=6
             ))
         if legend_handles:
@@ -973,6 +1040,17 @@ class FleetVizNode(Node):
         else:
             info_lines = header + self._queue_lines()
         self._render_info_lines(info_lines, self.info_scroll.get(page_name, 0.0))
+
+        visible_snapshot = '|'.join(
+            sorted(
+                f"{uid}:{self._cluster_key_for_uav(uid, st)}"
+                for uid, st in self.uav_states.items()
+                if uid not in self.dead_uavs
+            )
+        )
+        if visible_snapshot != self.render_membership_snapshot:
+            self.render_membership_snapshot = visible_snapshot
+            self.get_logger().info(f"[VIZ] render membership updated: {visible_snapshot}")
 
         self.fig.canvas.draw()
         plt.pause(0.001)
