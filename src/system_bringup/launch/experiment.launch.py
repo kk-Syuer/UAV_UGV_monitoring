@@ -47,6 +47,20 @@ def _get(d: dict, keys: list, default=None):
     return cur
 
 
+def _sanitize_param_value(value):
+    if isinstance(value, tuple):
+        return [_sanitize_param_value(v) for v in value]
+    if isinstance(value, list):
+        return [_sanitize_param_value(v) for v in value]
+    if isinstance(value, dict):
+        return {k: _sanitize_param_value(v) for k, v in value.items()}
+    return value
+
+
+def _sanitize_param_dict(params: dict) -> dict:
+    return {k: _sanitize_param_value(v) for k, v in params.items()}
+
+
 def _make_nodes(context, *args, **kwargs):
     # Launch args
     cfg_path = LaunchConfiguration("config").perform(context)
@@ -114,7 +128,7 @@ def _make_nodes(context, *args, **kwargs):
         executable=_get(cfg, ["executables", "monitor_exec"], "network_monitor_node"),
         name=f"network_monitor_{run_id}",
         output="screen",
-        parameters=[monitor_params],
+        parameters=[_sanitize_param_dict(monitor_params)],
     )
     nodes.append(monitor_node)
 
@@ -131,7 +145,7 @@ def _make_nodes(context, *args, **kwargs):
             executable=_get(cfg, ["executables", "weather_exec"], "weather_node"),
             name=f"weather_{run_id}",
             output="screen",
-            parameters=[weather_params],
+            parameters=[_sanitize_param_dict(weather_params)],
         ))
 
     # Fault injector
@@ -157,7 +171,7 @@ def _make_nodes(context, *args, **kwargs):
             executable=_get(cfg, ["executables", "injector_exec"], "fault_injector_node"),
             name=f"fault_injector_{run_id}",
             output="screen",
-            parameters=[injector_params],
+            parameters=[_sanitize_param_dict(injector_params)],
         ))
 
     # UGV charger
@@ -175,7 +189,7 @@ def _make_nodes(context, *args, **kwargs):
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),
         name=f"sink_gateway_{run_id}",
         output="screen",
-        parameters=[sink_params],
+        parameters=[_sanitize_param_dict(sink_params)],
     ))
 
     # UGV charger
@@ -190,7 +204,7 @@ def _make_nodes(context, *args, **kwargs):
         executable=ugv_exec,
         name=f"ugv_charger_{run_id}",
         output="screen",
-        parameters=[ugv_params],
+        parameters=[_sanitize_param_dict(ugv_params)],
     ))
 
     # User device traffic (optional)
@@ -231,7 +245,10 @@ def _make_nodes(context, *args, **kwargs):
             executable=uav_exec,
             name=f"{ch_id}_{run_id}",
             output="screen",
-            parameters=[shared_uav_params, {"uav_id": str(ch_id), "role": 1}],
+            parameters=[
+                _sanitize_param_dict(shared_uav_params),
+                _sanitize_param_dict({"uav_id": str(ch_id), "role": 1}),
+            ],
         )
         nodes.append(node)
         fleet_nodes.append(node)
@@ -246,7 +263,10 @@ def _make_nodes(context, *args, **kwargs):
             executable=uav_exec,
             name=f"{uid}_{run_id}",
             output="screen",
-            parameters=[shared_uav_params, {"uav_id": uid, "role": role, "my_ch_id": my_ch}],
+            parameters=[
+                _sanitize_param_dict(shared_uav_params),
+                _sanitize_param_dict({"uav_id": uid, "role": role, "my_ch_id": my_ch}),
+            ],
         )
         nodes.append(node)
         fleet_nodes.append(node)
@@ -265,7 +285,7 @@ def _make_nodes(context, *args, **kwargs):
         executable=_get(cfg, ["executables", "routing_exec"], "routing_manager_node"),
         name=f"routing_manager_{run_id}",
         output="screen",
-        parameters=[routing_params],
+        parameters=[_sanitize_param_dict(routing_params)],
     ))
 
     if _bool_from_str(_get(cfg, ["recovery_manager", "enable"], True), True):
@@ -282,7 +302,7 @@ def _make_nodes(context, *args, **kwargs):
             executable=_get(cfg, ["executables", "recovery_exec"], "recovery_manager_node"),
             name=f"recovery_manager_{run_id}",
             output="screen",
-            parameters=[recovery_params],
+            parameters=[_sanitize_param_dict(recovery_params)],
         ))
 
     # Coverage planner (optional)
@@ -294,11 +314,11 @@ def _make_nodes(context, *args, **kwargs):
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
             name=f"coverage_planner_{run_id}",
             output="screen",
-            parameters=[{
+            parameters=[_sanitize_param_dict({
                 "uav_ids": uav_ids,
                 "num_ch": len(ch_ids),
                 "ugv_id": ugv_id,
-            }],
+            })],
         ))
 
     # Cluster head manager(s) (optional)
@@ -326,11 +346,11 @@ def _make_nodes(context, *args, **kwargs):
                 executable=_get(cfg, ["executables", "ch_manager_exec"], "ch_manager_node"),
                 name=f"ch_manager_{cfg_entry['cluster_id']}",
                 output="screen",
-                parameters=[{
+                parameters=[_sanitize_param_dict({
                     "cluster_id": cfg_entry["cluster_id"],
                     "ch_id": cfg_entry["ch_id"],
                     "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
-                }],
+                })],
             ))
 
     if shutdown_after_sec > 0:
