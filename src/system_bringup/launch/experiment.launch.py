@@ -94,6 +94,16 @@ def _make_nodes(context, *args, **kwargs):
     # Common network params
     neighbor_timeout = float(_get(cfg, ["network", "neighbor_timeout_sec"], 3.0))
     comm_radius = float(_get(cfg, ["network", "comm_radius_m"], 400.0))
+
+    # Battery + charging defaults (Wh, Wh/s, W)
+    member_capacity_wh = float(_get(cfg, ["battery", "member_capacity_wh"], 100.0))
+    ch_capacity_wh = float(_get(cfg, ["battery", "ch_capacity_wh"], 200.0))
+    drain_rate_member = float(_get(cfg, ["battery", "drain_rate_member"], member_capacity_wh / (45.0 * 60.0)))
+    drain_rate_ch = float(_get(cfg, ["battery", "drain_rate_ch"], ch_capacity_wh / (90.0 * 60.0)))
+    charge_gain_multiplier = float(_get(cfg, ["battery", "charge_gain_multiplier"], 1.5))
+    charger_power_w_member = 3600.0 * charge_gain_multiplier * drain_rate_member
+    charger_power_w_ch = 3600.0 * charge_gain_multiplier * drain_rate_ch
+
     ch_ids = [str(ch_id) for ch_id in (_get(cfg, ["uavs", "ch_ids"], []) or [])]
     members = _get(cfg, ["uavs", "members"], []) or []
 
@@ -196,6 +206,10 @@ def _make_nodes(context, *args, **kwargs):
     ugv_params = {
         "ugv_id": ugv_id,
         "charging_policy": str(_get(cfg, ["ugv", "charging_policy"], "fcfs")),
+        "member_capacity_wh": member_capacity_wh,
+        "ch_capacity_wh": ch_capacity_wh,
+        "charger_power_w_member": charger_power_w_member,
+        "charger_power_w_ch": charger_power_w_ch,
     }
     ugv_pkg = _get(cfg, ["executables", "ugv_pkg"], "ugv_charger")
     ugv_exec = _get(cfg, ["executables", "ugv_exec"], "ugv_charger_node")
@@ -223,6 +237,12 @@ def _make_nodes(context, *args, **kwargs):
         "neighbor_timeout_sec": neighbor_timeout,
         "comm_radius_m": comm_radius,
         "ugv_id": ugv_id,
+        "battery_capacity_member": member_capacity_wh,
+        "battery_capacity_ch": ch_capacity_wh,
+        "drain_rate_member": drain_rate_member,
+        "drain_rate_ch": drain_rate_ch,
+        "charger_power_w_member": charger_power_w_member,
+        "charger_power_w_ch": charger_power_w_ch,
         # task telemetry knobs (members generate telemetry on task reach)
         "task_telemetry_enable": bool(task_tlm.get("enable", True)),
         "task_telemetry_packets_min": int(task_tlm.get("packets_min", 1)),
