@@ -669,7 +669,7 @@ class FleetVizNode(Node):
         now = self._now_sec()
         snapshot_fresh = (
             self.last_charging_snapshot_time is not None and
-            (now - self.last_charging_snapshot_time) <= 2.0
+            (now - self.last_charging_snapshot_time) <= 3.0
         )
 
         if snapshot_fresh:
@@ -703,20 +703,15 @@ class FleetVizNode(Node):
                 uid = item.get('uav_id', 'unknown')
                 st = float(item.get('start', 0.0))
                 en = float(item.get('end', 0.0))
-                status = self.uav_states.get(uid)
-                role = self.role_label(status.role) if status is not None else 'UNK'
-                batt = status.battery_level if status is not None else None
+                role = self.role_label(int(item.get('live_role', -1)))
+                batt = float(item.get('live_battery', 0.0))
+                batt = max(0.0, min(100.0, batt))
                 age_s = max(0.0, now - st)
-                if batt is None:
-                    queue_lines.append(self._line(
-                        f"    - {uid} [{role}] | age {age_s:.1f}s | [{st:.1f}, {en:.1f}]"
-                    ))
-                else:
-                    queue_lines.append(self._line(
-                        f"    - {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s | [{st:.1f}, {en:.1f}]"
-                    ))
+                queue_lines.append(self._line(
+                    f"    - {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s | [{st:.1f}, {en:.1f}]"
+                ))
 
-            queue_lines.append(self._title_line(f"Rejected List: {len(rejected)}"))
+            queue_lines.append(self._title_line(f"UGV intake rejected: {len(rejected)}"))
             for item in rejected:
                 uid = item.get('uav_id', 'unknown')
                 reason = item.get('reason', 'n/a')
@@ -740,9 +735,14 @@ class FleetVizNode(Node):
                 role = self.role_label(int(last_request.get('role', -1)))
                 batt = max(0.0, min(100.0, float(last_request.get('battery', 0.0))))
                 t = last_request.get('time')
+                msg_id = last_request.get('msg_id', 'n/a')
+                status = last_request.get('status', 'n/a')
                 age_s = max(0.0, now - float(t)) if t is not None else 0.0
                 queue_lines.append(self._line(
                     f"  {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s"
+                ))
+                queue_lines.append(self._line(
+                    f"  msg_id: {msg_id} | status: {status}"
                 ))
             else:
                 queue_lines.append(self._line('  (none)'))

@@ -502,12 +502,22 @@ private:
     oss << ",\"active_sessions\":[";
     for (size_t i = 0; i < active_sessions_.size(); ++i) {
       const auto & session = active_sessions_[i];
+      uint8_t live_role = 0;
+      float live_battery = 0.0f;
+      auto status_it = uav_status_.find(session.uav_id);
+      if (status_it != uav_status_.end()) {
+        live_role = status_it->second.role;
+        live_battery = std::clamp(status_it->second.battery_level, 0.0f, 100.0f);
+      }
       if (i > 0) {
         oss << ",";
       }
       oss << "{\"uav_id\":\"" << escapeJson(session.uav_id)
           << "\",\"start\":" << session.start_time.seconds()
-          << ",\"end\":" << session.end_time.seconds() << "}";
+          << ",\"end\":" << session.end_time.seconds()
+          << ",\"live_role\":" << static_cast<int>(live_role)
+          << ",\"live_battery\":" << live_battery
+          << "}";
     }
     oss << "]";
 
