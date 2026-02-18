@@ -10,6 +10,7 @@
 #include <vector>
 #include <sstream>
 #include <algorithm>
+#include <utility>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -126,6 +127,8 @@ public:
     w_role_ = this->declare_parameter<double>("w_role", 5.0);
     w_batt_ = this->declare_parameter<double>("w_batt", 1.0);
     w_wait_ = this->declare_parameter<double>("w_wait", 0.1);
+    debug_scheduler_candidates_ =
+      this->declare_parameter<bool>("debug_scheduler_candidates", false);
 
     // Charge decisions are published both directly and via routed control messages.
     charge_decision_pub_ = this->create_publisher<uav_msgs::msg::ChargeDecision>(
@@ -1063,6 +1066,9 @@ private:
       return;
     }
 
+    size_t preview_idx = chooseNextIndex(now);
+    logSchedulerCandidates(now, preview_idx);
+
     size_t available_spots = 0;
     if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
       available_spots = static_cast<size_t>(max_parallel_spots_ - active_sessions_.size());
@@ -1072,6 +1078,7 @@ private:
       size_t idx = chooseNextIndex(now);
       DecisionRationale rationale = buildDecisionRationale(idx, now);
       QueueEntry job = queue_[idx];
+      auto [job_role, job_battery] = getLiveRoleAndBattery(job);
       queue_.erase(queue_.begin() + static_cast<long>(idx));
 
       rclcpp::Time slot_start_time = now;
@@ -1083,7 +1090,7 @@ private:
       decision.uav_id = job.uav_id;
       decision.accepted = true;
       decision.slot_start_time = slot_start_time;
-      decision.priority = job.role;
+      decision.priority = job_role;
       decision.policy = policy_name_;
 
       charge_decision_pub_->publish(decision);
@@ -1091,7 +1098,7 @@ private:
       RCLCPP_INFO(this->get_logger(),
                   "UGV: assigned dock to %s (role=%u, batt=%.1f%%) with policy='%s'. "
                   "Session: [%.1f, %.1f], queue size now: %zu, active sessions: %zu/%d",
-                  job.uav_id.c_str(), job.role, job.battery_level,
+                  job.uav_id.c_str(), job_role, job_battery,
                   policy_name_.c_str(),
                   slot_start_time.seconds(), slot_end_time.seconds(),
                   queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
@@ -1117,23 +1124,44 @@ private:
     size_t queue_size = 0;
   };
 
-  double estimateTimeToEmptySec(const QueueEntry & entry) const
+  std::pair<uint8_t, float> getLiveRoleAndBattery(const QueueEntry & entry) const
   {
-    double drain = (entry.role == 1) ? drain_percent_ch_ : drain_percent_member_;
-    if (drain <= 0.0) {
-      return -1.0;
+    auto clamp_battery = [](float value) {
+      return std::clamp(value, 0.0f, 100.0f);
+    };
+
+    auto it = uav_status_.find(entry.uav_id);
+    if (it != uav_status_.end()) {
+      return {it->second.role, clamp_battery(it->second.battery_level)};
     }
-    return entry.battery_level / drain;
+    return {entry.role, clamp_battery(entry.battery_level)};
   }
 
-  double computeDynamicScore(const QueueEntry & entry, const rclcpp::Time & now) const
+  double getWaitSec(const QueueEntry & entry, const rclcpp::Time & now) const
   {
-    double role_term = (entry.role == 1 ? 1.0 : 0.0);
-    double batt_term = (100.0 - entry.battery_level);
     double wait_sec = (now - entry.request_time).seconds();
     if (wait_sec < 0.0) {
       wait_sec = 0.0;
     }
+    return wait_sec;
+  }
+
+  double estimateTimeToEmptySec(const QueueEntry & entry) const
+  {
+    auto [live_role, live_battery] = getLiveRoleAndBattery(entry);
+    double drain = (live_role == 1) ? drain_percent_ch_ : drain_percent_member_;
+    if (drain <= 0.0) {
+      return std::numeric_limits<double>::infinity();
+    }
+    return static_cast<double>(live_battery) / drain;
+  }
+
+  double computeDynamicScore(const QueueEntry & entry, const rclcpp::Time & now) const
+  {
+    auto [live_role, live_battery] = getLiveRoleAndBattery(entry);
+    double role_term = (live_role == 1 ? 1.0 : 0.0);
+    double batt_term = (100.0 - static_cast<double>(live_battery));
+    double wait_sec = getWaitSec(entry, now);
     return w_role_ * role_term + w_batt_ * batt_term + w_wait_ * wait_sec;
   }
 
@@ -1151,62 +1179,169 @@ private:
     return rationale;
   }
 
+  void logSchedulerCandidates(const rclcpp::Time & now, size_t selected_index) const
+  {
+    if (!debug_scheduler_candidates_ || queue_.empty()) {
+      return;
+    }
+
+    struct Candidate
+    {
+      size_t idx;
+      std::string uav_id;
+      uint8_t role;
+      float battery;
+      rclcpp::Time request_time;
+      double wait_sec;
+      double tte;
+      double score;
+    };
+
+    std::vector<Candidate> rows;
+    rows.reserve(queue_.size());
+    for (size_t i = 0; i < queue_.size(); ++i) {
+      const auto & q = queue_[i];
+      auto [live_role, live_battery] = getLiveRoleAndBattery(q);
+      rows.push_back(Candidate{
+        i,
+        q.uav_id,
+        live_role,
+        live_battery,
+        q.request_time,
+        getWaitSec(q, now),
+        estimateTimeToEmptySec(q),
+        computeDynamicScore(q, now)
+      });
+    }
+
+    constexpr double kEps = 1e-9;
+    std::sort(rows.begin(), rows.end(), [&](const Candidate & a, const Candidate & b) {
+      if (policy_ == Policy::ROLE_PRIORITY) {
+        if (a.role != b.role) {
+          return a.role > b.role;
+        }
+        if (a.request_time != b.request_time) {
+          return a.request_time < b.request_time;
+        }
+        return a.uav_id < b.uav_id;
+      }
+
+      if (policy_ == Policy::EDF) {
+        if (std::abs(a.tte - b.tte) > kEps) {
+          return a.tte < b.tte;
+        }
+        if (a.role != b.role) {
+          return a.role > b.role;
+        }
+        if (a.request_time != b.request_time) {
+          return a.request_time < b.request_time;
+        }
+        return a.uav_id < b.uav_id;
+      }
+
+      if (policy_ == Policy::DYNAMIC_SCORE) {
+        if (std::abs(a.score - b.score) > kEps) {
+          return a.score > b.score;
+        }
+        if (a.request_time != b.request_time) {
+          return a.request_time < b.request_time;
+        }
+        return a.uav_id < b.uav_id;
+      }
+
+      if (a.request_time != b.request_time) {
+        return a.request_time < b.request_time;
+      }
+      return a.uav_id < b.uav_id;
+    });
+
+    std::ostringstream oss;
+    oss << "[SCHED-CANDIDATES] preview_index=" << selected_index;
+    const size_t count = std::min<size_t>(5, rows.size());
+    for (size_t i = 0; i < count; ++i) {
+      const auto & c = rows[i];
+      oss << " | idx=" << c.idx
+          << ",uav_id=" << c.uav_id
+          << ",live_role=" << static_cast<int>(c.role)
+          << ",live_battery=" << c.battery
+          << ",wait_sec=" << c.wait_sec
+          << ",EDF_TTE=" << c.tte
+          << ",dynamic_score=" << c.score;
+    }
+    RCLCPP_DEBUG(this->get_logger(), "%s", oss.str().c_str());
+  }
+
   // ------------- Policy-specific selection -------------
 
   // Select the next queue entry according to the configured policy.
   size_t chooseNextIndex(const rclcpp::Time & now)
   {
+    constexpr double kEps = 1e-9;
+
     if (policy_ == Policy::FCFS) {
       return 0;
     }
 
     if (policy_ == Policy::ROLE_PRIORITY) {
-      for (size_t i = 0; i < queue_.size(); ++i) {
-        if (queue_[i].role == 1) { // CH
-          return i;
+      size_t best_idx = 0;
+      auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
+      (void)best_batt_unused;
+
+      for (size_t i = 1; i < queue_.size(); ++i) {
+        const auto & q = queue_[i];
+        const auto & best_q = queue_[best_idx];
+        auto [role, batt_unused] = getLiveRoleAndBattery(q);
+        (void)batt_unused;
+
+        if (role > best_role ||
+            (role == best_role && q.request_time < best_q.request_time) ||
+            (role == best_role && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
+          best_idx = i;
+          best_role = role;
         }
       }
-      return 0;
+      return best_idx;
     }
 
     if (policy_ == Policy::EDF) {
-      double best_tte = std::numeric_limits<double>::infinity();
       size_t best_idx = 0;
+      double best_tte = estimateTimeToEmptySec(queue_[0]);
+      auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
+      (void)best_batt_unused;
 
-      for (size_t i = 0; i < queue_.size(); ++i) {
+      for (size_t i = 1; i < queue_.size(); ++i) {
         const auto & q = queue_[i];
-        double drain = (q.role == 1) ? drain_percent_ch_ : drain_percent_member_;
-        if (drain <= 0.0) {
-          continue;
-        }
-        double tte = q.battery_level / drain;  // seconds until empty (approx.)
-        if (tte < best_tte) {
-          best_tte = tte;
+        const auto & best_q = queue_[best_idx];
+        double tte = estimateTimeToEmptySec(q);
+        auto [role, batt_unused] = getLiveRoleAndBattery(q);
+        (void)batt_unused;
+
+        if (tte < best_tte ||
+            (std::abs(tte - best_tte) <= kEps && role > best_role) ||
+            (std::abs(tte - best_tte) <= kEps && role == best_role && q.request_time < best_q.request_time) ||
+            (std::abs(tte - best_tte) <= kEps && role == best_role && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
           best_idx = i;
+          best_tte = tte;
+          best_role = role;
         }
       }
       return best_idx;
     }
 
     // Policy::DYNAMIC_SCORE
-    double best_score = -1e18;
     size_t best_idx = 0;
+    double best_score = computeDynamicScore(queue_[0], now);
 
-    for (size_t i = 0; i < queue_.size(); ++i) {
+    for (size_t i = 1; i < queue_.size(); ++i) {
       const auto & q = queue_[i];
+      const auto & best_q = queue_[best_idx];
+      double score = computeDynamicScore(q, now);
 
-      double role_term = (q.role == 1 ? 1.0 : 0.0);      // CH = 1, member = 0
-      double batt_term = (100.0 - q.battery_level);      // lower battery -> larger term
-      double wait_sec = (now - q.request_time).seconds();
-      if (wait_sec < 0.0) wait_sec = 0.0;
-
-      double score = w_role_ * role_term
-                   + w_batt_ * batt_term
-                   + w_wait_ * wait_sec;
-
-      if (score > best_score) {
-        best_score = score;
+      if (score > best_score ||
+          (std::abs(score - best_score) <= kEps && q.request_time < best_q.request_time) ||
+          (std::abs(score - best_score) <= kEps && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
         best_idx = i;
+        best_score = score;
       }
     }
 
@@ -1266,6 +1401,7 @@ private:
   double w_role_;
   double w_batt_;
   double w_wait_;
+  bool debug_scheduler_candidates_ = false;
   double hello_period_sec_ = 1.0;
   double status_period_sec_ = 1.0;
   geometry_msgs::msg::Pose deployment_goal_pose_;
