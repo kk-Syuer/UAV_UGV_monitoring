@@ -113,6 +113,3 @@ uavs:
     - id: uav2
       role: 0
       my_ch_id: ch1
-    - id: uav3
-      role: 0
-      my_ch_id: ch1
