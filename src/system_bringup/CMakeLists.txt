@@ -34,10 +34,23 @@ endif()
 
 ament_package()
 
+# Install files explicitly instead of installing whole directories.
+# This avoids recursive directory symlink-install globbing warnings (CMP0009)
+# raised from ament_cmake_symlink_install.cmake.
 install(
-  DIRECTORY launch config
-  DESTINATION share/${PROJECT_NAME}
-  PATTERN "runs/build" EXCLUDE
-  PATTERN "runs/install" EXCLUDE
-  PATTERN "runs/log" EXCLUDE
+  FILES launch/experiment.launch.py
+  DESTINATION share/${PROJECT_NAME}/launch
+)
+
+install(
+  FILES config/experiment_defaults.yaml
+  DESTINATION share/${PROJECT_NAME}/config
+)
+
+file(GLOB SYSTEM_BRINGUP_RUN_CONFIGS
+  "${CMAKE_CURRENT_SOURCE_DIR}/config/runs/*.yaml"
+)
+install(
+  FILES ${SYSTEM_BRINGUP_RUN_CONFIGS}
+  DESTINATION share/${PROJECT_NAME}/config/runs
 )
