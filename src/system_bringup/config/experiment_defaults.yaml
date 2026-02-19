@@ -58,6 +58,10 @@ fault_injector:
 
 coverage_planner:
   enable: true
+  taskpoint_generation_mode: fixed_file
+  fixed_taskpoints_file: system_bringup/config/taskpoints/fixed_taskpoints.yaml
+  fixed_taskpoints_count: 10
+  fixed_taskpoints_seed: 0
 
 planner_viz:
   enable: true

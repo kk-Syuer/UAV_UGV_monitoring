@@ -11,7 +11,9 @@
 #include <queue>
 #include <limits>
 #include <array>
+#include <filesystem>
 
+#include "ament_index_cpp/get_package_share_directory.hpp"
 #include "rclcpp/rclcpp.hpp"
 #include "geometry_msgs/msg/pose.hpp"
 #include "uav_msgs/msg/uav_deployment.hpp"
@@ -21,6 +23,7 @@
 #include "uav_msgs/msg/task_point_array.hpp"
 #include "coverage_planner.hpp"
 #include <sstream>
+#include <yaml-cpp/yaml.h>
 
 
 using namespace std::chrono_literals;
@@ -74,8 +77,19 @@ public:
 
     auto task_strings = this->declare_parameter<std::vector<std::string>>(
       "task_points", std::vector<std::string>{});
+    taskpoint_generation_mode_ = this->declare_parameter<std::string>(
+      "taskpoint_generation_mode", "fixed_file");
+    fixed_taskpoints_file_ = this->declare_parameter<std::string>(
+      "fixed_taskpoints_file", "system_bringup/config/taskpoints/fixed_taskpoints.yaml");
+    fixed_taskpoints_count_ = this->declare_parameter<int>("fixed_taskpoints_count", 10);
+    fixed_taskpoints_seed_ = this->declare_parameter<int>("fixed_taskpoints_seed", 0);
+
     parseTaskPoints(task_strings);
     task_driven_layout_ = !task_points_.empty();
+    RCLCPP_INFO(
+      this->get_logger(),
+      "Task point generation mode selected: %s",
+      taskpoint_generation_mode_.c_str());
 
     deployment_pub_ = this->create_publisher<uav_msgs::msg::UavDeployment>(
       "/coverage_planner/deployment", 10);
@@ -173,6 +187,183 @@ private:
     double dx = x1 - x2;
     double dy = y1 - y2;
     return dx * dx + dy * dy;
+  }
+
+  std::string resolveFixedTaskpointsFilePath(const std::string & file_path) const
+  {
+    namespace fs = std::filesystem;
+    if (file_path.empty()) {
+      return "";
+    }
+
+    fs::path path(file_path);
+    if (path.is_absolute()) {
+      return file_path;
+    }
+
+    if (fs::exists(path)) {
+      return fs::absolute(path).string();
+    }
+
+    try {
+      const fs::path bringup_share(
+        ament_index_cpp::get_package_share_directory("system_bringup"));
+      const fs::path share_resolved = bringup_share / path;
+      if (fs::exists(share_resolved)) {
+        return share_resolved.string();
+      }
+
+      const std::string prefix = std::string("system_bringup") + fs::path::preferred_separator;
+      if (file_path.rfind(prefix, 0) == 0) {
+        const fs::path trimmed = bringup_share / file_path.substr(prefix.size());
+        if (fs::exists(trimmed)) {
+          return trimmed.string();
+        }
+      }
+    } catch (const std::exception & e) {
+      RCLCPP_WARN(this->get_logger(),
+                  "Could not resolve system_bringup share path for '%s': %s",
+                  file_path.c_str(), e.what());
+    }
+
+    return file_path;
+  }
+
+  std::vector<TaskPoint> generateTaskPointsRandom()
+  {
+    std::vector<TaskPoint> points;
+
+    // Default: generate scattered random points within the area.
+    std::uniform_int_distribution<int> num_points_dist(5, 15);
+    const int num_points = num_points_dist(rng_);
+    std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
+    std::uniform_real_distribution<double> y_dist(y_min_, y_max_);
+
+    points.reserve(static_cast<size_t>(num_points));
+    for (int i = 0; i < num_points; ++i) {
+      TaskPoint tp;
+      tp.id = "task_" + std::to_string(i + 1);
+      tp.x = x_dist(rng_);
+      tp.y = y_dist(rng_);
+      tp.cluster_index = -1;
+      points.push_back(tp);
+    }
+
+    return points;
+  }
+
+  std::vector<TaskPoint> loadTaskPointsFromYaml(const std::string & file_path)
+  {
+    std::vector<TaskPoint> points;
+    const std::string resolved_path = resolveFixedTaskpointsFilePath(file_path);
+
+    if (!std::filesystem::exists(resolved_path)) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "fixed_file mode selected but taskpoint file does not exist: %s",
+                   resolved_path.c_str());
+      return points;
+    }
+
+    YAML::Node root;
+    try {
+      root = YAML::LoadFile(resolved_path);
+    } catch (const std::exception & e) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "Failed to load fixed taskpoint YAML file '%s': %s",
+                   resolved_path.c_str(), e.what());
+      return points;
+    }
+
+    const YAML::Node task_list = root["taskpoints"];
+    if (!task_list || !task_list.IsSequence() || task_list.size() == 0) {
+      RCLCPP_ERROR(this->get_logger(),
+                   "Taskpoint YAML '%s' must contain a non-empty 'taskpoints' list.",
+                   resolved_path.c_str());
+      return points;
+    }
+
+    points.reserve(task_list.size());
+    for (std::size_t i = 0; i < task_list.size(); ++i) {
+      const YAML::Node entry = task_list[i];
+      if (!entry["x"] || !entry["y"] || !entry["x"].IsScalar() || !entry["y"].IsScalar()) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Invalid taskpoint entry at index %zu in '%s' (expected numeric x/y).",
+                     i, resolved_path.c_str());
+        points.clear();
+        return points;
+      }
+
+      TaskPoint tp;
+      try {
+        tp.x = entry["x"].as<double>();
+        tp.y = entry["y"].as<double>();
+      } catch (const std::exception & e) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Invalid numeric x/y in taskpoint index %zu from '%s': %s",
+                     i, resolved_path.c_str(), e.what());
+        points.clear();
+        return points;
+      }
+
+      tp.id = "task_" + std::to_string(i + 1);
+      tp.x = clamp(tp.x, x_min_, x_max_);
+      tp.y = clamp(tp.y, y_min_, y_max_);
+      tp.cluster_index = -1;
+      points.push_back(tp);
+    }
+
+    if (fixed_taskpoints_count_ > 0 && static_cast<int>(points.size()) > fixed_taskpoints_count_) {
+      points.resize(static_cast<size_t>(fixed_taskpoints_count_));
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "Loaded %zu fixed task points from '%s'.",
+                points.size(), resolved_path.c_str());
+    return points;
+  }
+
+  std::vector<TaskPoint> generateTaskPointsFixedDispersed(int count) const
+  {
+    std::vector<TaskPoint> points;
+    if (count <= 0) {
+      return points;
+    }
+
+    const int k = static_cast<int>(std::ceil(std::sqrt(static_cast<double>(count))));
+    const double dx = (x_max_ - x_min_) / static_cast<double>(k);
+    const double dy = (y_max_ - y_min_) / static_cast<double>(k);
+    const int x_offset = ((fixed_taskpoints_seed_ % k) + k) % k;
+    const int y_offset = (((fixed_taskpoints_seed_ / std::max(1, k)) % k) + k) % k;
+
+    points.reserve(static_cast<size_t>(count));
+    for (int row = 0; row < k && static_cast<int>(points.size()) < count; ++row) {
+      for (int col = 0; col < k && static_cast<int>(points.size()) < count; ++col) {
+        const int shifted_row = (row + y_offset) % k;
+        const int shifted_col = (col + x_offset) % k;
+        TaskPoint tp;
+        tp.id = "task_" + std::to_string(points.size() + 1);
+        tp.x = clamp(x_min_ + (static_cast<double>(shifted_col) + 0.5) * dx, x_min_, x_max_);
+        tp.y = clamp(y_min_ + (static_cast<double>(shifted_row) + 0.5) * dy, y_min_, y_max_);
+        tp.cluster_index = -1;
+        points.push_back(tp);
+      }
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "Generated %zu deterministic dispersed fixed task points on %dx%d grid (seed=%d).",
+                points.size(), k, k, fixed_taskpoints_seed_);
+    return points;
+  }
+
+  std::size_t computeTaskPointSignature(const std::vector<TaskPoint> & points) const
+  {
+    std::ostringstream oss;
+    oss.setf(std::ios::fixed);
+    oss.precision(6);
+    for (const auto & tp : points) {
+      oss << tp.x << ',' << tp.y << ';';
+    }
+    return std::hash<std::string>{}(oss.str());
   }
 
   bool chGraphConnected(const std::vector<geometry_msgs::msg::Pose> & poses) const
@@ -434,6 +625,12 @@ private:
   {
     task_points_.clear();
 
+    if (!task_strings.empty()) {
+      RCLCPP_INFO(this->get_logger(),
+                  "Using %zu task_points values from parameter override.",
+                  task_strings.size());
+    }
+
     for (size_t i = 0; i < task_strings.size(); ++i) {
       const auto & entry = task_strings[i];
       auto p1 = entry.find(':');
@@ -463,24 +660,37 @@ private:
     }
 
     if (task_points_.empty()) {
-      // Default: generate scattered random points within the area.
-      std::uniform_int_distribution<int> num_points_dist(5, 15);
-      const int num_points = num_points_dist(rng_);
-      std::uniform_real_distribution<double> x_dist(x_min_, x_max_);
-      std::uniform_real_distribution<double> y_dist(y_min_, y_max_);
-
-      for (int i = 0; i < num_points; ++i) {
-        TaskPoint tp;
-        tp.id = "task_" + std::to_string(i + 1);
-        tp.x = x_dist(rng_);
-        tp.y = y_dist(rng_);
-        tp.cluster_index = -1;
-        task_points_.push_back(tp);
+      const std::string mode = taskpoint_generation_mode_;
+      if (mode == "random") {
+        task_points_ = generateTaskPointsRandom();
+      } else if (mode == "fixed_file") {
+        task_points_ = loadTaskPointsFromYaml(fixed_taskpoints_file_);
+      } else if (mode == "fixed_dispersed") {
+        task_points_ = generateTaskPointsFixedDispersed(fixed_taskpoints_count_);
+      } else {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Invalid taskpoint_generation_mode='%s'. Falling back to random mode.",
+                     mode.c_str());
+        task_points_ = generateTaskPointsRandom();
       }
-      RCLCPP_WARN(this->get_logger(),
-                  "No task_points provided; generated %zu scattered random task points.",
-                  task_points_.size());
+
+      if (task_points_.empty()) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "Task point generation mode '%s' produced no points; falling back to random.",
+                     mode.c_str());
+        task_points_ = generateTaskPointsRandom();
+      }
+
     }
+
+    const std::string effective_mode = task_strings.empty() ? taskpoint_generation_mode_ : "task_points_param";
+    const std::size_t signature = computeTaskPointSignature(task_points_);
+    RCLCPP_INFO(this->get_logger(),
+                "TaskPoint signature: %zu (mode=%s, file=%s, count=%zu)",
+                signature,
+                effective_mode.c_str(),
+                fixed_taskpoints_file_.c_str(),
+                task_points_.size());
   }
 
   // Compute CH placement that covers a cluster of tasks within service radius.
@@ -1756,6 +1966,10 @@ private:
   double diag_stretch_factor_ = 1.0;
   std::vector<TaskPoint> task_points_;
   bool task_driven_layout_ = false;
+  std::string taskpoint_generation_mode_ = "fixed_file";
+  std::string fixed_taskpoints_file_;
+  int fixed_taskpoints_count_ = 10;
+  int fixed_taskpoints_seed_ = 0;
 
   // Random sink / UGV
   double sink_x_ = 0.0, sink_y_ = 0.0;

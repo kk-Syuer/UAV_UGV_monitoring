@@ -47,6 +47,11 @@ install(
   DESTINATION share/${PROJECT_NAME}/config
 )
 
+install(
+  FILES config/taskpoints/fixed_taskpoints.yaml
+  DESTINATION share/${PROJECT_NAME}/config/taskpoints
+)
+
 file(GLOB SYSTEM_BRINGUP_RUN_CONFIGS
   "${CMAKE_CURRENT_SOURCE_DIR}/config/runs/*.yaml"
 )
