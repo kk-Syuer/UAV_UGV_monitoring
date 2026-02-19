@@ -1453,7 +1453,9 @@ private:
       rclcpp::Time slot_end_time = slot_start_time +
                                    rclcpp::Duration::from_seconds(charge_duration_sec);
 
-      // Publish ChargeDecision (direct, not routed yet)
+      std::string slot_id = "slot_" + job.uav_id + "_" + std::to_string(slot_start_time.nanoseconds());
+
+      // Legacy direct topic publication (non-functional compatibility only).
       uav_msgs::msg::ChargeDecision decision;
       decision.uav_id = job.uav_id;
       decision.accepted = true;
@@ -1462,6 +1464,9 @@ private:
       decision.policy = policy_name_;
 
       charge_decision_pub_->publish(decision);
+      RCLCPP_INFO(this->get_logger(),
+                  "UGV: mirrored legacy /ugv/charge_decisions decision uav=%s accepted=1 slot_id=%s",
+                  job.uav_id.c_str(), slot_id.c_str());
       updateLastDecision(job.uav_id,
                          true,
                          now,
@@ -1488,7 +1493,7 @@ private:
                     queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
       }
       // Also send the decision through the routed network as a control message
-      sendDecisionControlMessage(job, now, rationale);
+      sendDecisionControlMessage(job, now, rationale, slot_id);
 
       if (!instant_completion) {
         float initial_battery = job_battery;
@@ -1920,7 +1925,8 @@ private:
   // Send a routed control message so the UAV receives its decision.
   void sendDecisionControlMessage(const QueueEntry & job,
                                   const rclcpp::Time & now,
-                                  const DecisionRationale & rationale)
+                                  const DecisionRationale & rationale,
+                                  const std::string & slot_id)
   {
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = ugv_id_ + "_charge_decision_" + job.uav_id + "_" +
@@ -1945,7 +1951,12 @@ private:
 
     msg.control_type = "CHARGE_DECISION";
     std::ostringstream payload;
-    payload << "policy=" << policy_name_
+    payload << "accepted=1"
+            << ";slot_id=" << slot_id
+            << ";ugv_x=" << ugv_pose_.position.x
+            << ";ugv_y=" << ugv_pose_.position.y
+            << ";ugv_z=" << ugv_pose_.position.z
+            << ";policy=" << policy_name_
             << ";priority=" << static_cast<int>(job.role)
             << ";rank_index=" << rationale.rank_index
             << ";queue_size=" << rationale.queue_size
@@ -1961,8 +1972,9 @@ private:
     }
 
     RCLCPP_INFO(this->get_logger(),
-                "UGV: sending CHARGE_DECISION msg_id=%s to %s via %s",
-                msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str());
+                "UGV: sending CHARGE_DECISION msg_id=%s dst=%s via=%s accepted=1 slot_id=%s ugv_pose=(%.1f, %.1f, %.1f)",
+                msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str(), slot_id.c_str(),
+                ugv_pose_.position.x, ugv_pose_.position.y, ugv_pose_.position.z);
 
     control_pub_->publish(msg);
     registerPendingAck(msg, charge_decision_max_retries_, charge_decision_retry_sec_);
