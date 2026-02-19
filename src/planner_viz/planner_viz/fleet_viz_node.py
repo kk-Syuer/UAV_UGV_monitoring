@@ -299,18 +299,22 @@ class FleetVizNode(Node):
         self.last_charging_snapshot_time = self._now_sec()
 
     def _cluster_key_for_uav(self, uav_id: str, st: UavStatus) -> str:
-        if st.role == 1:
-            return uav_id
-        mapped_ch = self.member_ch_assignment.get(uav_id)
-        if mapped_ch:
-            return mapped_ch
+        mapped_cluster = self.member_cluster_assignment.get(uav_id)
+        if mapped_cluster:
+            return mapped_cluster
         if st.cluster_id:
             return st.cluster_id
+        mapped_ch = self.member_ch_assignment.get(uav_id)
+        if mapped_ch:
+            ch_state = self.uav_states.get(mapped_ch)
+            if ch_state is not None and ch_state.cluster_id:
+                return ch_state.cluster_id
+            return mapped_ch
         return uav_id
 
     def _cluster_label_for_uav(self, uav_id: str, st: UavStatus) -> str:
         if st.role == 1:
-            return f"CH {uav_id}"
+            return st.cluster_id or f"CH {uav_id}"
         mapped_ch = self.member_ch_assignment.get(uav_id)
         mapped_cluster = self.member_cluster_assignment.get(uav_id)
         if mapped_ch and mapped_cluster:
@@ -971,6 +975,8 @@ class FleetVizNode(Node):
         for uav_id, st in self.uav_states.items():
             if uav_id in self.dead_uavs:
                 continue
+            if uav_id == 'sink_gateway' or uav_id.startswith('ugv'):
+                continue
             x = st.pose.position.x
             y = st.pose.position.y
             cluster_key = self._cluster_key_for_uav(uav_id, st)
@@ -1005,7 +1011,7 @@ class FleetVizNode(Node):
             legend_handles.append(assigned_legend)
         cluster_keys = sorted({
             self._cluster_key_for_uav(uid, st) for uid, st in self.uav_states.items()
-            if uid not in self.dead_uavs
+            if uid not in self.dead_uavs and uid != 'sink_gateway' and not uid.startswith('ugv')
         })
         for cluster_key in cluster_keys:
             legend_handles.append(Line2D(
