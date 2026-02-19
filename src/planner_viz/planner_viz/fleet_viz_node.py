@@ -299,18 +299,22 @@ class FleetVizNode(Node):
         self.last_charging_snapshot_time = self._now_sec()
 
     def _cluster_key_for_uav(self, uav_id: str, st: UavStatus) -> str:
-        if st.role == 1:
-            return uav_id
-        mapped_ch = self.member_ch_assignment.get(uav_id)
-        if mapped_ch:
-            return mapped_ch
+        mapped_cluster = self.member_cluster_assignment.get(uav_id)
+        if mapped_cluster:
+            return mapped_cluster
         if st.cluster_id:
             return st.cluster_id
+        mapped_ch = self.member_ch_assignment.get(uav_id)
+        if mapped_ch:
+            ch_state = self.uav_states.get(mapped_ch)
+            if ch_state is not None and ch_state.cluster_id:
+                return ch_state.cluster_id
+            return mapped_ch
         return uav_id
 
     def _cluster_label_for_uav(self, uav_id: str, st: UavStatus) -> str:
         if st.role == 1:
-            return f"CH {uav_id}"
+            return st.cluster_id or f"CH {uav_id}"
         mapped_ch = self.member_ch_assignment.get(uav_id)
         mapped_cluster = self.member_cluster_assignment.get(uav_id)
         if mapped_ch and mapped_cluster:
@@ -329,6 +333,10 @@ class FleetVizNode(Node):
             color = self.cluster_palette[len(self.cluster_colors) % len(self.cluster_palette)]
             self.cluster_colors[cluster_id] = color
         return self.cluster_colors[cluster_id]
+
+    def _cluster_key_for_task_point(self, cluster_id: str) -> str:
+        """Use the same cluster color key for CH, members, and task points."""
+        return cluster_id or 'unassigned'
 
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
@@ -922,7 +930,7 @@ class FleetVizNode(Node):
         if self.sink_pose is not None:
             self.ax.scatter(self.sink_pose.position.x,
                             self.sink_pose.position.y,
-                            marker='o', s=80, edgecolors='white', facecolors='none')
+                            marker='s', s=90, edgecolors='white', facecolors='none')
             self.ax.text(self.sink_pose.position.x,
                          self.sink_pose.position.y + 5,
                          'sink', color='white', fontsize=8)
@@ -938,7 +946,7 @@ class FleetVizNode(Node):
         # draw task points first so UAVs appear above
         task_legend = None
         for tp in self.task_points:
-            color = self.color_for_cluster(tp.cluster_id)
+            color = self.color_for_cluster(self._cluster_key_for_task_point(tp.cluster_id))
             self.ax.scatter(tp.position.x, tp.position.y,
                             marker='x', s=40, color=color, alpha=0.9)
             self.ax.text(tp.position.x, tp.position.y - 5,
@@ -966,6 +974,8 @@ class FleetVizNode(Node):
         # draw UAVs
         for uav_id, st in self.uav_states.items():
             if uav_id in self.dead_uavs:
+                continue
+            if uav_id == 'sink_gateway' or uav_id.startswith('ugv'):
                 continue
             x = st.pose.position.x
             y = st.pose.position.y
@@ -1001,7 +1011,7 @@ class FleetVizNode(Node):
             legend_handles.append(assigned_legend)
         cluster_keys = sorted({
             self._cluster_key_for_uav(uid, st) for uid, st in self.uav_states.items()
-            if uid not in self.dead_uavs
+            if uid not in self.dead_uavs and uid != 'sink_gateway' and not uid.startswith('ugv')
         })
         for cluster_key in cluster_keys:
             legend_handles.append(Line2D(
