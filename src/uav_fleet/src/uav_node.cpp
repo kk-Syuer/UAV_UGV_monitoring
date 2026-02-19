@@ -308,12 +308,8 @@ public:
     task_telemetry_flow_label_ = this->declare_parameter<std::string>("task_telemetry_flow_label", "SEARCH_TELEMETRY");
     telemetry_policy_mode_ = this->declare_parameter<std::string>("telemetry_policy_mode", "option_c");
     telemetry_tmax_sec_ = this->declare_parameter<double>("telemetry_tmax_sec", 120.0);
-<<<<<<< codex/implement-telemetry-delivery-policy-for-uav-xoe2sw
     int telemetry_kmax_param = this->declare_parameter<int>("telemetry_kmax", 10);
     telemetry_kmax_ = (telemetry_kmax_param < 1) ? 1 : telemetry_kmax_param;
-=======
-    telemetry_kmax_ = std::max(1, this->declare_parameter<int>("telemetry_kmax", 10));
->>>>>>> master
     telemetry_upload_batch_ = this->declare_parameter<bool>("telemetry_upload_batch", true);
     telemetry_log_debug_ = this->declare_parameter<bool>("telemetry_log_debug", true);
     telemetry_policy_option_c_ = (telemetry_policy_mode_ == "option_c");
@@ -1239,11 +1235,7 @@ private:
 
       RCLCPP_INFO(this->get_logger(),
                   "[TASK-TLM] %s telemetry bucket created task=%d msg_id=%s ts=%.3f",
-<<<<<<< codex/implement-telemetry-delivery-policy-for-uav-xoe2sw
                   uav_id_.c_str(), task_index, msg.msg_id.c_str(), rclcpp::Time(msg.creation_time).seconds());
-=======
-                  uav_id_.c_str(), task_index, msg.msg_id.c_str(), msg.creation_time.seconds());
->>>>>>> master
 
       if (!telemetry_policy_option_c_) {
         publishToBus(msg, true);
