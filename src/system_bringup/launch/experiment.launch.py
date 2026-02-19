@@ -342,6 +342,10 @@ def _make_nodes(context, *args, **kwargs):
                 "uav_ids": uav_ids,
                 "num_ch": len(ch_ids),
                 "ugv_id": ugv_id,
+                "x_min": float(_get(cfg, ["coverage_planner", "x_min"], 0.0)),
+                "x_max": float(_get(cfg, ["coverage_planner", "x_max"], 500.0)),
+                "y_min": float(_get(cfg, ["coverage_planner", "y_min"], 0.0)),
+                "y_max": float(_get(cfg, ["coverage_planner", "y_max"], 500.0)),
                 "taskpoint_generation_mode": str(
                     _get(cfg, ["coverage_planner", "taskpoint_generation_mode"], "fixed_file")
                 ),

@@ -306,8 +306,25 @@ private:
       }
 
       tp.id = "task_" + std::to_string(i + 1);
+      const double raw_x = tp.x;
+      const double raw_y = tp.y;
       tp.x = clamp(tp.x, x_min_, x_max_);
       tp.y = clamp(tp.y, y_min_, y_max_);
+      if (tp.x != raw_x || tp.y != raw_y) {
+        RCLCPP_WARN(this->get_logger(),
+                    "Taskpoint %zu from '%s' was clamped from (%.3f, %.3f) to (%.3f, %.3f) by bounds "
+                    "x=[%.3f, %.3f], y=[%.3f, %.3f].",
+                    i,
+                    resolved_path.c_str(),
+                    raw_x,
+                    raw_y,
+                    tp.x,
+                    tp.y,
+                    x_min_,
+                    x_max_,
+                    y_min_,
+                    y_max_);
+      }
       tp.cluster_index = -1;
       points.push_back(tp);
     }
