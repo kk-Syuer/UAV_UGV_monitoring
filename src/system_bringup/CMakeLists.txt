@@ -42,20 +42,15 @@ install(
   DESTINATION share/${PROJECT_NAME}/launch
 )
 
-install(
-  FILES config/experiment_defaults.yaml
-  DESTINATION share/${PROJECT_NAME}/config
+file(GLOB_RECURSE SYSTEM_BRINGUP_YAML_FILES
+  RELATIVE "${CMAKE_CURRENT_SOURCE_DIR}"
+  "config/*.yaml"
 )
 
-install(
-  FILES config/taskpoints/fixed_taskpoints.yaml
-  DESTINATION share/${PROJECT_NAME}/config/taskpoints
-)
-
-file(GLOB SYSTEM_BRINGUP_RUN_CONFIGS
-  "${CMAKE_CURRENT_SOURCE_DIR}/config/runs/*.yaml"
-)
-install(
-  FILES ${SYSTEM_BRINGUP_RUN_CONFIGS}
-  DESTINATION share/${PROJECT_NAME}/config/runs
-)
+foreach(SYSTEM_BRINGUP_YAML_FILE IN LISTS SYSTEM_BRINGUP_YAML_FILES)
+  get_filename_component(SYSTEM_BRINGUP_YAML_DIR "${SYSTEM_BRINGUP_YAML_FILE}" DIRECTORY)
+  install(
+    FILES "${SYSTEM_BRINGUP_YAML_FILE}"
+    DESTINATION "share/${PROJECT_NAME}/${SYSTEM_BRINGUP_YAML_DIR}"
+  )
+endforeach()
