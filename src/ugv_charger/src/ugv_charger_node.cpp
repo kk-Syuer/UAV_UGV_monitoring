@@ -1953,15 +1953,11 @@ private:
     std::ostringstream payload;
     payload << "accepted=1"
             << ";slot_id=" << slot_id
-<<<<<<< codex/debug-charging-decision-workflow-for-clusterheads-m5tvdm
+            
             << ";ugv_x=" << ugv_pose_.position.x
             << ";ugv_y=" << ugv_pose_.position.y
             << ";ugv_z=" << ugv_pose_.position.z
-=======
-            << ";ugv_x=" << pose_.position.x
-            << ";ugv_y=" << pose_.position.y
-            << ";ugv_z=" << pose_.position.z
->>>>>>> master
+
             << ";policy=" << policy_name_
             << ";priority=" << static_cast<int>(job.role)
             << ";rank_index=" << rationale.rank_index
