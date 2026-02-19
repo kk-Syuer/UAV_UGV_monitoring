@@ -194,6 +194,39 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /usr/include/c++/11/pstl/glue_numeric_defs.h /usr/include/c++/11/queue \
  /usr/include/c++/11/deque /usr/include/c++/11/bits/stl_deque.h \
  /usr/include/c++/11/bits/deque.tcc /usr/include/c++/11/bits/stl_queue.h \
+ /usr/include/c++/11/filesystem /usr/include/c++/11/bits/fs_fwd.h \
+ /usr/include/c++/11/system_error \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
+ /usr/include/c++/11/stdexcept /usr/include/c++/11/chrono \
+ /usr/include/c++/11/ratio /usr/include/c++/11/ctime \
+ /usr/include/c++/11/bits/parse_numbers.h \
+ /usr/include/c++/11/bits/fs_path.h /usr/include/c++/11/locale \
+ /usr/include/c++/11/bits/locale_classes.h \
+ /usr/include/c++/11/bits/locale_classes.tcc \
+ /usr/include/c++/11/bits/locale_facets.h /usr/include/c++/11/cwctype \
+ /usr/include/wctype.h /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
+ /usr/include/c++/11/bits/ios_base.h /usr/include/c++/11/streambuf \
+ /usr/include/c++/11/bits/streambuf.tcc \
+ /usr/include/c++/11/bits/streambuf_iterator.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
+ /usr/include/c++/11/bits/locale_facets.tcc \
+ /usr/include/c++/11/bits/locale_facets_nonio.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
+ /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
+ /usr/include/libintl.h /usr/include/c++/11/bits/codecvt.h \
+ /usr/include/c++/11/bits/locale_facets_nonio.tcc \
+ /usr/include/c++/11/bits/locale_conv.h /usr/include/c++/11/iomanip \
+ /usr/include/c++/11/bits/quoted_string.h /usr/include/c++/11/sstream \
+ /usr/include/c++/11/istream /usr/include/c++/11/ios \
+ /usr/include/c++/11/bits/basic_ios.h \
+ /usr/include/c++/11/bits/basic_ios.tcc /usr/include/c++/11/ostream \
+ /usr/include/c++/11/bits/ostream.tcc \
+ /usr/include/c++/11/bits/istream.tcc \
+ /usr/include/c++/11/bits/sstream.tcc /usr/include/c++/11/codecvt \
+ /usr/include/c++/11/bits/fs_dir.h /usr/include/c++/11/bits/fs_ops.h \
+ /opt/ros/humble/include/ament_index_cpp/ament_index_cpp/get_package_share_directory.hpp \
+ /opt/ros/humble/include/ament_index_cpp/ament_index_cpp/visibility_control.h \
  /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
  /usr/include/c++/11/csignal /usr/include/signal.h \
  /usr/include/x86_64-linux-gnu/bits/signum-generic.h \
@@ -226,11 +259,7 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /usr/include/x86_64-linux-gnu/bits/signal_ext.h \
  /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp \
  /usr/include/c++/11/future /usr/include/c++/11/mutex \
- /usr/include/c++/11/chrono /usr/include/c++/11/ratio \
- /usr/include/c++/11/ctime /usr/include/c++/11/bits/parse_numbers.h \
- /usr/include/c++/11/system_error \
- /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
- /usr/include/c++/11/stdexcept /usr/include/c++/11/bits/std_mutex.h \
+ /usr/include/c++/11/bits/std_mutex.h \
  /usr/include/c++/11/bits/unique_lock.h \
  /usr/include/c++/11/condition_variable /usr/include/c++/11/atomic \
  /usr/include/c++/11/bits/atomic_futex.h \
@@ -242,21 +271,7 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /usr/include/c++/11/bits/this_thread_sleep.h \
  /opt/ros/humble/include/rclcpp/rclcpp/executor.hpp \
  /usr/include/c++/11/cassert /usr/include/assert.h \
- /usr/include/c++/11/iostream /usr/include/c++/11/ostream \
- /usr/include/c++/11/ios /usr/include/c++/11/bits/ios_base.h \
- /usr/include/c++/11/bits/locale_classes.h \
- /usr/include/c++/11/bits/locale_classes.tcc \
- /usr/include/c++/11/streambuf /usr/include/c++/11/bits/streambuf.tcc \
- /usr/include/c++/11/bits/basic_ios.h \
- /usr/include/c++/11/bits/locale_facets.h /usr/include/c++/11/cwctype \
- /usr/include/wctype.h /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
- /usr/include/c++/11/bits/streambuf_iterator.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
- /usr/include/c++/11/bits/locale_facets.tcc \
- /usr/include/c++/11/bits/basic_ios.tcc \
- /usr/include/c++/11/bits/ostream.tcc /usr/include/c++/11/istream \
- /usr/include/c++/11/bits/istream.tcc /usr/include/c++/11/list \
+ /usr/include/c++/11/iostream /usr/include/c++/11/list \
  /usr/include/c++/11/bits/stl_list.h /usr/include/c++/11/bits/list.tcc \
  /usr/include/c++/11/map /usr/include/c++/11/bits/stl_map.h \
  /usr/include/c++/11/bits/stl_multimap.h \
@@ -350,8 +365,7 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /opt/ros/humble/include/rclcpp/rclcpp/any_executable.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
- /usr/include/c++/11/optional /usr/include/c++/11/sstream \
- /usr/include/c++/11/bits/sstream.tcc /usr/include/c++/11/variant \
+ /usr/include/c++/11/optional /usr/include/c++/11/variant \
  /opt/ros/humble/include/rcl/rcl/error_handling.h \
  /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp \
  /opt/ros/humble/include/rclcpp/rclcpp/exceptions.hpp \
@@ -383,14 +397,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp \
  /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp \
- /usr/include/c++/11/codecvt /usr/include/c++/11/bits/codecvt.h \
- /usr/include/c++/11/iomanip /usr/include/c++/11/locale \
- /usr/include/c++/11/bits/locale_facets_nonio.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
- /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
- /usr/include/libintl.h /usr/include/c++/11/bits/locale_facets_nonio.tcc \
- /usr/include/c++/11/bits/locale_conv.h \
- /usr/include/c++/11/bits/quoted_string.h \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp \
  /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp \
  /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp \
@@ -661,4 +667,26 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__traits.hpp \
  /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__type_support.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp
+ /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp \
+ /usr/include/yaml-cpp/yaml.h /usr/include/yaml-cpp/parser.h \
+ /usr/include/yaml-cpp/dll.h /usr/include/yaml-cpp/emitter.h \
+ /usr/include/c++/11/cstddef /usr/include/yaml-cpp/binary.h \
+ /usr/include/yaml-cpp/emitterdef.h /usr/include/yaml-cpp/emittermanip.h \
+ /usr/include/yaml-cpp/null.h /usr/include/yaml-cpp/ostream_wrapper.h \
+ /usr/include/yaml-cpp/emitterstyle.h /usr/include/yaml-cpp/stlemitter.h \
+ /usr/include/yaml-cpp/exceptions.h /usr/include/yaml-cpp/mark.h \
+ /usr/include/yaml-cpp/noexcept.h /usr/include/yaml-cpp/traits.h \
+ /usr/include/yaml-cpp/node/node.h \
+ /usr/include/yaml-cpp/node/detail/iterator_fwd.h \
+ /usr/include/yaml-cpp/node/ptr.h /usr/include/yaml-cpp/node/type.h \
+ /usr/include/yaml-cpp/node/impl.h \
+ /usr/include/yaml-cpp/node/detail/memory.h \
+ /usr/include/yaml-cpp/node/detail/node.h \
+ /usr/include/yaml-cpp/node/detail/node_ref.h \
+ /usr/include/yaml-cpp/node/detail/node_data.h \
+ /usr/include/yaml-cpp/node/detail/node_iterator.h \
+ /usr/include/yaml-cpp/node/iterator.h \
+ /usr/include/yaml-cpp/node/detail/iterator.h \
+ /usr/include/yaml-cpp/node/convert.h \
+ /usr/include/yaml-cpp/node/detail/impl.h \
+ /usr/include/yaml-cpp/node/parse.h /usr/include/yaml-cpp/node/emit.h

@@ -43,10 +43,10 @@ public:
 
     num_ch_ = this->declare_parameter<int>("num_ch", 1);
 
-    x_min_ = this->declare_parameter<double>("x_min", 0.0);
-    x_max_ = this->declare_parameter<double>("x_max", 500.0);
-    y_min_ = this->declare_parameter<double>("y_min", 0.0);
-    y_max_ = this->declare_parameter<double>("y_max", 500.0);
+    x_min_ = this->declare_parameter<double>("x_min", -1000.0);
+    x_max_ = this->declare_parameter<double>("x_max", 1000.0);
+    y_min_ = this->declare_parameter<double>("y_min", -1000.0);
+    y_max_ = this->declare_parameter<double>("y_max", 1000.0);
 
     z_ch_     = this->declare_parameter<double>("z_ch", 80.0);
     z_member_ = this->declare_parameter<double>("z_member", 60.0);

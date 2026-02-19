@@ -240,6 +240,53 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /usr/include/c++/11/bits/stl_deque.h \
   /usr/include/c++/11/bits/deque.tcc \
   /usr/include/c++/11/bits/stl_queue.h \
+  /usr/include/c++/11/filesystem \
+  /usr/include/c++/11/bits/fs_fwd.h \
+  /usr/include/c++/11/system_error \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
+  /usr/include/c++/11/stdexcept \
+  /usr/include/c++/11/chrono \
+  /usr/include/c++/11/ratio \
+  /usr/include/c++/11/ctime \
+  /usr/include/c++/11/bits/parse_numbers.h \
+  /usr/include/c++/11/bits/fs_path.h \
+  /usr/include/c++/11/locale \
+  /usr/include/c++/11/bits/locale_classes.h \
+  /usr/include/c++/11/bits/locale_classes.tcc \
+  /usr/include/c++/11/bits/locale_facets.h \
+  /usr/include/c++/11/cwctype \
+  /usr/include/wctype.h \
+  /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
+  /usr/include/c++/11/bits/ios_base.h \
+  /usr/include/c++/11/streambuf \
+  /usr/include/c++/11/bits/streambuf.tcc \
+  /usr/include/c++/11/bits/streambuf_iterator.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
+  /usr/include/c++/11/bits/locale_facets.tcc \
+  /usr/include/c++/11/bits/locale_facets_nonio.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
+  /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
+  /usr/include/libintl.h \
+  /usr/include/c++/11/bits/codecvt.h \
+  /usr/include/c++/11/bits/locale_facets_nonio.tcc \
+  /usr/include/c++/11/bits/locale_conv.h \
+  /usr/include/c++/11/iomanip \
+  /usr/include/c++/11/bits/quoted_string.h \
+  /usr/include/c++/11/sstream \
+  /usr/include/c++/11/istream \
+  /usr/include/c++/11/ios \
+  /usr/include/c++/11/bits/basic_ios.h \
+  /usr/include/c++/11/bits/basic_ios.tcc \
+  /usr/include/c++/11/ostream \
+  /usr/include/c++/11/bits/ostream.tcc \
+  /usr/include/c++/11/bits/istream.tcc \
+  /usr/include/c++/11/bits/sstream.tcc \
+  /usr/include/c++/11/codecvt \
+  /usr/include/c++/11/bits/fs_dir.h \
+  /usr/include/c++/11/bits/fs_ops.h \
+  /opt/ros/humble/include/ament_index_cpp/ament_index_cpp/get_package_share_directory.hpp \
+  /opt/ros/humble/include/ament_index_cpp/ament_index_cpp/visibility_control.h \
   /opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp \
   /usr/include/c++/11/csignal \
   /usr/include/signal.h \
@@ -275,13 +322,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /opt/ros/humble/include/rclcpp/rclcpp/executors.hpp \
   /usr/include/c++/11/future \
   /usr/include/c++/11/mutex \
-  /usr/include/c++/11/chrono \
-  /usr/include/c++/11/ratio \
-  /usr/include/c++/11/ctime \
-  /usr/include/c++/11/bits/parse_numbers.h \
-  /usr/include/c++/11/system_error \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h \
-  /usr/include/c++/11/stdexcept \
   /usr/include/c++/11/bits/std_mutex.h \
   /usr/include/c++/11/bits/unique_lock.h \
   /usr/include/c++/11/condition_variable \
@@ -299,26 +339,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /usr/include/c++/11/cassert \
   /usr/include/assert.h \
   /usr/include/c++/11/iostream \
-  /usr/include/c++/11/ostream \
-  /usr/include/c++/11/ios \
-  /usr/include/c++/11/bits/ios_base.h \
-  /usr/include/c++/11/bits/locale_classes.h \
-  /usr/include/c++/11/bits/locale_classes.tcc \
-  /usr/include/c++/11/streambuf \
-  /usr/include/c++/11/bits/streambuf.tcc \
-  /usr/include/c++/11/bits/basic_ios.h \
-  /usr/include/c++/11/bits/locale_facets.h \
-  /usr/include/c++/11/cwctype \
-  /usr/include/wctype.h \
-  /usr/include/x86_64-linux-gnu/bits/wctype-wchar.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h \
-  /usr/include/c++/11/bits/streambuf_iterator.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h \
-  /usr/include/c++/11/bits/locale_facets.tcc \
-  /usr/include/c++/11/bits/basic_ios.tcc \
-  /usr/include/c++/11/bits/ostream.tcc \
-  /usr/include/c++/11/istream \
-  /usr/include/c++/11/bits/istream.tcc \
   /usr/include/c++/11/list \
   /usr/include/c++/11/bits/stl_list.h \
   /usr/include/c++/11/bits/list.tcc \
@@ -417,8 +437,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp \
   /opt/ros/humble/include/rclcpp/rclcpp/client.hpp \
   /usr/include/c++/11/optional \
-  /usr/include/c++/11/sstream \
-  /usr/include/c++/11/bits/sstream.tcc \
   /usr/include/c++/11/variant \
   /opt/ros/humble/include/rcl/rcl/error_handling.h \
   /opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp \
@@ -452,17 +470,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__traits.hpp \
   /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/traits.hpp \
-  /usr/include/c++/11/codecvt \
-  /usr/include/c++/11/bits/codecvt.h \
-  /usr/include/c++/11/iomanip \
-  /usr/include/c++/11/locale \
-  /usr/include/c++/11/bits/locale_facets_nonio.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h \
-  /usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h \
-  /usr/include/libintl.h \
-  /usr/include/c++/11/bits/locale_facets_nonio.tcc \
-  /usr/include/c++/11/bits/locale_conv.h \
-  /usr/include/c++/11/bits/quoted_string.h \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp \
   /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp \
   /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/message_type_support.hpp \
@@ -733,8 +740,82 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__traits.hpp \
   /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__type_support.hpp \
-  /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp
+  /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp \
+  /usr/include/yaml-cpp/yaml.h \
+  /usr/include/yaml-cpp/parser.h \
+  /usr/include/yaml-cpp/dll.h \
+  /usr/include/yaml-cpp/emitter.h \
+  /usr/include/c++/11/cstddef \
+  /usr/include/yaml-cpp/binary.h \
+  /usr/include/yaml-cpp/emitterdef.h \
+  /usr/include/yaml-cpp/emittermanip.h \
+  /usr/include/yaml-cpp/null.h \
+  /usr/include/yaml-cpp/ostream_wrapper.h \
+  /usr/include/yaml-cpp/emitterstyle.h \
+  /usr/include/yaml-cpp/stlemitter.h \
+  /usr/include/yaml-cpp/exceptions.h \
+  /usr/include/yaml-cpp/mark.h \
+  /usr/include/yaml-cpp/noexcept.h \
+  /usr/include/yaml-cpp/traits.h \
+  /usr/include/yaml-cpp/node/node.h \
+  /usr/include/yaml-cpp/node/detail/iterator_fwd.h \
+  /usr/include/yaml-cpp/node/ptr.h \
+  /usr/include/yaml-cpp/node/type.h \
+  /usr/include/yaml-cpp/node/impl.h \
+  /usr/include/yaml-cpp/node/detail/memory.h \
+  /usr/include/yaml-cpp/node/detail/node.h \
+  /usr/include/yaml-cpp/node/detail/node_ref.h \
+  /usr/include/yaml-cpp/node/detail/node_data.h \
+  /usr/include/yaml-cpp/node/detail/node_iterator.h \
+  /usr/include/yaml-cpp/node/iterator.h \
+  /usr/include/yaml-cpp/node/detail/iterator.h \
+  /usr/include/yaml-cpp/node/convert.h \
+  /usr/include/yaml-cpp/node/detail/impl.h \
+  /usr/include/yaml-cpp/node/parse.h \
+  /usr/include/yaml-cpp/node/emit.h
 
+
+/usr/include/yaml-cpp/node/parse.h:
+
+/usr/include/yaml-cpp/node/detail/impl.h:
+
+/usr/include/yaml-cpp/node/iterator.h:
+
+/usr/include/yaml-cpp/node/detail/node_iterator.h:
+
+/usr/include/yaml-cpp/node/detail/node_data.h:
+
+/usr/include/yaml-cpp/node/detail/node_ref.h:
+
+/usr/include/yaml-cpp/node/detail/node.h:
+
+/usr/include/yaml-cpp/node/type.h:
+
+/usr/include/yaml-cpp/node/ptr.h:
+
+/usr/include/yaml-cpp/node/detail/iterator_fwd.h:
+
+/usr/include/yaml-cpp/traits.h:
+
+/usr/include/yaml-cpp/mark.h:
+
+/usr/include/yaml-cpp/ostream_wrapper.h:
+
+/usr/include/yaml-cpp/null.h:
+
+/usr/include/yaml-cpp/emittermanip.h:
+
+/usr/include/yaml-cpp/binary.h:
+
+/usr/include/c++/11/cstddef:
+
+/usr/include/yaml-cpp/dll.h:
+
+/usr/include/yaml-cpp/parser.h:
+
+/usr/include/yaml-cpp/node/detail/iterator.h:
+
+/usr/include/yaml-cpp/yaml.h:
 
 /home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner.hpp:
 
@@ -864,8 +945,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_subscription.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/create_service.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_parameters_interface_traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/create_client.hpp:
@@ -900,11 +979,11 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_clock_interface.hpp:
 
-/opt/ros/humble/include/rclcpp/rclcpp/generic_subscription.hpp:
-
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_factory.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/publisher_factory.hpp:
+
+/usr/include/yaml-cpp/node/emit.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/node_interfaces/node_topics_interface.hpp:
 
@@ -986,37 +1065,43 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/detail/metrics_message__struct.hpp:
 
-/usr/include/x86_64-linux-gnu/sys/ucontext.h:
+/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/metrics_message.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__builder.hpp:
-
-/usr/include/c++/11/bits/ios_base.h:
-
-/usr/include/x86_64-linux-gnu/bits/ss_flags.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
-
-/usr/include/x86_64-linux-gnu/bits/errno.h:
-
-/opt/ros/humble/include/rmw/rmw/security_options.h:
-
-/usr/include/c++/11/csignal:
-
-/usr/include/c++/11/pstl/glue_memory_defs.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+/opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/topic_statistics_state.hpp:
 
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__type_support.hpp:
+
+/usr/include/c++/11/cwctype:
+
+/usr/include/c++/11/ratio:
+
+/usr/include/c++/11/stdexcept:
+
+/usr/include/c++/11/pstl/glue_algorithm_defs.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
+
+/usr/include/c++/11/utility:
+
+/usr/include/c++/11/ios:
+
+/opt/ros/humble/include/rclcpp/rclcpp/create_service.hpp:
+
+/usr/include/c++/11/bits/fs_fwd.h:
+
+/usr/include/c++/11/bits/stl_bvector.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+
 /usr/include/c++/11/bits/stl_deque.h:
+
+/usr/include/c++/11/bits/exception.h:
+
+/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/typesupport_helpers.hpp:
 
@@ -1032,6 +1117,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/array:
 
+/usr/include/c++/11/bits/locale_classes.h:
+
 /usr/include/c++/11/tr1/gamma.tcc:
 
 /usr/include/x86_64-linux-gnu/gnu/stubs-64.h:
@@ -1039,6 +1126,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/limits:
 
 /opt/ros/humble/include/rclcpp/rclcpp/detail/resolve_intra_process_buffer_type.hpp:
+
+/usr/include/c++/11/filesystem:
 
 /usr/include/c++/11/bits/specfun.h:
 
@@ -1068,6 +1157,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/x86_64-linux-gnu/bits/libm-simd-decl-stubs.h:
 
+/usr/include/yaml-cpp/node/impl.h:
+
 /usr/include/c++/11/string_view:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_FILE.h:
@@ -1084,13 +1175,15 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/std_abs.h:
 
+/usr/include/c++/11/bits/locale_facets.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
+
 /usr/include/c++/11/pstl/execution_defs.h:
 
 /usr/include/x86_64-linux-gnu/bits/math-vector.h:
 
 /usr/include/c++/11/bits/stl_algo.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
 
 /usr/include/c++/11/bits/erase_if.h:
 
@@ -1104,17 +1197,11 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/vector.tcc:
 
-/usr/include/c++/11/bits/stl_bvector.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/clockid_t.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/struct___jmp_buf_tag.h:
+/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
 
 /usr/include/c++/11/bits/unordered_set.h:
 
 /usr/include/c++/11/bits/stl_vector.h:
-
-/usr/include/x86_64-linux-gnu/bits/sigaction.h:
 
 /usr/include/c++/11/bits/basic_string.tcc:
 
@@ -1126,9 +1213,23 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_typesupport_cpp/service_type_support.hpp:
 
+/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
+
+/usr/include/c++/11/tr1/ell_integral.tcc:
+
 /usr/include/asm-generic/errno.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sched_param.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/context.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/errno.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__type_support.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/signum-arch.h:
+
+/opt/ros/humble/include/rmw/rmw/security_options.h:
 
 /usr/include/c++/11/cerrno:
 
@@ -1136,11 +1237,17 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/stdio.h:
 
+/usr/include/x86_64-linux-gnu/bits/wordsize.h:
+
 /usr/include/c++/11/cstdio:
 
 /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h:
 
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/message_type_support_decl.hpp:
+
+/opt/ros/humble/include/ament_index_cpp/ament_index_cpp/get_package_share_directory.hpp:
+
+/usr/include/c++/11/bits/fs_path.h:
 
 /usr/include/c++/11/iostream:
 
@@ -1149,6 +1256,10 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_descriptor__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/sys/types.h:
+
+/usr/include/c++/11/bits/locale_classes.tcc:
+
+/usr/include/c++/11/ext/aligned_buffer.h:
 
 /usr/include/c++/11/future:
 
@@ -1174,6 +1285,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/unordered_map:
 
+/usr/include/yaml-cpp/exceptions.h:
+
 /usr/include/c++/11/cctype:
 
 /usr/include/c++/11/iomanip:
@@ -1181,12 +1294,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/x86_64-linux-gnu/bits/locale.h:
 
 /usr/include/c++/11/pstl/glue_numeric_defs.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
-
-/opt/ros/humble/include/statistics_msgs/statistics_msgs/msg/metrics_message.hpp:
 
 /usr/include/c++/11/tr1/hypergeometric.tcc:
 
@@ -1216,10 +1323,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rmw/rmw/subscription_options.h:
 
-/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
-
-/usr/include/c++/11/string:
-
 /usr/include/c++/11/tr1/bessel_function.tcc:
 
 /usr/include/c++/11/bits/codecvt.h:
@@ -1228,7 +1331,11 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/atomic_lockfree_defines.h:
 
+/usr/include/c++/11/bits/parse_numbers.h:
+
 /usr/include/c++/11/bits/shared_ptr_atomic.h:
+
+/usr/include/yaml-cpp/noexcept.h:
 
 /usr/include/c++/11/queue:
 
@@ -1237,6 +1344,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/bits/nested_exception.h:
 
 /opt/ros/humble/include/rmw/rmw/publisher_options.h:
+
+/usr/include/yaml-cpp/node/convert.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/detail/storage_policy_common.hpp:
 
@@ -1270,10 +1379,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/stl_uninitialized.h:
 
-/opt/ros/humble/include/rmw/rmw/message_sequence.h:
-
-/home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner_node.cpp:
-
 /usr/include/c++/11/bits/stl_queue.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_timespec.h:
@@ -1285,14 +1390,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
 
 /usr/include/c++/11/bits/std_thread.h:
-
-/usr/include/c++/11/bits/exception.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/subscription_callback_type_helper.hpp:
-
-/usr/include/c++/11/bits/locale_facets.h:
-
-/opt/ros/humble/include/rmw/rmw/get_topic_names_and_types.h:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__traits.hpp:
 
@@ -1330,15 +1427,9 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rclcpp/rclcpp/intra_process_buffer_type.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
+/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
 
-/usr/include/c++/11/utility:
-
-/usr/include/c++/11/tr1/ell_integral.tcc:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/error_constants.h:
-
-/usr/include/c++/11/ios:
+/usr/include/features.h:
 
 /usr/include/c++/11/bits/random.tcc:
 
@@ -1364,8 +1455,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/typeindex:
 
-/usr/include/x86_64-linux-gnu/bits/wordsize.h:
-
 /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp:
 
 /usr/include/c++/11/bits/range_access.h:
@@ -1383,10 +1472,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/bits/hash_bytes.h:
 
 /usr/include/x86_64-linux-gnu/bits/atomic_wide_counter.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
-
-/usr/include/c++/11/tr1/special_function_util.h:
 
 /usr/include/x86_64-linux-gnu/bits/byteswap.h:
 
@@ -1414,13 +1499,15 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/cstdlib:
 
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
+
+/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
+
 /usr/include/c++/11/memory:
 
 /opt/ros/humble/include/rmw/rmw/serialized_message.h:
 
 /usr/include/x86_64-linux-gnu/sys/select.h:
-
-/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
 
 /usr/include/c++/11/bits/concept_check.h:
 
@@ -1462,6 +1549,14 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/debug/debug.h:
 
+/usr/include/c++/11/ctime:
+
+/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp:
+
+/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
+
+/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp:
+
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/time64.h:
@@ -1476,10 +1571,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/initializer_list:
 
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
-
-/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
-
 /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h:
 
 /usr/include/c++/11/bits/stl_iterator.h:
@@ -1490,11 +1581,9 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/sstream.tcc:
 
+/usr/include/x86_64-linux-gnu/bits/types/__sigval_t.h:
+
 /usr/include/c++/11/bits/stl_raw_storage_iter.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
-
-/usr/include/c++/11/tuple:
 
 /opt/ros/humble/include/rcl/rcl/network_flow_endpoints.h:
 
@@ -1513,6 +1602,14 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters_atomically__traits.hpp:
 
 /usr/include/x86_64-linux-gnu/c++/11/bits/atomic_word.h:
+
+/usr/include/c++/11/pstl/glue_memory_defs.h:
+
+/usr/include/c++/11/csignal:
+
+/usr/include/c++/11/string:
+
+/opt/ros/humble/include/rclcpp/rclcpp/experimental/buffers/intra_process_buffer.hpp:
 
 /usr/include/c++/11/ext/type_traits.h:
 
@@ -1534,11 +1631,11 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/functional_hash.h:
 
-/usr/include/features.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/topic_statistics/subscription_topic_statistics.hpp:
-
 /usr/include/c++/11/bits/string_view.tcc:
+
+/usr/include/c++/11/tr1/special_function_util.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts-arch.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/wait_set_policies/sequential_synchronization.hpp:
 
@@ -1562,12 +1659,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/cwchar:
 
-/usr/include/c++/11/pstl/glue_algorithm_defs.h:
-
-/usr/include/c++/11/stdexcept:
-
-/opt/ros/humble/include/rclcpp/rclcpp/detail/cpp_callback_trampoline.hpp:
-
 /usr/include/locale.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/callback_group.hpp:
@@ -1579,8 +1670,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rclcpp/rclcpp/any_service_callback.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/types/mbstate_t.h:
-
-/usr/include/strings.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/time_t.h:
 
@@ -1594,15 +1683,19 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/this_thread_sleep.h:
 
+/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
+
+/usr/include/c++/11/system_error:
+
+/usr/include/features-time64.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
+
 /usr/include/c++/11/deque:
 
 /usr/include/x86_64-linux-gnu/bits/types/__locale_t.h:
 
 /usr/include/x86_64-linux-gnu/bits/types/struct_sigstack.h:
-
-/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
-
-/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
 
 /usr/include/c++/11/ext/new_allocator.h:
 
@@ -1650,6 +1743,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/cxxabi_init_exception.h:
 
+/usr/include/yaml-cpp/emitterstyle.h:
+
 /usr/include/time.h:
 
 /usr/include/x86_64-linux-gnu/bits/getopt_posix.h:
@@ -1661,14 +1756,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/ext/atomicity.h:
 
 /opt/ros/humble/include/rcl/rcl/types.h:
-
-/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__traits.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__struct.hpp:
-
-/usr/include/c++/11/bits/quoted_string.h:
 
 /usr/include/c++/11/bits/std_function.h:
 
@@ -1682,9 +1769,119 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/ext/concurrence.h:
 
+/usr/include/yaml-cpp/emitterdef.h:
+
+/usr/include/yaml-cpp/emitter.h:
+
 /usr/include/c++/11/exception:
 
 /opt/ros/humble/include/rclcpp/rclcpp/init_options.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/set_parameters__builder.hpp:
+
+/usr/include/c++/11/bits/ios_base.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/siginfo_t.h:
+
+/home/vboxuser/UAV_UGV_netmonitoring/src/coverage_planner/src/coverage_planner_node.cpp:
+
+/opt/ros/humble/include/rmw/rmw/message_sequence.h:
+
+/usr/include/c++/11/streambuf:
+
+/usr/include/c++/11/bits/stl_iterator_base_funcs.h:
+
+/usr/include/c++/11/bits/streambuf.tcc:
+
+/usr/include/string.h:
+
+/usr/include/c++/11/bits/streambuf_iterator.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
+
+/usr/include/c++/11/bits/locale_facets_nonio.h:
+
+/opt/ros/humble/include/rcl/rcl/timer.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h:
+
+/usr/include/c++/11/bits/basic_ios.h:
+
+/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
+
+/usr/include/c++/11/cxxabi.h:
+
+/usr/include/c++/11/bits/char_traits.h:
+
+/usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
+
+/usr/include/libintl.h:
+
+/usr/include/c++/11/bits/locale_facets_nonio.tcc:
+
+/usr/include/c++/11/bits/locale_conv.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/describe_parameters__traits.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_type__struct.hpp:
+
+/usr/include/c++/11/bits/quoted_string.h:
+
+/usr/include/x86_64-linux-gnu/bits/signum-generic.h:
+
+/usr/include/c++/11/sstream:
+
+/usr/include/c++/11/istream:
+
+/usr/include/c++/11/ostream:
+
+/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
+
+/usr/include/c++/11/bits/istream.tcc:
+
+/opt/ros/humble/include/rclcpp/rclcpp/generic_subscription.hpp:
+
+/usr/include/c++/11/bits/fs_dir.h:
+
+/usr/include/c++/11/bits/fs_ops.h:
+
+/opt/ros/humble/include/ament_index_cpp/ament_index_cpp/visibility_control.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/rclcpp.hpp:
+
+/usr/include/strings.h:
+
+/usr/include/c++/11/tuple:
+
+/usr/include/x86_64-linux-gnu/bits/types/sig_atomic_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/ss_flags.h:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-arch.h:
+
+/opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_publisher_payload.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/siginfo-consts.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigval_t.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/sigevent_t.h:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/srv/detail/list_parameters__builder.hpp:
+
+/usr/include/x86_64-linux-gnu/bits/sigevent-consts.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigaction.h:
+
+/usr/include/yaml-cpp/node/detail/memory.h:
+
+/opt/ros/humble/include/rmw/rmw/qos_string_conversions.h:
+
+/usr/include/x86_64-linux-gnu/bits/sigcontext.h:
+
+/usr/include/x86_64-linux-gnu/bits/types/stack_t.h:
+
+/usr/include/x86_64-linux-gnu/sys/ucontext.h:
 
 /usr/include/x86_64-linux-gnu/bits/posix_opt.h:
 
@@ -1720,26 +1917,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/mutex:
 
-/usr/include/c++/11/ratio:
-
-/usr/include/c++/11/ctime:
-
-/usr/include/c++/11/bits/parse_numbers.h:
-
-/usr/include/features-time64.h:
-
-/usr/include/x86_64-linux-gnu/bits/types/locale_t.h:
-
-/usr/include/c++/11/system_error:
-
-/home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/task_point_array__builder.hpp:
-
-/opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__type_support.hpp:
-
-/opt/ros/humble/include/rcutils/rcutils/types/array_list.h:
-
-/opt/ros/humble/include/rcpputils/rcpputils/filesystem_helper.hpp:
-
 /usr/include/c++/11/atomic:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter__builder.hpp:
@@ -1759,42 +1936,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/c++/11/bits/stl_multiset.h:
 
 /usr/include/c++/11/cassert:
-
-/usr/include/c++/11/ostream:
-
-/usr/include/c++/11/bits/locale_classes.h:
-
-/usr/include/c++/11/ext/aligned_buffer.h:
-
-/usr/include/c++/11/bits/locale_classes.tcc:
-
-/usr/include/c++/11/streambuf:
-
-/usr/include/c++/11/bits/stl_iterator_base_funcs.h:
-
-/usr/include/c++/11/bits/streambuf.tcc:
-
-/usr/include/string.h:
-
-/usr/include/c++/11/cwctype:
-
-/opt/ros/humble/include/rmw/rmw/subscription_content_filter_options.h:
-
-/opt/ros/humble/include/rcutils/rcutils/types/string_map.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_base.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/context.hpp:
-
-/usr/include/c++/11/bits/streambuf_iterator.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/ctype_inline.h:
-
-/usr/include/c++/11/istream:
-
-/opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/point__struct.hpp:
-
-/usr/include/c++/11/bits/istream.tcc:
 
 /usr/include/c++/11/list:
 
@@ -1902,9 +2043,9 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/pose__traits.hpp:
 
-/usr/include/c++/11/bits/list.tcc:
-
 /usr/include/x86_64-linux-gnu/c++/11/bits/gthr.h:
+
+/usr/include/c++/11/bits/list.tcc:
 
 /opt/ros/humble/include/rmw/rmw/events_statuses/events_statuses.h:
 
@@ -1940,9 +2081,9 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /usr/include/c++/11/bits/allocated_ptr.h:
 
-/usr/include/assert.h:
-
 /usr/include/c++/11/codecvt:
+
+/usr/include/assert.h:
 
 /opt/ros/humble/include/rcl_yaml_param_parser/rcl_yaml_param_parser/types.h:
 
@@ -1962,6 +2103,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rcl/rcl/node.h:
 
+/usr/include/yaml-cpp/stlemitter.h:
+
 /opt/ros/humble/include/rcl/rcl/node_options.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/experimental/subscription_intra_process_base.hpp:
@@ -1971,10 +2114,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rcl/rcl/service.h:
 
 /opt/ros/humble/include/rcl/rcl/subscription.h:
-
-/opt/ros/humble/include/rcl/rcl/timer.h:
-
-/usr/include/c++/11/bits/locale_facets_nonio.h:
 
 /usr/include/c++/11/bits/stl_iterator_base_types.h:
 
@@ -1991,6 +2130,12 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rosidl_runtime_cpp/rosidl_runtime_cpp/service_type_support_decl.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/allocator/allocator_common.hpp:
+
+/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__struct.hpp:
+
+/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp:
+
+/opt/ros/humble/include/rmw/rmw/qos_profiles.h:
 
 /usr/include/c++/11/clocale:
 
@@ -2024,13 +2169,11 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rclcpp/rclcpp/client.hpp:
 
-/usr/include/x86_64-linux-gnu/bits/sigstksz.h:
-
 /usr/include/c++/11/condition_variable:
 
-/usr/include/c++/11/optional:
+/usr/include/x86_64-linux-gnu/bits/sigstksz.h:
 
-/usr/include/c++/11/sstream:
+/usr/include/c++/11/optional:
 
 /opt/ros/humble/include/rclcpp/rclcpp/exceptions/exceptions.hpp:
 
@@ -2064,6 +2207,8 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 
 /opt/ros/humble/include/rmw/rmw/topic_endpoint_info.h:
 
+/usr/include/yaml-cpp/node/node.h:
+
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/duration.hpp:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__struct.hpp:
@@ -2083,26 +2228,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/detail/duration__builder.hpp:
 
 /opt/ros/humble/include/rclcpp/rclcpp/subscription_content_filter_options.hpp:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/time_members.h:
-
-/usr/include/c++/11/bits/basic_ios.h:
-
-/usr/include/x86_64-linux-gnu/c++/11/bits/messages_members.h:
-
-/usr/include/c++/11/cxxabi.h:
-
-/usr/include/c++/11/bits/char_traits.h:
-
-/usr/include/x86_64-linux-gnu/bits/thread-shared-types.h:
-
-/usr/include/libintl.h:
-
-/opt/ros/humble/include/rclcpp/rclcpp/subscription_traits.hpp:
-
-/usr/include/c++/11/bits/locale_facets_nonio.tcc:
-
-/usr/include/c++/11/bits/locale_conv.h:
 
 /opt/ros/humble/include/builtin_interfaces/builtin_interfaces/msg/rosidl_generator_cpp__visibility_control.hpp:
 
@@ -2131,8 +2256,6 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /usr/include/signal.h:
 
 /opt/ros/humble/include/rclcpp/rclcpp/waitable.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__type_support.hpp:
 
 /usr/include/x86_64-linux-gnu/bits/floatn.h:
 
@@ -2191,9 +2314,3 @@ CMakeFiles/coverage_planner_node.dir/src/coverage_planner_node.cpp.o: /home/vbox
 /opt/ros/humble/include/rclcpp/rclcpp/detail/rmw_implementation_specific_payload.hpp:
 
 /opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/set_parameters_result__builder.hpp:
-
-/opt/ros/humble/include/rcl_interfaces/rcl_interfaces/msg/detail/parameter_value__struct.hpp:
-
-/opt/ros/humble/include/rmw/rmw/qos_profiles.h:
-
-/opt/ros/humble/include/libstatistics_collector/libstatistics_collector/collector/generate_statistics_message.hpp:

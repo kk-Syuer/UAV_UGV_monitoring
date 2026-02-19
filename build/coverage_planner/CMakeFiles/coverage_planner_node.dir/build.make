@@ -106,6 +106,7 @@ coverage_planner_node: /opt/ros/humble/lib/libgeometry_msgs__rosidl_typesupport_
 coverage_planner_node: /opt/ros/humble/lib/libgeometry_msgs__rosidl_typesupport_introspection_cpp.so
 coverage_planner_node: /opt/ros/humble/lib/libgeometry_msgs__rosidl_typesupport_cpp.so
 coverage_planner_node: /opt/ros/humble/lib/libgeometry_msgs__rosidl_generator_py.so
+coverage_planner_node: /usr/lib/x86_64-linux-gnu/libyaml-cpp.so.0.7.0
 coverage_planner_node: /opt/ros/humble/lib/liblibstatistics_collector.so
 coverage_planner_node: /opt/ros/humble/lib/librcl.so
 coverage_planner_node: /opt/ros/humble/lib/librmw_implementation.so
