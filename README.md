@@ -428,3 +428,12 @@ This project is intended for:
 ## License
 
 MIT
+
+
+## Charging debug trace parameter
+
+UAV nodes support a runtime parameter:
+
+- `charging_debug_trace` (default `false`)
+
+When enabled, the node emits structured one-line `CHARGE_TRACE` logs with event IDs and state snapshots for charge trigger/decision/state-transition/motion debugging.
