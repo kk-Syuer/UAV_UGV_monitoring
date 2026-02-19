@@ -2753,19 +2753,21 @@ private:
   {
     static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
     constexpr int throttle_ms = 5000;
+    const bool charge_motion_active =
+      (charge_state_ == ChargeState::TO_UGV || charge_state_ == ChargeState::RETURNING);
     if (!mobility_enabled_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: mobility disabled; holding position.",
                            uav_id_.c_str());
       return;
     }
-    if (!deployment_received_) {
+    if (!deployment_received_ && !charge_motion_active) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for deployment; holding position.",
                            uav_id_.c_str());
       return;
     }
-    if (!start_mobility_received_) {
+    if (!start_mobility_received_ && !charge_motion_active) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for MOTION_START; holding position.",
                            uav_id_.c_str());
