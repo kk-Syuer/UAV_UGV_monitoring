@@ -7,6 +7,7 @@
 #include <list>
 #include <cmath>
 #include <limits>
+#include <exception>
 
 #include "rclcpp/rclcpp.hpp"
 
@@ -920,6 +921,7 @@ private:
 
     if (!accepted) {
       has_charge_slot_ = false;
+      charge_target_pose_valid_ = false;
       charge_state_ = ChargeState::IDLE;
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: CHARGE_DECISION rejected (slot=%s). Staying in normal mode.",
@@ -945,6 +947,7 @@ private:
         }
       }
 
+      charge_target_pose_valid_ = pose_ok;
       if (pose_ok) {
         RCLCPP_INFO(this->get_logger(),
                     "UAV %s: CHARGE_DECISION accepted -> TO_UGV (slot=%s target=(%.1f, %.1f, %.1f)).",
@@ -952,14 +955,15 @@ private:
                     charge_target_pose_.position.x, charge_target_pose_.position.y, charge_target_pose_.position.z);
       } else {
         RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: CHARGE_DECISION accepted but UGV pose unknown (slot=%s). Charging in place.",
+                    "UAV %s: CHARGE_DECISION accepted but UGV pose unknown (slot=%s). Will retry pose resolution while TO_UGV.",
                     uav_id_.c_str(), slot_id.c_str());
-        beginChargingSession(now);
       }
     } else {
-      RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: CHARGE_DECISION accepted but UAV is already charging or dead.",
-                  uav_id_.c_str());
+      has_charge_slot_ = false;
+      charge_target_pose_valid_ = false;
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: CHARGE_DECISION accepted (slot=%s) but UAV is already charging or dead; clearing stale slot.",
+                  uav_id_.c_str(), slot_id.c_str());
     }
 
     // Optional: mark control message as delivered for metrics
@@ -1034,6 +1038,7 @@ private:
 
     is_charging_ = true;
     has_charge_slot_ = false;
+    charge_target_pose_valid_ = false;
     charge_state_ = ChargeState::CHARGING;
     energy_at_charge_start_ = battery_energy_;
     charge_start_time_ = now;
@@ -1424,7 +1429,7 @@ private:
   bool parseChargeDecisionPayload(const std::string & payload,
                                   bool & accepted,
                                   std::string & slot_id,
-                                  geometry_msgs::msg::Pose & ugv_pose) const
+                                  geometry_msgs::msg::Pose & ugv_pose)
   {
     accepted = true;
     slot_id.clear();
@@ -1452,19 +1457,40 @@ private:
       } else if (key == "slot_id") {
         slot_id = value;
       } else if (key == "ugv_x") {
-        ugv_pose.position.x = std::stod(value);
-        has_x = true;
+        try {
+          ugv_pose.position.x = std::stod(value);
+          has_x = true;
+        } catch (const std::exception &) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: invalid ugv_x in CHARGE_DECISION payload: '%s'",
+                      uav_id_.c_str(), value.c_str());
+        }
       } else if (key == "ugv_y") {
-        ugv_pose.position.y = std::stod(value);
-        has_y = true;
+        try {
+          ugv_pose.position.y = std::stod(value);
+          has_y = true;
+        } catch (const std::exception &) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: invalid ugv_y in CHARGE_DECISION payload: '%s'",
+                      uav_id_.c_str(), value.c_str());
+        }
       } else if (key == "ugv_z") {
-        ugv_pose.position.z = std::stod(value);
-        has_z = true;
+        try {
+          ugv_pose.position.z = std::stod(value);
+          has_z = true;
+        } catch (const std::exception &) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: invalid ugv_z in CHARGE_DECISION payload: '%s'",
+                      uav_id_.c_str(), value.c_str());
+        }
       }
     }
 
     ugv_pose.orientation.w = 1.0;
-    return has_x && has_y && has_z;
+    if (!has_z) {
+      ugv_pose.position.z = pose_.position.z;
+    }
+    return has_x && has_y;
   }
 
   bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
@@ -2753,19 +2779,21 @@ private:
   {
     static rclcpp::Clock steady_clock(RCL_STEADY_TIME);
     constexpr int throttle_ms = 5000;
+    const bool charge_motion_active =
+      (charge_state_ == ChargeState::TO_UGV || charge_state_ == ChargeState::RETURNING);
     if (!mobility_enabled_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: mobility disabled; holding position.",
                            uav_id_.c_str());
       return;
     }
-    if (!deployment_received_) {
+    if (!deployment_received_ && !charge_motion_active) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for deployment; holding position.",
                            uav_id_.c_str());
       return;
     }
-    if (!start_mobility_received_) {
+    if (!start_mobility_received_ && !charge_motion_active) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for MOTION_START; holding position.",
                            uav_id_.c_str());
@@ -2830,6 +2858,24 @@ private:
     bool handled_charge_motion = false;
     if (charge_state_ == ChargeState::TO_UGV) {
       handled_charge_motion = true;
+      if (!charge_target_pose_valid_) {
+        if (resolveUgvPose(charge_target_pose_)) {
+          charge_target_pose_.position.z = pose_.position.z;
+          charge_target_pose_valid_ = true;
+          RCLCPP_INFO(this->get_logger(),
+                      "UAV %s: resolved UGV pose during TO_UGV retry target=(%.1f, %.1f, %.1f).",
+                      uav_id_.c_str(),
+                      charge_target_pose_.position.x,
+                      charge_target_pose_.position.y,
+                      charge_target_pose_.position.z);
+        } else {
+          RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
+                               "UAV %s: TO_UGV active but UGV pose unresolved; holding and retrying.",
+                               uav_id_.c_str());
+          return;
+        }
+      }
+
       bool reached = stepTowards2D(
         charge_target_pose_.position.x,
         charge_target_pose_.position.y);
@@ -2870,8 +2916,9 @@ private:
     telemetryPolicyTick();
     if (has_charge_slot_ && charge_state_ != ChargeState::TO_UGV && !is_charging_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000,
-                           "UAV %s: charge slot granted but not in TO_UGV (state=%d)",
+                           "UAV %s: stale charge slot without TO_UGV state=%d; clearing slot.",
                            uav_id_.c_str(), static_cast<int>(charge_state_));
+      has_charge_slot_ = false;
     }
     if (!handled_charge_motion) {
       if (fallback_mode_active_ && role_ == 0) {
@@ -3834,6 +3881,7 @@ private:
   ChargeState charge_state_;
   geometry_msgs::msg::Pose charge_departure_pose_;
   geometry_msgs::msg::Pose charge_target_pose_;
+  bool charge_target_pose_valid_ = false;
   geometry_msgs::msg::Pose ugv_pose_;
   bool ugv_pose_known_;
 

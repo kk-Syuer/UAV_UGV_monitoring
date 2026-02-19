@@ -1492,8 +1492,16 @@ private:
                     charge_duration_sec,
                     queue_.size(), active_sessions_.size() + 1, max_parallel_spots_);
       }
-      // Also send the decision through the routed network as a control message
-      sendDecisionControlMessage(job, now, rationale, slot_id);
+      // Also send the decision through the routed network as a control message.
+      // IMPORTANT: only consume dock capacity when the decision was actually sent.
+      const bool decision_sent = sendDecisionControlMessage(job, now, rationale, slot_id);
+      if (!decision_sent) {
+        queue_.push_front(job);
+        RCLCPP_WARN(this->get_logger(),
+                    "UGV: failed to send CHARGE_DECISION for %s, re-queued request and preserving dock capacity.",
+                    job.uav_id.c_str());
+        break;
+      }
 
       if (!instant_completion) {
         float initial_battery = job_battery;
@@ -1923,7 +1931,7 @@ private:
   // Optional: store CH poses if we want geometric reasoning later
   std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
   // Send a routed control message so the UAV receives its decision.
-  void sendDecisionControlMessage(const QueueEntry & job,
+  bool sendDecisionControlMessage(const QueueEntry & job,
                                   const rclcpp::Time & now,
                                   const DecisionRationale & rationale,
                                   const std::string & slot_id)
@@ -1941,7 +1949,7 @@ private:
                   "UGV %s: no route to %s for CHARGE_DECISION",
                   ugv_id_.c_str(), job.uav_id.c_str());
       publishRoutingEvent("NO_ROUTE_CHARGE_DECISION", job.uav_id, msg.next_hop_id);
-      return;
+      return false;
     }
 
     msg.flow_type = 1;              // CONTROL_ALERT
@@ -1970,7 +1978,7 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: dropping CHARGE_DECISION msg_id=%s (next hop unreachable)",
                   ugv_id_.c_str(), msg.msg_id.c_str());
-      return;
+      return false;
     }
 
     RCLCPP_INFO(this->get_logger(),
@@ -1981,6 +1989,7 @@ private:
 
     control_pub_->publish(msg);
     registerPendingAck(msg, charge_decision_max_retries_, charge_decision_retry_sec_);
+    return true;
   }
 
   // Recompute dock capacity based on fleet mix and utilization target.
