@@ -2925,9 +2925,23 @@ private:
             break;
 
           if (telemetry_rendezvous_active_) {
+            bool has_rendezvous_target = false;
+            geometry_msgs::msg::Point rendezvous_target;
+
             auto it_ch = ch_poses_.find(my_ch_id_);
             if (it_ch != ch_poses_.end()) {
-              bool reached_ch = stepTowards2D(it_ch->second.position.x, it_ch->second.position.y);
+              rendezvous_target = it_ch->second.position;
+              has_rendezvous_target = true;
+            } else {
+              auto it_nb = neighbors_.find(my_ch_id_);
+              if (it_nb != neighbors_.end()) {
+                rendezvous_target = it_nb->second.pose.position;
+                has_rendezvous_target = true;
+              }
+            }
+
+            if (has_rendezvous_target) {
+              bool reached_ch = stepTowards2D(rendezvous_target.x, rendezvous_target.y);
               (void)reached_ch;
               double dist_to_ch = 0.0;
               if (isWithinChServiceRange(&dist_to_ch)) {
@@ -2939,8 +2953,12 @@ private:
                               uav_id_.c_str());
                 }
               }
+              break;
             }
-            break;
+
+            RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                                 "UAV %s: telemetry rendezvous active but CH pose unknown; continuing patrol until CH position is known.",
+                                 uav_id_.c_str());
           }
 
           geometry_msgs::msg::Point & target = task_points_[current_task_index_];
