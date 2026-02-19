@@ -225,9 +225,20 @@ public:
       this->declare_parameter<bool>("mobility_enabled", true);
     mobility_dt_sec_ =
       this->declare_parameter<double>("mobility_dt_sec", 0.2);
-    // Default cruise speed ~55 km/h
-    uav_speed_mps_ =
-      this->declare_parameter<double>("uav_speed_mps", 15.3);
+    // Movement speed follows nominal drain rate baseline:
+    // speed = baseline_speed * drain_rate / baseline_rate
+    const double configured_uav_speed_mps =
+      this->declare_parameter<double>("uav_speed_mps", kBaselineSpeedMps);
+    const double role_drain_rate = (role_ == 1) ? drain_ch : drain_member;
+    const double derived_uav_speed_mps =
+      kBaselineSpeedMps * (role_drain_rate / kBaselineDrainRate);
+    uav_speed_mps_ = derived_uav_speed_mps;
+    if (std::abs(configured_uav_speed_mps - derived_uav_speed_mps) > 1e-6) {
+      RCLCPP_INFO(
+        this->get_logger(),
+        "UAV %s: overriding configured speed %.3f m/s with drain-derived speed %.3f m/s.",
+        uav_id_.c_str(), configured_uav_speed_mps, derived_uav_speed_mps);
+    }
     tasks_per_round_ =
       this->declare_parameter<int>("tasks_per_round", 8);
     deployment_arrival_eps_ =
@@ -623,11 +634,10 @@ private:
       // Not charging: drain battery based on role and temperature
       float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
       float temp_factor = temperatureFactor(current_temperature_c_);
-      float f_motion = motionFactor(current_speed_mps_);
       float f_wind   = windFactor(current_speed_mps_);
       float f_rain   = rainFactor();
 
-      float drain_rate = base_drain * temp_factor * f_motion * f_wind * f_rain;
+      float drain_rate = base_drain * temp_factor * f_wind * f_rain;
 
       battery_energy_ -= drain_rate;
 
@@ -3032,17 +3042,6 @@ private:
   }
 
 
-  float motionFactor(float speed_mps) const
-  {
-    if (speed_mps < 0.1f)
-      return 1.0f;
-
-    const float v_ref = 5.0f;
-    const float k_speed = 0.3f;
-
-    return 1.0f + k_speed * (speed_mps / v_ref);
-  }
-    
   float windFactor(float speed_mps) const
   {
     if (speed_mps <= 0.1f || current_wind_speed_mps_ <= 0.1f)
@@ -3061,18 +3060,24 @@ private:
     double wx = std::cos(current_wind_dir_rad_);
     double wy = std::sin(current_wind_dir_rad_);
 
-    // Opposite = headwind direction
+    // Opposite = headwind direction.
+    // cos_theta: +1 full headwind, -1 full tailwind.
     double wx_op = -wx;
     double wy_op = -wy;
 
-    double cos_theta = vx * wx_op + vy * wy_op; // 1 = full headwind
-    if (cos_theta < 0.0) cos_theta = 0.0;
+    double cos_theta = vx * wx_op + vy * wy_op;
+    if (cos_theta < -1.0) cos_theta = -1.0;
     if (cos_theta > 1.0) cos_theta = 1.0;
 
     const float k_wind = 0.5f;
     const float v_ref = 10.0f;
+    float factor = 1.0f + k_wind * static_cast<float>(cos_theta) * (current_wind_speed_mps_ / v_ref);
 
-    return 1.0f + k_wind * cos_theta * (current_wind_speed_mps_ / v_ref);
+    // Keep a physical floor to avoid unrealistically low/negative drain under strong tailwind.
+    if (factor < 0.6f) {
+      factor = 0.6f;
+    }
+    return factor;
   }
 
   float rainFactor() const
@@ -3820,6 +3825,8 @@ private:
   float current_rain_intensity_ = 0.0f;
 
   // Drain model
+  static constexpr double kBaselineSpeedMps = 15.0;
+  static constexpr double kBaselineDrainRate = 0.037037;
   float drain_rate_member_;
   float drain_rate_ch_;
   float current_temperature_c_;
