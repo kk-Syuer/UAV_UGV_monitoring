@@ -330,6 +330,10 @@ class FleetVizNode(Node):
             self.cluster_colors[cluster_id] = color
         return self.cluster_colors[cluster_id]
 
+    def _cluster_key_for_task_point(self, cluster_id: str) -> str:
+        """Use the same cluster color key for CH, members, and task points."""
+        return cluster_id or 'unassigned'
+
     def traffic_cb(self, msg: TrafficMessage):
         """Track UGV pose from HELLO traffic so we can show motion."""
         if msg.control_type == 'DROP':
@@ -922,7 +926,7 @@ class FleetVizNode(Node):
         if self.sink_pose is not None:
             self.ax.scatter(self.sink_pose.position.x,
                             self.sink_pose.position.y,
-                            marker='o', s=80, edgecolors='white', facecolors='none')
+                            marker='s', s=90, edgecolors='white', facecolors='none')
             self.ax.text(self.sink_pose.position.x,
                          self.sink_pose.position.y + 5,
                          'sink', color='white', fontsize=8)
@@ -938,7 +942,7 @@ class FleetVizNode(Node):
         # draw task points first so UAVs appear above
         task_legend = None
         for tp in self.task_points:
-            color = self.color_for_cluster(tp.cluster_id)
+            color = self.color_for_cluster(self._cluster_key_for_task_point(tp.cluster_id))
             self.ax.scatter(tp.position.x, tp.position.y,
                             marker='x', s=40, color=color, alpha=0.9)
             self.ax.text(tp.position.x, tp.position.y - 5,
