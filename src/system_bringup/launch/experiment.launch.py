@@ -233,6 +233,7 @@ def _make_nodes(context, *args, **kwargs):
 
     # UAV params shared
     task_tlm = cfg.get("task_telemetry", {})
+    telemetry_policy = cfg.get("telemetry_policy", {})
     shared_uav_params = {
         "neighbor_timeout_sec": neighbor_timeout,
         "comm_radius_m": comm_radius,
@@ -252,6 +253,11 @@ def _make_nodes(context, *args, **kwargs):
         "task_telemetry_send_prob": float(task_tlm.get("send_prob", 1.0)),
         "task_telemetry_ttl": int(task_tlm.get("ttl_hops", 16)),
         "task_telemetry_flow_label": str(task_tlm.get("flow_label", "SEARCH_TELEMETRY")),
+        "telemetry_policy_mode": str(telemetry_policy.get("mode", "option_c")),
+        "telemetry_tmax_sec": float(telemetry_policy.get("tmax_sec", 120.0)),
+        "telemetry_kmax": int(telemetry_policy.get("kmax", 10)),
+        "telemetry_upload_batch": bool(telemetry_policy.get("upload_batch", True)),
+        "telemetry_log_debug": bool(telemetry_policy.get("log_debug", True)),
     }
 
     uav_pkg = _get(cfg, ["executables", "uav_pkg"], "uav_fleet")

@@ -64,6 +64,13 @@ class UavNode : public rclcpp::Node
     rclcpp::Time expiry_time;
   };
 
+  struct TaskTelemetryBucket
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    rclcpp::Time created_at;
+    int task_index;
+  };
+
   class BufferManager
   {
   public:
@@ -299,12 +306,32 @@ public:
     task_telemetry_ttl_ = static_cast<uint32_t>(
       this->declare_parameter<int>("task_telemetry_ttl", 16));
     task_telemetry_flow_label_ = this->declare_parameter<std::string>("task_telemetry_flow_label", "SEARCH_TELEMETRY");
+    telemetry_policy_mode_ = this->declare_parameter<std::string>("telemetry_policy_mode", "option_c");
+    telemetry_tmax_sec_ = this->declare_parameter<double>("telemetry_tmax_sec", 120.0);
+    telemetry_kmax_ = std::max(1, this->declare_parameter<int>("telemetry_kmax", 10));
+    telemetry_upload_batch_ = this->declare_parameter<bool>("telemetry_upload_batch", true);
+    telemetry_log_debug_ = this->declare_parameter<bool>("telemetry_log_debug", true);
+    telemetry_policy_option_c_ = (telemetry_policy_mode_ == "option_c");
+    if (!telemetry_policy_option_c_ && telemetry_policy_mode_ != "legacy") {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: unknown telemetry_policy_mode='%s', forcing legacy mode.",
+                  uav_id_.c_str(), telemetry_policy_mode_.c_str());
+      telemetry_policy_mode_ = "legacy";
+    }
     int rng_seed = this->declare_parameter<int>("random_seed", -1);
     if (rng_seed >= 0) {
       rng_.seed(static_cast<unsigned int>(rng_seed));
     } else {
       rng_.seed(std::random_device{}());
     }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s telemetry policy signature: mode=%s Tmax=%.1fs Kmax=%d",
+                uav_id_.c_str(), telemetry_policy_mode_.c_str(), telemetry_tmax_sec_, telemetry_kmax_);
+    RCLCPP_INFO(this->get_logger(),
+                "UAV %s telemetry policy params: upload_batch=%s log_debug=%s",
+                uav_id_.c_str(), telemetry_upload_batch_ ? "true" : "false",
+                telemetry_log_debug_ ? "true" : "false");
 
     // Location-aided DTN routing is disabled in centralized routing mode.
     bool ladtr_enabled = this->declare_parameter<bool>("ladtr_enabled", false);
@@ -1035,6 +1062,135 @@ private:
     return base;
   }
 
+  bool isWithinChServiceRange(double * out_distance = nullptr) const
+  {
+    if (role_ != 0) {
+      if (out_distance) {
+        *out_distance = 0.0;
+      }
+      return true;
+    }
+
+    geometry_msgs::msg::Point ch_position;
+    bool has_ch_position = false;
+    double ch_service_radius = static_cast<double>(service_radius_);
+
+    auto it_ch_neighbor = neighbors_.find(my_ch_id_);
+    if (it_ch_neighbor != neighbors_.end()) {
+      ch_position = it_ch_neighbor->second.pose.position;
+      has_ch_position = true;
+      if (it_ch_neighbor->second.comm_radius_m > 0.0f) {
+        ch_service_radius = static_cast<double>(it_ch_neighbor->second.comm_radius_m);
+      }
+    }
+
+    if (!has_ch_position) {
+      auto it_ch_pose = ch_poses_.find(my_ch_id_);
+      if (it_ch_pose != ch_poses_.end()) {
+        ch_position = it_ch_pose->second.position;
+        has_ch_position = true;
+      }
+    }
+
+    if (!has_ch_position) {
+      if (out_distance) {
+        *out_distance = std::numeric_limits<double>::infinity();
+      }
+      return false;
+    }
+
+    double dist = distance2d(pose_.position, ch_position);
+    if (out_distance) {
+      *out_distance = dist;
+    }
+    return dist <= ch_service_radius;
+  }
+
+  void enqueueTaskTelemetry(const uav_msgs::msg::TrafficMessage & msg, int task_index)
+  {
+    TaskTelemetryBucket bucket;
+    bucket.msg = msg;
+    bucket.created_at = this->now();
+    bucket.task_index = task_index;
+    telemetry_buffer_.push_back(bucket);
+  }
+
+  size_t uploadBufferedTelemetryIfInRange(bool force_batch = false)
+  {
+    if (!telemetry_policy_option_c_ || role_ != 0 || telemetry_buffer_.empty()) {
+      return 0;
+    }
+    double dist_to_ch = 0.0;
+    if (!isWithinChServiceRange(&dist_to_ch)) {
+      return 0;
+    }
+
+    const bool burst = force_batch || telemetry_upload_batch_;
+    size_t sent_count = 0;
+    while (!telemetry_buffer_.empty()) {
+      auto & oldest = telemetry_buffer_.front();
+      bool sent = publishToBus(oldest.msg, false);
+      if (!sent) {
+        if (telemetry_log_debug_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: telemetry upload blocked in-range (msg_id=%s, dist_to_ch=%.2f)",
+                      uav_id_.c_str(), oldest.msg.msg_id.c_str(), dist_to_ch);
+        }
+        break;
+      }
+      telemetry_buffer_.pop_front();
+      ++sent_count;
+      if (!burst) {
+        break;
+      }
+    }
+
+    if (sent_count > 0) {
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: telemetry upload complete sent=%zu remaining=%zu",
+                  uav_id_.c_str(), sent_count, telemetry_buffer_.size());
+    }
+    return sent_count;
+  }
+
+  void telemetryPolicyTick()
+  {
+    if (!telemetry_policy_option_c_ || role_ != 0) {
+      return;
+    }
+
+    uploadBufferedTelemetryIfInRange(false);
+
+    if (telemetry_buffer_.empty()) {
+      telemetry_rendezvous_active_ = false;
+      return;
+    }
+
+    if (charge_state_ != ChargeState::IDLE || is_charging_ || emergency_recovery_active_) {
+      return;
+    }
+
+    double dist_to_ch = 0.0;
+    if (isWithinChServiceRange(&dist_to_ch)) {
+      return;
+    }
+
+    auto now = this->now();
+    double oldest_age_sec = (now - telemetry_buffer_.front().created_at).seconds();
+    bool trigger_tmax = oldest_age_sec >= telemetry_tmax_sec_;
+    bool trigger_kmax = static_cast<int>(telemetry_buffer_.size()) >= telemetry_kmax_;
+    if (!telemetry_rendezvous_active_ && (trigger_tmax || trigger_kmax)) {
+      telemetry_rendezvous_active_ = true;
+      if (mobility_enabled_ && mobility_phase_ == MobilityPhase::IDLE) {
+        mobility_phase_ = MobilityPhase::TASK_MOBILITY;
+      }
+      const char * reason = trigger_tmax ? "Tmax exceeded" : "Kmax exceeded";
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: telemetry rendezvous trigger reason=%s oldest_age=%.2fs buffer_count=%zu",
+                  uav_id_.c_str(), reason, oldest_age_sec, telemetry_buffer_.size());
+    }
+  }
+
   void maybeGenerateTaskTelemetry(const geometry_msgs::msg::Point & p, int task_index)
   {
     if (role_ != 0) {
@@ -1077,10 +1233,30 @@ private:
       }
 
       RCLCPP_INFO(this->get_logger(),
-                  "[TASK-TLM] %s generated telemetry msg_id=%s dst=%s next_hop=%s bytes=%zu",
-                  uav_id_.c_str(), msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str(), msg.payload.size());
+                  "[TASK-TLM] %s telemetry bucket created task=%d msg_id=%s ts=%.3f",
+                  uav_id_.c_str(), task_index, msg.msg_id.c_str(), msg.creation_time.seconds());
 
-      publishToBus(msg, true);
+      if (!telemetry_policy_option_c_) {
+        publishToBus(msg, true);
+        continue;
+      }
+
+      double dist_to_ch = 0.0;
+      bool in_range = isWithinChServiceRange(&dist_to_ch);
+      if (in_range) {
+        bool sent = publishToBus(msg, false);
+        RCLCPP_INFO(this->get_logger(),
+                    "[TASK-TLM] %s telemetry immediate send in_range=true sent=%s dist_to_ch=%.2f",
+                    uav_id_.c_str(), sent ? "true" : "false", dist_to_ch);
+        if (!sent) {
+          enqueueTaskTelemetry(msg, task_index);
+        }
+      } else {
+        enqueueTaskTelemetry(msg, task_index);
+        RCLCPP_INFO(this->get_logger(),
+                    "[TASK-TLM] %s buffering telemetry (out of CH range) dist_to_ch=%.2f buffer_size=%zu",
+                    uav_id_.c_str(), dist_to_ch, telemetry_buffer_.size());
+      }
     }
   }
 
@@ -2664,6 +2840,7 @@ private:
     }
 
     bool held_by_ch = false;
+    telemetryPolicyTick();
     if (has_charge_slot_ && charge_state_ != ChargeState::TO_UGV && !is_charging_) {
       RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000,
                            "UAV %s: charge slot granted but not in TO_UGV (state=%d)",
@@ -2743,8 +2920,27 @@ private:
           // Only members have task mobility
           if (role_ != 0)
             break;
-          if (task_points_.empty())
+          if (task_points_.empty() && !telemetry_rendezvous_active_)
             break;
+
+          if (telemetry_rendezvous_active_) {
+            auto it_ch = ch_poses_.find(my_ch_id_);
+            if (it_ch != ch_poses_.end()) {
+              bool reached_ch = stepTowards2D(it_ch->second.position.x, it_ch->second.position.y);
+              (void)reached_ch;
+              double dist_to_ch = 0.0;
+              if (isWithinChServiceRange(&dist_to_ch)) {
+                uploadBufferedTelemetryIfInRange(true);
+                if (telemetry_buffer_.empty()) {
+                  telemetry_rendezvous_active_ = false;
+                  RCLCPP_INFO(this->get_logger(),
+                              "UAV %s: telemetry rendezvous complete, resuming patrol.",
+                              uav_id_.c_str());
+                }
+              }
+            }
+            break;
+          }
 
           geometry_msgs::msg::Point & target = task_points_[current_task_index_];
 
@@ -3687,6 +3883,14 @@ private:
   double task_telemetry_send_prob_ = 1.0;
   uint32_t task_telemetry_ttl_ = 16;
   std::string task_telemetry_flow_label_ = "SEARCH_TELEMETRY";
+  std::string telemetry_policy_mode_ = "option_c";
+  bool telemetry_policy_option_c_ = true;
+  double telemetry_tmax_sec_ = 120.0;
+  int telemetry_kmax_ = 10;
+  bool telemetry_upload_batch_ = true;
+  bool telemetry_log_debug_ = true;
+  bool telemetry_rendezvous_active_ = false;
+  std::deque<TaskTelemetryBucket> telemetry_buffer_;
   std::mt19937 rng_;
 
 };
