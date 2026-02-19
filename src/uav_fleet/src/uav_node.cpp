@@ -30,6 +30,7 @@
 #include <unordered_set>
 #include <random>
 #include <algorithm>
+#include <cctype>
 #include <sstream>
 #include <vector>
 #include <deque>
@@ -849,32 +850,61 @@ private:
       return;
     }
 
-    auto now = this->now();
+    bool accepted = true;
+    std::string slot_id;
+    geometry_msgs::msg::Pose payload_ugv_pose;
+    const bool payload_has_pose = parseChargeDecisionPayload(msg->payload, accepted, slot_id, payload_ugv_pose);
 
+    RCLCPP_INFO(this->get_logger(),
+                "[RX CHARGE_DECISION] uav=%s role=%u src=%s msg_id=%s accepted=%d slot_id=%s payload=\"%s\"",
+                uav_id_.c_str(), role_, msg->src_id.c_str(), msg->msg_id.c_str(),
+                accepted ? 1 : 0, slot_id.c_str(), msg->payload.c_str());
+
+    auto now = this->now();
     waiting_for_charge_response_ = false;
-    has_charge_slot_ = false;  // we start charging immediately
     charge_request_pending_.reset();
+
+    if (!accepted) {
+      has_charge_slot_ = false;
+      charge_state_ = ChargeState::IDLE;
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: CHARGE_DECISION rejected (slot=%s). Staying in normal mode.",
+                  uav_id_.c_str(), slot_id.c_str());
+      return;
+    }
+
+    has_charge_slot_ = true;
 
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
       charge_state_ = ChargeState::TO_UGV;
 
-      if (resolveUgvPose(charge_target_pose_)) {
+      bool pose_ok = false;
+      if (payload_has_pose) {
+        charge_target_pose_ = payload_ugv_pose;
         charge_target_pose_.position.z = pose_.position.z;
+        pose_ok = true;
+      } else {
+        pose_ok = resolveUgvPose(charge_target_pose_);
+        if (pose_ok) {
+          charge_target_pose_.position.z = pose_.position.z;
+        }
+      }
+
+      if (pose_ok) {
         RCLCPP_INFO(this->get_logger(),
-                    "UAV %s: received CHARGE_DECISION from %s (msg_id=%s). "
-                    "Navigating to UGV at (%.1f, %.1f) before charging.",
-                    uav_id_.c_str(), msg->src_id.c_str(), msg->msg_id.c_str(),
-                    charge_target_pose_.position.x, charge_target_pose_.position.y);
+                    "UAV %s: CHARGE_DECISION accepted -> TO_UGV (slot=%s target=(%.1f, %.1f, %.1f)).",
+                    uav_id_.c_str(), slot_id.c_str(),
+                    charge_target_pose_.position.x, charge_target_pose_.position.y, charge_target_pose_.position.z);
       } else {
         RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: received CHARGE_DECISION but UGV pose unknown. Charging in place.",
-                    uav_id_.c_str());
+                    "UAV %s: CHARGE_DECISION accepted but UGV pose unknown (slot=%s). Charging in place.",
+                    uav_id_.c_str(), slot_id.c_str());
         beginChargingSession(now);
       }
     } else {
       RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: received CHARGE_DECISION but is already charging or dead.",
+                  "UAV %s: CHARGE_DECISION accepted but UAV is already charging or dead.",
                   uav_id_.c_str());
     }
 
@@ -949,6 +979,7 @@ private:
     }
 
     is_charging_ = true;
+    has_charge_slot_ = false;
     charge_state_ = ChargeState::CHARGING;
     energy_at_charge_start_ = battery_energy_;
     charge_start_time_ = now;
@@ -1099,6 +1130,9 @@ private:
     if (msg->uav_id == ugv_id_) {
       ugv_pose_known_ = true;
       ugv_pose_ = msg->pose;
+      RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "UAV %s: updated UGV pose from status to (%.1f, %.1f, %.1f)",
+                           uav_id_.c_str(), ugv_pose_.position.x, ugv_pose_.position.y, ugv_pose_.position.z);
     }
 
     if (role_ == 0 && msg->uav_id == my_ch_id_) {
@@ -1183,10 +1217,60 @@ private:
     publishToBus(msg);
   }
 
+
+  bool parseChargeDecisionPayload(const std::string & payload,
+                                  bool & accepted,
+                                  std::string & slot_id,
+                                  geometry_msgs::msg::Pose & ugv_pose) const
+  {
+    accepted = true;
+    slot_id.clear();
+    bool has_x = false;
+    bool has_y = false;
+    bool has_z = false;
+
+    std::stringstream ss(payload);
+    std::string token;
+    while (std::getline(ss, token, ';')) {
+      if (token.empty()) {
+        continue;
+      }
+      const auto sep = token.find('=');
+      if (sep == std::string::npos) {
+        continue;
+      }
+      std::string key = token.substr(0, sep);
+      std::string value = token.substr(sep + 1);
+      std::transform(key.begin(), key.end(), key.begin(),
+                     [](unsigned char c) { return static_cast<char>(std::tolower(c)); });
+      if (key == "accepted" || key == "granted") {
+        accepted = !(value == "0" || value == "false" || value == "FALSE" ||
+                     value == "reject" || value == "REJECT" || value == "rejected");
+      } else if (key == "slot_id") {
+        slot_id = value;
+      } else if (key == "ugv_x") {
+        ugv_pose.position.x = std::stod(value);
+        has_x = true;
+      } else if (key == "ugv_y") {
+        ugv_pose.position.y = std::stod(value);
+        has_y = true;
+      } else if (key == "ugv_z") {
+        ugv_pose.position.z = std::stod(value);
+        has_z = true;
+      }
+    }
+
+    ugv_pose.orientation.w = 1.0;
+    return has_x && has_y && has_z;
+  }
+
   bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
   {
     if (ugv_pose_known_) {
       pose = ugv_pose_;
+      RCLCPP_DEBUG(this->get_logger(),
+                   "UAV %s: resolveUgvPose succeeded via cached UGV status (%.1f, %.1f, %.1f)",
+                   uav_id_.c_str(), pose.position.x, pose.position.y, pose.position.z);
       return true;
     }
 
@@ -1194,9 +1278,15 @@ private:
     if (it != neighbors_.end()) {
       pose = it->second.pose;
       pose.orientation.w = 1.0;
+      RCLCPP_DEBUG(this->get_logger(),
+                   "UAV %s: resolveUgvPose succeeded via neighbors map (%.1f, %.1f, %.1f)",
+                   uav_id_.c_str(), pose.position.x, pose.position.y, pose.position.z);
       return true;
     }
 
+    RCLCPP_WARN(this->get_logger(),
+                "UAV %s: resolveUgvPose failed (ugv_pose_known=%d, neighbor_entry=%d)",
+                uav_id_.c_str(), ugv_pose_known_ ? 1 : 0, neighbors_.find(ugv_id_) != neighbors_.end() ? 1 : 0);
     return false;
   }
 
@@ -2574,6 +2664,11 @@ private:
     }
 
     bool held_by_ch = false;
+    if (has_charge_slot_ && charge_state_ != ChargeState::TO_UGV && !is_charging_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 3000,
+                           "UAV %s: charge slot granted but not in TO_UGV (state=%d)",
+                           uav_id_.c_str(), static_cast<int>(charge_state_));
+    }
     if (!handled_charge_motion) {
       if (fallback_mode_active_ && role_ == 0) {
         bool reached = stepTowards2D(
