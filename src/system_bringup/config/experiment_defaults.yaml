@@ -93,3 +93,10 @@ task_telemetry:
   send_prob: 1.0
   ttl_hops: 16
   flow_label: SEARCH_TELEMETRY
+
+telemetry_policy:
+  mode: option_c
+  tmax_sec: 120.0
+  kmax: 10
+  upload_batch: true
+  log_debug: true
