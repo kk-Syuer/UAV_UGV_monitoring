@@ -199,6 +199,15 @@ public:
       static_cast<float>(this->declare_parameter<double>("ugv_reserve_energy", 10.0));
     ugv_buffer_energy_ =
       static_cast<float>(this->declare_parameter<double>("ugv_buffer_energy", 10.0));
+    adaptive_request_offset_max_percent_ = static_cast<float>(
+      this->declare_parameter<double>("adaptive_request_offset_max_percent", 15.0));
+    adaptive_request_offset_max_percent_ =
+      std::clamp(adaptive_request_offset_max_percent_, 0.0f, 100.0f);
+    {
+      const size_t seed = std::hash<std::string>{}(uav_id_);
+      const float normalized = static_cast<float>(seed % 10000) / 9999.0f;
+      adaptive_request_offset_percent_ = adaptive_request_offset_max_percent_ * normalized;
+    }
 
     accept_direct_deployment_ =
       this->declare_parameter<bool>("accept_direct_deployment", false);
@@ -233,9 +242,10 @@ public:
 
     RCLCPP_INFO(this->get_logger(),
                 "Starting UAV node id='%s', role=%u, cluster=%s, dst='%s'. "
-                "Batt capacity=%.1f, threshold=%.1f%%, charge_duration=%.1f s",
+                "Batt capacity=%.1f, threshold=%.1f%%, charge_duration=%.1f s, adaptive_offset=+%.2f%%",
                 uav_id_.c_str(), role_, cluster_id_.c_str(), default_dst_id_.c_str(),
-                battery_capacity_, battery_threshold_percent_, charging_duration_sec_);
+                battery_capacity_, battery_threshold_percent_, charging_duration_sec_,
+                adaptive_request_offset_percent_);
 
     // ---- Publishers ----
     status_pub_ = this->create_publisher<uav_msgs::msg::UavStatus>(
@@ -660,10 +670,13 @@ private:
       float dist_to_ugv_m = 0.0f;
       float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_m);
       bool ugv_range_known = energy_to_ugv >= 0.0f;
+      const float adaptive_offset_energy =
+        battery_capacity_ * (adaptive_request_offset_percent_ / 100.0f);
       float emergency_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_)
                                                  : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
       float request_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
                                                : emergency_threshold;
+      request_threshold += adaptive_offset_energy;
 
       bool ch_reachable = true;
       if (role_ == 0) {
@@ -720,9 +733,12 @@ private:
     float dist_to_ugv_m = 0.0f;
     float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_m);
     bool ugv_range_known = energy_to_ugv >= 0.0f;
+    const float adaptive_offset_energy =
+      battery_capacity_ * (adaptive_request_offset_percent_ / 100.0f);
     float request_threshold = ugv_range_known
       ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
       : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+    request_threshold += adaptive_offset_energy;
     bool below_threshold = battery_energy_ <= request_threshold;
     msg.intent_to_leave = below_threshold || waiting_for_charge_response_ ||
       has_charge_slot_ || charge_state_ == ChargeState::TO_UGV;
@@ -3763,6 +3779,8 @@ private:
   float battery_threshold_percent_;
   float ugv_reserve_energy_;
   float ugv_buffer_energy_;
+  float adaptive_request_offset_max_percent_;
+  float adaptive_request_offset_percent_;
   double charging_duration_sec_;
   double charger_power_w_member_ = 180.0;
   double charger_power_w_ch_ = 180.0;
