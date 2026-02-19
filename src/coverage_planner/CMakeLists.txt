@@ -5,6 +5,8 @@ find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(uav_msgs REQUIRED)
 find_package(geometry_msgs REQUIRED)
+find_package(yaml-cpp REQUIRED)
+find_package(ament_index_cpp REQUIRED)
 
 add_library(coverage_planner_lib
   src/coverage_planner.cpp)
@@ -22,7 +24,9 @@ ament_target_dependencies(coverage_planner_node
   rclcpp
   uav_msgs
   geometry_msgs
+  ament_index_cpp
 )
+target_link_libraries(coverage_planner_node yaml-cpp)
 
 install(TARGETS
   coverage_planner_lib

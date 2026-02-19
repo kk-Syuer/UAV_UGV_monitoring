@@ -329,6 +329,10 @@ def _make_nodes(context, *args, **kwargs):
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
         member_ids = [str(m.get("id")) for m in members]
         uav_ids = ch_ids + member_ids
+        fixed_taskpoints_file = str(
+            _get(cfg, ["coverage_planner", "fixed_taskpoints_file"],
+                 "system_bringup/config/taskpoints/fixed_taskpoints.yaml")
+        )
         nodes.append(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
@@ -338,6 +342,20 @@ def _make_nodes(context, *args, **kwargs):
                 "uav_ids": uav_ids,
                 "num_ch": len(ch_ids),
                 "ugv_id": ugv_id,
+                "x_min": float(_get(cfg, ["coverage_planner", "x_min"], 0.0)),
+                "x_max": float(_get(cfg, ["coverage_planner", "x_max"], 500.0)),
+                "y_min": float(_get(cfg, ["coverage_planner", "y_min"], 0.0)),
+                "y_max": float(_get(cfg, ["coverage_planner", "y_max"], 500.0)),
+                "taskpoint_generation_mode": str(
+                    _get(cfg, ["coverage_planner", "taskpoint_generation_mode"], "fixed_file")
+                ),
+                "fixed_taskpoints_file": fixed_taskpoints_file,
+                "fixed_taskpoints_count": int(
+                    _get(cfg, ["coverage_planner", "fixed_taskpoints_count"], 10)
+                ),
+                "fixed_taskpoints_seed": int(
+                    _get(cfg, ["coverage_planner", "fixed_taskpoints_seed"], 0)
+                ),
             })],
         ))
 

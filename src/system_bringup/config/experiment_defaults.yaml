@@ -58,6 +58,15 @@ fault_injector:
 
 coverage_planner:
   enable: true
+  # Simulation bounds; task points outside these ranges are clamped.
+  x_min: 0.0
+  x_max: 500.0
+  y_min: 0.0
+  y_max: 500.0
+  taskpoint_generation_mode: fixed_file
+  fixed_taskpoints_file: system_bringup/config/taskpoints/fixed_taskpoints.yaml
+  fixed_taskpoints_count: 10
+  fixed_taskpoints_seed: 0
 
 planner_viz:
   enable: true
