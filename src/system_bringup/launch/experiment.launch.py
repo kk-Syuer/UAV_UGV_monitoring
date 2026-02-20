@@ -190,7 +190,7 @@ def _make_nodes(context, *args, **kwargs):
     # Sink
     sink_id = str(_get(cfg, ["sink", "sink_id"], "sink_gateway"))
     sink_uplink_ch_id = str(_get(cfg, ["sink", "uplink_ch_id"], ""))
-    sink_params = {"sink_id": sink_id}
+    sink_params = {"sink_id": sink_id, "comm_radius_m": comm_radius}
     if sink_uplink_ch_id:
         sink_params["uplink_ch_id"] = sink_uplink_ch_id
     sink_params["ugv_id"] = ugv_id
@@ -210,6 +210,9 @@ def _make_nodes(context, *args, **kwargs):
         "ch_capacity_wh": ch_capacity_wh,
         "charger_power_w_member": charger_power_w_member,
         "charger_power_w_ch": charger_power_w_ch,
+        "comm_radius_m": comm_radius,
+        "sink_id": sink_id,
+        "neighbor_timeout_sec": neighbor_timeout,
     }
     ugv_pkg = _get(cfg, ["executables", "ugv_pkg"], "ugv_charger")
     ugv_exec = _get(cfg, ["executables", "ugv_exec"], "ugv_charger_node")

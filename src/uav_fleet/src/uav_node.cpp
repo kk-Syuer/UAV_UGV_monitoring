@@ -470,7 +470,8 @@ public:
     ugv_pose_known_ = false;
     ugv_pose_.orientation.w = 1.0;
 
-    service_radius_ = 400.0f;
+    service_radius_ = static_cast<float>(
+      this->declare_parameter<double>("comm_radius_m", 400.0));
 
 
     RCLCPP_INFO(this->get_logger(),

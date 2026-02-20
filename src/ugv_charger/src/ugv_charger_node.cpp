@@ -1160,6 +1160,10 @@ private:
     status.traffic_load = 0.0f;
     status.packet_loss_estimate = 0.0f;
     status.energy_consumption_rate = 0.0f;
+    status.charging_state = 0;
+    status.intent_to_leave = false;
+    status.eta_to_leave_sec = -1.0f;
+    status.comm_radius_m = static_cast<float>(comm_radius_m_);
     status.stamp = now;
     status.backbone_active = true;
 
@@ -1304,7 +1308,11 @@ private:
     return std::sqrt(dx * dx + dy * dy + dz * dz);
   }
 
-  bool neighborReachable(const std::string & id) const
+  // Physical-layer reachability: is the node in range and recently heard?
+  // Used for routing decisions — does NOT filter on charging_state or
+  // backbone_active so that control traffic (CHARGE_DECISION, ACK, etc.)
+  // can still reach CHs that are about to charge or in transit.
+  bool neighborPhysicallyReachable(const std::string & id) const
   {
     if (id.empty()) {
       return false;
@@ -1332,6 +1340,19 @@ private:
     if (range <= 0.0 || dist > range) {
       return false;
     }
+
+    return true;
+  }
+
+  // Strict reachability for relay-quality selection: additionally requires
+  // the node to be an active backbone relay (not charging, not leaving soon).
+  bool neighborReachable(const std::string & id) const
+  {
+    if (!neighborPhysicallyReachable(id)) {
+      return false;
+    }
+
+    const auto & nb = uav_status_.at(id);
 
     const double leave_soon_sec = 15.0;
     if (nb.charging_state != 0) {
@@ -1416,7 +1437,11 @@ private:
       return false;
     }
 
-    if (neighborReachable(candidate_next_hop)) {
+    // Use physical reachability for routing control messages.  The strict
+    // neighborReachable() excludes CHs that are charging or about to leave,
+    // which blocks CHARGE_DECISION delivery — the exact scenario where the
+    // UGV most needs to reach the CH.
+    if (neighborPhysicallyReachable(candidate_next_hop)) {
       return true;
     }
 
