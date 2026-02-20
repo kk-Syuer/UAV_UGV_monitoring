@@ -40,6 +40,8 @@ cdr_serialize(
   cdr << ros_message.wind_direction_deg;
   // Member: temperature_c
   cdr << ros_message.temperature_c;
+  // Member: regime
+  cdr << ros_message.regime;
   return true;
 }
 
@@ -60,6 +62,9 @@ cdr_deserialize(
 
   // Member: temperature_c
   cdr >> ros_message.temperature_c;
+
+  // Member: regime
+  cdr >> ros_message.regime;
 
   return true;
 }
@@ -101,6 +106,10 @@ get_serialized_size(
     current_alignment += item_size +
       eprosima::fastcdr::Cdr::alignment(current_alignment, item_size);
   }
+  // Member: regime
+  current_alignment += padding +
+    eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+    (ros_message.regime.size() + 1);
 
   return current_alignment - initial_alignment;
 }
@@ -161,6 +170,19 @@ max_serialized_size_WeatherStatus(
       eprosima::fastcdr::Cdr::alignment(current_alignment, sizeof(uint32_t));
   }
 
+  // Member: regime
+  {
+    size_t array_size = 1;
+
+    full_bounded = false;
+    is_plain = false;
+    for (size_t index = 0; index < array_size; ++index) {
+      current_alignment += padding +
+        eprosima::fastcdr::Cdr::alignment(current_alignment, padding) +
+        1;
+    }
+  }
+
   size_t ret_val = current_alignment - initial_alignment;
   if (is_plain) {
     // All members are plain, and type is not empty.
@@ -169,7 +191,7 @@ max_serialized_size_WeatherStatus(
     using DataType = uav_msgs::msg::WeatherStatus;
     is_plain =
       (
-      offsetof(DataType, temperature_c) +
+      offsetof(DataType, regime) +
       last_member_size
       ) == ret_val;
   }

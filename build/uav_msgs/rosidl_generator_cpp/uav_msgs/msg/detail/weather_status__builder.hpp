@@ -21,16 +21,32 @@ namespace msg
 namespace builder
 {
 
+class Init_WeatherStatus_regime
+{
+public:
+  explicit Init_WeatherStatus_regime(::uav_msgs::msg::WeatherStatus & msg)
+  : msg_(msg)
+  {}
+  ::uav_msgs::msg::WeatherStatus regime(::uav_msgs::msg::WeatherStatus::_regime_type arg)
+  {
+    msg_.regime = std::move(arg);
+    return std::move(msg_);
+  }
+
+private:
+  ::uav_msgs::msg::WeatherStatus msg_;
+};
+
 class Init_WeatherStatus_temperature_c
 {
 public:
   explicit Init_WeatherStatus_temperature_c(::uav_msgs::msg::WeatherStatus & msg)
   : msg_(msg)
   {}
-  ::uav_msgs::msg::WeatherStatus temperature_c(::uav_msgs::msg::WeatherStatus::_temperature_c_type arg)
+  Init_WeatherStatus_regime temperature_c(::uav_msgs::msg::WeatherStatus::_temperature_c_type arg)
   {
     msg_.temperature_c = std::move(arg);
-    return std::move(msg_);
+    return Init_WeatherStatus_regime(msg_);
   }
 
 private:

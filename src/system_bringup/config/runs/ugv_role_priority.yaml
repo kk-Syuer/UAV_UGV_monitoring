@@ -39,18 +39,17 @@ monitor:
 
 experiment:
   termination_mode: "timeout_only"
-  experiment_timeout_s: 10800
+  experiment_timeout_s: 600
 
 weather:
   enable: true
-  publish_period_sec: 1.0
   wind_mean: 0.0
   rain_mean: 0.0
   temp_c: 18.0
 
   mode: "markov"
-  start_state: "sunny"
-  transition_period_sec: 120.0
+  start_state: "windy"
+  transition_period_sec: 12.0
 fault_injector:
   enable: true
   drop_mode: bus
@@ -114,7 +113,12 @@ task_telemetry:
   send_prob: 1.0
   ttl_hops: 16
   flow_label: SEARCH_TELEMETRY
-
+telemetry_policy:
+  mode: option_c
+  tmax_sec: 120.0
+  kmax: 10
+  upload_batch: true
+  log_debug: true
 uavs:
   ch_ids:
     - ch0

@@ -11,6 +11,10 @@
 #include "rcutils/allocator.h"
 
 
+// Include directives for member types
+// Member `regime`
+#include "rosidl_runtime_c/string_functions.h"
+
 bool
 uav_msgs__msg__WeatherStatus__init(uav_msgs__msg__WeatherStatus * msg)
 {
@@ -21,6 +25,11 @@ uav_msgs__msg__WeatherStatus__init(uav_msgs__msg__WeatherStatus * msg)
   // wind_speed
   // wind_direction_deg
   // temperature_c
+  // regime
+  if (!rosidl_runtime_c__String__init(&msg->regime)) {
+    uav_msgs__msg__WeatherStatus__fini(msg);
+    return false;
+  }
   return true;
 }
 
@@ -34,6 +43,8 @@ uav_msgs__msg__WeatherStatus__fini(uav_msgs__msg__WeatherStatus * msg)
   // wind_speed
   // wind_direction_deg
   // temperature_c
+  // regime
+  rosidl_runtime_c__String__fini(&msg->regime);
 }
 
 bool
@@ -58,6 +69,12 @@ uav_msgs__msg__WeatherStatus__are_equal(const uav_msgs__msg__WeatherStatus * lhs
   if (lhs->temperature_c != rhs->temperature_c) {
     return false;
   }
+  // regime
+  if (!rosidl_runtime_c__String__are_equal(
+      &(lhs->regime), &(rhs->regime)))
+  {
+    return false;
+  }
   return true;
 }
 
@@ -77,6 +94,12 @@ uav_msgs__msg__WeatherStatus__copy(
   output->wind_direction_deg = input->wind_direction_deg;
   // temperature_c
   output->temperature_c = input->temperature_c;
+  // regime
+  if (!rosidl_runtime_c__String__copy(
+      &(input->regime), &(output->regime)))
+  {
+    return false;
+  }
   return true;
 }
 

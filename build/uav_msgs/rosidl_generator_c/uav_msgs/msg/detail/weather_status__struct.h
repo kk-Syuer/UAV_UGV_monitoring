@@ -18,6 +18,10 @@ extern "C"
 
 // Constants defined in the message
 
+// Include directives for member types
+// Member 'regime'
+#include "rosidl_runtime_c/string.h"
+
 /// Struct defined in msg/WeatherStatus in the package uav_msgs.
 /**
   * Simple weather model for the simulator
@@ -32,6 +36,8 @@ typedef struct uav_msgs__msg__WeatherStatus
   float wind_direction_deg;
   /// ambient temperature in Celsius
   float temperature_c;
+  /// "sunny", "windy", "stormy" (current Markov state)
+  rosidl_runtime_c__String regime;
 } uav_msgs__msg__WeatherStatus;
 
 // Struct for a sequence of uav_msgs__msg__WeatherStatus.

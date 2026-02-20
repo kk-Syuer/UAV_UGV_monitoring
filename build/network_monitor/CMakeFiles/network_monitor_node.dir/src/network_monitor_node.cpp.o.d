@@ -666,4 +666,9 @@ CMakeFiles/network_monitor_node.dir/src/network_monitor_node.cpp.o: \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/quaternion__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/twist__traits.hpp \
  /opt/ros/humble/include/geometry_msgs/geometry_msgs/msg/detail/vector3__traits.hpp \
- /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/uav_status__type_support.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/weather_status.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__struct.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__builder.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__traits.hpp \
+ /home/vboxuser/UAV_UGV_netmonitoring/install/uav_msgs/include/uav_msgs/uav_msgs/msg/detail/weather_status__type_support.hpp
