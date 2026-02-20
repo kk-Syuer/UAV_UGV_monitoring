@@ -72,6 +72,7 @@ public:
     control_ttl_ = static_cast<uint32_t>(this->declare_parameter<int>("control_ttl", 12));
     ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
     max_ack_retries_ = this->declare_parameter<int>("max_ack_retries", 5);
+    recovery_lock_duration_sec_ = this->declare_parameter<double>("recovery_lock_duration_sec", 10.0);
 
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
       "/fanet/status", 200,
@@ -194,9 +195,18 @@ private:
     if (ch_states_.count(msg->uav_id) > 0) {
       ch_states_[msg->uav_id].alive = false;
       recovery_requested_ = true;
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY][DECISION] CH %s BATTERY_DEAD -> recovery_requested",
+                  msg->uav_id.c_str());
     }
     if (member_states_.count(msg->uav_id) > 0) {
       member_states_[msg->uav_id].alive = false;
+      // Member death: trigger recovery to redistribute its tasks
+      recovery_requested_ = true;
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY][DECISION] Member %s BATTERY_DEAD -> recovery_requested "
+                  "(task redistribution needed)",
+                  msg->uav_id.c_str());
     }
   }
 
@@ -217,7 +227,22 @@ private:
     if (!msg->ch_id.empty()) {
       ch_cluster_ids_[msg->ch_id] = msg->cluster_id;
     }
+    const auto now = this->now();
     for (const auto & member_id : msg->member_ids) {
+      // Skip members recently reassigned by recovery to avoid ch_manager
+      // overriding recovery decisions with stale static membership data.
+      auto lock_it = recovery_assigned_.find(member_id);
+      if (lock_it != recovery_assigned_.end()) {
+        double elapsed = (now - lock_it->second).seconds();
+        if (elapsed < recovery_lock_duration_sec_) {
+          RCLCPP_DEBUG(this->get_logger(),
+                       "[RECOVERY][LOCK] ignoring ch_manager update for %s "
+                       "(recovery-assigned %.1fs ago, lock=%.1fs)",
+                       member_id.c_str(), elapsed, recovery_lock_duration_sec_);
+          continue;
+        }
+        recovery_assigned_.erase(lock_it);
+      }
       auto & member = member_states_[member_id];
       member.id = member_id;
       member.ch_id = msg->ch_id;
@@ -257,7 +282,15 @@ private:
       return;
     }
 
+    RCLCPP_WARN(this->get_logger(),
+                "[RECOVERY][DECISION] watchdog trigger: ch_timeout=%d sink_unreachable=%d "
+                "ugv_unreachable=%d recovery_requested=%d",
+                ch_timeout, sink_unreachable_, ugv_unreachable_, recovery_requested_);
+
     if ((now - last_recovery_time_).seconds() < recovery_cooldown_sec_) {
+      RCLCPP_INFO(this->get_logger(),
+                  "[RECOVERY][DECISION] cooldown active (%.1fs < %.1fs), deferring",
+                  (now - last_recovery_time_).seconds(), recovery_cooldown_sec_);
       return;
     }
 
@@ -276,6 +309,20 @@ private:
       if (kv.second.alive) {
         alive_chs.push_back(kv.second);
       }
+    }
+
+    {
+      size_t alive_members = 0;
+      for (const auto & kv : member_states_) {
+        if (kv.second.alive) {
+          ++alive_members;
+        }
+      }
+      RCLCPP_WARN(this->get_logger(),
+                  "[RECOVERY][DECISION] epoch=%d alive_chs=%zu alive_members=%zu "
+                  "sink_unreachable=%d ugv_unreachable=%d",
+                  epoch_, alive_chs.size(), alive_members,
+                  sink_unreachable_, ugv_unreachable_);
     }
 
     publishRecoveryStart(epoch_);
@@ -363,6 +410,7 @@ private:
       }
       if (!best_ch.empty() && member.ch_id != best_ch) {
         member.ch_id = best_ch;
+        recovery_assigned_[member.id] = this->now();
         publishClusterReassign(member.id, best_ch);
       }
     }
@@ -876,6 +924,7 @@ private:
   uint32_t control_ttl_ = 12;
   double ack_retry_period_sec_ = 0.5;
   int max_ack_retries_ = 5;
+  double recovery_lock_duration_sec_ = 10.0;
 
   geometry_msgs::msg::Pose sink_pose_;
   bool sink_pose_known_ = false;
@@ -888,6 +937,9 @@ private:
   std::unordered_map<std::string, rclcpp::Time> last_heartbeat_;
   std::vector<TaskPoint> task_points_;
   std::unordered_map<std::string, PendingAck> pending_acks_;
+  // Members recently reassigned by recovery; ch_manager updates are suppressed
+  // for recovery_lock_duration_sec_ after reassignment.
+  std::unordered_map<std::string, rclcpp::Time> recovery_assigned_;
 
   bool sink_unreachable_ = false;
   bool ugv_unreachable_ = false;

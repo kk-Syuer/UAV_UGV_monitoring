@@ -156,8 +156,14 @@ public:
     cluster_id_ = this->declare_parameter<std::string>("cluster_id", "cluster_1");
     default_dst_id_ = this->declare_parameter<std::string>("default_dst_id", "sink_gateway");
     my_ch_id_ = this->declare_parameter<std::string>("my_ch_id", "uav_1");
+    home_ch_id_ = my_ch_id_;
     next_hop_to_sink_ = this->declare_parameter<std::string>(
       "next_hop_to_sink", default_dst_id_);
+
+    // Dynamic handover parameters
+    handover_hysteresis_sec_ = this->declare_parameter<double>("handover_hysteresis_sec", 3.0);
+    home_unreachable_escalation_sec_ = this->declare_parameter<double>(
+      "home_unreachable_escalation_sec", 30.0);
 
     // NEW: id of the UGV in the network, used as dst_id for CHARGE_REQUEST
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
@@ -469,6 +475,10 @@ public:
 
     ugv_pose_known_ = false;
     ugv_pose_.orientation.w = 1.0;
+
+    // Handover time initialization
+    last_home_seen_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    last_handover_time_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
     service_radius_ = static_cast<float>(
       this->declare_parameter<double>("comm_radius_m", 400.0));
@@ -1420,6 +1430,75 @@ private:
         ++it;
       }
     }
+
+    // ---- Dynamic cluster handover (members only) ----
+    if (role_ != 0 || !deployment_received_ || battery_energy_ <= 0.0f) {
+      return;
+    }
+
+    bool home_visible = neighbors_.find(home_ch_id_) != neighbors_.end();
+
+    if (home_visible) {
+      last_home_seen_time_ = now;
+      home_unreachable_escalated_ = false;
+
+      // Return to home CH if currently attached to a different one
+      if (my_ch_id_ != home_ch_id_) {
+        // Hysteresis: only switch back after hysteresis period
+        double since_handover = (now - last_handover_time_).seconds();
+        if (since_handover >= handover_hysteresis_sec_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[HANDOVER] %s returning to home CH %s (was temporary on %s)",
+                      uav_id_.c_str(), home_ch_id_.c_str(), my_ch_id_.c_str());
+          my_ch_id_ = home_ch_id_;
+          last_handover_time_ = now;
+          cluster_parent_[uav_id_] = home_ch_id_;
+        }
+      }
+    } else {
+      // Home CH not visible
+      // Find nearest visible CH as temporary attachment
+      std::string best_ch;
+      double best_dist = std::numeric_limits<double>::infinity();
+      for (const auto & kv : neighbors_) {
+        if (kv.second.role != 1 || kv.second.battery <= 0.0f) {
+          continue;
+        }
+        double dx = kv.second.pose.position.x - pose_.position.x;
+        double dy = kv.second.pose.position.y - pose_.position.y;
+        double dist = std::sqrt(dx * dx + dy * dy);
+        if (dist < best_dist) {
+          best_dist = dist;
+          best_ch = kv.first;
+        }
+      }
+
+      if (!best_ch.empty() && best_ch != my_ch_id_) {
+        double since_handover = (now - last_handover_time_).seconds();
+        if (since_handover >= handover_hysteresis_sec_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[HANDOVER] %s temporarily attaching to CH %s "
+                      "(home %s unreachable, dist=%.1f m)",
+                      uav_id_.c_str(), best_ch.c_str(), home_ch_id_.c_str(),
+                      best_dist);
+          my_ch_id_ = best_ch;
+          last_handover_time_ = now;
+          cluster_parent_[uav_id_] = best_ch;
+        }
+      }
+
+      // Escalate if home CH unreachable for too long
+      if (!home_unreachable_escalated_ &&
+          last_home_seen_time_.nanoseconds() > 0 &&
+          (now - last_home_seen_time_).seconds() > home_unreachable_escalation_sec_) {
+        home_unreachable_escalated_ = true;
+        RCLCPP_WARN(this->get_logger(),
+                    "[HANDOVER] %s: home CH %s unreachable for >%.0fs, escalating",
+                    uav_id_.c_str(), home_ch_id_.c_str(),
+                    home_unreachable_escalation_sec_);
+        publishRoutingEvent("HOME_CH_UNREACHABLE", home_ch_id_, "");
+      }
+    }
   }
 
   std::string statusStateString() const
@@ -1913,16 +1992,21 @@ private:
         }
         std::string new_ch = msg->payload;
         if (!new_ch.empty() && new_ch != my_ch_id_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[RECOVERY] %s reassigned to CH=%s (was %s, home was %s)",
+                      uav_id_.c_str(), new_ch.c_str(), my_ch_id_.c_str(),
+                      home_ch_id_.c_str());
           my_ch_id_ = new_ch;
+          // Recovery reassignment becomes the new home
+          home_ch_id_ = new_ch;
+          home_unreachable_escalated_ = false;
+          last_home_seen_time_ = this->now();
           cluster_parent_[uav_id_] = new_ch;
           assigned_task_points_.clear();
           released_by_ch_ = false;
           fallback_mode_active_ = false;
           fallback_target_label_.clear();
           mobility_phase_ = MobilityPhase::IDLE;
-          RCLCPP_WARN(this->get_logger(),
-                      "[RECOVERY] %s reassigned to CH=%s",
-                      uav_id_.c_str(), my_ch_id_.c_str());
         }
         return;
       }
@@ -2116,12 +2200,17 @@ private:
     }
 
     if (std::find(msg->member_ids.begin(), msg->member_ids.end(), uav_id_) != msg->member_ids.end()) {
-      my_ch_id_ = msg->ch_id;
+      // Only update home CH from static cluster info (not during recovery handover)
+      if (my_ch_id_ == home_ch_id_ || home_ch_id_.empty()) {
+        my_ch_id_ = msg->ch_id;
+        home_ch_id_ = msg->ch_id;
+      }
       cluster_id_ = msg->cluster_id;
-      cluster_parent_[uav_id_] = msg->ch_id;
+      cluster_parent_[uav_id_] = my_ch_id_;
       RCLCPP_INFO(this->get_logger(),
-                  "UAV %s: cluster=%s CH=%s",
-                  uav_id_.c_str(), cluster_id_.c_str(), my_ch_id_.c_str());
+                  "UAV %s: cluster=%s CH=%s (home=%s)",
+                  uav_id_.c_str(), cluster_id_.c_str(), my_ch_id_.c_str(),
+                  home_ch_id_.c_str());
     }
   }
 
@@ -2201,7 +2290,13 @@ private:
   uint8_t role_;
   std::string cluster_id_;
   std::string default_dst_id_;
-  std::string my_ch_id_;
+  std::string my_ch_id_;           // current CH (may differ from home during handover)
+  std::string home_ch_id_;         // statically-assigned home CH
+  rclcpp::Time last_home_seen_time_;  // last time home CH was visible
+  rclcpp::Time last_handover_time_;   // hysteresis: last time we switched CH
+  bool home_unreachable_escalated_ = false;
+  double handover_hysteresis_sec_ = 3.0;
+  double home_unreachable_escalation_sec_ = 30.0;
   std::string next_hop_to_sink_;
   // New: simple per-destination routing table for CHs
   std::unordered_map<std::string, std::string> routing_table_;
@@ -3612,6 +3707,8 @@ private:
     role_       = static_cast<uint8_t>(role_int);
     cluster_id_ = cluster_id;
     my_ch_id_   = (role_ == 0) ? ch_id : uav_id_;
+    home_ch_id_ = my_ch_id_;
+    home_unreachable_escalated_ = false;
     refreshClusterTaskPoints();
 
     // Routing is now centralized; ignore embedded next-hop hints.
