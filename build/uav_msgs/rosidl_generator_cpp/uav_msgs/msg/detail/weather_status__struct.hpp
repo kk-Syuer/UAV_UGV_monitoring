@@ -42,12 +42,13 @@ struct WeatherStatus_
       this->wind_speed = 0.0f;
       this->wind_direction_deg = 0.0f;
       this->temperature_c = 0.0f;
+      this->regime = "";
     }
   }
 
   explicit WeatherStatus_(const ContainerAllocator & _alloc, rosidl_runtime_cpp::MessageInitialization _init = rosidl_runtime_cpp::MessageInitialization::ALL)
+  : regime(_alloc)
   {
-    (void)_alloc;
     if (rosidl_runtime_cpp::MessageInitialization::ALL == _init ||
       rosidl_runtime_cpp::MessageInitialization::ZERO == _init)
     {
@@ -55,6 +56,7 @@ struct WeatherStatus_
       this->wind_speed = 0.0f;
       this->wind_direction_deg = 0.0f;
       this->temperature_c = 0.0f;
+      this->regime = "";
     }
   }
 
@@ -71,6 +73,9 @@ struct WeatherStatus_
   using _temperature_c_type =
     float;
   _temperature_c_type temperature_c;
+  using _regime_type =
+    std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>>;
+  _regime_type regime;
 
   // setters for named parameter idiom
   Type & set__rain_intensity(
@@ -95,6 +100,12 @@ struct WeatherStatus_
     const float & _arg)
   {
     this->temperature_c = _arg;
+    return *this;
+  }
+  Type & set__regime(
+    const std::basic_string<char, std::char_traits<char>, typename std::allocator_traits<ContainerAllocator>::template rebind_alloc<char>> & _arg)
+  {
+    this->regime = _arg;
     return *this;
   }
 
@@ -150,6 +161,9 @@ struct WeatherStatus_
       return false;
     }
     if (this->temperature_c != other.temperature_c) {
+      return false;
+    }
+    if (this->regime != other.regime) {
       return false;
     }
     return true;

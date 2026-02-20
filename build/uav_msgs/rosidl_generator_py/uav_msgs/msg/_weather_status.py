@@ -61,6 +61,7 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
         '_wind_speed',
         '_wind_direction_deg',
         '_temperature_c',
+        '_regime',
     ]
 
     _fields_and_field_types = {
@@ -68,6 +69,7 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
         'wind_speed': 'float',
         'wind_direction_deg': 'float',
         'temperature_c': 'float',
+        'regime': 'string',
     }
 
     SLOT_TYPES = (
@@ -75,6 +77,7 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
         rosidl_parser.definition.BasicType('float'),  # noqa: E501
+        rosidl_parser.definition.UnboundedString(),  # noqa: E501
     )
 
     def __init__(self, **kwargs):
@@ -85,6 +88,7 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
         self.wind_speed = kwargs.get('wind_speed', float())
         self.wind_direction_deg = kwargs.get('wind_direction_deg', float())
         self.temperature_c = kwargs.get('temperature_c', float())
+        self.regime = kwargs.get('regime', str())
 
     def __repr__(self):
         typename = self.__class__.__module__.split('.')
@@ -122,6 +126,8 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
         if self.wind_direction_deg != other.wind_direction_deg:
             return False
         if self.temperature_c != other.temperature_c:
+            return False
+        if self.regime != other.regime:
             return False
         return True
 
@@ -189,3 +195,16 @@ class WeatherStatus(metaclass=Metaclass_WeatherStatus):
             assert not (value < -3.402823466e+38 or value > 3.402823466e+38) or math.isinf(value), \
                 "The 'temperature_c' field must be a float in [-3.402823466e+38, 3.402823466e+38]"
         self._temperature_c = value
+
+    @builtins.property
+    def regime(self):
+        """Message field 'regime'."""
+        return self._regime
+
+    @regime.setter
+    def regime(self, value):
+        if __debug__:
+            assert \
+                isinstance(value, str), \
+                "The 'regime' field must be of type 'str'"
+        self._regime = value

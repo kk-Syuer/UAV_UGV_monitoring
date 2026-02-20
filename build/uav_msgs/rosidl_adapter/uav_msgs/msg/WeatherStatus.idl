@@ -23,6 +23,10 @@ module uav_msgs {
       @verbatim (language="comment", text=
         "ambient temperature in Celsius")
       float temperature_c;
+
+      @verbatim (language="comment", text=
+        "\"sunny\", \"windy\", \"stormy\" (current Markov state)")
+      string regime;
     };
   };
 };

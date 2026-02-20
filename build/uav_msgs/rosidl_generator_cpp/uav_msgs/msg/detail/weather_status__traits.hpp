@@ -50,6 +50,13 @@ inline void to_flow_style_yaml(
   {
     out << "temperature_c: ";
     rosidl_generator_traits::value_to_yaml(msg.temperature_c, out);
+    out << ", ";
+  }
+
+  // member: regime
+  {
+    out << "regime: ";
+    rosidl_generator_traits::value_to_yaml(msg.regime, out);
   }
   out << "}";
 }  // NOLINT(readability/fn_size)
@@ -95,6 +102,16 @@ inline void to_block_style_yaml(
     }
     out << "temperature_c: ";
     rosidl_generator_traits::value_to_yaml(msg.temperature_c, out);
+    out << "\n";
+  }
+
+  // member: regime
+  {
+    if (indentation > 0) {
+      out << std::string(indentation, ' ');
+    }
+    out << "regime: ";
+    rosidl_generator_traits::value_to_yaml(msg.regime, out);
     out << "\n";
   }
 }  // NOLINT(readability/fn_size)
@@ -145,11 +162,11 @@ inline const char * name<uav_msgs::msg::WeatherStatus>()
 
 template<>
 struct has_fixed_size<uav_msgs::msg::WeatherStatus>
-  : std::integral_constant<bool, true> {};
+  : std::integral_constant<bool, false> {};
 
 template<>
 struct has_bounded_size<uav_msgs::msg::WeatherStatus>
-  : std::integral_constant<bool, true> {};
+  : std::integral_constant<bool, false> {};
 
 template<>
 struct is_message<uav_msgs::msg::WeatherStatus>
