@@ -220,7 +220,6 @@ private:
     msg.regime = regimeToString(current_regime_);
 
     weather_pub_->publish(msg);
-
   }
 
   // Markov-like regime transition: tends to stay in same regime.
@@ -300,7 +299,6 @@ private:
   double update_period_sec_;
   double transition_period_sec_;
   double wind_direction_deg_;
-  rclcpp::Time last_transition_time_;
   uint32_t seed_value_;
   std::string seed_source_;
 
