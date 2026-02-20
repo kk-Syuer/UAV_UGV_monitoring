@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <vector>
@@ -6,6 +7,7 @@
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/cluster_info.hpp"
 #include "uav_msgs/msg/failure_event.hpp"
+#include "uav_msgs/msg/traffic_message.hpp"
 
 using namespace std::chrono_literals;
 
@@ -34,6 +36,11 @@ public:
     failure_sub_ = this->create_subscription<uav_msgs::msg::FailureEvent>(
       "/uav_fleet/failure_events", 100,
       std::bind(&ChManagerNode::failureCallback, this, std::placeholders::_1));
+
+    // Listen for recovery CLUSTER_REASSIGN messages to update membership.
+    network_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
+      "/fanet/network_bus", 200,
+      std::bind(&ChManagerNode::networkCallback, this, std::placeholders::_1));
 
     RCLCPP_INFO(this->get_logger(),
                 "CH Manager started: cluster=%s ch=%s members=%zu",
@@ -64,9 +71,48 @@ private:
                   "[CH-FAIL] Cluster %s: CH %s is BATTERY_DEAD at t=%.3f",
                   cluster_id_.c_str(), ch_id_.c_str(), t.seconds());
     } else {
-      RCLCPP_WARN(this->get_logger(),
-                  "[MEM-FAIL] Cluster %s: member %s is BATTERY_DEAD",
-                  cluster_id_.c_str(), msg->uav_id.c_str());
+      // Remove dead member from our list
+      auto it = std::find(member_ids_.begin(), member_ids_.end(), msg->uav_id);
+      if (it != member_ids_.end()) {
+        member_ids_.erase(it);
+        RCLCPP_WARN(this->get_logger(),
+                    "[MEM-FAIL] Cluster %s: member %s BATTERY_DEAD, removed (remaining=%zu)",
+                    cluster_id_.c_str(), msg->uav_id.c_str(), member_ids_.size());
+      } else {
+        RCLCPP_WARN(this->get_logger(),
+                    "[MEM-FAIL] Cluster %s: member %s is BATTERY_DEAD (not in our list)",
+                    cluster_id_.c_str(), msg->uav_id.c_str());
+      }
+    }
+  }
+
+  // React to CLUSTER_REASSIGN from recovery manager to keep membership current.
+  void networkCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
+  {
+    if (msg->flow_type != 1 || msg->control_type != "CLUSTER_REASSIGN") {
+      return;
+    }
+    const std::string & member_id = msg->dst_id;
+    const std::string & new_ch_id = msg->payload;
+
+    if (new_ch_id == ch_id_) {
+      // Member reassigned TO this cluster — add if not already present
+      auto it = std::find(member_ids_.begin(), member_ids_.end(), member_id);
+      if (it == member_ids_.end()) {
+        member_ids_.push_back(member_id);
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] Cluster %s: member %s joined (reassigned from recovery)",
+                    cluster_id_.c_str(), member_id.c_str());
+      }
+    } else {
+      // Member reassigned AWAY from this cluster — remove if present
+      auto it = std::find(member_ids_.begin(), member_ids_.end(), member_id);
+      if (it != member_ids_.end()) {
+        member_ids_.erase(it);
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] Cluster %s: member %s reassigned to CH %s, removed",
+                    cluster_id_.c_str(), member_id.c_str(), new_ch_id.c_str());
+      }
     }
   }
 
@@ -78,8 +124,8 @@ private:
   rclcpp::Publisher<uav_msgs::msg::ClusterInfo>::SharedPtr pub_;
   rclcpp::TimerBase::SharedPtr timer_;
 
-  // ---- NEW ----
   rclcpp::Subscription<uav_msgs::msg::FailureEvent>::SharedPtr failure_sub_;
+  rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr network_sub_;
 };
 
 int main(int argc, char ** argv)
