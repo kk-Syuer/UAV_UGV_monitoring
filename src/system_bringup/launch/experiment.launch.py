@@ -86,6 +86,9 @@ def _make_nodes(context, *args, **kwargs):
     shutdown_on_fleet_loss = _bool_from_str(
         shutdown_on_fleet_loss_arg, _get(cfg, ["shutdown", "on_fleet_loss"], False)
     )
+    termination_mode = str(_get(cfg, ["experiment", "termination_mode"], "timeout_only"))
+    experiment_timeout_s = float(_get(cfg, ["experiment", "experiment_timeout_s"], 10800.0))
+    timeout_only_mode = termination_mode == "timeout_only"
 
     # Package + executable names (adjust only if your exec names differ)
     # You said most nodes live in their own packages; bringup just launches them.
@@ -133,6 +136,10 @@ def _make_nodes(context, *args, **kwargs):
         ),
         "backbone_ids": ch_ids,
     }
+    if timeout_only_mode:
+        monitor_params["max_runtime_sec"] = 0.0
+        monitor_params["stop_on_backbone_loss"] = False
+        monitor_params["routing_table_empty_shutdown_sec"] = 0.0
     monitor_node = Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
         executable=_get(cfg, ["executables", "monitor_exec"], "network_monitor_node"),
@@ -400,25 +407,60 @@ def _make_nodes(context, *args, **kwargs):
                 })],
             ))
 
-    if shutdown_after_sec > 0:
+    shutdown_state = {"requested": False}
+
+    if timeout_only_mode:
+        if shutdown_after_sec > 0.0:
+            nodes.append(LogInfo(msg=(
+                "[TERMINATION_MODE] timeout_only enabled: ignoring shutdown.after_sec/"
+                "shutdown_after_sec launch override."
+            )))
+        if shutdown_on_fleet_loss:
+            nodes.append(LogInfo(msg=(
+                "[TERMINATION_MODE] timeout_only enabled: ignoring shutdown.on_fleet_loss/"
+                "shutdown_on_fleet_loss launch override."
+            )))
+
+    def _request_shutdown(reason: str, log_msg: str):
+        if shutdown_state["requested"]:
+            return [LogInfo(msg=f"[LAUNCH_SHUTDOWN] duplicate_request_ignored reason={reason}")]
+        shutdown_state["requested"] = True
+        return [
+            LogInfo(msg=log_msg),
+            LogInfo(msg="Experiment timeout reached — shutting down."),
+            LogInfo(msg="[LAUNCH_SHUTDOWN] publishing final metrics before graceful shutdown."),
+            EmitEvent(event=Shutdown(reason=reason)),
+        ]
+
+    if timeout_only_mode:
+        nodes.append(TimerAction(
+            period=experiment_timeout_s,
+            actions=[OpaqueFunction(function=lambda context, *args, **kwargs: _request_shutdown(
+                reason=f"experiment_timeout_s={experiment_timeout_s}",
+                log_msg=(
+                    f"[LAUNCH_SHUTDOWN] reason=experiment_timeout_s value={experiment_timeout_s}"
+                ),
+            ))],
+        ))
+    elif shutdown_after_sec > 0:
         nodes.append(TimerAction(
             period=shutdown_after_sec,
-            actions=[
-                LogInfo(msg=f"[LAUNCH_SHUTDOWN] reason=shutdown_after_sec value={shutdown_after_sec}"),
-                EmitEvent(event=Shutdown(reason=f"shutdown_after_sec={shutdown_after_sec}")),
-            ],
+            actions=[OpaqueFunction(function=lambda context, *args, **kwargs: _request_shutdown(
+                reason=f"shutdown_after_sec={shutdown_after_sec}",
+                log_msg=f"[LAUNCH_SHUTDOWN] reason=shutdown_after_sec value={shutdown_after_sec}",
+            ))],
         ))
 
-    if shutdown_on_fleet_loss and fleet_nodes:
+    if (not timeout_only_mode) and shutdown_on_fleet_loss and fleet_nodes:
         remaining = {"count": len(fleet_nodes)}
 
         def _handle_fleet_exit(context, *args, **kwargs):
             remaining["count"] -= 1
             if remaining["count"] <= 0:
-                return [
-                    LogInfo(msg="[LAUNCH_SHUTDOWN] reason=all_fleet_nodes_exited"),
-                    EmitEvent(event=Shutdown(reason="all fleet nodes exited")),
-                ]
+                return _request_shutdown(
+                    reason="all fleet nodes exited",
+                    log_msg="[LAUNCH_SHUTDOWN] reason=all_fleet_nodes_exited",
+                )
             return []
 
         for fleet_node in fleet_nodes:
@@ -427,13 +469,13 @@ def _make_nodes(context, *args, **kwargs):
                 on_exit=[OpaqueFunction(function=_handle_fleet_exit)],
             )))
 
-    if monitor_node is not None:
+    if (not timeout_only_mode) and monitor_node is not None:
         nodes.append(RegisterEventHandler(OnProcessExit(
             target_action=monitor_node,
-            on_exit=[
-                LogInfo(msg="[LAUNCH_SHUTDOWN] reason=network_monitor_exited"),
-                EmitEvent(event=Shutdown(reason="network monitor exited")),
-            ],
+            on_exit=[OpaqueFunction(function=lambda context, *args, **kwargs: _request_shutdown(
+                reason="network monitor exited",
+                log_msg="[LAUNCH_SHUTDOWN] reason=network_monitor_exited",
+            ))],
         )))
 
     return nodes

@@ -36,6 +36,10 @@ monitor:
   max_runtime_sec: 3600.0
   stop_on_backbone_loss: false
   routing_table_empty_shutdown_sec: 10.0
+experiment:
+  termination_mode: "timeout_only"
+  experiment_timeout_s: 10800
+
 weather:
   enable: true
   publish_period_sec: 1.0
