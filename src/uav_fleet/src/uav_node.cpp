@@ -144,7 +144,8 @@ public:
     is_charging_(false),
     has_charge_slot_(false),
     charge_state_(ChargeState::IDLE),
-    deployment_received_(false)
+    deployment_received_(false),
+    last_charge_decision_rx_time_(0, 0, RCL_ROS_TIME)
   {
     // ---- Parameters ----
     uav_id_ = this->declare_parameter<std::string>("uav_id", "uav_1");
@@ -212,6 +213,8 @@ public:
 
     accept_direct_deployment_ =
       this->declare_parameter<bool>("accept_direct_deployment", false);
+    charging_debug_trace_ =
+      this->declare_parameter<bool>("charging_debug_trace", false);
 
     // Base drain rates (energy units per second)
     double drain_member = this->declare_parameter<double>("drain_rate_member", 0.5);
@@ -436,6 +439,12 @@ public:
                         "UAV %s: auto_traffic_enabled set to %s",
                         uav_id_.c_str(),
                         auto_traffic_enabled_ ? "true" : "false");
+          } else if (p.get_name() == "charging_debug_trace") {
+            charging_debug_trace_ = p.as_bool();
+            RCLCPP_INFO(this->get_logger(),
+                        "UAV %s: charging_debug_trace set to %s",
+                        uav_id_.c_str(),
+                        charging_debug_trace_ ? "true" : "false");
           }
         }
         // Always accept parameter changes
@@ -486,6 +495,12 @@ private:
   {
     uav_msgs::msg::TrafficMessage msg;
     rclcpp::Time buffered_time;
+  };
+
+  enum class MobilityPhase {
+    IDLE = 0,              // no movement
+    GO_TO_DEPLOYMENT = 1,  // flying from origin to deployment pose
+    TASK_MOBILITY = 2      // moving between task points in cluster
   };
 
   struct TaskReleasePending
@@ -706,6 +721,7 @@ private:
                       uav_id_.c_str());
         }
       } else if (request_needed && !waiting_for_charge_response_) {
+        chargeTrace("TRIGGER_REQUEST", request_needed ? "BATTERY_BELOW_REQUEST_THRESHOLD" : "");
         requestCharge(battery_percent);
       }
     }
@@ -786,6 +802,7 @@ private:
     charge_request_pending_.reset();
 
     auto now = this->now();
+    chargeTrace("SEND_REQUEST", "REQUEST_CHARGE_ENTER");
 
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: requesting charge via network (battery=%.1f%%)",
@@ -916,13 +933,17 @@ private:
                 accepted ? 1 : 0, slot_id.c_str(), msg->payload.c_str());
 
     auto now = this->now();
+    last_charge_decision_rx_time_ = now;
+    chargeTrace("RECV_DECISION", accepted ? "ACCEPTED" : "REJECTED");
     waiting_for_charge_response_ = false;
     charge_request_pending_.reset();
 
     if (!accepted) {
       has_charge_slot_ = false;
+      current_charge_slot_id_.clear();
       charge_target_pose_valid_ = false;
       charge_state_ = ChargeState::IDLE;
+      chargeTrace("STATE_TRANSITION", "DECISION_REJECTED");
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: CHARGE_DECISION rejected (slot=%s). Staying in normal mode.",
                   uav_id_.c_str(), slot_id.c_str());
@@ -930,10 +951,15 @@ private:
     }
 
     has_charge_slot_ = true;
+    current_charge_slot_id_ = slot_id;
 
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
+      emergency_landed_ = false;
+      emergency_recovery_active_ = false;
       charge_state_ = ChargeState::TO_UGV;
+      chargeTrace("ACCEPT_DECISION", "ENTER_TO_UGV");
+      chargeTrace("STATE_TRANSITION", "IDLE_TO_TO_UGV");
 
       bool pose_ok = false;
       if (payload_has_pose) {
@@ -948,6 +974,7 @@ private:
       }
 
       charge_target_pose_valid_ = pose_ok;
+      chargeTrace("SET_GOAL", pose_ok ? "TARGET_RESOLVED" : "TARGET_UNRESOLVED");
       if (pose_ok) {
         RCLCPP_INFO(this->get_logger(),
                     "UAV %s: CHARGE_DECISION accepted -> TO_UGV (slot=%s target=(%.1f, %.1f, %.1f)).",
@@ -960,6 +987,7 @@ private:
       }
     } else {
       has_charge_slot_ = false;
+      current_charge_slot_id_.clear();
       charge_target_pose_valid_ = false;
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: CHARGE_DECISION accepted (slot=%s) but UAV is already charging or dead; clearing stale slot.",
@@ -1038,6 +1066,7 @@ private:
 
     is_charging_ = true;
     has_charge_slot_ = false;
+    current_charge_slot_id_.clear();
     charge_target_pose_valid_ = false;
     charge_state_ = ChargeState::CHARGING;
     energy_at_charge_start_ = battery_energy_;
@@ -1522,6 +1551,125 @@ private:
   std::string roleString(uint8_t role) const
   {
     return role == 1 ? "CH" : "MEMBER";
+  }
+
+  std::string chargeStateString(ChargeState state) const
+  {
+    switch (state) {
+      case ChargeState::TO_UGV:
+        return "TO_UGV";
+      case ChargeState::CHARGING:
+        return "CHARGING";
+      case ChargeState::RETURNING:
+        return "RETURNING";
+      case ChargeState::IDLE:
+      default:
+        return "IDLE";
+    }
+  }
+
+  std::string mobilityPhaseString() const
+  {
+    switch (mobility_phase_) {
+      case MobilityPhase::GO_TO_DEPLOYMENT:
+        return "GO_TO_DEPLOYMENT";
+      case MobilityPhase::TASK_MOBILITY:
+        return "TASK_MOBILITY";
+      case MobilityPhase::IDLE:
+      default:
+        return "IDLE";
+    }
+  }
+
+  std::string movementBlockReason(bool charge_motion_active) const
+  {
+    if (!mobility_enabled_) {
+      return "CONTROLLER_DISABLED";
+    }
+    if (!deployment_received_ && !charge_motion_active) {
+      return "DEPLOYMENT_FREEZE";
+    }
+    if (!start_mobility_received_ && !charge_motion_active) {
+      return "WAITING_FOR_SOMETHING";
+    }
+    if (emergency_landed_ && !charge_motion_active) {
+      return "RECOVERY_ACTIVE";
+    }
+    if (is_charging_) {
+      return "WAITING_FOR_SOMETHING";
+    }
+    if (charge_motion_active && !charge_target_pose_valid_) {
+      return "NO_GOAL_SET";
+    }
+    if (role_ == 1 && !charge_motion_active && mobility_phase_ == MobilityPhase::IDLE && !cluster_members_.empty()) {
+      return "ROLE_GUARD_CH_STAY";
+    }
+    if (role_ == 0 && !released_by_ch_ && !charge_motion_active && mobility_phase_ == MobilityPhase::GO_TO_DEPLOYMENT) {
+      return "HOLD_POSITION";
+    }
+    if (!task_points_.empty() && !charge_motion_active && mobility_phase_ == MobilityPhase::TASK_MOBILITY) {
+      return "TASK_LOCK";
+    }
+    if (battery_energy_ <= 0.0f) {
+      return "WAITING_FOR_SOMETHING";
+    }
+    return "UNKNOWN";
+  }
+
+  std::string chargeTraceSnapshot(const std::string & event,
+                                  const std::string & reason = "") const
+  {
+    std::ostringstream oss;
+    const float battery_percent = (battery_capacity_ > 0.0f)
+      ? (battery_energy_ / battery_capacity_) * 100.0f
+      : 0.0f;
+    const float threshold_energy = battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+    double dist_to_goal = -1.0;
+    if (charge_target_pose_valid_) {
+      dist_to_goal = distance2d(pose_.position, charge_target_pose_.position);
+    }
+    const auto now = this->now();
+    int64_t last_decision_age_ms = -1;
+    if (last_charge_decision_rx_time_.nanoseconds() > 0 &&
+        last_charge_decision_rx_time_.get_clock_type() == now.get_clock_type()) {
+      last_decision_age_ms = static_cast<int64_t>((now - last_charge_decision_rx_time_).seconds() * 1000.0);
+    }
+
+    oss << "event=" << event
+        << " role=" << roleString(role_)
+        << " uav=" << uav_id_
+        << " charge_state=" << chargeStateString(charge_state_)
+        << " fsm_state=" << mobilityPhaseString()
+        << " battery=" << battery_percent
+        << " threshold=" << ((battery_capacity_ > 0.0f) ? ((threshold_energy / battery_capacity_) * 100.0f) : 0.0f)
+        << " waiting_for_charge_response=" << (waiting_for_charge_response_ ? 1 : 0)
+        << " has_charge_slot=" << (has_charge_slot_ ? 1 : 0)
+        << " slot_id=" << (current_charge_slot_id_.empty() ? "none" : current_charge_slot_id_)
+        << " goal_set=" << (charge_target_pose_valid_ ? 1 : 0)
+        << " goal_x=" << charge_target_pose_.position.x
+        << " goal_y=" << charge_target_pose_.position.y
+        << " dist_to_goal=" << dist_to_goal
+        << " movement_enabled=" << (mobility_enabled_ ? 1 : 0)
+        << " recovery_mode=" << (emergency_recovery_active_ ? 1 : 0)
+        << " hold_position=" << ((role_ == 0 && !released_by_ch_) ? 1 : 0)
+        << " deployment_freeze=" << ((!deployment_received_ || !start_mobility_received_) ? 1 : 0)
+        << " active_task=" << ((mobility_phase_ == MobilityPhase::TASK_MOBILITY) ? 1 : 0)
+        << " task_count=" << task_points_.size()
+        << " cluster_id=" << cluster_id_
+        << " ch_id=" << my_ch_id_
+        << " last_decision_age_ms=" << last_decision_age_ms;
+    if (!reason.empty()) {
+      oss << " reason=" << reason;
+    }
+    return oss.str();
+  }
+
+  void chargeTrace(const std::string & event, const std::string & reason = "")
+  {
+    if (!charging_debug_trace_) {
+      return;
+    }
+    RCLCPP_INFO(this->get_logger(), "CHARGE_TRACE %s", chargeTraceSnapshot(event, reason).c_str());
   }
 
   void dropRoutesThrough(const std::string & neighbor_id)
@@ -2781,19 +2929,26 @@ private:
     constexpr int throttle_ms = 5000;
     const bool charge_motion_active =
       (charge_state_ == ChargeState::TO_UGV || charge_state_ == ChargeState::RETURNING);
+    if (charging_debug_trace_) {
+      RCLCPP_INFO_THROTTLE(this->get_logger(), steady_clock, 1000, "CHARGE_TRACE %s",
+                           chargeTraceSnapshot("MOVE_TICK").c_str());
+    }
     if (!mobility_enabled_) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: mobility disabled; holding position.",
                            uav_id_.c_str());
       return;
     }
     if (!deployment_received_ && !charge_motion_active) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for deployment; holding position.",
                            uav_id_.c_str());
       return;
     }
     if (!start_mobility_received_ && !charge_motion_active) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: waiting for MOTION_START; holding position.",
                            uav_id_.c_str());
@@ -2801,18 +2956,21 @@ private:
     }
 
     if (battery_energy_ <= 0.0f) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: battery depleted; mobility paused.",
                            uav_id_.c_str());
       return;
     }
-    if (emergency_landed_) {
+    if (emergency_landed_ && !charge_motion_active) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: emergency recovery complete; holding position.",
                            uav_id_.c_str());
       return;
     }
     if (is_charging_) {
+      chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: charging in progress; mobility paused.",
                            uav_id_.c_str());
@@ -2872,6 +3030,7 @@ private:
           RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                                "UAV %s: TO_UGV active but UGV pose unresolved; holding and retrying.",
                                uav_id_.c_str());
+          chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
           return;
         }
       }
@@ -2919,6 +3078,7 @@ private:
                            "UAV %s: stale charge slot without TO_UGV state=%d; clearing slot.",
                            uav_id_.c_str(), static_cast<int>(charge_state_));
       has_charge_slot_ = false;
+      current_charge_slot_id_.clear();
     }
     if (!handled_charge_motion) {
       if (fallback_mode_active_ && role_ == 0) {
@@ -3793,17 +3953,13 @@ private:
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
     publishToBus(msg);
+    chargeTrace("SEND_REQUEST", "PUBLISHED_CHARGE_REQUEST");
     registerPendingAck(msg, charge_request_max_retries_, charge_request_retry_sec_);
     pending.last_send_time = this->now();
     pending.attempts++;
   }
 
   // --- Mobility state machine ---
-  enum class MobilityPhase {
-    IDLE = 0,              // no movement
-    GO_TO_DEPLOYMENT = 1,  // flying from origin to deployment pose
-    TASK_MOBILITY = 2      // moving between task points in cluster
-  };
   // Deployment / mobility barrier
   bool deployment_ack_sent_ = false;
   bool start_mobility_received_ = false;
@@ -3888,6 +4044,9 @@ private:
   bool waiting_for_charge_response_;
   bool is_charging_;
   bool has_charge_slot_;
+  bool charging_debug_trace_ = false;
+  std::string current_charge_slot_id_;
+  rclcpp::Time last_charge_decision_rx_time_;
   bool emergency_recovery_active_ = false;
   bool emergency_landed_ = false;
   bool fallback_mode_active_ = false;
