@@ -48,6 +48,9 @@ weather:
   rain_mean: 0.0
   temp_c: 18.0
 
+  mode: "markov"
+  start_state: "sunny"
+  transition_period_sec: 120.0
 fault_injector:
   enable: true
   drop_mode: bus

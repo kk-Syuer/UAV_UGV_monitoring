@@ -49,6 +49,9 @@ weather:
   temp_c: 18.0
 
 
+  mode: "markov"
+  start_state: "sunny"
+  transition_period_sec: 120.0
 battery:
   # Keep UAV and UGV capacity assumptions aligned across nodes.
   member_capacity_wh: 100.0

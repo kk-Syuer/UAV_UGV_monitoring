@@ -64,6 +64,7 @@ def _sanitize_param_dict(params: dict) -> dict:
 def _make_nodes(context, *args, **kwargs):
     # Launch args
     cfg_path = LaunchConfiguration("config").perform(context)
+    run_arg = LaunchConfiguration("run").perform(context)
     run_id_arg = LaunchConfiguration("run_id").perform(context)
     out_dir_arg = LaunchConfiguration("output_dir").perform(context)
     use_weather_arg = LaunchConfiguration("use_weather").perform(context)
@@ -71,7 +72,16 @@ def _make_nodes(context, *args, **kwargs):
     shutdown_after_arg = LaunchConfiguration("shutdown_after_sec").perform(context)
     shutdown_on_fleet_loss_arg = LaunchConfiguration("shutdown_on_fleet_loss").perform(context)
 
-    cfg = _load_yaml(cfg_path, fallback_root=get_package_share_directory("system_bringup"))
+    bringup_share = get_package_share_directory("system_bringup")
+    if run_arg:
+        run_candidate = run_arg
+        if not os.path.isabs(run_candidate):
+            if not run_candidate.endswith(".yaml"):
+                run_candidate = f"{run_candidate}.yaml"
+            run_candidate = os.path.join(bringup_share, "config", "runs", run_candidate)
+        cfg_path = run_candidate
+
+    cfg = _load_yaml(cfg_path, fallback_root=bringup_share)
 
     # Resolve run_id / output_dir
     run_id = run_id_arg if run_id_arg else _get(cfg, ["global", "run_id"], "run0")
@@ -156,7 +166,13 @@ def _make_nodes(context, *args, **kwargs):
             "wind_mean": float(_get(cfg, ["weather", "wind_mean"], 0.0)),
             "rain_mean": float(_get(cfg, ["weather", "rain_mean"], 0.0)),
             "temp_c": float(_get(cfg, ["weather", "temp_c"], 18.0)),
+            "mode": str(_get(cfg, ["weather", "mode"], "markov")),
+            "start_state": str(_get(cfg, ["weather", "start_state"], "sunny")),
+            "transition_period_sec": float(_get(cfg, ["weather", "transition_period_sec"], 120.0)),
         }
+        weather_seed = _get(cfg, ["weather", "seed"], None)
+        if weather_seed is not None:
+            weather_params["seed"] = int(weather_seed)
         nodes.append(Node(
             package=_get(cfg, ["executables", "weather_pkg"], "weather_server"),
             executable=_get(cfg, ["executables", "weather_exec"], "weather_node"),
@@ -487,6 +503,7 @@ def generate_launch_description():
 
     return LaunchDescription([
         DeclareLaunchArgument("config", default_value=default_cfg),
+        DeclareLaunchArgument("run", default_value=""),
         DeclareLaunchArgument("run_id", default_value=""),
         DeclareLaunchArgument("output_dir", default_value=""),
         DeclareLaunchArgument("use_weather", default_value=""),
