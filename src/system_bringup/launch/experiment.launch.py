@@ -156,7 +156,12 @@ def _make_nodes(context, *args, **kwargs):
             "wind_mean": float(_get(cfg, ["weather", "wind_mean"], 0.0)),
             "rain_mean": float(_get(cfg, ["weather", "rain_mean"], 0.0)),
             "temp_c": float(_get(cfg, ["weather", "temp_c"], 18.0)),
+            "mode": str(_get(cfg, ["weather", "mode"], "markov")),
+            "start_state": str(_get(cfg, ["weather", "start_state"], "sunny")),
         }
+        weather_seed = _get(cfg, ["weather", "seed"], None)
+        if weather_seed is not None:
+            weather_params["seed"] = int(weather_seed)
         nodes.append(Node(
             package=_get(cfg, ["executables", "weather_pkg"], "weather_server"),
             executable=_get(cfg, ["executables", "weather_exec"], "weather_node"),
