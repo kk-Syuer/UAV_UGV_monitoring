@@ -143,6 +143,8 @@ public:
       this->declare_parameter<double>("active_session_no_progress_sec", 8.0);
     active_session_progress_epsilon_percent_ =
       this->declare_parameter<double>("active_session_progress_epsilon_percent", 0.01);
+    routing_debug_trace_ = this->declare_parameter<bool>("routing_debug_trace", false);
+    neighbor_debug_trace_ = this->declare_parameter<bool>("neighbor_debug_trace", false);
 
     if (policy_name == "role_priority") {
       policy_ = Policy::ROLE_PRIORITY;
@@ -362,6 +364,7 @@ private:
 
     auto now = this->now();
 
+    const bool known_neighbor = uav_status_.find(msg->uav_id) != uav_status_.end();
     auto & info = uav_status_[msg->uav_id];
     info.role = msg->role;
     info.battery_level = msg->battery_level;
@@ -374,6 +377,16 @@ private:
     info.last_seen = now;
     info.pose = msg->pose;
     info.comm_radius_m = static_cast<float>(comm_radius_m_);
+    if (neighbor_debug_trace_) {
+      RCLCPP_INFO(this->get_logger(),
+                  "ROUTE_TRACE event=NEIGHBOR_%s node=%s role=%u battery=%.1f charging_state=%u stamp=%.3f",
+                  known_neighbor ? "UPDATED" : "ADDED",
+                  msg->uav_id.c_str(),
+                  static_cast<unsigned>(msg->role),
+                  msg->battery_level,
+                  static_cast<unsigned>(msg->charging_state),
+                  now.seconds());
+    }
     recomputeChargingSpots();
   }
 
@@ -394,6 +407,13 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "UGV %s: routing table updated (%zu entries)",
                 ugv_id_.c_str(), routing_table_.size());
+    for (const auto & kv : routing_table_) {
+      if (uav_status_.find(kv.second) == uav_status_.end() && kv.second != ugv_id_) {
+        RCLCPP_WARN(this->get_logger(),
+                    "ROUTE_TRACE event=ROUTING_TABLE_INCONSISTENT dst_id=%s next_hop=%s reason_code=NEXT_HOP_ID_NOT_FOUND",
+                    kv.first.c_str(), kv.second.c_str());
+      }
+    }
   }
 
   void publishQueueEvent(const std::string & event,
@@ -482,6 +502,36 @@ private:
         << " reason=" << reason;
     msg.data = oss.str();
     routing_event_pub_->publish(msg);
+  }
+
+  int64_t statusAgeMs(const std::string & id) const
+  {
+    auto it = uav_status_.find(id);
+    if (it == uav_status_.end() || it->second.last_seen.nanoseconds() == 0) {
+      return -1;
+    }
+    return static_cast<int64_t>((this->now() - it->second.last_seen).seconds() * 1000.0);
+  }
+
+  void logRoutingUnreachable(const uav_msgs::msg::TrafficMessage & msg,
+                             const std::string & candidate_next_hop,
+                             const std::string & reason_code) const
+  {
+    std::ostringstream oss;
+    oss << "ROUTE_TRACE event=UNREACHABLE"
+        << " control_type=" << msg.control_type
+        << " src_id=" << msg.src_id
+        << " dst_id=" << msg.dst_id
+        << " current_node_id=" << ugv_id_
+        << " candidate_next_hop=" << (candidate_next_hop.empty() ? "NONE" : candidate_next_hop)
+        << " routing_table_size=" << routing_table_.size()
+        << " neighbor_table_size=" << uav_status_.size()
+        << " dst_last_seen_age_ms=" << statusAgeMs(msg.dst_id)
+        << " next_hop_last_seen_age_ms=" << statusAgeMs(candidate_next_hop)
+        << " reason_code=" << reason_code;
+    if (routing_debug_trace_) {
+      RCLCPP_WARN(this->get_logger(), "%s", oss.str().c_str());
+    }
   }
 
   bool removeQueuedChargeRequest(const std::string & uav_id)
@@ -733,6 +783,11 @@ private:
                     "UGV: ignoring CHARGE_REQUEST from %s because UAV is marked BATTERY_DEAD.",
                     uav_id.c_str());
         publishQueueEvent("QUEUE_REJECT", uav_id, "BATTERY_DEAD", queue_.size());
+        if (routing_debug_trace_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "ROUTE_TRACE event=CONTROL_DROP control_type=CHARGE_REQUEST src_id=%s dst_id=%s reason_code=BATTERY_DEAD",
+                      msg->src_id.c_str(), msg->dst_id.c_str());
+        }
         return;
       }
 
@@ -744,6 +799,11 @@ private:
         RCLCPP_WARN(this->get_logger(),
                     "UGV: received CHARGE_REQUEST from '%s' but no status known. Ignoring.",
                     uav_id.c_str());
+        if (routing_debug_trace_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "ROUTE_TRACE event=CONTROL_DROP control_type=CHARGE_REQUEST src_id=%s dst_id=%s reason_code=NO_STATUS",
+                      msg->src_id.c_str(), msg->dst_id.c_str());
+        }
         return;
       }
 
@@ -765,6 +825,11 @@ private:
           publishQueueEvent("QUEUE_CANCEL", uav_id, "BATTERY_RECOVERED", queue_.size());
         }
         publishQueueEvent("QUEUE_REJECT", uav_id, "BATTERY_ABOVE_GATE", queue_.size());
+        if (routing_debug_trace_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "ROUTE_TRACE event=CONTROL_DROP control_type=CHARGE_REQUEST src_id=%s dst_id=%s reason_code=BATTERY_ABOVE_GATE",
+                      msg->src_id.c_str(), msg->dst_id.c_str());
+        }
         return;
       }
 
@@ -1289,6 +1354,13 @@ private:
         ? std::numeric_limits<double>::infinity()
         : (now - it->second.last_seen).seconds();
       if (age > neighbor_timeout_sec_) {
+        if (neighbor_debug_trace_) {
+          RCLCPP_WARN(this->get_logger(),
+                      "ROUTE_TRACE event=NEIGHBOR_EXPIRED node=%s age_ms=%d timeout_ms=%d",
+                      it->first.c_str(),
+                      static_cast<int>(age * 1000.0),
+                      static_cast<int>(neighbor_timeout_sec_ * 1000.0));
+        }
         it = uav_status_.erase(it);
       } else {
         ++it;
@@ -1321,16 +1393,38 @@ private:
   bool ensureReachableOrDrop(uav_msgs::msg::TrafficMessage & msg,
                              const std::string & drop_reason)
   {
-    if (msg.next_hop_id.empty()) {
+    std::string candidate_next_hop = msg.next_hop_id;
+    if (msg.dst_id.empty()) {
+      logRoutingUnreachable(msg, candidate_next_hop, "ID_NOT_FOUND");
       publishDrop(msg.msg_id, drop_reason);
-      publishRoutingEvent(drop_reason, msg.dst_id, msg.next_hop_id);
+      publishRoutingEvent(drop_reason, msg.dst_id, candidate_next_hop);
       return false;
     }
 
-    if (neighborReachable(msg.next_hop_id)) {
+    if (routing_table_.find(msg.dst_id) == routing_table_.end()) {
+      logRoutingUnreachable(msg, candidate_next_hop, "NO_ROUTE");
+    }
+
+    if (uav_status_.find(msg.dst_id) == uav_status_.end()) {
+      logRoutingUnreachable(msg, candidate_next_hop, "DST_UNKNOWN");
+    }
+
+    if (candidate_next_hop.empty()) {
+      logRoutingUnreachable(msg, candidate_next_hop, "NEXT_HOP_ID_NOT_FOUND");
+      publishDrop(msg.msg_id, drop_reason);
+      publishRoutingEvent(drop_reason, msg.dst_id, candidate_next_hop);
+      return false;
+    }
+
+    if (neighborReachable(candidate_next_hop)) {
       return true;
     }
 
+    const bool has_next_hop_status = uav_status_.find(candidate_next_hop) != uav_status_.end();
+    logRoutingUnreachable(
+      msg,
+      candidate_next_hop,
+      has_next_hop_status ? "NEXT_HOP_EXPIRED" : "ID_NOT_FOUND");
     msg.next_hop_id.clear();
     publishDrop(msg.msg_id, drop_reason);
     publishRoutingEvent(drop_reason, msg.dst_id, msg.next_hop_id);
@@ -1894,6 +1988,8 @@ private:
   double w_batt_;
   double w_wait_;
   bool debug_scheduler_candidates_ = false;
+  bool routing_debug_trace_ = false;
+  bool neighbor_debug_trace_ = false;
   double hello_period_sec_ = 1.0;
   double status_period_sec_ = 1.0;
   geometry_msgs::msg::Pose deployment_goal_pose_;
@@ -1944,7 +2040,15 @@ private:
     msg.ref_msg_id = job.request_msg_id;
 
     msg.next_hop_id = resolveNextHop(job.uav_id);
+    if (uav_status_.find(job.uav_id) == uav_status_.end()) {
+      logRoutingUnreachable(msg, msg.next_hop_id, "DST_UNKNOWN");
+    }
     if (msg.next_hop_id.empty()) {
+      if (uav_status_.find(job.uav_id) != uav_status_.end()) {
+        logRoutingUnreachable(msg, msg.next_hop_id, "GRAPH_DISCONNECTED");
+      } else {
+        logRoutingUnreachable(msg, msg.next_hop_id, "NO_ROUTE");
+      }
       RCLCPP_WARN(this->get_logger(),
                   "UGV %s: no route to %s for CHARGE_DECISION",
                   ugv_id_.c_str(), job.uav_id.c_str());
