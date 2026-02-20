@@ -19,6 +19,7 @@
 #include "uav_msgs/msg/charge_decision.hpp"
 #include "uav_msgs/msg/routing_table.hpp"
 #include "uav_msgs/msg/uav_status.hpp"
+#include "uav_msgs/msg/weather_status.hpp"
 
 using std::placeholders::_1;
 
@@ -101,6 +102,7 @@ struct ChargeRecord
   double decision_ctrl_delay_mean_ms = -1.0;
   double decision_ctrl_delay_p95_ms = -1.0;
   std::string decision_ctrl_drop_reasons;
+  double request_battery = -1.0;
   double start_battery = -1.0;
   double end_battery = -1.0;
   bool charge_completed = false;
@@ -115,6 +117,7 @@ struct UavState
   double x = 0.0;
   double y = 0.0;
   double z = 0.0;
+  double energy_consumption_rate = 0.0;
 };
 
 struct QosAggregate
@@ -195,6 +198,10 @@ public:
       "/fanet/routing_table", 50,
       std::bind(&NetworkMonitorNode::routingTableCallback, this, _1));
 
+    weather_sub_ = this->create_subscription<uav_msgs::msg::WeatherStatus>(
+      "/environment/weather", 10,
+      std::bind(&NetworkMonitorNode::weatherCallback, this, _1));
+
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
       [this]() { this->writeOutputs(false); });
@@ -206,6 +213,10 @@ public:
     status_timeseries_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(status_sample_period_sec_),
       std::bind(&NetworkMonitorNode::writeStatusTimeseriesRow, this));
+
+    weather_timeseries_timer_ = this->create_wall_timer(
+      std::chrono::duration<double>(status_sample_period_sec_),
+      std::bind(&NetworkMonitorNode::writeWeatherTimeseriesRow, this));
 
     queue_timeseries_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(queue_stats_period_sec_),
@@ -291,6 +302,10 @@ private:
           rec.role = st_it->second.role;
           rec.role_known = true;
         }
+      }
+      auto batt_it = latest_request_battery_by_uav_.find(rec.uav_id);
+      if (batt_it != latest_request_battery_by_uav_.end()) {
+        rec.request_battery = batt_it->second;
       }
       if (!isTerminalOutcome(rec.outcome) || rec.outcome == ChargeOutcome::PENDING) {
         rec.outcome = ChargeOutcome::PENDING;
@@ -441,6 +456,7 @@ private:
     rclcpp::Time t(msg->stamp);
     request_times_[msg->uav_id] = t;
     latest_role_by_uav_[msg->uav_id] = msg->role;
+    latest_request_battery_by_uav_[msg->uav_id] = msg->battery_level;
 
     RCLCPP_INFO(this->get_logger(),
                 "[CHG-REQ] uav=%s role=%u batt=%.1f%% at t=%.1f",
@@ -549,6 +565,7 @@ private:
     state.x = msg->pose.position.x;
     state.y = msg->pose.position.y;
     state.z = msg->pose.position.z;
+    state.energy_consumption_rate = msg->energy_consumption_rate;
     uav_states_[msg->uav_id] = state;
 
     auto req_it = latest_request_by_uav_.find(msg->uav_id);
@@ -790,6 +807,28 @@ private:
     }
   }
 
+  void weatherCallback(const uav_msgs::msg::WeatherStatus::SharedPtr msg)
+  {
+    if (!msg) {
+      return;
+    }
+    std::string new_regime = msg->regime;
+    if (!new_regime.empty() && new_regime != current_weather_regime_ &&
+        !current_weather_regime_.empty()) {
+      RCLCPP_INFO(this->get_logger(),
+                  "[WEATHER] regime transition: %s -> %s at t=%.3f",
+                  current_weather_regime_.c_str(),
+                  new_regime.c_str(),
+                  this->now().seconds());
+    }
+    current_weather_regime_ = new_regime;
+    current_weather_temp_c_ = msg->temperature_c;
+    current_weather_wind_speed_ = msg->wind_speed;
+    current_weather_wind_dir_ = msg->wind_direction_deg;
+    current_weather_rain_ = msg->rain_intensity;
+    weather_received_ = true;
+  }
+
   void parseDecisionRationale(const std::string & payload, ChargeRecord & rec)
   {
     if (payload.empty()) {
@@ -871,6 +910,7 @@ private:
     writeRecoveryEventsCsv(final_flush);
     writeChargeQueueTimeseriesRow();
     writeStatusTimeseriesRow();
+    writeWeatherTimeseriesRow();
     writeSummaryJson();
   }
 
@@ -1026,9 +1066,10 @@ private:
     charge_events_file_initialized_ = true;
 
     if (need_header) {
-      out << "run_id,request_msg_id,uav_id,ugv_id,outcome,failure_reason,"
-          << "request_time,decision_time,dock_start_time,decision_latency_ms,waiting_time_ms,"
-          << "charge_completed,start_battery,end_battery,energy_recovered,"
+      out << "run_id,request_msg_id,uav_id,ugv_id,role,outcome,failure_reason,"
+          << "request_time,decision_time,dock_start_time,charge_end_time,"
+          << "decision_latency_ms,waiting_time_ms,charge_duration_ms,"
+          << "charge_completed,request_battery,start_battery,end_battery,energy_recovered,"
           << "decision_policy,decision_priority,decision_tte_sec,decision_score,"
           << "decision_rank_index,decision_queue_size,"
           << "decision_ctrl_pdr,decision_ctrl_delay_mean_ms,decision_ctrl_delay_p95_ms,"
@@ -1045,6 +1086,9 @@ private:
       double waiting_time_ms = (rec.dock_start_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0)
         ? (rec.dock_start_time - rec.request_time).seconds() * 1000.0
         : -1.0;
+      double charge_duration_ms = (rec.charge_completed && rec.charge_end_time.nanoseconds() != 0 && rec.dock_start_time.nanoseconds() != 0)
+        ? (rec.charge_end_time - rec.dock_start_time).seconds() * 1000.0
+        : -1.0;
       double energy_recovered = (rec.charge_completed && rec.end_battery >= 0.0 && rec.start_battery >= 0.0)
         ? (rec.end_battery - rec.start_battery)
         : -1.0;
@@ -1053,14 +1097,18 @@ private:
           << rec.request_msg_id << ','
           << rec.uav_id << ','
           << rec.ugv_id << ','
+          << (rec.role_known ? static_cast<int>(rec.role) : -1) << ','
           << chargeOutcomeToString(rec.outcome) << ','
           << rec.failure_reason << ','
           << rec.request_time.seconds() << ','
           << rec.decision_time.seconds() << ','
           << rec.dock_start_time.seconds() << ','
+          << (rec.charge_end_time.nanoseconds() != 0 ? rec.charge_end_time.seconds() : -1.0) << ','
           << decision_latency_ms << ','
           << waiting_time_ms << ','
+          << charge_duration_ms << ','
           << (rec.charge_completed ? "true" : "false") << ','
+          << rec.request_battery << ','
           << rec.start_battery << ','
           << rec.end_battery << ','
           << energy_recovered << ','
@@ -1285,7 +1333,7 @@ private:
     status_timeseries_file_initialized_ = true;
 
     if (need_header) {
-      out << "run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z" << std::endl;
+      out << "run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z,energy_consumption_rate" << std::endl;
     }
 
     double t = this->now().seconds();
@@ -1299,7 +1347,8 @@ private:
           << (st.backbone_active ? "true" : "false") << ","
           << st.x << ","
           << st.y << ","
-          << st.z
+          << st.z << ","
+          << st.energy_consumption_rate
           << std::endl;
     }
   }
@@ -1412,6 +1461,44 @@ private:
         << utilization << ","
         << mean_wait_ch << ","
         << mean_wait_member
+        << std::endl;
+  }
+
+  void writeWeatherTimeseriesRow()
+  {
+    if (!weather_received_) {
+      return;
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "weather_timeseries.csv";
+    bool need_header = !weather_timeseries_file_initialized_;
+    std::ofstream out(path,
+                      weather_timeseries_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+    weather_timeseries_file_initialized_ = true;
+
+    if (need_header) {
+      out << "run_id,time,regime,temperature_c,wind_speed,wind_direction_deg,rain_intensity" << std::endl;
+    }
+
+    out << run_id_ << ","
+        << this->now().seconds() << ","
+        << current_weather_regime_ << ","
+        << current_weather_temp_c_ << ","
+        << current_weather_wind_speed_ << ","
+        << current_weather_wind_dir_ << ","
+        << current_weather_rain_
         << std::endl;
   }
 
@@ -1753,6 +1840,15 @@ private:
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr delivered_sub_;
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
+  rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr weather_sub_;
+
+  // Weather
+  std::string current_weather_regime_;
+  float current_weather_temp_c_ = 0.0f;
+  float current_weather_wind_speed_ = 0.0f;
+  float current_weather_wind_dir_ = 0.0f;
+  float current_weather_rain_ = 0.0f;
+  bool weather_received_ = false;
 
   // Failures
   size_t battery_dead_count_ = 0;
@@ -1764,6 +1860,7 @@ private:
   std::unordered_map<std::string, ChargeRecord> charge_records_;
   std::unordered_map<std::string, std::string> latest_request_by_uav_;
   std::unordered_map<std::string, uint8_t> latest_role_by_uav_;
+  std::unordered_map<std::string, float> latest_request_battery_by_uav_;
   std::unordered_map<std::string, UavState> uav_states_;
   std::unordered_map<std::string, rclcpp::Time> request_times_;
   size_t total_charging_sessions_;
@@ -1783,9 +1880,11 @@ private:
   bool recovery_events_file_initialized_ = false;
   bool status_timeseries_file_initialized_ = false;
   bool charge_queue_timeseries_file_initialized_ = false;
+  bool weather_timeseries_file_initialized_ = false;
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
+  rclcpp::TimerBase::SharedPtr weather_timeseries_timer_;
   rclcpp::TimerBase::SharedPtr queue_timeseries_timer_;
   rclcpp::TimerBase::SharedPtr stats_timer_;
   rclcpp::TimerBase::SharedPtr shutdown_check_timer_;

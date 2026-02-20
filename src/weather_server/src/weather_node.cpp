@@ -78,14 +78,16 @@ public:
 
     last_transition_time_ = this->now();
 
+    const bool transitions_on = (transition_mode_ == TransitionMode::MARKOV);
     RCLCPP_INFO(
       this->get_logger(),
-      "WeatherNode startup: mode=%s start_state=%s seed=%u (%s) transition_matrix_source=built_in transition_period_sec=%.1f",
+      "mode=%s start_state=%s transition_period_sec=%.1f seed=%u (%s) transitions=%s",
       modeToString(transition_mode_).c_str(),
       regimeToString(current_regime_).c_str(),
+      transition_period_sec_,
       seed_value_,
       seed_source_.c_str(),
-      transition_period_sec_);
+      transitions_on ? "ON" : "OFF");
   }
 
 private:
@@ -210,6 +212,7 @@ private:
     msg.wind_speed = static_cast<float>(wind_ms);
     msg.rain_intensity = static_cast<float>(rain_mm);  // mm/h
     msg.wind_direction_deg = static_cast<float>(wind_direction_deg_);
+    msg.regime = regimeToString(current_regime_);
 
     weather_pub_->publish(msg);
 
@@ -228,6 +231,7 @@ private:
     // Simple Markov chain: regimes tend to persist, but can change
     const double r = uni01_(rng_);
     const auto before = current_regime_;
+    double transition_prob = 0.0;
 
     switch (current_regime_) {
       case Regime::SUNNY:
@@ -235,26 +239,32 @@ private:
           /* stay */
         } else if (r < 0.95) {
           current_regime_ = Regime::WINDY;
+          transition_prob = 0.10;
         } else {
           current_regime_ = Regime::STORMY;
+          transition_prob = 0.05;
         }
         break;
       case Regime::WINDY:
         if (r < 0.15) {
           current_regime_ = Regime::SUNNY;
+          transition_prob = 0.15;
         } else if (r < 0.80) {
           /* stay */
         } else {
           current_regime_ = Regime::STORMY;
+          transition_prob = 0.20;
         }
         break;
       case Regime::STORMY:
         if (r < 0.40) {
           current_regime_ = Regime::WINDY;
+          transition_prob = 0.40;
         } else if (r < 0.80) {
           /* stay */
         } else {
           current_regime_ = Regime::SUNNY;
+          transition_prob = 0.20;
         }
         break;
       default:
@@ -265,9 +275,11 @@ private:
     if (current_regime_ != before) {
       RCLCPP_INFO(
         this->get_logger(),
-        "Weather regime transition: %s -> %s",
+        "transition %s -> %s (p=%.2f, rand=%.4f)",
         regimeToString(before).c_str(),
-        regimeToString(current_regime_).c_str());
+        regimeToString(current_regime_).c_str(),
+        transition_prob,
+        r);
     }
   }
 
