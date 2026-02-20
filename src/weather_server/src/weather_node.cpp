@@ -76,7 +76,12 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
       std::bind(&WeatherNode::timerCallback, this));
 
-    last_transition_time_ = this->now();
+    if (transition_mode_ == TransitionMode::MARKOV) {
+      auto transition_period = std::chrono::duration<double>(transition_period_sec_);
+      transition_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(transition_period),
+        std::bind(&WeatherNode::stepRegime, this));
+    }
 
     const bool transitions_on = (transition_mode_ == TransitionMode::MARKOV);
     RCLCPP_INFO(
@@ -215,14 +220,6 @@ private:
     msg.regime = regimeToString(current_regime_);
 
     weather_pub_->publish(msg);
-
-    if (transition_mode_ == TransitionMode::MARKOV) {
-      const auto now = this->now();
-      if ((now - last_transition_time_).seconds() >= transition_period_sec_) {
-        stepRegime();
-        last_transition_time_ = now;
-      }
-    }
   }
 
   // Markov-like regime transition: tends to stay in same regime.
@@ -293,6 +290,7 @@ private:
   // ROS
   rclcpp::Publisher<uav_msgs::msg::WeatherStatus>::SharedPtr weather_pub_;
   rclcpp::TimerBase::SharedPtr timer_;
+  rclcpp::TimerBase::SharedPtr transition_timer_;
 
   // Weather state
   Regime current_regime_;
@@ -301,7 +299,6 @@ private:
   double update_period_sec_;
   double transition_period_sec_;
   double wind_direction_deg_;
-  rclcpp::Time last_transition_time_;
   uint32_t seed_value_;
   std::string seed_source_;
 
