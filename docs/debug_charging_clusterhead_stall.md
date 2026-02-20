@@ -81,7 +81,7 @@ Added trace points:
 - `MOVE_BLOCKED` with reason code from `movementBlockReason()`
 
 Reason codes emitted include:
-- `RECOVERY_ACTIVE`
+- `EMERGENCY_LANDED`
 - `DEPLOYMENT_FREEZE`
 - `HOLD_POSITION`
 - `NO_GOAL_SET`
@@ -151,3 +151,50 @@ ros2 launch system_bringup bringup.launch.py run:=<YOUR_RUN_NAME> | grep "CHARGE
 - If still blocked:
   - `event=MOVE_BLOCKED reason=<REASON_CODE>` appears with full state snapshot, making blocker explicit.
 
+
+---
+
+## Addendum: emergency_landed guard semantics and unblock proof
+
+### Is `emergency_landed_` cleared on accepted decision?
+
+No. The updated logic **does not clear** `emergency_landed_` automatically when `ACCEPT_DECISION` is received.
+
+### mobilityStep() guard before vs after
+
+- **Before**
+  ```cpp
+  if (emergency_landed_) return;
+  ```
+
+- **After (safe override only for active accepted charge-to-UGV path)**
+  ```cpp
+  if (emergency_landed_ && !(has_charge_slot_ && charge_state_ == ChargeState::TO_UGV)) return;
+  ```
+
+This keeps emergency hold semantics by default, but allows the explicit accepted charging path to proceed.
+
+### Explicit blocked reason code
+
+`movementBlockReason()` now returns `EMERGENCY_LANDED` when this guard blocks motion, and `MOVE_BLOCKED` emits:
+
+```text
+event=MOVE_BLOCKED reason=EMERGENCY_LANDED
+```
+
+### Golden trace sample (CH)
+
+```text
+CHARGE_TRACE event=RECV_DECISION role=CH ... reason=ACCEPTED
+CHARGE_TRACE event=ACCEPT_DECISION role=CH ... reason=ENTER_TO_UGV
+CHARGE_TRACE event=STATE_TRANSITION role=CH ... reason=IDLE_TO_TO_UGV
+CHARGE_TRACE event=SET_GOAL role=CH ... reason=TARGET_FROM_NEIGHBOR_STATUS_AGE_MS=220
+CHARGE_TRACE event=MOVE_TICK role=CH ... dist_to_goal=145.2
+CHARGE_TRACE event=MOVE_TICK role=CH ... dist_to_goal=141.9
+```
+
+or, if blocked:
+
+```text
+CHARGE_TRACE event=MOVE_BLOCKED role=CH ... reason=EMERGENCY_LANDED
+```

@@ -145,7 +145,8 @@ public:
     has_charge_slot_(false),
     charge_state_(ChargeState::IDLE),
     deployment_received_(false),
-    last_charge_decision_rx_time_(0, 0, RCL_ROS_TIME)
+    last_charge_decision_rx_time_(0, 0, RCL_ROS_TIME),
+    last_ugv_pose_update_time_(0, 0, RCL_ROS_TIME)
   {
     // ---- Parameters ----
     uav_id_ = this->declare_parameter<std::string>("uav_id", "uav_1");
@@ -215,6 +216,8 @@ public:
       this->declare_parameter<bool>("accept_direct_deployment", false);
     charging_debug_trace_ =
       this->declare_parameter<bool>("charging_debug_trace", false);
+    ugv_pose_freshness_sec_ =
+      this->declare_parameter<double>("ugv_pose_freshness_sec", 5.0);
 
     // Base drain rates (energy units per second)
     double drain_member = this->declare_parameter<double>("drain_rate_member", 0.5);
@@ -445,6 +448,11 @@ public:
                         "UAV %s: charging_debug_trace set to %s",
                         uav_id_.c_str(),
                         charging_debug_trace_ ? "true" : "false");
+          } else if (p.get_name() == "ugv_pose_freshness_sec") {
+            ugv_pose_freshness_sec_ = p.as_double();
+            RCLCPP_INFO(this->get_logger(),
+                        "UAV %s: ugv_pose_freshness_sec set to %.2f",
+                        uav_id_.c_str(), ugv_pose_freshness_sec_);
           }
         }
         // Always accept parameter changes
@@ -955,26 +963,37 @@ private:
 
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
-      emergency_landed_ = false;
-      emergency_recovery_active_ = false;
       charge_state_ = ChargeState::TO_UGV;
       chargeTrace("ACCEPT_DECISION", "ENTER_TO_UGV");
       chargeTrace("STATE_TRANSITION", "IDLE_TO_TO_UGV");
 
       bool pose_ok = false;
+      std::string goal_reason = "TARGET_UNRESOLVED";
       if (payload_has_pose) {
         charge_target_pose_ = payload_ugv_pose;
         charge_target_pose_.position.z = pose_.position.z;
-        pose_ok = true;
+        pose_ok = std::isfinite(charge_target_pose_.position.x) &&
+                  std::isfinite(charge_target_pose_.position.y) &&
+                  std::isfinite(charge_target_pose_.position.z);
+        goal_reason = pose_ok ? "TARGET_FROM_DECISION_PAYLOAD_NUMERIC" : "TARGET_FROM_DECISION_PAYLOAD_NON_NUMERIC";
       } else {
-        pose_ok = resolveUgvPose(charge_target_pose_);
+        std::string source;
+        double age_sec = -1.0;
+        pose_ok = resolveUgvPoseFresh(charge_target_pose_, source, age_sec);
         if (pose_ok) {
           charge_target_pose_.position.z = pose_.position.z;
+          std::ostringstream reason;
+          reason << "TARGET_FROM_" << source << "_AGE_MS=" << static_cast<int>(age_sec * 1000.0);
+          goal_reason = reason.str();
+        } else {
+          std::ostringstream reason;
+          reason << "TARGET_FALLBACK_STALE_OR_MISSING_AGE_MS=" << static_cast<int>(age_sec * 1000.0);
+          goal_reason = reason.str();
         }
       }
 
       charge_target_pose_valid_ = pose_ok;
-      chargeTrace("SET_GOAL", pose_ok ? "TARGET_RESOLVED" : "TARGET_UNRESOLVED");
+      chargeTrace("SET_GOAL", goal_reason);
       if (pose_ok) {
         RCLCPP_INFO(this->get_logger(),
                     "UAV %s: CHARGE_DECISION accepted -> TO_UGV (slot=%s target=(%.1f, %.1f, %.1f)).",
@@ -1367,6 +1386,7 @@ private:
     if (msg->uav_id == ugv_id_) {
       ugv_pose_known_ = true;
       ugv_pose_ = msg->pose;
+      last_ugv_pose_update_time_ = this->now();
       RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
                            "UAV %s: updated UGV pose from status to (%.1f, %.1f, %.1f)",
                            uav_id_.c_str(), ugv_pose_.position.x, ugv_pose_.position.y, ugv_pose_.position.z);
@@ -1522,30 +1542,58 @@ private:
     return has_x && has_y;
   }
 
-  bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
+  bool resolveUgvPoseFresh(geometry_msgs::msg::Pose & pose,
+                          std::string & source,
+                          double & age_sec)
   {
-    if (ugv_pose_known_) {
-      pose = ugv_pose_;
-      RCLCPP_DEBUG(this->get_logger(),
-                   "UAV %s: resolveUgvPose succeeded via cached UGV status (%.1f, %.1f, %.1f)",
-                   uav_id_.c_str(), pose.position.x, pose.position.y, pose.position.z);
-      return true;
-    }
+    source = "NONE";
+    age_sec = std::numeric_limits<double>::infinity();
+    const auto now = this->now();
 
     auto it = neighbors_.find(ugv_id_);
     if (it != neighbors_.end()) {
-      pose = it->second.pose;
-      pose.orientation.w = 1.0;
-      RCLCPP_DEBUG(this->get_logger(),
-                   "UAV %s: resolveUgvPose succeeded via neighbors map (%.1f, %.1f, %.1f)",
-                   uav_id_.c_str(), pose.position.x, pose.position.y, pose.position.z);
-      return true;
+      double neighbor_age = (now - it->second.last_seen).seconds();
+      if (neighbor_age <= ugv_pose_freshness_sec_) {
+        pose = it->second.pose;
+        pose.orientation.w = 1.0;
+        source = "NEIGHBOR_STATUS";
+        age_sec = neighbor_age;
+        return true;
+      }
+      age_sec = neighbor_age;
     }
 
-    RCLCPP_WARN(this->get_logger(),
-                "UAV %s: resolveUgvPose failed (ugv_pose_known=%d, neighbor_entry=%d)",
-                uav_id_.c_str(), ugv_pose_known_ ? 1 : 0, neighbors_.find(ugv_id_) != neighbors_.end() ? 1 : 0);
+    if (ugv_pose_known_) {
+      pose = ugv_pose_;
+      source = "UGV_CACHE";
+      age_sec = (last_ugv_pose_update_time_.nanoseconds() > 0 &&
+                 last_ugv_pose_update_time_.get_clock_type() == now.get_clock_type())
+                  ? (now - last_ugv_pose_update_time_).seconds()
+                  : std::numeric_limits<double>::infinity();
+      if (age_sec <= ugv_pose_freshness_sec_) {
+        return true;
+      }
+    }
+
     return false;
+  }
+
+  bool resolveUgvPose(geometry_msgs::msg::Pose & pose)
+  {
+    std::string source;
+    double age_sec = -1.0;
+    bool ok = resolveUgvPoseFresh(pose, source, age_sec);
+    if (!ok) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: resolveUgvPose failed or stale (source=%s age=%.2fs max_age=%.2fs)",
+                  uav_id_.c_str(), source.c_str(), age_sec, ugv_pose_freshness_sec_);
+      return false;
+    }
+    RCLCPP_DEBUG(this->get_logger(),
+                 "UAV %s: resolveUgvPose fresh source=%s age=%.2fs target=(%.1f, %.1f, %.1f)",
+                 uav_id_.c_str(), source.c_str(), age_sec,
+                 pose.position.x, pose.position.y, pose.position.z);
+    return true;
   }
 
   std::string roleString(uint8_t role) const
@@ -1592,8 +1640,8 @@ private:
     if (!start_mobility_received_ && !charge_motion_active) {
       return "WAITING_FOR_SOMETHING";
     }
-    if (emergency_landed_ && !charge_motion_active) {
-      return "RECOVERY_ACTIVE";
+    if (emergency_landed_ && !(has_charge_slot_ && charge_state_ == ChargeState::TO_UGV)) {
+      return "EMERGENCY_LANDED";
     }
     if (is_charging_) {
       return "WAITING_FOR_SOMETHING";
@@ -2962,7 +3010,7 @@ private:
                            uav_id_.c_str());
       return;
     }
-    if (emergency_landed_ && !charge_motion_active) {
+    if (emergency_landed_ && !(has_charge_slot_ && charge_state_ == ChargeState::TO_UGV)) {
       chargeTrace("MOVE_BLOCKED", movementBlockReason(charge_motion_active));
       RCLCPP_WARN_THROTTLE(this->get_logger(), steady_clock, throttle_ms,
                            "UAV %s: emergency recovery complete; holding position.",
@@ -4045,8 +4093,10 @@ private:
   bool is_charging_;
   bool has_charge_slot_;
   bool charging_debug_trace_ = false;
+  double ugv_pose_freshness_sec_ = 5.0;
   std::string current_charge_slot_id_;
   rclcpp::Time last_charge_decision_rx_time_;
+  rclcpp::Time last_ugv_pose_update_time_;
   bool emergency_recovery_active_ = false;
   bool emergency_landed_ = false;
   bool fallback_mode_active_ = false;
