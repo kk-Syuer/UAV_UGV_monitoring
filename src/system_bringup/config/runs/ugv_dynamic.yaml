@@ -50,6 +50,7 @@ weather:
 
   mode: "markov"
   start_state: "sunny"
+  transition_period_sec: 120.0
 fault_injector:
   enable: true
   drop_mode: bus

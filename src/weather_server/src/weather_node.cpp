@@ -20,11 +20,12 @@ public:
     rng_(0),
     uni01_(0.0, 1.0)
   {
-    base_temp_c_      = this->declare_parameter<double>("base_temperature_c", 22.0);
+    base_temp_c_ = this->declare_parameter<double>("base_temperature_c", 22.0);
     update_period_sec_ = this->declare_parameter<double>("update_period_sec", 1.0);
     // Backward-compatible aliases used in existing launch configs.
     base_temp_c_ = this->declare_parameter<double>("temp_c", base_temp_c_);
     update_period_sec_ = this->declare_parameter<double>("publish_period_sec", update_period_sec_);
+    transition_period_sec_ = this->declare_parameter<double>("transition_period_sec", 120.0);
 
     const auto mode_str = this->declare_parameter<std::string>("mode", "markov");
     const auto start_state_str = this->declare_parameter<std::string>("start_state", "sunny");
@@ -59,6 +60,11 @@ public:
     }
     rng_.seed(seed_value_);
 
+    if (transition_period_sec_ <= 0.0) {
+      RCLCPP_WARN(this->get_logger(), "Invalid transition_period_sec=%.3f, using 120.0s", transition_period_sec_);
+      transition_period_sec_ = 120.0;
+    }
+
     wind_direction_deg_ = 0.0;
 
     // Broadcast weather updates to interested nodes (UAVs, viz, etc.).
@@ -70,13 +76,16 @@ public:
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
       std::bind(&WeatherNode::timerCallback, this));
 
+    last_transition_time_ = this->now();
+
     RCLCPP_INFO(
       this->get_logger(),
-      "WeatherNode startup: mode=%s start_state=%s seed=%u (%s) transition_matrix_source=built_in",
+      "WeatherNode startup: mode=%s start_state=%s seed=%u (%s) transition_matrix_source=built_in transition_period_sec=%.1f",
       modeToString(transition_mode_).c_str(),
       regimeToString(current_regime_).c_str(),
       seed_value_,
-      seed_source_.c_str());
+      seed_source_.c_str(),
+      transition_period_sec_);
   }
 
 private:
@@ -85,6 +94,11 @@ private:
 
   static std::string normalize(std::string s)
   {
+    s.erase(s.begin(), std::find_if(s.begin(), s.end(), [](unsigned char c) { return !std::isspace(c); }));
+    s.erase(std::find_if(s.rbegin(), s.rend(), [](unsigned char c) { return !std::isspace(c); }).base(), s.end());
+    if (s.size() >= 2 && ((s.front() == '\'' && s.back() == '\'') || (s.front() == '"' && s.back() == '"'))) {
+      s = s.substr(1, s.size() - 2);
+    }
     std::transform(s.begin(), s.end(), s.begin(), [](unsigned char c) { return std::tolower(c); });
     return s;
   }
@@ -138,32 +152,49 @@ private:
   // Periodically step the regime model and publish the resulting weather.
   void timerCallback()
   {
-    double temp_c   = 0.0;
-    double wind_ms  = 0.0;
-    double rain_mm  = 0.0;
+    double temp_c = 0.0;
+    double wind_ms = 0.0;
+    double rain_mm = 0.0;
 
     // Choose regime-dependent distributions
     double t_mean, t_std, w_mean, w_std, r_mean, r_std;
 
     switch (current_regime_) {
       case Regime::SUNNY:
-        t_mean = base_temp_c_ + 3.0;  t_std = 2.0;
-        w_mean = 2.0;                 w_std = 1.0;
-        r_mean = 0.0;                 r_std = 0.05;   // almost no rain
+        t_mean = base_temp_c_ + 3.0;
+        t_std = 2.0;
+        w_mean = 2.0;
+        w_std = 1.0;
+        r_mean = 0.0;
+        r_std = 0.05;  // almost no rain
         break;
       case Regime::WINDY:
-        t_mean = base_temp_c_;        t_std = 3.0;
-        w_mean = 8.0;                 w_std = 3.0;
-        r_mean = 0.2;                 r_std = 0.3;    // light drizzle sometimes
+        t_mean = base_temp_c_;
+        t_std = 3.0;
+        w_mean = 8.0;
+        w_std = 3.0;
+        r_mean = 0.2;
+        r_std = 0.3;  // light drizzle sometimes
         break;
       case Regime::STORMY:
-        t_mean = base_temp_c_ - 2.0;  t_std = 3.0;
-        w_mean = 12.0;                w_std = 4.0;
-        r_mean = 10.0;                r_std = 5.0;    // heavy rain, mm/h
+        t_mean = base_temp_c_ - 2.0;
+        t_std = 3.0;
+        w_mean = 12.0;
+        w_std = 4.0;
+        r_mean = 10.0;
+        r_std = 5.0;  // heavy rain, mm/h
+        break;
+      default:
+        t_mean = base_temp_c_ + 3.0;
+        t_std = 2.0;
+        w_mean = 2.0;
+        w_std = 1.0;
+        r_mean = 0.0;
+        r_std = 0.05;
         break;
     }
 
-    temp_c  = sampleNormal(t_mean, t_std);
+    temp_c = sampleNormal(t_mean, t_std);
     wind_ms = std::max(0.0, sampleNormal(w_mean, w_std));
     rain_mm = std::max(0.0, sampleNormal(r_mean, r_std));
 
@@ -175,15 +206,19 @@ private:
       wind_direction_deg_ -= 360.0;
 
     uav_msgs::msg::WeatherStatus msg;
-    msg.temperature_c      = static_cast<float>(temp_c);
-    msg.wind_speed         = static_cast<float>(wind_ms);
-    msg.rain_intensity     = static_cast<float>(rain_mm);          // mm/h
+    msg.temperature_c = static_cast<float>(temp_c);
+    msg.wind_speed = static_cast<float>(wind_ms);
+    msg.rain_intensity = static_cast<float>(rain_mm);  // mm/h
     msg.wind_direction_deg = static_cast<float>(wind_direction_deg_);
 
     weather_pub_->publish(msg);
 
     if (transition_mode_ == TransitionMode::MARKOV) {
-      stepRegime();
+      const auto now = this->now();
+      if ((now - last_transition_time_).seconds() >= transition_period_sec_) {
+        stepRegime();
+        last_transition_time_ = now;
+      }
     }
   }
 
@@ -191,24 +226,39 @@ private:
   void stepRegime()
   {
     // Simple Markov chain: regimes tend to persist, but can change
-    double r = uni01_(rng_);
+    const double r = uni01_(rng_);
     const auto before = current_regime_;
 
     switch (current_regime_) {
       case Regime::SUNNY:
-        if      (r < 0.85) { /* stay */ }
-        else if (r < 0.95) { current_regime_ = Regime::WINDY; }
-        else               { current_regime_ = Regime::STORMY; }
+        if (r < 0.85) {
+          /* stay */
+        } else if (r < 0.95) {
+          current_regime_ = Regime::WINDY;
+        } else {
+          current_regime_ = Regime::STORMY;
+        }
         break;
       case Regime::WINDY:
-        if      (r < 0.15) { current_regime_ = Regime::SUNNY; }
-        else if (r < 0.80) { /* stay */ }
-        else               { current_regime_ = Regime::STORMY; }
+        if (r < 0.15) {
+          current_regime_ = Regime::SUNNY;
+        } else if (r < 0.80) {
+          /* stay */
+        } else {
+          current_regime_ = Regime::STORMY;
+        }
         break;
       case Regime::STORMY:
-        if      (r < 0.40) { current_regime_ = Regime::WINDY; }
-        else if (r < 0.80) { /* stay */ }
-        else               { current_regime_ = Regime::SUNNY; }
+        if (r < 0.40) {
+          current_regime_ = Regime::WINDY;
+        } else if (r < 0.80) {
+          /* stay */
+        } else {
+          current_regime_ = Regime::SUNNY;
+        }
+        break;
+      default:
+        current_regime_ = Regime::SUNNY;
         break;
     }
 
@@ -237,7 +287,9 @@ private:
   TransitionMode transition_mode_;
   double base_temp_c_;
   double update_period_sec_;
+  double transition_period_sec_;
   double wind_direction_deg_;
+  rclcpp::Time last_transition_time_;
   uint32_t seed_value_;
   std::string seed_source_;
 

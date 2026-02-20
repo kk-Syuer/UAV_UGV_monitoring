@@ -158,6 +158,7 @@ def _make_nodes(context, *args, **kwargs):
             "temp_c": float(_get(cfg, ["weather", "temp_c"], 18.0)),
             "mode": str(_get(cfg, ["weather", "mode"], "markov")),
             "start_state": str(_get(cfg, ["weather", "start_state"], "sunny")),
+            "transition_period_sec": float(_get(cfg, ["weather", "transition_period_sec"], 120.0)),
         }
         weather_seed = _get(cfg, ["weather", "seed"], None)
         if weather_seed is not None:
