@@ -13,6 +13,15 @@
 using namespace std::chrono_literals;
 
 // Publishes a synthetic weather stream with a Markov regime model.
+//
+// Two independent timers:
+//   1. Parameter update timer (default 1 s) — applies a mean-reverting drift
+//      model to temperature, wind speed, rainfall, and wind direction, then
+//      publishes.  The drift targets and variation amplitudes are determined
+//      by the current macrostate.
+//   2. Macrostate timer (default 30 s) — evaluates the Markov transition
+//      matrix and potentially switches the regime.  The macrostate never
+//      changes on the fast timer.
 class WeatherNode : public rclcpp::Node
 {
 public:
@@ -26,7 +35,9 @@ public:
     // Backward-compatible aliases used in existing launch configs.
     base_temp_c_ = this->declare_parameter<double>("temp_c", base_temp_c_);
     update_period_sec_ = this->declare_parameter<double>("publish_period_sec", update_period_sec_);
-    transition_period_sec_ = this->declare_parameter<double>("transition_period_sec", 120.0);
+    macrostate_period_sec_ = this->declare_parameter<double>("macrostate_period_sec", 30.0);
+    // Legacy alias — maps to the new macrostate timer.
+    macrostate_period_sec_ = this->declare_parameter<double>("transition_period_sec", macrostate_period_sec_);
 
     const auto mode_str = this->declare_parameter<std::string>("mode", "markov");
     const auto start_state_str = this->declare_parameter<std::string>("start_state", "cloudy");
@@ -65,35 +76,41 @@ public:
     }
     rng_.seed(seed_value_);
 
-    if (transition_period_sec_ <= 0.0) {
-      RCLCPP_WARN(this->get_logger(), "Invalid transition_period_sec=%.3f, using 120.0s", transition_period_sec_);
-      transition_period_sec_ = 120.0;
+    if (macrostate_period_sec_ <= 0.0) {
+      RCLCPP_WARN(this->get_logger(), "Invalid macrostate_period_sec=%.3f, using 30.0s", macrostate_period_sec_);
+      macrostate_period_sec_ = 30.0;
     }
 
-    wind_direction_deg_ = 0.0;
+    // Initialise live weather values from the starting regime so the first
+    // published message is already in the right ballpark.
+    initLiveValues();
 
     weather_pub_ = this->create_publisher<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10);
 
+    // Fast timer: drift + publish weather parameters every update_period_sec_.
     auto period = std::chrono::duration<double>(update_period_sec_);
-    timer_ = this->create_wall_timer(
+    update_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(period),
-      std::bind(&WeatherNode::timerCallback, this));
+      std::bind(&WeatherNode::updateCallback, this));
 
+    // Slow timer: Markov macrostate transitions.
     if (transition_mode_ == TransitionMode::MARKOV) {
-      auto transition_period = std::chrono::duration<double>(transition_period_sec_);
-      transition_timer_ = this->create_wall_timer(
-        std::chrono::duration_cast<std::chrono::nanoseconds>(transition_period),
+      auto macro_period = std::chrono::duration<double>(macrostate_period_sec_);
+      macrostate_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(macro_period),
         std::bind(&WeatherNode::stepRegime, this));
     }
 
     const bool transitions_on = (transition_mode_ == TransitionMode::MARKOV);
     RCLCPP_INFO(
       this->get_logger(),
-      "mode=%s start_state=%s transition_period_sec=%.1f states=[sunny,cloudy,windy,rainy,stormy] matrix_source=%s seed=%u (%s) transitions=%s",
+      "mode=%s start_state=%s update_period=%.1fs macrostate_period=%.1fs "
+      "states=[sunny,cloudy,windy,rainy,stormy] matrix_source=%s seed=%u (%s) transitions=%s",
       modeToString(transition_mode_).c_str(),
       regimeToString(current_regime_).c_str(),
-      transition_period_sec_,
+      update_period_sec_,
+      macrostate_period_sec_,
       transition_matrix_source_.c_str(),
       seed_value_,
       seed_source_.c_str(),
@@ -107,6 +124,76 @@ private:
   static constexpr size_t kRegimeCount = 5;
   using TransitionRow = std::array<double, kRegimeCount>;
   using TransitionMatrix = std::array<TransitionRow, kRegimeCount>;
+
+  // Per-regime parameters that govern the drift model.
+  //   centre   — the value that the parameter mean-reverts toward
+  //   jitter   — standard deviation of the noise added each tick
+  //   drift    — fraction of the gap (centre − current) closed per tick (0..1)
+  struct RegimeParams
+  {
+    double temp_centre;
+    double temp_jitter;
+    double wind_centre;
+    double wind_jitter;
+    double rain_centre;
+    double rain_jitter;
+    double drift_rate;          // mean-reversion strength (higher = faster snap)
+    double wind_dir_jitter_deg; // std of wind-direction random walk per tick
+  };
+
+  // Returns the drift-model parameters for a given regime.
+  RegimeParams regimeParams(Regime regime) const
+  {
+    switch (regime) {
+      case Regime::SUNNY:
+        return {base_temp_c_ + 3.0, 0.3,   // temp: warm, low jitter
+                2.0,                0.2,    // wind: light
+                0.0,                0.02,   // rain: essentially none
+                0.15,                       // drift: moderate convergence
+                2.0};                       // wind dir: stable
+      case Regime::CLOUDY:
+        return {base_temp_c_ + 1.0, 0.4,
+                4.0,                0.4,
+                0.8,                0.15,
+                0.12,
+                3.0};
+      case Regime::WINDY:
+        return {base_temp_c_,       0.5,
+                8.0,                0.8,
+                0.2,                0.08,
+                0.10,
+                6.0};                       // wind dir: gusty shifts
+      case Regime::RAINY:
+        return {base_temp_c_ - 1.0, 0.35,
+                6.0,                0.6,
+                5.0,                0.5,
+                0.12,
+                4.0};
+      case Regime::STORMY:
+        return {base_temp_c_ - 2.0, 0.7,
+                12.0,               1.2,
+                10.0,               1.0,
+                0.08,                       // drift: slow — stormy values swing widely
+                8.0};                       // wind dir: chaotic
+      default:
+        return {base_temp_c_ + 3.0, 0.3,
+                2.0,                0.2,
+                0.0,                0.02,
+                0.15,
+                2.0};
+    }
+  }
+
+  // Seed the live values from the current regime's centres so the very first
+  // publish isn't starting from zero.
+  void initLiveValues()
+  {
+    const auto rp = regimeParams(current_regime_);
+    live_temp_c_          = rp.temp_centre;
+    live_wind_ms_         = rp.wind_centre;
+    live_rain_mm_         = rp.rain_centre;
+    live_wind_dir_deg_    = sampleUniform(0.0, 360.0);
+  }
 
   static std::string normalize(std::string s)
   {
@@ -244,88 +331,47 @@ private:
     }
   }
 
-  // Periodically sample and publish weather values from current regime.
-  void timerCallback()
+  // ── Fast timer callback (every update_period_sec_) ──────────────────
+  // Applies a mean-reverting drift model:
+  //   new = old + drift * (centre − old) + jitter * N(0,1)
+  // The regime is NOT changed here — only the numeric parameters evolve.
+  void updateCallback()
   {
-    double temp_c = 0.0;
-    double wind_ms = 0.0;
-    double rain_mm = 0.0;
+    const auto rp = regimeParams(current_regime_);
 
-    double t_mean, t_std, w_mean, w_std, r_mean, r_std;
+    // Mean-reverting drift for each parameter.
+    live_temp_c_ += rp.drift_rate * (rp.temp_centre - live_temp_c_)
+                  + rp.temp_jitter * sampleNormal(0.0, 1.0);
 
-    switch (current_regime_) {
-      case Regime::SUNNY:
-        t_mean = base_temp_c_ + 3.0;
-        t_std = 2.0;
-        w_mean = 2.0;
-        w_std = 1.0;
-        r_mean = 0.0;
-        r_std = 0.05;
-        break;
-      case Regime::CLOUDY:
-        t_mean = base_temp_c_ + 1.0;
-        t_std = 2.5;
-        w_mean = 4.0;
-        w_std = 1.8;
-        r_mean = 0.8;
-        r_std = 0.7;
-        break;
-      case Regime::WINDY:
-        t_mean = base_temp_c_;
-        t_std = 3.0;
-        w_mean = 8.0;
-        w_std = 3.0;
-        r_mean = 0.2;
-        r_std = 0.3;
-        break;
-      case Regime::RAINY:
-        t_mean = base_temp_c_ - 1.0;
-        t_std = 2.0;
-        w_mean = 6.0;
-        w_std = 2.5;
-        r_mean = 5.0;
-        r_std = 2.0;
-        break;
-      case Regime::STORMY:
-        t_mean = base_temp_c_ - 2.0;
-        t_std = 3.0;
-        w_mean = 12.0;
-        w_std = 4.0;
-        r_mean = 10.0;
-        r_std = 5.0;
-        break;
-      default:
-        t_mean = base_temp_c_ + 3.0;
-        t_std = 2.0;
-        w_mean = 2.0;
-        w_std = 1.0;
-        r_mean = 0.0;
-        r_std = 0.05;
-        break;
+    live_wind_ms_ += rp.drift_rate * (rp.wind_centre - live_wind_ms_)
+                   + rp.wind_jitter * sampleNormal(0.0, 1.0);
+    live_wind_ms_ = std::max(0.0, live_wind_ms_);
+
+    live_rain_mm_ += rp.drift_rate * (rp.rain_centre - live_rain_mm_)
+                   + rp.rain_jitter * sampleNormal(0.0, 1.0);
+    live_rain_mm_ = std::max(0.0, live_rain_mm_);
+
+    // Wind direction: random walk with regime-dependent jitter.
+    live_wind_dir_deg_ += sampleNormal(0.0, rp.wind_dir_jitter_deg);
+    if (live_wind_dir_deg_ < 0.0) {
+      live_wind_dir_deg_ += 360.0;
     }
-
-    temp_c = sampleNormal(t_mean, t_std);
-    wind_ms = std::max(0.0, sampleNormal(w_mean, w_std));
-    rain_mm = std::max(0.0, sampleNormal(r_mean, r_std));
-
-    wind_direction_deg_ += sampleNormal(0.0, 10.0);
-    if (wind_direction_deg_ < 0.0) {
-      wind_direction_deg_ += 360.0;
-    }
-    if (wind_direction_deg_ >= 360.0) {
-      wind_direction_deg_ -= 360.0;
+    if (live_wind_dir_deg_ >= 360.0) {
+      live_wind_dir_deg_ -= 360.0;
     }
 
     uav_msgs::msg::WeatherStatus msg;
-    msg.temperature_c = static_cast<float>(temp_c);
-    msg.wind_speed = static_cast<float>(wind_ms);
-    msg.rain_intensity = static_cast<float>(rain_mm);
-    msg.wind_direction_deg = static_cast<float>(wind_direction_deg_);
-    msg.regime = regimeToString(current_regime_);
+    msg.temperature_c    = static_cast<float>(live_temp_c_);
+    msg.wind_speed       = static_cast<float>(live_wind_ms_);
+    msg.rain_intensity   = static_cast<float>(live_rain_mm_);
+    msg.wind_direction_deg = static_cast<float>(live_wind_dir_deg_);
+    msg.regime           = regimeToString(current_regime_);
 
     weather_pub_->publish(msg);
   }
 
+  // ── Slow timer callback (every macrostate_period_sec_) ──────────────
+  // Evaluates the Markov transition matrix and potentially switches regime.
   void stepRegime()
   {
     const double r = uni01_(rng_);
@@ -348,7 +394,7 @@ private:
     if (current_regime_ != before) {
       RCLCPP_INFO(
         this->get_logger(),
-        "transition %s -> %s (p=%.2f, rand=%.4f, t=%.3f)",
+        "regime transition %s -> %s (p=%.2f, rand=%.4f, t=%.3f)",
         regimeToString(before).c_str(),
         regimeToString(current_regime_).c_str(),
         transition_prob,
@@ -363,20 +409,31 @@ private:
     return dist(rng_);
   }
 
+  double sampleUniform(double lo, double hi)
+  {
+    std::uniform_real_distribution<double> dist(lo, hi);
+    return dist(rng_);
+  }
+
   rclcpp::Publisher<uav_msgs::msg::WeatherStatus>::SharedPtr weather_pub_;
-  rclcpp::TimerBase::SharedPtr timer_;
-  rclcpp::TimerBase::SharedPtr transition_timer_;
+  rclcpp::TimerBase::SharedPtr update_timer_;
+  rclcpp::TimerBase::SharedPtr macrostate_timer_;
 
   Regime current_regime_;
   TransitionMode transition_mode_;
   double base_temp_c_;
   double update_period_sec_;
-  double transition_period_sec_;
-  double wind_direction_deg_;
+  double macrostate_period_sec_;
   TransitionMatrix transition_matrix_;
   std::string transition_matrix_source_;
   uint32_t seed_value_;
   std::string seed_source_;
+
+  // Live (persistent) weather values — evolved by the drift model each tick.
+  double live_temp_c_{0.0};
+  double live_wind_ms_{0.0};
+  double live_rain_mm_{0.0};
+  double live_wind_dir_deg_{0.0};
 
   std::mt19937 rng_;
   std::uniform_real_distribution<double> uni01_;
