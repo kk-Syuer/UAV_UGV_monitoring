@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <utility>
 #include <iomanip>
+#include <random>
 
 #include "rclcpp/rclcpp.hpp"
 #include "uav_msgs/msg/traffic_message.hpp"
@@ -152,11 +153,27 @@ public:
       policy_ = Policy::EDF;
     } else if (policy_name == "dynamic") {
       policy_ = Policy::DYNAMIC_SCORE;
+    } else if (policy_name == "p_edf") {
+      policy_ = Policy::P_EDF;
+    } else if (policy_name == "p_role_priority") {
+      policy_ = Policy::P_ROLE_PRIORITY;
+    } else if (policy_name == "p_dynamic_score" || policy_name == "p_dynamic") {
+      policy_ = Policy::P_DYNAMIC_SCORE;
     } else {
       policy_ = Policy::FCFS;
       policy_name = "fcfs";
     }
     policy_name_ = policy_name;
+
+    // Preemption guardrail parameters (used only with P-* policies)
+    preemption_enabled_ = this->declare_parameter<bool>("preemption_enabled", isPreemptivePolicy());
+    preemption_min_charge_time_s_ = this->declare_parameter<double>("preemption_min_charge_time_s", 60.0);
+    preemption_delta_priority_min_ = this->declare_parameter<double>("preemption_delta_priority_min", 0.25);
+    preemption_cooldown_s_ = this->declare_parameter<double>("preemption_cooldown_s", 120.0);
+    preemption_max_per_uav_ = this->declare_parameter<int>("preemption_max_per_uav", 3);
+    preemption_backoff_base_s_ = this->declare_parameter<double>("preemption_backoff_base_s", 30.0);
+    preemption_backoff_jitter_s_ = this->declare_parameter<double>("preemption_backoff_jitter_s", 30.0);
+
     uplink_ch_id_ =
       this->declare_parameter<std::string>("uplink_ch_id", "uav_3");
 
@@ -262,8 +279,29 @@ private:
     FCFS,
     ROLE_PRIORITY,
     EDF,
-    DYNAMIC_SCORE
+    DYNAMIC_SCORE,
+    P_EDF,
+    P_ROLE_PRIORITY,
+    P_DYNAMIC_SCORE
   };
+
+  bool isPreemptivePolicy() const
+  {
+    return policy_ == Policy::P_EDF ||
+           policy_ == Policy::P_ROLE_PRIORITY ||
+           policy_ == Policy::P_DYNAMIC_SCORE;
+  }
+
+  // Return the base scoring mode for a preemptive policy.
+  Policy basePolicy() const
+  {
+    switch (policy_) {
+      case Policy::P_EDF: return Policy::EDF;
+      case Policy::P_ROLE_PRIORITY: return Policy::ROLE_PRIORITY;
+      case Policy::P_DYNAMIC_SCORE: return Policy::DYNAMIC_SCORE;
+      default: return policy_;
+    }
+  }
 
   // Expected charging_state values in /fanet/status (UavStatus):
   // 0=IDLE, 1=TO_UGV, 2=CHARGING, 3=RETURNING.
@@ -351,6 +389,22 @@ private:
     rclcpp::Time end_time;
     double duration_sec = 0.0;
     std::string reason;
+  };
+
+  // ------ Preemption tracking ------
+  struct PreemptionRecord
+  {
+    std::string victim_uav_id;
+    std::string winner_uav_id;
+    rclcpp::Time preempt_time;
+    rclcpp::Time cooldown_until;  // victim cannot be preempted again until this time
+  };
+
+  // Per-UAV preemption state
+  struct PreemptionState
+  {
+    int preempt_count = 0;
+    rclcpp::Time last_preempted_time;
   };
 
   // ------------- Callbacks -------------
@@ -1546,6 +1600,18 @@ private:
       return;
     }
 
+    // Preemptive check: if all docks are occupied but a waiting UAV is more
+    // urgent, preempt the weakest occupant to free a slot.
+    if (isPreemptivePolicy() && preemption_enabled_ &&
+        !queue_.empty() &&
+        static_cast<int>(active_sessions_.size()) >= max_parallel_spots_) {
+      PreemptCandidate pc;
+      if (shouldPreempt(now, pc)) {
+        executePreemption(pc, now);
+        // A slot was just freed; fall through to the normal grant logic below.
+      }
+    }
+
     // Dock is free; if no one waiting, nothing to do
     if (queue_.empty()) {
       return;
@@ -1811,8 +1877,9 @@ private:
     }
 
     constexpr double kEps = 1e-9;
+    Policy effective_policy = basePolicy();
     std::sort(rows.begin(), rows.end(), [&](const Candidate & a, const Candidate & b) {
-      if (policy_ == Policy::ROLE_PRIORITY) {
+      if (effective_policy == Policy::ROLE_PRIORITY) {
         if (a.role != b.role) {
           return a.role > b.role;
         }
@@ -1822,7 +1889,7 @@ private:
         return a.uav_id < b.uav_id;
       }
 
-      if (policy_ == Policy::EDF) {
+      if (effective_policy == Policy::EDF) {
         if (std::abs(a.tte - b.tte) > kEps) {
           return a.tte < b.tte;
         }
@@ -1835,7 +1902,7 @@ private:
         return a.uav_id < b.uav_id;
       }
 
-      if (policy_ == Policy::DYNAMIC_SCORE) {
+      if (effective_policy == Policy::DYNAMIC_SCORE) {
         if (std::abs(a.score - b.score) > kEps) {
           return a.score > b.score;
         }
@@ -1867,18 +1934,362 @@ private:
     RCLCPP_DEBUG(this->get_logger(), "%s", oss.str().c_str());
   }
 
+  // ------------- Preemption priority computation -------------
+
+  // Compute a scalar priority for a UAV in queue or actively charging.
+  // Higher value = more urgent.  Uses the base scoring policy.
+  double computePreemptionPriority(const std::string & uav_id,
+                                   uint8_t role,
+                                   float battery,
+                                   const rclcpp::Time & request_time,
+                                   const rclcpp::Time & now) const
+  {
+    Policy base = basePolicy();
+    if (base == Policy::EDF) {
+      // EDF: priority = -slack = -(TTE).  Higher = more urgent (less time left).
+      double drain = (role == 1) ? drain_percent_ch_ : drain_percent_member_;
+      double tte = (drain > 0.0) ? static_cast<double>(battery) / drain
+                                 : std::numeric_limits<double>::infinity();
+      return -tte;  // more urgent = higher value
+    }
+    if (base == Policy::ROLE_PRIORITY) {
+      // Role priority: CH (role=1) gets base 1000, member gets 0.
+      // Secondary: urgency via battery (lower = more urgent).
+      return static_cast<double>(role) * 1000.0 + (100.0 - static_cast<double>(battery));
+    }
+    // DYNAMIC_SCORE
+    double role_term = (role == 1 ? 1.0 : 0.0);
+    double batt_term = (100.0 - static_cast<double>(battery));
+    double wait_sec = std::max(0.0, (now - request_time).seconds());
+    return w_role_ * role_term + w_batt_ * batt_term + w_wait_ * wait_sec;
+  }
+
+  // Compute priority for a queue entry.
+  double computeQueuePriority(const QueueEntry & entry, const rclcpp::Time & now) const
+  {
+    auto [live_role, live_battery] = getLiveRoleAndBattery(entry);
+    return computePreemptionPriority(entry.uav_id, live_role, live_battery, entry.request_time, now);
+  }
+
+  // Compute priority for an active charging session occupant.
+  double computeOccupantPriority(const ChargingSession & session, const rclcpp::Time & now) const
+  {
+    uint8_t role = 0;
+    float battery = session.last_battery_seen;
+    auto it = uav_status_.find(session.uav_id);
+    if (it != uav_status_.end()) {
+      role = it->second.role;
+      battery = std::clamp(it->second.battery_level, 0.0f, 100.0f);
+    }
+    return computePreemptionPriority(session.uav_id, role, battery, session.start_time, now);
+  }
+
+  // ------------- Preemption guardrail check -------------
+
+  struct PreemptCandidate
+  {
+    size_t session_index;
+    double occupant_priority;
+    double candidate_priority;
+    double delta;
+  };
+
+  // Check whether the best waiting candidate can preempt any active charger.
+  // Returns true and fills out the candidate info if preemption should proceed.
+  bool shouldPreempt(const rclcpp::Time & now, PreemptCandidate & out) const
+  {
+    if (!preemption_enabled_ || !isPreemptivePolicy()) {
+      return false;
+    }
+    if (queue_.empty() || active_sessions_.empty()) {
+      return false;
+    }
+
+    // Find best candidate in queue
+    size_t best_queue_idx = chooseNextIndexConst(now);
+    double best_candidate_priority = computeQueuePriority(queue_[best_queue_idx], now);
+
+    // Find the weakest occupant (lowest priority) among active sessions
+    size_t weakest_session_idx = 0;
+    double weakest_priority = computeOccupantPriority(active_sessions_[0], now);
+    for (size_t i = 1; i < active_sessions_.size(); ++i) {
+      double p = computeOccupantPriority(active_sessions_[i], now);
+      if (p < weakest_priority) {
+        weakest_priority = p;
+        weakest_session_idx = i;
+      }
+    }
+
+    double delta = best_candidate_priority - weakest_priority;
+    if (delta < preemption_delta_priority_min_) {
+      return false;  // not enough priority advantage
+    }
+
+    const auto & session = active_sessions_[weakest_session_idx];
+    double charge_time_so_far = (now - session.start_time).seconds();
+
+    // Guardrail: minimum charge time
+    if (charge_time_so_far < preemption_min_charge_time_s_) {
+      return false;
+    }
+
+    // Guardrail: cooldown
+    auto ps_it = preemption_state_.find(session.uav_id);
+    if (ps_it != preemption_state_.end()) {
+      if (ps_it->second.last_preempted_time.nanoseconds() > 0 &&
+          (now - ps_it->second.last_preempted_time).seconds() < preemption_cooldown_s_) {
+        return false;
+      }
+      // Guardrail: max preemptions per UAV
+      if (preemption_max_per_uav_ > 0 &&
+          ps_it->second.preempt_count >= preemption_max_per_uav_) {
+        return false;
+      }
+    }
+
+    // P-RolePriority special rule: do NOT preempt CH for a member
+    // (unless explicitly overridden - default OFF)
+    if (basePolicy() == Policy::ROLE_PRIORITY) {
+      uint8_t occupant_role = 0;
+      auto status_it = uav_status_.find(session.uav_id);
+      if (status_it != uav_status_.end()) {
+        occupant_role = status_it->second.role;
+      }
+      auto [candidate_role, candidate_batt] = getLiveRoleAndBattery(queue_[best_queue_idx]);
+      (void)candidate_batt;
+      if (occupant_role == 1 && candidate_role == 0) {
+        return false;  // member cannot preempt CH
+      }
+    }
+
+    out.session_index = weakest_session_idx;
+    out.occupant_priority = weakest_priority;
+    out.candidate_priority = best_candidate_priority;
+    out.delta = delta;
+    return true;
+  }
+
+  // Execute a preemption: send PREEMPT_STOP_CHARGING to the victim,
+  // remove session, and grant slot to the candidate.
+  bool executePreemption(const PreemptCandidate & pc, const rclcpp::Time & now)
+  {
+    if (pc.session_index >= active_sessions_.size()) {
+      return false;
+    }
+
+    const auto & session = active_sessions_[pc.session_index];
+    const std::string victim_id = session.uav_id;
+    double charge_time_so_far = (now - session.start_time).seconds();
+
+    // Send PREEMPT_STOP_CHARGING to victim via FANET
+    bool sent = sendPreemptMessage(victim_id, now, charge_time_so_far);
+    if (!sent) {
+      RCLCPP_WARN(this->get_logger(),
+                  "UGV: failed to send PREEMPT_STOP_CHARGING to %s (no route)",
+                  victim_id.c_str());
+      return false;
+    }
+
+    // Update preemption state
+    auto & ps = preemption_state_[victim_id];
+    ps.preempt_count++;
+    ps.last_preempted_time = now;
+
+    // Log the preemption event
+    size_t best_queue_idx = chooseNextIndexConst(now);
+    const auto & winner = queue_[best_queue_idx];
+    auto [winner_role, winner_battery] = getLiveRoleAndBattery(winner);
+    uint8_t victim_role = 0;
+    auto status_it = uav_status_.find(victim_id);
+    if (status_it != uav_status_.end()) {
+      victim_role = status_it->second.role;
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV: PREEMPT_STOP_CHARGING slot victim=%s winner=%s "
+                "delta_priority=%.3f victim_charge_time_s=%.1f "
+                "victim_role=%u winner_role=%u victim_priority=%.3f winner_priority=%.3f",
+                victim_id.c_str(), winner.uav_id.c_str(),
+                pc.delta, charge_time_so_far,
+                static_cast<unsigned>(victim_role), static_cast<unsigned>(winner_role),
+                pc.occupant_priority, pc.candidate_priority);
+
+    // Publish preemption event for monitoring
+    publishPreemptionEvent(victim_id, winner.uav_id,
+                           victim_role, winner_role,
+                           pc.occupant_priority, pc.candidate_priority,
+                           pc.delta, charge_time_so_far, now);
+
+    // End the session
+    rememberSessionEnd(session, now, "preempted");
+
+    // Remove the session to free the slot
+    active_sessions_.erase(active_sessions_.begin() + static_cast<long>(pc.session_index));
+
+    return true;
+  }
+
+  // Send PREEMPT_STOP_CHARGING control message via FANET.
+  bool sendPreemptMessage(const std::string & victim_uav_id,
+                          const rclcpp::Time & now,
+                          double charge_time_so_far)
+  {
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = ugv_id_ + "_preempt_" + victim_uav_id + "_" +
+                 std::to_string(now.nanoseconds());
+    msg.src_id = ugv_id_;
+    msg.dst_id = victim_uav_id;
+    msg.next_hop_id = resolveNextHop(victim_uav_id);
+    if (msg.next_hop_id.empty()) {
+      logRoutingUnreachable(msg, msg.next_hop_id, "NO_ROUTE_PREEMPT");
+      return false;
+    }
+    msg.flow_type = 1;  // CONTROL
+    msg.control_type = "CHARGE_DECISION";
+    msg.creation_time = now;
+    msg.hop_count = 0;
+    msg.requires_ack = true;
+
+    // Compute backoff for victim
+    std::uniform_real_distribution<double> jitter_dist(0.0, preemption_backoff_jitter_s_);
+    double backoff_s = preemption_backoff_base_s_ + jitter_dist(preempt_rng_);
+
+    std::ostringstream payload;
+    payload << "accepted=0"
+            << ";reason=PREEMPTED"
+            << ";target_action=STOP_CHARGING"
+            << ";policy=" << policy_name_
+            << ";charge_time_s=" << charge_time_so_far
+            << ";backoff_s=" << backoff_s
+            << ";ugv_x=" << ugv_pose_.position.x
+            << ";ugv_y=" << ugv_pose_.position.y
+            << ";ugv_z=" << ugv_pose_.position.z;
+    msg.payload = payload.str();
+
+    if (!ensureReachableOrDrop(msg, "UNREACHABLE_PREEMPT_NEXT_HOP")) {
+      return false;
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "UGV: sending PREEMPT_STOP_CHARGING msg_id=%s dst=%s via=%s backoff=%.1fs",
+                msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str(), backoff_s);
+
+    control_pub_->publish(msg);
+    registerPendingAck(msg, charge_decision_max_retries_, charge_decision_retry_sec_);
+    return true;
+  }
+
+  // Publish preemption event as a queue event for the network monitor to capture.
+  void publishPreemptionEvent(const std::string & victim_id,
+                              const std::string & winner_id,
+                              uint8_t victim_role, uint8_t winner_role,
+                              double victim_priority, double winner_priority,
+                              double delta_priority,
+                              double victim_charge_time_s,
+                              const rclcpp::Time & now)
+  {
+    if (!queue_event_pub_) {
+      return;
+    }
+    std_msgs::msg::String msg;
+    std::ostringstream oss;
+    oss << "event=PREEMPTION"
+        << " victim_uav_id=" << victim_id
+        << " winner_uav_id=" << winner_id
+        << " victim_role=" << static_cast<int>(victim_role)
+        << " winner_role=" << static_cast<int>(winner_role)
+        << " victim_priority=" << victim_priority
+        << " winner_priority=" << winner_priority
+        << " delta_priority=" << delta_priority
+        << " victim_charge_time_s=" << victim_charge_time_s
+        << " policy=" << policy_name_
+        << " stamp=" << now.seconds();
+    msg.data = oss.str();
+    queue_event_pub_->publish(msg);
+  }
+
   // ------------- Policy-specific selection -------------
+
+  // Const version for use inside shouldPreempt (which is const).
+  size_t chooseNextIndexConst(const rclcpp::Time & now) const
+  {
+    constexpr double kEps = 1e-9;
+    Policy base = basePolicy();
+
+    if (base == Policy::FCFS) {
+      return 0;
+    }
+
+    if (base == Policy::ROLE_PRIORITY) {
+      size_t best_idx = 0;
+      auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
+      (void)best_batt_unused;
+      for (size_t i = 1; i < queue_.size(); ++i) {
+        const auto & q = queue_[i];
+        const auto & best_q = queue_[best_idx];
+        auto [role, batt_unused] = getLiveRoleAndBattery(q);
+        (void)batt_unused;
+        if (role > best_role ||
+            (role == best_role && q.request_time < best_q.request_time) ||
+            (role == best_role && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
+          best_idx = i;
+          best_role = role;
+        }
+      }
+      return best_idx;
+    }
+
+    if (base == Policy::EDF) {
+      size_t best_idx = 0;
+      double best_tte = estimateTimeToEmptySec(queue_[0]);
+      auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
+      (void)best_batt_unused;
+      for (size_t i = 1; i < queue_.size(); ++i) {
+        const auto & q = queue_[i];
+        const auto & best_q = queue_[best_idx];
+        double tte = estimateTimeToEmptySec(q);
+        auto [role, batt_unused] = getLiveRoleAndBattery(q);
+        (void)batt_unused;
+        if (tte < best_tte ||
+            (std::abs(tte - best_tte) <= kEps && role > best_role) ||
+            (std::abs(tte - best_tte) <= kEps && role == best_role && q.request_time < best_q.request_time) ||
+            (std::abs(tte - best_tte) <= kEps && role == best_role && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
+          best_idx = i;
+          best_tte = tte;
+          best_role = role;
+        }
+      }
+      return best_idx;
+    }
+
+    // DYNAMIC_SCORE
+    size_t best_idx = 0;
+    double best_score = computeDynamicScore(queue_[0], now);
+    for (size_t i = 1; i < queue_.size(); ++i) {
+      const auto & q = queue_[i];
+      const auto & best_q = queue_[best_idx];
+      double score = computeDynamicScore(q, now);
+      if (score > best_score ||
+          (std::abs(score - best_score) <= kEps && q.request_time < best_q.request_time) ||
+          (std::abs(score - best_score) <= kEps && q.request_time == best_q.request_time && q.uav_id < best_q.uav_id)) {
+        best_idx = i;
+        best_score = score;
+      }
+    }
+    return best_idx;
+  }
 
   // Select the next queue entry according to the configured policy.
   size_t chooseNextIndex(const rclcpp::Time & now)
   {
     constexpr double kEps = 1e-9;
+    Policy effective = basePolicy();
 
-    if (policy_ == Policy::FCFS) {
+    if (effective == Policy::FCFS) {
       return 0;
     }
 
-    if (policy_ == Policy::ROLE_PRIORITY) {
+    if (effective == Policy::ROLE_PRIORITY) {
       size_t best_idx = 0;
       auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
       (void)best_batt_unused;
@@ -1899,7 +2310,7 @@ private:
       return best_idx;
     }
 
-    if (policy_ == Policy::EDF) {
+    if (effective == Policy::EDF) {
       size_t best_idx = 0;
       double best_tte = estimateTimeToEmptySec(queue_[0]);
       auto [best_role, best_batt_unused] = getLiveRoleAndBattery(queue_[0]);
@@ -1924,7 +2335,7 @@ private:
       return best_idx;
     }
 
-    // Policy::DYNAMIC_SCORE
+    // DYNAMIC_SCORE (or P_DYNAMIC_SCORE)
     size_t best_idx = 0;
     double best_score = computeDynamicScore(queue_[0], now);
 
@@ -2045,6 +2456,17 @@ private:
   std::unordered_map<std::string, UavInfo> uav_status_;
   std::unordered_map<std::string, std::string> routing_table_;
   std::unordered_set<std::string> dead_uavs_;
+
+  // Preemption guardrails
+  bool preemption_enabled_ = false;
+  double preemption_min_charge_time_s_ = 60.0;
+  double preemption_delta_priority_min_ = 0.25;
+  double preemption_cooldown_s_ = 120.0;
+  int preemption_max_per_uav_ = 3;
+  double preemption_backoff_base_s_ = 30.0;
+  double preemption_backoff_jitter_s_ = 30.0;
+  std::unordered_map<std::string, PreemptionState> preemption_state_;
+  std::mt19937 preempt_rng_{std::random_device{}()};
 
   // Map each UAV to its CH, based on deployments
   std::unordered_map<std::string, std::string> uav_to_ch_;
