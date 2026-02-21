@@ -706,20 +706,20 @@ private:
 
       failure_pub_->publish(fe);
       publishFailureTraffic(fe);
-      scheduleShutdownAfterFailure();
+      scheduleRespawnAfterFailure();
       return;
     }
 
     if (ready_for_battery && !is_charging_ && !has_charge_slot_ &&
         !emergency_landed_ && !emergency_recovery_active_) {
-      float dist_to_ugv_m = 0.0f;
-      float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_m);
-      bool ugv_range_known = energy_to_ugv >= 0.0f;
+      float dist_to_sink_m = 0.0f;
+      float energy_to_sink = estimateEnergyToSink(dist_to_sink_m);
+      bool sink_range_known = energy_to_sink >= 0.0f;
       const float adaptive_offset_energy =
         battery_capacity_ * (adaptive_request_offset_percent_ / 100.0f);
-      float emergency_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_)
+      float emergency_threshold = sink_range_known ? (energy_to_sink + ugv_reserve_energy_)
                                                  : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
-      float request_threshold = ugv_range_known ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
+      float request_threshold = sink_range_known ? (energy_to_sink + ugv_reserve_energy_ + ugv_buffer_energy_)
                                                : emergency_threshold;
       request_threshold += adaptive_offset_energy;
 
@@ -732,11 +732,11 @@ private:
       bool request_needed = battery_energy_ <= request_threshold;
 
       if (emergency || (!ch_reachable && request_needed)) {
-        if (ugv_range_known) {
-          startEmergencyReturnToUgv(dist_to_ugv_m, emergency ? "ENERGY_CRITICAL" : "CH_UNREACHABLE");
+        if (sink_range_known) {
+          startEmergencyReturnToSink(dist_to_sink_m, emergency ? "ENERGY_CRITICAL" : "CH_UNREACHABLE");
         } else {
           RCLCPP_WARN(this->get_logger(),
-                      "UAV %s: low battery but UGV pose unknown; cannot start emergency recovery.",
+                      "UAV %s: low battery but sink pose unknown; cannot start emergency recovery.",
                       uav_id_.c_str());
         }
       } else if (request_needed && !waiting_for_charge_response_) {
@@ -866,12 +866,6 @@ private:
     if (!traffic_pub_) {
       return;
     }
-    if (battery_energy_ <= 0.0f) {
-      RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: battery depleted; skipping FAILURE_EVENT traffic message.",
-                  uav_id_.c_str());
-      return;
-    }
 
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = uav_id_ + "_failure_" + std::to_string(msg_counter_++);
@@ -899,10 +893,36 @@ private:
                 uav_id_.c_str(), msg.msg_id.c_str(),
                 msg.dst_id.c_str(), msg.next_hop_id.c_str());
 
-    publishToBus(msg);
+    // Publish directly so death is always visible to monitor/recovery even at 0% battery.
+    stampForSend(msg, msg.next_hop_id);
+    traffic_pub_->publish(msg);
   }
 
-  void scheduleShutdownAfterFailure()
+  void publishRecoveryTrafficEvent(const std::string & control_type, const std::string & payload)
+  {
+    if (!traffic_pub_) {
+      return;
+    }
+
+    uav_msgs::msg::TrafficMessage msg;
+    msg.msg_id = uav_id_ + "_" + control_type + "_" + std::to_string(msg_counter_++);
+    msg.src_id = uav_id_;
+    msg.dst_id = default_dst_id_;
+    msg.flow_type = 1;
+    msg.control_type = control_type;
+    msg.payload = payload;
+    msg.creation_time = this->now();
+    msg.hop_count = 0;
+    msg.ttl = 8;
+    msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
+    if (msg.next_hop_id.empty()) {
+      msg.next_hop_id = default_dst_id_;
+    }
+    stampForSend(msg, msg.next_hop_id);
+    traffic_pub_->publish(msg);
+  }
+
+  void scheduleRespawnAfterFailure()
   {
     if (shutdown_scheduled_) {
       return;
@@ -927,7 +947,7 @@ private:
     cancel_timer(mobility_timer_);
 
     RCLCPP_WARN(this->get_logger(),
-                "UAV %s: battery depleted; stopping node after failure notification.",
+                "UAV %s: battery depleted; scheduling respawn at sink/origin.",
                 uav_id_.c_str());
 
     shutdown_timer_ = this->create_wall_timer(
@@ -936,11 +956,50 @@ private:
         if (shutdown_timer_) {
           shutdown_timer_->cancel();
         }
-        RCLCPP_WARN(this->get_logger(),
-                    "UAV %s: shutting down after battery failure.",
-                    uav_id_.c_str());
-        rclcpp::shutdown();
+        respawnAtSink();
       });
+  }
+
+  void respawnAtSink()
+  {
+    geometry_msgs::msg::Point sink_point;
+    if (auto sink_pos = lookupNodePosition(default_dst_id_)) {
+      sink_point = *sink_pos;
+    } else {
+      sink_point.x = 0.0;
+      sink_point.y = 0.0;
+      sink_point.z = pose_.position.z;
+    }
+
+    pose_.position = sink_point;
+    pose_.orientation.w = 1.0;
+    last_pose_ = pose_;
+    last_pose_time_ = this->now();
+    current_velocity_ = geometry_msgs::msg::Twist();
+
+    battery_energy_ = battery_capacity_;
+    reported_battery_dead_ = false;
+    shutdown_scheduled_ = false;
+    waiting_for_charge_response_ = false;
+    has_charge_slot_ = false;
+    is_charging_ = false;
+    emergency_recovery_active_ = false;
+    emergency_landed_ = false;
+    charge_state_ = ChargeState::IDLE;
+    charge_target_pose_valid_ = false;
+    current_charge_slot_id_.clear();
+    charge_request_pending_.reset();
+
+    RCLCPP_INFO(this->get_logger(),
+                "[RECOVERY] UAV %s: respawn completed at sink (%.1f, %.1f, %.1f); battery reset to full.",
+                uav_id_.c_str(),
+                pose_.position.x,
+                pose_.position.y,
+                pose_.position.z);
+
+    std::ostringstream payload;
+    payload << "sink=" << pose_.position.x << "," << pose_.position.y << "," << pose_.position.z;
+    publishRecoveryTrafficEvent("RESPAWN_COMPLETED", payload.str());
   }
 
   void handleChargeDecisionFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
@@ -3268,7 +3327,7 @@ private:
           emergency_landed_ = true;
           charge_state_ = ChargeState::IDLE;
           RCLCPP_WARN(this->get_logger(),
-                      "[RECOVERY] UAV %s: emergency landing at UGV complete.",
+                      "[RECOVERY] UAV %s: emergency return to sink complete.",
                       uav_id_.c_str());
         } else {
           beginChargingSession(now);
@@ -3533,17 +3592,42 @@ private:
     return (dist_m / static_cast<float>(uav_speed_mps_)) * drain_est;
   }
 
-  void startEmergencyReturnToUgv(float dist_m, const std::string & reason)
+  float estimateEnergyToSink(float & dist_m) const
+  {
+    if (uav_speed_mps_ <= 0.1f) {
+      dist_m = 0.0f;
+      return -1.0f;
+    }
+
+    auto sink_pos = lookupNodePosition(default_dst_id_);
+    if (!sink_pos) {
+      dist_m = 0.0f;
+      return -1.0f;
+    }
+
+    dist_m = static_cast<float>(distance2d(pose_.position, *sink_pos));
+    float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
+    float drain_est = base_drain * temperatureFactor(current_temperature_c_);
+    return (dist_m / static_cast<float>(uav_speed_mps_)) * drain_est;
+  }
+
+  void startEmergencyReturnToSink(float dist_m, const std::string & reason)
   {
     if (charge_state_ == ChargeState::TO_UGV || is_charging_ || battery_energy_ <= 0.0f) {
       return;
     }
-    if (!resolveUgvPose(charge_target_pose_)) {
+    auto sink_pos = lookupNodePosition(default_dst_id_);
+    if (!sink_pos) {
       RCLCPP_WARN(this->get_logger(),
-                  "UAV %s: emergency recovery requested (%s) but UGV pose unknown.",
+                  "UAV %s: emergency recovery requested (%s) but sink pose unknown.",
                   uav_id_.c_str(), reason.c_str());
       return;
     }
+
+    charge_target_pose_.position = *sink_pos;
+    charge_target_pose_.position.z = pose_.position.z;
+    charge_target_pose_.orientation.w = 1.0;
+    charge_target_pose_valid_ = true;
 
     emergency_recovery_active_ = true;
     emergency_landed_ = false;
@@ -3554,8 +3638,10 @@ private:
     charge_departure_pose_ = pose_;
     charge_state_ = ChargeState::TO_UGV;
 
+    publishRecoveryTrafficEvent("EMERGENCY_RETURN_TRIGGERED", reason);
+
     RCLCPP_WARN(this->get_logger(),
-                "[RECOVERY] UAV %s: emergency return to UGV (%s, dist=%.1f m).",
+                "[RECOVERY] UAV %s: emergency return to sink (%s, dist=%.1f m).",
                 uav_id_.c_str(), reason.c_str(), dist_m);
   }
 
