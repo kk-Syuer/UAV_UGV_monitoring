@@ -137,12 +137,22 @@ private:
 
     if (msg->role == 1) {
       auto & ch = ch_states_[msg->uav_id];
+      bool was_dead = !ch.alive;
       ch.id = msg->uav_id;
       ch.pose = msg->pose;
       ch.battery_percent = msg->battery_level;
       ch.battery_energy = (msg->battery_level / 100.0) * msg->battery_capacity;
       ch.last_seen = msg->stamp;
       ch.alive = msg->battery_level > 0.0f;
+      // CH came back from the dead (respawned) — trigger recovery so the
+      // system can redeploy it and rebalance members/tasks.
+      if (was_dead && ch.alive) {
+        recovery_requested_ = true;
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY][DECISION] CH %s returned alive (respawned, batt=%.1f%%) "
+                    "-> recovery_requested",
+                    msg->uav_id.c_str(), msg->battery_level);
+      }
     } else {
       auto & member = member_states_[msg->uav_id];
       member.id = msg->uav_id;
