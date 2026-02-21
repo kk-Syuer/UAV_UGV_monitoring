@@ -128,6 +128,7 @@ def _make_nodes(context, *args, **kwargs):
         "output_dir": output_dir,
         "flush_period_sec": float(_get(cfg, ["monitor", "flush_period_sec"], 2.0)),
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
+        "ugv_dock_capacity": int(_get(cfg, ["ugv", "max_parallel_spots"], 1)),
     }
     monitor_node = Node(
         package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
@@ -215,9 +216,11 @@ def _make_nodes(context, *args, **kwargs):
 
     # UGV charger
     charging_policy = str(_get(cfg, ["ugv", "charging_policy"], "fcfs"))
+    max_parallel_spots = int(_get(cfg, ["ugv", "max_parallel_spots"], 1))
     ugv_params = {
         "ugv_id": ugv_id,
         "charging_policy": charging_policy,
+        "max_parallel_spots": max_parallel_spots,
         "member_capacity_wh": member_capacity_wh,
         "ch_capacity_wh": ch_capacity_wh,
         "charger_power_w_member": charger_power_w_member,

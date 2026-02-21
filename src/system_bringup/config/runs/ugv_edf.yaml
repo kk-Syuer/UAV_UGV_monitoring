@@ -69,6 +69,7 @@ sink:
 ugv:
   ugv_id: ugv_1
   charging_policy: edf
+  max_parallel_spots: 1
 battery:
   # Keep UAV and UGV capacity assumptions aligned across nodes.
   member_capacity_wh: 77.0

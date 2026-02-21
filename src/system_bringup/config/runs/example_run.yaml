@@ -79,6 +79,7 @@ sink:
 
 ugv:
   ugv_id: ugv_1
+  max_parallel_spots: 1
 
 coverage_planner:
   enable: true
