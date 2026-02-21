@@ -1874,7 +1874,9 @@ private:
         msg.control_type != "RECOVERY_DONE" &&
         msg.control_type != "CLUSTER_REASSIGN" &&
         msg.control_type != "TASK_ASSIGN" &&
-        msg.control_type != "NEW_DEPLOYMENT") {
+        msg.control_type != "NEW_DEPLOYMENT" &&
+        msg.control_type != "EMERGENCY_RETURN_TRIGGERED" &&
+        msg.control_type != "RESPAWN_COMPLETED") {
       return;
     }
 
@@ -1900,6 +1902,8 @@ private:
     } else if (msg.control_type == "NEW_DEPLOYMENT") {
       rec.ch_id = msg.dst_id;
       parseDeploymentPose(msg.payload, rec.x, rec.y, rec.z);
+    } else if (msg.control_type == "RESPAWN_COMPLETED") {
+      rec.member_id = msg.src_id;
     }
 
     recovery_events_[msg.msg_id] = rec;
