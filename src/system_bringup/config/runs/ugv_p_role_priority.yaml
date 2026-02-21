@@ -69,6 +69,7 @@ sink:
 ugv:
   ugv_id: ugv_1
   charging_policy: p_role_priority
+  max_parallel_spots: 1
 
 charging_preemption:
   enabled: true

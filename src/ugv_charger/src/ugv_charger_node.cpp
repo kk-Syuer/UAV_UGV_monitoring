@@ -27,44 +27,6 @@
 
 using namespace std::chrono_literals;
 
-// Compute number of charging docks to reach target utilization.
-int compute_required_charging_spots(
-    int    num_ch,
-    int    num_members,
-    double flight_time_ch_min,
-    double charge_time_ch_min,
-    double flight_time_mem_min,
-    double charge_time_mem_min,
-    double target_utilization)
-{
-  if (num_ch == 0 && num_members == 0) {
-    return 0;
-  }
-
-  double load_ch = 0.0;
-  if (flight_time_ch_min + charge_time_ch_min > 0.0) {
-    load_ch = charge_time_ch_min / (flight_time_ch_min + charge_time_ch_min);
-  }
-
-  double load_mem = 0.0;
-  if (flight_time_mem_min + charge_time_mem_min > 0.0) {
-    load_mem = charge_time_mem_min / (flight_time_mem_min + charge_time_mem_min);
-  }
-
-  double total_load = num_ch * load_ch + num_members * load_mem;
-
-  double effective_target = target_utilization <= 0.0 ? 0.9 : target_utilization;
-
-  double raw_spots = total_load / effective_target;
-
-  int num_spots = static_cast<int>(std::ceil(raw_spots));
-  if (num_spots < 1 && total_load > 0.0) {
-    num_spots = 1;
-  }
-
-  return num_spots;
-}
-
 // UGV charger node schedules charge sessions and routes control messages.
 class UgvChargerNode : public rclcpp::Node
 {
@@ -81,6 +43,7 @@ public:
     max_parallel_spots_(1)
   {
     ugv_id_ = this->declare_parameter<std::string>("ugv_id", "ugv");
+    max_parallel_spots_ = this->declare_parameter<int>("max_parallel_spots", 1);
 
     charging_duration_sec_ =
       this->declare_parameter<double>("charging_duration_sec", 20.0);
@@ -265,12 +228,11 @@ public:
         std::bind(&UgvChargerNode::mobilityStep, this));
     }
 
-    recomputeChargingSpots();
-
     RCLCPP_INFO(this->get_logger(),
-                "UGV charger started. id='%s', policy='%s', charging_model='%s', charging_duration=%.1f s, charge_gate=%.1f%%",
+                "UGV charger started. id='%s', policy='%s', charging_model='%s', "
+                "charging_duration=%.1f s, charge_gate=%.1f%%, max_parallel_spots=%d",
                 ugv_id_.c_str(), policy_name_.c_str(), charging_model_name_.c_str(), charging_duration_sec_,
-                charge_request_battery_gate_percent_);
+                charge_request_battery_gate_percent_, max_parallel_spots_);
   }
 
 private:
@@ -441,7 +403,6 @@ private:
                   static_cast<unsigned>(msg->charging_state),
                   now.seconds());
     }
-    recomputeChargingSpots();
   }
 
   void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
@@ -2542,53 +2503,6 @@ private:
     registerPendingAck(msg, charge_decision_max_retries_, charge_decision_retry_sec_);
     return true;
   }
-
-  // Recompute dock capacity based on fleet mix and utilization target.
-  void recomputeChargingSpots()
-  {
-    int num_ch = 0;
-    int num_members = 0;
-    for (const auto & kv : uav_status_) {
-      if (kv.second.role == 1) {
-        ++num_ch;
-      } else {
-        ++num_members;
-      }
-    }
-
-    double load_ch = 0.0;
-    double load_mem = 0.0;
-    if (flight_time_ch_min_ + charge_time_ch_min_ <= 0.0) {
-      RCLCPP_WARN(this->get_logger(), "Invalid CH flight/charge times; skipping CH load contribution");
-    } else {
-      load_ch = charge_time_ch_min_ / (flight_time_ch_min_ + charge_time_ch_min_);
-    }
-    if (flight_time_mem_min_ + charge_time_mem_min_ <= 0.0) {
-      RCLCPP_WARN(this->get_logger(), "Invalid member flight/charge times; skipping member load contribution");
-    } else {
-      load_mem = charge_time_mem_min_ / (flight_time_mem_min_ + charge_time_mem_min_);
-    }
-
-    double total_load = num_ch * load_ch + num_members * load_mem;
-    double effective_target = target_utilization_ <= 0.0 ? 0.9 : target_utilization_;
-
-    int required_spots = compute_required_charging_spots(
-      num_ch,
-      num_members,
-      flight_time_ch_min_,
-      charge_time_ch_min_,
-      flight_time_mem_min_,
-      charge_time_mem_min_,
-      effective_target);
-
-    if (required_spots != max_parallel_spots_) {
-      RCLCPP_INFO(this->get_logger(),
-                  "Computed required charging spots: %d (total_load=%.3f, target_utilization=%.2f, num_ch=%d, num_members=%d)",
-                  required_spots, total_load, effective_target, num_ch, num_members);
-    }
-    max_parallel_spots_ = required_spots;
-  }
-
 
 };
 
