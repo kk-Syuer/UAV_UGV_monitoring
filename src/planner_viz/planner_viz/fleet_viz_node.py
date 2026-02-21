@@ -219,6 +219,12 @@ class FleetVizNode(Node):
                 'reason': 'BATTERY_DEAD',
                 'description': 'Battery depleted (from status update)',
             }
+        elif msg.battery_level > 0.0 and msg.uav_id in self.dead_uavs:
+            self.dead_uavs.pop(msg.uav_id)
+            self.get_logger().info(
+                f"[VIZ] {msg.uav_id} removed from dead_uavs: "
+                f"status reports battery={msg.battery_level:.1f}% (respawned)"
+            )
         if msg.uav_id == 'ugv' or msg.uav_id.startswith('ugv_'):
             self.ugv_pose = msg.pose
         elif msg.uav_id == 'sink_gateway':
@@ -471,6 +477,15 @@ class FleetVizNode(Node):
             self.get_logger().info(
                 f"[VIZ] NEW_DEPLOYMENT received ch={ch_id} target=({x:.1f},{y:.1f},{z:.1f}) render_state_updated=yes"
             )
+            return
+        if msg.control_type == 'RESPAWN_COMPLETED':
+            uav_id = msg.src_id
+            if uav_id and uav_id in self.dead_uavs:
+                self.dead_uavs.pop(uav_id)
+                self.get_logger().info(
+                    f"[VIZ] RESPAWN_COMPLETED received for {uav_id}; "
+                    f"removed from dead_uavs, UAV is live again"
+                )
 
     def network_stats_cb(self, msg: String):
         try:
