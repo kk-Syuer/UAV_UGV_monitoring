@@ -712,16 +712,23 @@ private:
 
     if (ready_for_battery && !is_charging_ && !has_charge_slot_ &&
         !emergency_landed_ && !emergency_recovery_active_) {
+      // Use UGV distance for charge-request threshold (normal charging path).
+      float dist_to_ugv_request_m = 0.0f;
+      float energy_to_ugv = estimateEnergyToUgv(dist_to_ugv_request_m);
+      bool ugv_range_known = energy_to_ugv >= 0.0f;
+      const float adaptive_offset_energy =
+        battery_capacity_ * (adaptive_request_offset_percent_ / 100.0f);
+      float request_threshold = ugv_range_known
+        ? (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_)
+        : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
+      request_threshold += adaptive_offset_energy;
+
+      // Use sink distance for emergency threshold (fallback when no slot).
       float dist_to_sink_m = 0.0f;
       float energy_to_sink = estimateEnergyToSink(dist_to_sink_m);
       bool sink_range_known = energy_to_sink >= 0.0f;
-      const float adaptive_offset_energy =
-        battery_capacity_ * (adaptive_request_offset_percent_ / 100.0f);
       float emergency_threshold = sink_range_known ? (energy_to_sink + ugv_reserve_energy_)
                                                  : battery_capacity_ * (battery_threshold_percent_ / 100.0f);
-      float request_threshold = sink_range_known ? (energy_to_sink + ugv_reserve_energy_ + ugv_buffer_energy_)
-                                               : emergency_threshold;
-      request_threshold += adaptive_offset_energy;
 
       bool ch_reachable = true;
       if (role_ == 0) {
@@ -731,17 +738,26 @@ private:
       bool emergency = battery_energy_ <= emergency_threshold;
       bool request_needed = battery_energy_ <= request_threshold;
 
-      if (emergency || (!ch_reachable && request_needed)) {
+      if (emergency) {
+        // Critical battery: emergency return to sink regardless of pending charge requests.
         if (sink_range_known) {
-          startEmergencyReturnToSink(dist_to_sink_m, emergency ? "ENERGY_CRITICAL" : "CH_UNREACHABLE");
+          startEmergencyReturnToSink(dist_to_sink_m, "ENERGY_CRITICAL");
         } else {
           RCLCPP_WARN(this->get_logger(),
-                      "UAV %s: low battery but sink pose unknown; cannot start emergency recovery.",
+                      "UAV %s: critical battery but sink pose unknown; cannot start emergency recovery.",
+                      uav_id_.c_str());
+        }
+      } else if (!ch_reachable && request_needed) {
+        // CH unreachable and battery getting low: emergency return to sink.
+        if (sink_range_known) {
+          startEmergencyReturnToSink(dist_to_sink_m, "CH_UNREACHABLE");
+        } else {
+          RCLCPP_WARN(this->get_logger(),
+                      "UAV %s: CH unreachable + low battery but sink pose unknown.",
                       uav_id_.c_str());
         }
       } else if (request_needed && !waiting_for_charge_response_) {
-        // Check preemption backoff: skip re-request until backoff expires
-        // (unless emergency low battery)
+        // Battery below request threshold: request charge from UGV (normal path).
         bool in_backoff = preemption_backoff_until_.nanoseconds() > 0 &&
                           now < preemption_backoff_until_;
         if (in_backoff && !emergency) {
@@ -753,7 +769,7 @@ private:
                         uav_id_.c_str());
             preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
           }
-          chargeTrace("TRIGGER_REQUEST", request_needed ? "BATTERY_BELOW_REQUEST_THRESHOLD" : "");
+          chargeTrace("TRIGGER_REQUEST", "BATTERY_BELOW_REQUEST_THRESHOLD");
           requestCharge(battery_percent);
         }
       }
@@ -989,6 +1005,11 @@ private:
     charge_target_pose_valid_ = false;
     current_charge_slot_id_.clear();
     charge_request_pending_.reset();
+    fallback_mode_active_ = false;
+    preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+
+    // Restart all timers that were cancelled during death shutdown.
+    restartTimersAfterRespawn();
 
     RCLCPP_INFO(this->get_logger(),
                 "[RECOVERY] UAV %s: respawn completed at sink (%.1f, %.1f, %.1f); battery reset to full.",
@@ -1000,6 +1021,53 @@ private:
     std::ostringstream payload;
     payload << "sink=" << pose_.position.x << "," << pose_.position.y << "," << pose_.position.z;
     publishRecoveryTrafficEvent("RESPAWN_COMPLETED", payload.str());
+  }
+
+  void restartTimersAfterRespawn()
+  {
+    // Recreate all timers that were cancelled in scheduleRespawnAfterFailure().
+    status_timer_ = this->create_wall_timer(
+      1s, std::bind(&UavNode::publishStatus, this));
+    heartbeat_timer_ = this->create_wall_timer(
+      1s, std::bind(&UavNode::publishHeartbeat, this));
+    traffic_timer_ = this->create_wall_timer(
+      2s, std::bind(&UavNode::publishTraffic, this));
+
+    auto hello_period = std::chrono::duration<double>(hello_period_sec_);
+    neighbor_timeout_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period),
+      std::bind(&UavNode::pruneNeighbors, this));
+
+    buffer_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::duration<double>(buffer_retry_period_sec_)),
+      std::bind(&UavNode::bufferTick, this));
+
+    auto status_period = std::chrono::duration<double>(status_period_sec_);
+    ch_status_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(status_period),
+      std::bind(&UavNode::publishStatusCh, this));
+
+    auto charge_request_retry = std::chrono::duration<double>(charge_request_retry_sec_);
+    charge_request_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(charge_request_retry),
+      std::bind(&UavNode::chargeRequestRetryTick, this));
+
+    auto ack_retry = std::chrono::duration<double>(ack_retry_period_sec_);
+    ack_retry_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry),
+      std::bind(&UavNode::resendPendingAcks, this));
+
+    if (mobility_enabled_) {
+      auto dt = std::chrono::duration<double>(mobility_dt_sec_);
+      mobility_timer_ = this->create_wall_timer(
+        std::chrono::duration_cast<std::chrono::nanoseconds>(dt),
+        std::bind(&UavNode::mobilityStep, this));
+    }
+
+    RCLCPP_INFO(this->get_logger(),
+                "[RECOVERY] UAV %s: all timers restarted after respawn.",
+                uav_id_.c_str());
   }
 
   void handleChargeDecisionFromNetwork(const uav_msgs::msg::TrafficMessage::SharedPtr & msg)
@@ -3323,12 +3391,24 @@ private:
         pose_.position.x = charge_target_pose_.position.x;
         pose_.position.y = charge_target_pose_.position.y;
         if (emergency_recovery_active_) {
+          // Safe recovery at sink: reset state so UAV can resume normal operations.
           emergency_recovery_active_ = false;
-          emergency_landed_ = true;
+          emergency_landed_ = false;
           charge_state_ = ChargeState::IDLE;
+          charge_target_pose_valid_ = false;
+          has_charge_slot_ = false;
+          waiting_for_charge_response_ = false;
+          charge_request_pending_.reset();
+          current_charge_slot_id_.clear();
           RCLCPP_WARN(this->get_logger(),
-                      "[RECOVERY] UAV %s: emergency return to sink complete.",
-                      uav_id_.c_str());
+                      "[RECOVERY] UAV %s: emergency return to sink complete. "
+                      "Resuming normal operations (battery=%.1f Wh, %.1f%%).",
+                      uav_id_.c_str(), battery_energy_,
+                      (battery_capacity_ > 0.0f ? (battery_energy_ / battery_capacity_) * 100.0f : 0.0f));
+          publishRecoveryTrafficEvent("EMERGENCY_RECOVERY_COMPLETE",
+            "sink=" + std::to_string(pose_.position.x) + "," +
+            std::to_string(pose_.position.y) + "," +
+            std::to_string(pose_.position.z));
         } else {
           beginChargingSession(now);
         }
