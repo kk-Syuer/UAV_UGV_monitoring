@@ -169,10 +169,6 @@ public:
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
     queue_stats_period_sec_ = this->declare_parameter<double>("queue_stats_period_sec", 1.0);
     ugv_dock_capacity_ = this->declare_parameter<int>("ugv_dock_capacity", 1);
-    max_runtime_sec_ = this->declare_parameter<double>("max_runtime_sec", 0.0);
-    stop_on_backbone_loss_ = this->declare_parameter<bool>("stop_on_backbone_loss", false);
-    routing_table_empty_shutdown_sec_ =
-      this->declare_parameter<double>("routing_table_empty_shutdown_sec", 10.0);
     rate_window_sec_ = this->declare_parameter<double>("network_stats_window_sec", 10.0);
     qos_target_pdr_ = this->declare_parameter<double>("qos_target_pdr", 0.95);
     qos_target_delay_ms_ = this->declare_parameter<double>("qos_target_delay_ms", 200.0);
@@ -180,8 +176,6 @@ public:
     qos_weight_pdr_ = this->declare_parameter<double>("qos_weight_pdr", 0.5);
     qos_weight_delay_ = this->declare_parameter<double>("qos_weight_delay", 0.3);
     qos_weight_jitter_ = this->declare_parameter<double>("qos_weight_jitter", 0.2);
-    backbone_ids_ = this->declare_parameter<std::vector<std::string>>(
-      "backbone_ids", std::vector<std::string>{});
     output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
     start_time_ = this->now();
 
@@ -248,10 +242,6 @@ public:
     stats_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(0.5),
       std::bind(&NetworkMonitorNode::publishNetworkStats, this));
-
-    shutdown_check_timer_ = this->create_wall_timer(
-      std::chrono::seconds(1),
-      std::bind(&NetworkMonitorNode::checkShutdownConditions, this));
 
     rclcpp::on_shutdown([this]() {
       this->writeOutputs(true);
@@ -743,49 +733,6 @@ private:
     stats_pub_->publish(msg);
   }
 
-  void checkShutdownConditions()
-  {
-    if (max_runtime_sec_ > 0.0) {
-      const double elapsed = (this->now() - start_time_).seconds();
-      if (elapsed >= max_runtime_sec_) {
-        RCLCPP_WARN(this->get_logger(),
-                    "[SHUTDOWN] max_runtime_sec reached (%.1f >= %.1f).",
-                    elapsed,
-                    max_runtime_sec_);
-        rclcpp::shutdown();
-        return;
-      }
-    }
-
-    if (stop_on_backbone_loss_ && !backbone_ids_.empty()) {
-      bool all_dead = true;
-      for (const auto & id : backbone_ids_) {
-        if (dead_uavs_.find(id) == dead_uavs_.end()) {
-          all_dead = false;
-          break;
-        }
-      }
-      if (all_dead) {
-        RCLCPP_WARN(this->get_logger(),
-                    "[SHUTDOWN] all backbone UAVs reported dead.");
-        rclcpp::shutdown();
-      }
-    }
-
-    if (routing_table_empty_shutdown_sec_ > 0.0 && routing_table_seen_) {
-      if (routing_table_empty_since_.nanoseconds() > 0) {
-        const double empty_duration = (this->now() - routing_table_empty_since_).seconds();
-        if (empty_duration >= routing_table_empty_shutdown_sec_) {
-          RCLCPP_WARN(this->get_logger(),
-                      "[SHUTDOWN] routing table empty for %.1f sec (threshold %.1f).",
-                      empty_duration,
-                      routing_table_empty_shutdown_sec_);
-          rclcpp::shutdown();
-        }
-      }
-    }
-  }
-
   bool isTerminalOutcome(ChargeOutcome outcome) const
   {
     return outcome == ChargeOutcome::STARTED ||
@@ -828,19 +775,8 @@ private:
     it_rec->second.failure_reason = reason;
   }
 
-  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
+  void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr /*msg*/)
   {
-    routing_table_seen_ = true;
-    if (!msg) {
-      return;
-    }
-    if (!msg->destinations.empty()) {
-      routing_table_empty_since_ = rclcpp::Time(0, 0, this->get_clock()->get_clock_type());
-      return;
-    }
-    if (routing_table_empty_since_.nanoseconds() == 0) {
-      routing_table_empty_since_ = this->now();
-    }
   }
 
   void weatherCallback(const uav_msgs::msg::WeatherStatus::SharedPtr msg)
@@ -2047,22 +1983,15 @@ private:
   rclcpp::TimerBase::SharedPtr weather_timeseries_timer_;
   rclcpp::TimerBase::SharedPtr queue_timeseries_timer_;
   rclcpp::TimerBase::SharedPtr stats_timer_;
-  rclcpp::TimerBase::SharedPtr shutdown_check_timer_;
   rclcpp::Publisher<std_msgs::msg::String>::SharedPtr stats_pub_;
   double status_sample_period_sec_ = 1.0;
   double queue_stats_period_sec_ = 1.0;
   int ugv_dock_capacity_ = 1;
-  rclcpp::Time routing_table_empty_since_{0, 0, RCL_ROS_TIME};
-  bool routing_table_seen_ = false;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
   std::unordered_set<std::string> exported_qos_keys_;
 
   rclcpp::Time start_time_;
-  double max_runtime_sec_ = 0.0;
-  bool stop_on_backbone_loss_ = false;
-  double routing_table_empty_shutdown_sec_ = 10.0;
-  std::vector<std::string> backbone_ids_;
   double rate_window_sec_ = 10.0;
   double qos_target_pdr_ = 0.95;
   double qos_target_delay_ms_ = 200.0;

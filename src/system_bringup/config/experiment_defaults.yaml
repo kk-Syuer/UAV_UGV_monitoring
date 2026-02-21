@@ -14,18 +14,8 @@ routing:
   ch_move_threshold_m: 7.5
   status_timeout_sec: 5.0
 
-monitor:
-  max_runtime_sec: 0.0
-  stop_on_backbone_loss: false
-  routing_table_empty_shutdown_sec: 10.0
-
 experiment:
-  termination_mode: "timeout_only"
   experiment_timeout_s: 10800
-
-shutdown:
-  after_sec: 0.0
-  on_fleet_loss: false
 
 weather:
   enable: true
