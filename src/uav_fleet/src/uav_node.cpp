@@ -1008,6 +1008,15 @@ private:
     fallback_mode_active_ = false;
     preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
 
+    // Reset mobility / deployment state so the UAV navigates back to its
+    // deployment position instead of staying frozen at the sink.
+    if (deployment_received_) {
+      mobility_phase_ = MobilityPhase::GO_TO_DEPLOYMENT;
+      deployment_arrival_ticks_ = 0;
+      release_sent_ = false;
+      deployment_ack_sent_ = false;
+    }
+
     // Restart all timers that were cancelled during death shutdown.
     restartTimersAfterRespawn();
 
