@@ -168,7 +168,8 @@ def _make_nodes(context, *args, **kwargs):
             "temp_c": float(_get(cfg, ["weather", "temp_c"], 18.0)),
             "mode": str(_get(cfg, ["weather", "mode"], "markov")),
             "start_state": str(_get(cfg, ["weather", "start_state"], "cloudy")),
-            "transition_period_sec": float(_get(cfg, ["weather", "transition_period_sec"], 120.0)),
+            "macrostate_period_sec": float(_get(cfg, ["weather", "macrostate_period_sec"],
+                                                _get(cfg, ["weather", "transition_period_sec"], 30.0))),
         }
         transition_matrix = _get(cfg, ["weather", "transition_matrix"], None)
         if isinstance(transition_matrix, dict):
