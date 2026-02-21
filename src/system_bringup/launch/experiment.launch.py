@@ -167,9 +167,17 @@ def _make_nodes(context, *args, **kwargs):
             "rain_mean": float(_get(cfg, ["weather", "rain_mean"], 0.0)),
             "temp_c": float(_get(cfg, ["weather", "temp_c"], 18.0)),
             "mode": str(_get(cfg, ["weather", "mode"], "markov")),
-            "start_state": str(_get(cfg, ["weather", "start_state"], "sunny")),
+            "start_state": str(_get(cfg, ["weather", "start_state"], "cloudy")),
             "transition_period_sec": float(_get(cfg, ["weather", "transition_period_sec"], 120.0)),
         }
+        transition_matrix = _get(cfg, ["weather", "transition_matrix"], None)
+        if isinstance(transition_matrix, dict):
+            weather_params["transition_matrix_from_yaml"] = True
+            for from_state, row in transition_matrix.items():
+                if not isinstance(row, dict):
+                    continue
+                for to_state, probability in row.items():
+                    weather_params[f"transition_matrix.{str(from_state).lower()}.{str(to_state).lower()}"] = float(probability)
         weather_seed = _get(cfg, ["weather", "seed"], None)
         if weather_seed is not None:
             weather_params["seed"] = int(weather_seed)
