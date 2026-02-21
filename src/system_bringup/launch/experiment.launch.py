@@ -226,9 +226,10 @@ def _make_nodes(context, *args, **kwargs):
     ))
 
     # UGV charger
+    charging_policy = str(_get(cfg, ["ugv", "charging_policy"], "fcfs"))
     ugv_params = {
         "ugv_id": ugv_id,
-        "charging_policy": str(_get(cfg, ["ugv", "charging_policy"], "fcfs")),
+        "charging_policy": charging_policy,
         "member_capacity_wh": member_capacity_wh,
         "ch_capacity_wh": ch_capacity_wh,
         "charger_power_w_member": charger_power_w_member,
@@ -237,6 +238,17 @@ def _make_nodes(context, *args, **kwargs):
         "sink_id": sink_id,
         "neighbor_timeout_sec": neighbor_timeout,
     }
+    # Preemption guardrail parameters (used by p_edf, p_role_priority, p_dynamic_score)
+    preempt_cfg = cfg.get("charging_preemption", {})
+    if preempt_cfg:
+        is_preemptive = charging_policy.startswith("p_")
+        ugv_params["preemption_enabled"] = bool(preempt_cfg.get("enabled", is_preemptive))
+        ugv_params["preemption_min_charge_time_s"] = float(preempt_cfg.get("min_charge_time_s", 60.0))
+        ugv_params["preemption_delta_priority_min"] = float(preempt_cfg.get("delta_priority_min", 0.25))
+        ugv_params["preemption_cooldown_s"] = float(preempt_cfg.get("cooldown_s", 120.0))
+        ugv_params["preemption_max_per_uav"] = int(preempt_cfg.get("max_preemptions_per_uav", 3))
+        ugv_params["preemption_backoff_base_s"] = float(preempt_cfg.get("backoff_base_s", 30.0))
+        ugv_params["preemption_backoff_jitter_s"] = float(preempt_cfg.get("backoff_jitter_s", 30.0))
     ugv_pkg = _get(cfg, ["executables", "ugv_pkg"], "ugv_charger")
     ugv_exec = _get(cfg, ["executables", "ugv_exec"], "ugv_charger_node")
     nodes.append(Node(

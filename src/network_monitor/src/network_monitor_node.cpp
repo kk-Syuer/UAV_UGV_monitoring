@@ -106,6 +106,8 @@ struct ChargeRecord
   double start_battery = -1.0;
   double end_battery = -1.0;
   bool charge_completed = false;
+  bool preempted_flag = false;
+  int preempt_count = 0;
 };
 
 struct UavState
@@ -131,6 +133,21 @@ struct QosAggregate
   std::unordered_map<std::string, size_t> drop_reasons;
   rclcpp::Time first_delivered;
   rclcpp::Time last_delivered;
+};
+
+struct PreemptionEvent
+{
+  rclcpp::Time time;
+  std::string victim_uav_id;
+  std::string winner_uav_id;
+  uint8_t victim_role = 0;
+  uint8_t winner_role = 0;
+  double victim_priority = 0.0;
+  double winner_priority = 0.0;
+  double delta_priority = 0.0;
+  double victim_charge_time_s = 0.0;
+  std::string policy;
+  std::string ugv_id;
 };
 
 // Aggregates network telemetry for traffic, charging, and failures.
@@ -201,6 +218,10 @@ public:
     weather_sub_ = this->create_subscription<uav_msgs::msg::WeatherStatus>(
       "/environment/weather", 10,
       std::bind(&NetworkMonitorNode::weatherCallback, this, _1));
+
+    queue_event_sub_ = this->create_subscription<std_msgs::msg::String>(
+      "/ugv/queue_events", 100,
+      std::bind(&NetworkMonitorNode::queueEventCallback, this, _1));
 
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
@@ -387,16 +408,31 @@ private:
       }
       charge_rec.ugv_id = msg->src_id;
       charge_rec.decision_time = delivered_wall_time;
-      bool accepted = msg->payload.find("REJECT") == std::string::npos;
+
+      // Detect preemption: payload contains reason=PREEMPTED
+      bool is_preemption = msg->payload.find("reason=PREEMPTED") != std::string::npos;
+      bool accepted = !is_preemption && msg->payload.find("accepted=0") == std::string::npos;
       if (!isTerminalOutcome(charge_rec.outcome)) {
-        charge_rec.outcome = accepted ? ChargeOutcome::ACCEPTED : ChargeOutcome::REJECTED;
+        if (is_preemption) {
+          charge_rec.outcome = ChargeOutcome::PREEMPTED;
+        } else {
+          charge_rec.outcome = accepted ? ChargeOutcome::ACCEPTED : ChargeOutcome::REJECTED;
+        }
       }
       if (!accepted) {
-        charge_rec.failure_reason = "REJECTED";
+        charge_rec.failure_reason = is_preemption ? "PREEMPTED" : "REJECTED";
+      }
+      if (is_preemption) {
+        charge_rec.preempted_flag = true;
       }
       parseDecisionRationale(msg->payload, charge_rec);
       fillDecisionNetworkContext("CHARGE_DECISION", charge_rec);
       latest_request_by_uav_[charge_rec.uav_id] = msg->ref_msg_id;
+
+      // Record dedicated preemption event
+      if (is_preemption) {
+        recordPreemptionFromDecision(*msg, delivered_wall_time);
+      }
     }
 
     auto & rec = records_[msg->msg_id];
@@ -901,6 +937,62 @@ private:
     return out.str();
   }
 
+  // Parse preemption event from queue_events topic
+  void queueEventCallback(const std_msgs::msg::String::SharedPtr msg)
+  {
+    if (msg->data.find("event=PREEMPTION") == std::string::npos) {
+      return;
+    }
+    PreemptionEvent pe;
+    pe.time = this->now();
+
+    // Parse key=value pairs from the event string
+    std::istringstream iss(msg->data);
+    std::string token;
+    while (iss >> token) {
+      auto sep = token.find('=');
+      if (sep == std::string::npos) continue;
+      std::string key = token.substr(0, sep);
+      std::string value = token.substr(sep + 1);
+      if (key == "victim_uav_id") pe.victim_uav_id = value;
+      else if (key == "winner_uav_id") pe.winner_uav_id = value;
+      else if (key == "victim_role") { try { pe.victim_role = static_cast<uint8_t>(std::stoi(value)); } catch(...) {} }
+      else if (key == "winner_role") { try { pe.winner_role = static_cast<uint8_t>(std::stoi(value)); } catch(...) {} }
+      else if (key == "victim_priority") { try { pe.victim_priority = std::stod(value); } catch(...) {} }
+      else if (key == "winner_priority") { try { pe.winner_priority = std::stod(value); } catch(...) {} }
+      else if (key == "delta_priority") { try { pe.delta_priority = std::stod(value); } catch(...) {} }
+      else if (key == "victim_charge_time_s") { try { pe.victim_charge_time_s = std::stod(value); } catch(...) {} }
+      else if (key == "policy") pe.policy = value;
+      else if (key == "stamp") { /* use our own time */ }
+    }
+
+    preemption_events_.push_back(pe);
+    RCLCPP_INFO(this->get_logger(),
+                "[PREEMPT] victim=%s winner=%s delta=%.3f charge_time=%.1fs policy=%s",
+                pe.victim_uav_id.c_str(), pe.winner_uav_id.c_str(),
+                pe.delta_priority, pe.victim_charge_time_s, pe.policy.c_str());
+  }
+
+  // Record preemption from a delivered CHARGE_DECISION with reason=PREEMPTED
+  void recordPreemptionFromDecision(const uav_msgs::msg::TrafficMessage & msg,
+                                    const rclcpp::Time & delivered_time)
+  {
+    // The victim is the dst_id of the preemption decision
+    std::string victim_id = msg.dst_id;
+
+    // Update the latest charge record for this UAV
+    auto req_it = latest_request_by_uav_.find(victim_id);
+    if (req_it != latest_request_by_uav_.end()) {
+      auto & rec = charge_records_[req_it->second];
+      rec.preempted_flag = true;
+      rec.preempt_count++;
+      if (!isTerminalOutcome(rec.outcome) || rec.outcome == ChargeOutcome::ACCEPTED) {
+        rec.outcome = ChargeOutcome::PREEMPTED;
+        rec.failure_reason = "PREEMPTED";
+      }
+    }
+  }
+
   void writeOutputs(bool final_flush)
   {
     reconcileCausality();
@@ -908,6 +1000,7 @@ private:
     writeQosMetricsCsv(final_flush);
     writeChargeEventsCsv(final_flush);
     writeRecoveryEventsCsv(final_flush);
+    writePreemptionEventsCsv(final_flush);
     writeChargeQueueTimeseriesRow();
     writeStatusTimeseriesRow();
     writeWeatherTimeseriesRow();
@@ -1070,6 +1163,7 @@ private:
           << "request_time,decision_time,dock_start_time,charge_end_time,"
           << "decision_latency_ms,waiting_time_ms,charge_duration_ms,"
           << "charge_completed,request_battery,start_battery,end_battery,energy_recovered,"
+          << "preempted_flag,preempt_count,"
           << "decision_policy,decision_priority,decision_tte_sec,decision_score,"
           << "decision_rank_index,decision_queue_size,"
           << "decision_ctrl_pdr,decision_ctrl_delay_mean_ms,decision_ctrl_delay_p95_ms,"
@@ -1112,6 +1206,8 @@ private:
           << rec.start_battery << ','
           << rec.end_battery << ','
           << energy_recovered << ','
+          << (rec.preempted_flag ? "true" : "false") << ','
+          << rec.preempt_count << ','
           << rec.decision_policy << ','
           << rec.decision_priority << ','
           << rec.decision_tte_sec << ','
@@ -1124,6 +1220,60 @@ private:
           << rec.decision_ctrl_drop_reasons
           << std::endl;
       exported_charge_requests_.insert(id);
+    }
+  }
+
+  void writePreemptionEventsCsv(bool final_flush)
+  {
+    if (preemption_events_.empty()) {
+      return;
+    }
+
+    std::error_code ec;
+    std::filesystem::create_directories(output_root_, ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
+                  output_root_.c_str(), ec.message().c_str());
+      return;
+    }
+
+    auto path = std::filesystem::path(output_root_) / "preemption_events.csv";
+    bool need_header = !preemption_events_file_initialized_;
+    std::ofstream out(path,
+                      preemption_events_file_initialized_ ? std::ios::app
+                                                          : (std::ios::out | std::ios::trunc));
+    if (!out.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      return;
+    }
+    preemption_events_file_initialized_ = true;
+
+    if (need_header) {
+      out << "run_id,time,victim_uav_id,winner_uav_id,"
+          << "victim_role,winner_role,"
+          << "victim_priority,winner_priority,delta_priority,"
+          << "victim_charge_time_s,policy" << std::endl;
+    }
+
+    for (size_t i = exported_preemption_count_; i < preemption_events_.size(); ++i) {
+      const auto & pe = preemption_events_[i];
+      out << run_id_ << ','
+          << pe.time.seconds() << ','
+          << pe.victim_uav_id << ','
+          << pe.winner_uav_id << ','
+          << static_cast<int>(pe.victim_role) << ','
+          << static_cast<int>(pe.winner_role) << ','
+          << pe.victim_priority << ','
+          << pe.winner_priority << ','
+          << pe.delta_priority << ','
+          << pe.victim_charge_time_s << ','
+          << pe.policy
+          << std::endl;
+    }
+    if (final_flush) {
+      exported_preemption_count_ = preemption_events_.size();
+    } else {
+      exported_preemption_count_ = preemption_events_.size();
     }
   }
 
@@ -1841,6 +1991,12 @@ private:
   rclcpp::Subscription<uav_msgs::msg::UavStatus>::SharedPtr status_sub_;
   rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr weather_sub_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr queue_event_sub_;
+
+  // Preemption events
+  std::vector<PreemptionEvent> preemption_events_;
+  size_t exported_preemption_count_ = 0;
+  bool preemption_events_file_initialized_ = false;
 
   // Weather
   std::string current_weather_regime_;

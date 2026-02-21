@@ -740,8 +740,22 @@ private:
                       uav_id_.c_str());
         }
       } else if (request_needed && !waiting_for_charge_response_) {
-        chargeTrace("TRIGGER_REQUEST", request_needed ? "BATTERY_BELOW_REQUEST_THRESHOLD" : "");
-        requestCharge(battery_percent);
+        // Check preemption backoff: skip re-request until backoff expires
+        // (unless emergency low battery)
+        bool in_backoff = preemption_backoff_until_.nanoseconds() > 0 &&
+                          now < preemption_backoff_until_;
+        if (in_backoff && !emergency) {
+          // Still in preemption backoff, wait
+        } else {
+          if (in_backoff && emergency) {
+            RCLCPP_WARN(this->get_logger(),
+                        "UAV %s: overriding preemption backoff due to emergency low battery",
+                        uav_id_.c_str());
+            preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+          }
+          chargeTrace("TRIGGER_REQUEST", request_needed ? "BATTERY_BELOW_REQUEST_THRESHOLD" : "");
+          requestCharge(battery_percent);
+        }
       }
     }
 
@@ -943,19 +957,70 @@ private:
 
     bool accepted = true;
     std::string slot_id;
+    std::string reason;
+    std::string target_action;
+    double backoff_s = 0.0;
     geometry_msgs::msg::Pose payload_ugv_pose;
-    const bool payload_has_pose = parseChargeDecisionPayload(msg->payload, accepted, slot_id, payload_ugv_pose);
+    const bool payload_has_pose = parseChargeDecisionPayload(
+      msg->payload, accepted, slot_id, payload_ugv_pose, reason, target_action, backoff_s);
 
     RCLCPP_INFO(this->get_logger(),
-                "[RX CHARGE_DECISION] uav=%s role=%u src=%s msg_id=%s accepted=%d slot_id=%s payload=\"%s\"",
+                "[RX CHARGE_DECISION] uav=%s role=%u src=%s msg_id=%s accepted=%d slot_id=%s reason=%s target_action=%s payload=\"%s\"",
                 uav_id_.c_str(), role_, msg->src_id.c_str(), msg->msg_id.c_str(),
-                accepted ? 1 : 0, slot_id.c_str(), msg->payload.c_str());
+                accepted ? 1 : 0, slot_id.c_str(), reason.c_str(), target_action.c_str(), msg->payload.c_str());
 
     auto now = this->now();
     last_charge_decision_rx_time_ = now;
     chargeTrace("RECV_DECISION", accepted ? "ACCEPTED" : "REJECTED");
     waiting_for_charge_response_ = false;
     charge_request_pending_.reset();
+
+    // Handle PREEMPT_STOP_CHARGING: stop mid-charge, leave dock, backoff
+    if (!accepted && reason == "PREEMPTED" && target_action == "STOP_CHARGING") {
+      RCLCPP_WARN(this->get_logger(),
+                  "UAV %s: received PREEMPT_STOP_CHARGING, stopping charge, leaving dock. backoff=%.1fs",
+                  uav_id_.c_str(), backoff_s);
+      chargeTrace("PREEMPTED", "STOP_CHARGING");
+
+      // Stop charging immediately
+      is_charging_ = false;
+      has_charge_slot_ = false;
+      current_charge_slot_id_.clear();
+      charge_target_pose_valid_ = false;
+
+      // Transition to RETURNING to go back to previous position
+      charge_state_ = ChargeState::RETURNING;
+      chargeTrace("STATE_TRANSITION", "PREEMPTED_TO_RETURNING");
+
+      RCLCPP_INFO(this->get_logger(),
+                  "UAV %s: preempted at battery=%.1f Wh (%.1f%%), returning to (%.1f, %.1f).",
+                  uav_id_.c_str(), battery_energy_,
+                  (battery_capacity_ > 0.0f ? (battery_energy_ / battery_capacity_) * 100.0f : 0.0f),
+                  charge_departure_pose_.position.x,
+                  charge_departure_pose_.position.y);
+
+      // Schedule re-request after backoff, unless in emergency low battery
+      float battery_percent = (battery_capacity_ > 0.0f)
+        ? (battery_energy_ / battery_capacity_) * 100.0f : 0.0f;
+      bool emergency_low = battery_percent < (battery_threshold_percent_ * 0.5f);
+      if (!emergency_low && backoff_s > 0.0) {
+        preemption_backoff_until_ = now + rclcpp::Duration::from_seconds(backoff_s);
+        RCLCPP_INFO(this->get_logger(),
+                    "UAV %s: preemption backoff until t+%.1fs",
+                    uav_id_.c_str(), backoff_s);
+      } else if (emergency_low) {
+        RCLCPP_WARN(this->get_logger(),
+                    "UAV %s: emergency low battery (%.1f%%), skipping backoff",
+                    uav_id_.c_str(), battery_percent);
+        preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+      }
+
+      // Mark delivered for metrics
+      if (delivered_pub_) {
+        delivered_pub_->publish(*msg);
+      }
+      return;
+    }
 
     if (!accepted) {
       has_charge_slot_ = false;
@@ -1558,10 +1623,16 @@ private:
   bool parseChargeDecisionPayload(const std::string & payload,
                                   bool & accepted,
                                   std::string & slot_id,
-                                  geometry_msgs::msg::Pose & ugv_pose)
+                                  geometry_msgs::msg::Pose & ugv_pose,
+                                  std::string & reason,
+                                  std::string & target_action,
+                                  double & backoff_s)
   {
     accepted = true;
     slot_id.clear();
+    reason.clear();
+    target_action.clear();
+    backoff_s = 0.0;
     bool has_x = false;
     bool has_y = false;
     bool has_z = false;
@@ -1585,6 +1656,12 @@ private:
                      value == "reject" || value == "REJECT" || value == "rejected");
       } else if (key == "slot_id") {
         slot_id = value;
+      } else if (key == "reason") {
+        reason = value;
+      } else if (key == "target_action") {
+        target_action = value;
+      } else if (key == "backoff_s") {
+        try { backoff_s = std::stod(value); } catch (...) {}
       } else if (key == "ugv_x") {
         try {
           ugv_pose.position.x = std::stod(value);
@@ -4195,6 +4272,7 @@ private:
   std::string current_charge_slot_id_;
   rclcpp::Time last_charge_decision_rx_time_;
   rclcpp::Time last_ugv_pose_update_time_;
+  rclcpp::Time preemption_backoff_until_{0, 0, RCL_ROS_TIME};
   bool emergency_recovery_active_ = false;
   bool emergency_landed_ = false;
   bool fallback_mode_active_ = false;
