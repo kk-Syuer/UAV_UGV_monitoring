@@ -109,10 +109,14 @@ public:
       this->declare_parameter<double>("active_session_status_stale_sec", 8.0);
     active_session_no_progress_sec_ =
       this->declare_parameter<double>("active_session_no_progress_sec", 20.0);
+    const int64_t stale_confirm_cycles =
+      this->declare_parameter<int64_t>("active_session_stale_confirm_cycles", 3);
     active_session_stale_confirm_cycles_ =
-      std::max(1, this->declare_parameter<int>("active_session_stale_confirm_cycles", 3));
+      stale_confirm_cycles < 1 ? 1 : static_cast<int>(stale_confirm_cycles);
+    const int64_t no_progress_confirm_cycles =
+      this->declare_parameter<int64_t>("active_session_no_progress_confirm_cycles", 3);
     active_session_no_progress_confirm_cycles_ =
-      std::max(1, this->declare_parameter<int>("active_session_no_progress_confirm_cycles", 3));
+      no_progress_confirm_cycles < 1 ? 1 : static_cast<int>(no_progress_confirm_cycles);
     active_session_progress_epsilon_percent_ =
       this->declare_parameter<double>("active_session_progress_epsilon_percent", 0.01);
     routing_debug_trace_ = this->declare_parameter<bool>("routing_debug_trace", false);
