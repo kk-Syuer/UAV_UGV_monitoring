@@ -881,9 +881,9 @@ private:
       updateLastRequest(uav_id, msg->msg_id, now, info.role, info.battery_level, "enqueued");
 
       RCLCPP_INFO(this->get_logger(),
-                  "UGV: enqueued CHARGE_REQUEST from %s (role=%u, batt=%.1f%%). "
-                  "Queue size now: %zu",
-                  entry.uav_id.c_str(), entry.role, entry.battery_level, queue_.size());
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s enqueue_ok=%d queue_len=%zu",
+                  now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                  msg->next_hop_id.c_str(), msg->control_type.c_str(), 1, queue_.size());
       return;
     }
 
@@ -2459,8 +2459,9 @@ private:
         logRoutingUnreachable(msg, msg.next_hop_id, "NO_ROUTE");
       }
       RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: no route to %s for CHARGE_DECISION",
-                  ugv_id_.c_str(), job.uav_id.c_str());
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s reason=NO_NEXT_HOP",
+                  now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                  msg.next_hop_id.c_str(), "CHARGE_DECISION");
       publishRoutingEvent("NO_ROUTE_CHARGE_DECISION", job.uav_id, msg.next_hop_id);
       return false;
     }
@@ -2489,15 +2490,16 @@ private:
 
     if (!ensureReachableOrDrop(msg, "UNREACHABLE_CHARGE_DECISION_NEXT_HOP")) {
       RCLCPP_WARN(this->get_logger(),
-                  "UGV %s: dropping CHARGE_DECISION msg_id=%s (next hop unreachable)",
-                  ugv_id_.c_str(), msg.msg_id.c_str());
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s reason=UNREACHABLE_NEXT_HOP",
+                  now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                  msg.next_hop_id.c_str(), msg.control_type.c_str());
       return false;
     }
 
     RCLCPP_INFO(this->get_logger(),
-                "UGV: sending CHARGE_DECISION msg_id=%s dst=%s via=%s accepted=1 slot_id=%s ugv_pose=(%.1f, %.1f, %.1f)",
-                msg.msg_id.c_str(), msg.dst_id.c_str(), msg.next_hop_id.c_str(), slot_id.c_str(),
-                ugv_pose_.position.x, ugv_pose_.position.y, ugv_pose_.position.z);
+                "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s request_msg_id=%s",
+                now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                msg.next_hop_id.c_str(), msg.control_type.c_str(), 1, slot_id.c_str(), msg.ref_msg_id.c_str());
 
 
     control_pub_->publish(msg);
