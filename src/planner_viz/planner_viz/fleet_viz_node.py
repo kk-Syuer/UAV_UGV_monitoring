@@ -1,5 +1,6 @@
 import json
 import os
+from collections import deque
 from typing import Any, Dict
 
 import rclpy
@@ -88,8 +89,12 @@ class FleetVizNode(Node):
         self.last_charge_decision_accepted = None
         self.charge_request_ids = set()
         self.charge_decision_ids = set()
+        self.charge_request_id_order = deque()
+        self.charge_decision_id_order = deque()
         self.charging_snapshot: Dict[str, Any] = {}
         self.last_charging_snapshot_time = None
+        self.max_charge_panel_rows = int(self.declare_parameter('max_charge_panel_rows', 8).value)
+        self.max_charge_dedup_ids = int(self.declare_parameter('max_charge_dedup_ids', 300).value)
 
         # Control-plane snapshots.
         self.cluster_info = {}
@@ -291,10 +296,8 @@ class FleetVizNode(Node):
     def delivered_cb(self, msg: TrafficMessage):
         now = self._now_sec()
         if msg.control_type == 'CHARGE_DECISION':
-            if msg.msg_id and msg.msg_id in self.charge_decision_ids:
+            if not self._remember_control_id(msg.msg_id, self.charge_decision_ids, self.charge_decision_id_order):
                 return
-            if msg.msg_id:
-                self.charge_decision_ids.add(msg.msg_id)
             self.last_charge_decision_time = now
             self.last_charge_decision_target = msg.dst_id
             self.last_charge_decision_accepted = 'REJECT' not in (msg.payload or '')
@@ -312,6 +315,18 @@ class FleetVizNode(Node):
             return
         self.charging_snapshot = payload
         self.last_charging_snapshot_time = self._now_sec()
+
+    def _remember_control_id(self, msg_id: str, seen_ids: set, seen_order: deque):
+        if not msg_id:
+            return False
+        if msg_id in seen_ids:
+            return False
+        seen_ids.add(msg_id)
+        seen_order.append(msg_id)
+        while len(seen_order) > self.max_charge_dedup_ids:
+            old = seen_order.popleft()
+            seen_ids.discard(old)
+        return True
 
     def _cluster_key_for_uav(self, uav_id: str, st: UavStatus) -> str:
         mapped_cluster = self.member_cluster_assignment.get(uav_id)
@@ -360,10 +375,8 @@ class FleetVizNode(Node):
         if msg.control_type == 'ACK':
             return
         if msg.control_type == 'CHARGE_REQUEST':
-            if msg.msg_id and msg.msg_id in self.charge_request_ids:
+            if not self._remember_control_id(msg.msg_id, self.charge_request_ids, self.charge_request_id_order):
                 return
-            if msg.msg_id:
-                self.charge_request_ids.add(msg.msg_id)
             request_time = msg.creation_time.sec + msg.creation_time.nanosec * 1e-9
             if msg.src_id not in self.pending_charges:
                 self.pending_charges[msg.src_id] = {
@@ -763,27 +776,31 @@ class FleetVizNode(Node):
 
     def _queue_lines(self):
         now = self._now_sec()
-        snapshot_fresh = (
-            self.last_charging_snapshot_time is not None and
-            (now - self.last_charging_snapshot_time) <= 3.0
-        )
+        waiting_queue = self.charging_snapshot.get('waiting_queue', [])
+        accepted_sessions = self.charging_snapshot.get('active_sessions', [])
+        rejected = self.charging_snapshot.get('rejected', [])
+        last_request = self.charging_snapshot.get('last_request', {})
+        last_decision = self.charging_snapshot.get('last_decision', {})
+        policy = self.charging_snapshot.get('policy', 'n/a')
 
-        if snapshot_fresh:
-            waiting_queue = self.charging_snapshot.get('waiting_queue', [])
-            accepted_sessions = self.charging_snapshot.get('active_sessions', [])
-            rejected = self.charging_snapshot.get('rejected', [])
-            last_request = self.charging_snapshot.get('last_request', {})
-            last_decision = self.charging_snapshot.get('last_decision', {})
-            policy = self.charging_snapshot.get('policy', 'n/a')
-
-            queue_lines = [
+        if self.last_charging_snapshot_time is None:
+            return [
                 self._title_line('Charging queue (UGV snapshot)'),
-                self._line(f"  snapshot age: {self._format_age(self.last_charging_snapshot_time)} (fresh)"),
-                self._title_line('Scheduling'),
-                self._line(f"  {policy}"),
-                self._title_line(f"Current Waiting List (Q): {len(waiting_queue)}"),
+                self._line('  waiting for /ugv/charging_snapshot ...'),
             ]
-            for item in waiting_queue:
+
+        snapshot_fresh = (now - self.last_charging_snapshot_time) <= 3.0
+        freshness = 'fresh' if snapshot_fresh else 'stale'
+        row_cap = max(1, self.max_charge_panel_rows)
+
+        queue_lines = [
+            self._title_line('Charging queue (UGV snapshot)'),
+            self._line(f"  snapshot age: {self._format_age(self.last_charging_snapshot_time)} ({freshness})"),
+            self._title_line('Scheduling'),
+            self._line(f"  {policy}"),
+            self._title_line(f"Current Waiting List (Q): {len(waiting_queue)}"),
+        ]
+        for item in waiting_queue[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 role = self.role_label(int(item.get('live_role', -1)))
                 batt = float(item.get('live_battery', 0.0))
@@ -793,9 +810,11 @@ class FleetVizNode(Node):
                 queue_lines.append(self._line(
                     f"    - {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s"
                 ))
+        if len(waiting_queue) > row_cap:
+            queue_lines.append(self._line(f"    ... +{len(waiting_queue) - row_cap} more"))
 
-            queue_lines.append(self._title_line(f"Accepted List: {len(accepted_sessions)}"))
-            for item in accepted_sessions:
+        queue_lines.append(self._title_line(f"Accepted List: {len(accepted_sessions)}"))
+        for item in accepted_sessions[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 st = float(item.get('start', 0.0))
                 en = float(item.get('end', 0.0))
@@ -810,10 +829,12 @@ class FleetVizNode(Node):
                     f"    - {uid} [{role}] | live {batt:.1f}% | last {last_seen_batt:.1f}% | "
                     f"progress_age {progress_age:.1f}s | age {age_s:.1f}s | [{st:.1f}, {en:.1f}] | {reason}"
                 ))
+        if len(accepted_sessions) > row_cap:
+            queue_lines.append(self._line(f"    ... +{len(accepted_sessions) - row_cap} more"))
 
-            recent_endings = self.charging_snapshot.get('recent_session_endings', [])
-            queue_lines.append(self._title_line(f"Recent session endings: {len(recent_endings)}"))
-            for item in recent_endings[:8]:
+        recent_endings = self.charging_snapshot.get('recent_session_endings', [])
+        queue_lines.append(self._title_line(f"Recent session endings: {len(recent_endings)}"))
+        for item in recent_endings[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 reason = str(item.get('session_end_reason', 'n/a'))
                 duration = float(item.get('charge_duration_sec', 0.0))
@@ -822,9 +843,11 @@ class FleetVizNode(Node):
                 queue_lines.append(self._line(
                     f"    - {uid} | {reason} | duration {duration:.1f}s | ended {end_age_s:.1f}s ago"
                 ))
+        if len(recent_endings) > row_cap:
+            queue_lines.append(self._line(f"    ... +{len(recent_endings) - row_cap} more"))
 
-            queue_lines.append(self._title_line(f"UGV intake rejected: {len(rejected)}"))
-            for item in rejected:
+        queue_lines.append(self._title_line(f"UGV intake rejected: {len(rejected)}"))
+        for item in rejected[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 reason = item.get('reason', 'n/a')
                 rej_t = item.get('time')
@@ -840,9 +863,11 @@ class FleetVizNode(Node):
                     queue_lines.append(self._line(
                         f"    - {uid} [{role}] | {batt:.1f}% | age {age_s:.1f}s | {reason}"
                     ))
+        if len(rejected) > row_cap:
+            queue_lines.append(self._line(f"    ... +{len(rejected) - row_cap} more"))
 
-            queue_lines.append(self._title_line('Last request'))
-            if last_request:
+        queue_lines.append(self._title_line('Last request'))
+        if last_request:
                 uid = last_request.get('uav_id', 'unknown')
                 role = self.role_label(int(last_request.get('role', -1)))
                 batt = max(0.0, min(100.0, float(last_request.get('battery', 0.0))))
@@ -856,11 +881,11 @@ class FleetVizNode(Node):
                 queue_lines.append(self._line(
                     f"  msg_id: {msg_id} | status: {status}"
                 ))
-            else:
-                queue_lines.append(self._line('  (none)'))
+        else:
+            queue_lines.append(self._line('  (none)'))
 
-            queue_lines.append(self._title_line('Last decision'))
-            if last_decision:
+        queue_lines.append(self._title_line('Last decision'))
+        if last_decision:
                 uid = last_decision.get('uav_id', 'unknown')
                 accepted = bool(last_decision.get('accepted', False))
                 t = last_decision.get('time')
@@ -872,66 +897,8 @@ class FleetVizNode(Node):
                     f"  {uid} | {'accepted' if accepted else 'rejected'} | "
                     f"pri {priority} | age {age_s:.1f}s | [{st:.1f}, {en:.1f}]"
                 ))
-            else:
-                queue_lines.append(self._line('  (none)'))
-            return queue_lines
-
-        spots_now = self.compute_required_spots()
-        load_ch_den = self.flight_time_ch_min + self.charge_time_ch_min
-        load_mem_den = self.flight_time_mem_min + self.charge_time_mem_min
-        load_ch = (self.charge_time_ch_min / load_ch_den) if load_ch_den > 0.0 else 0.0
-        load_mem = (self.charge_time_mem_min / load_mem_den) if load_mem_den > 0.0 else 0.0
-        queue_lines = [
-            self._title_line('Charging queue (fanet fallback)'),
-            self._line(f"  snapshot stale: {self._format_age(self.last_charging_snapshot_time)}"),
-            self._line(f"  pending requests: {len(self.pending_charges)}"),
-            self._line(f"  Last request age: {self._format_age(self.last_charge_request_time)}"),
-            self._line(f"  Last decision age: {self._format_age(self.last_charge_decision_time)}"),
-            self._title_line("Scheduling"),
-            self._line(f"  {self.latest_policy}"),
-            self._title_line("Spots"),
-            self._line(
-                f"  ceil((Nch*{load_ch:.2f} + Nmem*{load_mem:.2f})/"
-                f" {self.target_utilization:.2f})"),
-            self._line(f"  spots now: {spots_now}")
-        ]
-        if self.last_charge_decision_target:
-            decision_state = (
-                "accepted" if self.last_charge_decision_accepted
-                else "rejected" if self.last_charge_decision_accepted is False
-                else "sent"
-            )
-            queue_lines.append(self._line(
-                f"  Last decision: {self.last_charge_decision_target} ({decision_state})"
-            ))
-        if self.uav_states:
-            queue_lines.append(self._title_line('Fleet status (batt %)'))
-            for uid in sorted(self.uav_states.keys()):
-                st = self.uav_states[uid]
-                queue_lines.append(self._line(
-                    f"  {uid} [{self.role_label(st.role)}] | {st.battery_level:.1f}%"
-                ))
-        if self.pending_charges:
-            queue_lines.append(self._title_line('Waiting'))
-            ordered = sorted(
-                self.pending_charges.items(),
-                key=lambda item: item[1].get('time') or 0.0
-            )
-            for uid, meta in ordered:
-                role_val = meta.get('role')
-                battery = meta.get('battery')
-                status = self.uav_states.get(uid)
-                if role_val is None and status is not None:
-                    role_val = status.role
-                if battery is None and status is not None:
-                    battery = status.battery_level
-                role_label = self.role_label(int(role_val)) if role_val is not None else 'UNK'
-                if battery is None:
-                    queue_lines.append(self._line(f"    - {uid} [{role_label}]"))
-                else:
-                    queue_lines.append(self._line(
-                        f"    - {uid} [{role_label}] | {battery:.1f}%"
-                    ))
+        else:
+            queue_lines.append(self._line('  (none)'))
         return queue_lines
 
     # --- plotting ---
