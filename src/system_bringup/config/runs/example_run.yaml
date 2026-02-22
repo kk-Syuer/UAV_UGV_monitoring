@@ -98,7 +98,7 @@ recovery_manager:
   recovery_cooldown_sec: 2.0
 
 traffic:
-  user_device_enable: true
+  user_device_enable: false
 
 task_telemetry:
   enable: true
