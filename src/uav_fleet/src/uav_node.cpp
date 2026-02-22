@@ -1106,7 +1106,7 @@ private:
                 accepted ? 1 : 0, slot_id.c_str(), reason.c_str(), target_action.c_str(), msg->payload.c_str());
 
     auto now = this->now();
-    const std::string state_from = chargeStateName(charge_state_);
+    const std::string state_from = chargeStateString(charge_state_);
     last_charge_decision_rx_time_ = now;
     chargeTrace("RECV_DECISION", accepted ? "ACCEPTED" : "REJECTED");
     waiting_for_charge_response_ = false;
@@ -1160,7 +1160,7 @@ private:
     }
 
     if (!accepted) {
-      const std::string state_to = chargeStateName(ChargeState::IDLE);
+      const std::string state_to = chargeStateString(ChargeState::IDLE);
       RCLCPP_INFO(this->get_logger(),
                   "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
                   now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
@@ -1183,7 +1183,7 @@ private:
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
       charge_state_ = ChargeState::TO_UGV;
-      const std::string state_to = chargeStateName(charge_state_);
+      const std::string state_to = chargeStateString(charge_state_);
       RCLCPP_INFO(this->get_logger(),
                   "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
                   now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
@@ -1230,7 +1230,7 @@ private:
                     uav_id_.c_str(), slot_id.c_str());
       }
     } else {
-      const std::string state_to = chargeStateName(charge_state_);
+      const std::string state_to = chargeStateString(charge_state_);
       RCLCPP_INFO(this->get_logger(),
                   "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
                   now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
