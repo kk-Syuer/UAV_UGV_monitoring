@@ -4,7 +4,11 @@ import os
 import yaml
 
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, EmitEvent, LogInfo, OpaqueFunction, TimerAction
+from launch.actions import (
+    DeclareLaunchArgument, EmitEvent, LogInfo, OpaqueFunction,
+    RegisterEventHandler, TimerAction,
+)
+from launch.event_handlers import OnProcessExit, OnProcessStart
 from launch.events import Shutdown
 from launch.substitutions import LaunchConfiguration
 from launch_ros.actions import Node
@@ -443,6 +447,73 @@ def _make_nodes(context, *args, **kwargs):
             ),
         ))],
     ))
+
+    # ---- Launch Safeguard: required-node monitoring ----
+    # Collect all required Node actions (everything except user devices / viz).
+    required_nodes: list[Node] = []
+    for action in nodes:
+        if not isinstance(action, Node):
+            continue
+        pkg = action.node_package
+        # Mobile users are not required for the experiment to function.
+        if pkg == "user_device":
+            continue
+        # Fleet visualizer is optional.
+        if pkg in ("planner_viz",):
+            continue
+        required_nodes.append(action)
+
+    started_set: set[int] = set()
+
+    for req_node in required_nodes:
+        # Log when each required node starts.
+        nodes.append(RegisterEventHandler(
+            OnProcessStart(
+                target_action=req_node,
+                on_start=[
+                    OpaqueFunction(
+                        function=lambda context, *a, _n=req_node, **kw: (
+                            started_set.add(id(_n)),
+                            [LogInfo(msg=f"[LAUNCH_SAFEGUARD] STARTED: {_n.node_name}")]
+                        )[1]
+                    ),
+                ],
+            )
+        ))
+
+        # If a required node exits, abort the experiment.
+        def _make_on_exit(node_ref):
+            def _on_exit(event, context):
+                rc = event.returncode
+                name = node_ref.node_name
+                if shutdown_state["requested"]:
+                    return [LogInfo(
+                        msg=f"[LAUNCH_SAFEGUARD] {name} exited (rc={rc}) during shutdown; ignoring."
+                    )]
+                was_started = id(node_ref) in started_set
+                if not was_started:
+                    msg = (
+                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{name}' "
+                        f"failed to start (rc={rc}). Shutting down experiment."
+                    )
+                else:
+                    msg = (
+                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{name}' "
+                        f"exited unexpectedly (rc={rc}). Shutting down experiment."
+                    )
+                shutdown_state["requested"] = True
+                return [
+                    LogInfo(msg=msg),
+                    EmitEvent(event=Shutdown(reason=f"required_node_failure:{name}")),
+                ]
+            return _on_exit
+
+        nodes.append(RegisterEventHandler(
+            OnProcessExit(
+                target_action=req_node,
+                on_exit=_make_on_exit(req_node),
+            )
+        ))
 
     return nodes
 

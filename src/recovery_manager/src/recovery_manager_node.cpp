@@ -71,7 +71,7 @@ public:
     movement_delta_m_ = this->declare_parameter<double>("movement_delta_m", 5.0);
     control_ttl_ = static_cast<uint32_t>(this->declare_parameter<int>("control_ttl", 12));
     ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
-    max_ack_retries_ = this->declare_parameter<int>("max_ack_retries", 5);
+    max_ack_retries_ = this->declare_parameter<int>("max_ack_retries", 0);  // 0 = unlimited
     recovery_lock_duration_sec_ = this->declare_parameter<double>("recovery_lock_duration_sec", 10.0);
 
     status_sub_ = this->create_subscription<uav_msgs::msg::UavStatus>(
@@ -910,6 +910,15 @@ private:
         traffic_pub_->publish(pending.msg);
         pending.last_send_time = now;
         pending.attempts++;
+        // Log every 10 attempts to avoid spam
+        if (pending.attempts <= 3 || pending.attempts % 10 == 0) {
+          RCLCPP_WARN(this->get_logger(),
+                      "[RECOVERY] retransmit #%d %s msg_id=%s dst=%s",
+                      pending.attempts,
+                      pending.msg.control_type.c_str(),
+                      pending.msg.msg_id.c_str(),
+                      pending.msg.dst_id.c_str());
+        }
       }
       ++it;
     }

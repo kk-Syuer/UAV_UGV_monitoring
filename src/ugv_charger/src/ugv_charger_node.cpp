@@ -780,11 +780,14 @@ private:
     maybePublishAck(*msg);
 
     if (msg->control_type == "MOTION_START") {
-      motion_start_received_ = true;
-      last_pose_time_ = now;
-      RCLCPP_INFO(this->get_logger(),
-                  "[MOB-START] %s received %s from %s", ugv_id_.c_str(),
-                  msg->control_type.c_str(), msg->src_id.c_str());
+      if (!motion_start_received_) {
+        motion_start_received_ = true;
+        last_pose_time_ = now;
+        RCLCPP_INFO(this->get_logger(),
+                    "[MOB-START] %s received %s from %s", ugv_id_.c_str(),
+                    msg->control_type.c_str(), msg->src_id.c_str());
+      }
+      // ACK already sent via maybePublishAck above; idempotent on repeat
       return;
     }
 
@@ -1103,12 +1106,10 @@ private:
   }
 
   // Ack deployment so the sink can release the motion barrier.
+  // Called on every DEPLOYMENT receive (including duplicates) to ensure the
+  // sink eventually gets the ACK even under high packet loss.
   void sendDeploymentAck(const std::string & suggested_next_hop = "")
   {
-    if (deployment_ack_sent_) {
-      return;
-    }
-
     if (!control_pub_) {
       return;
     }
