@@ -35,7 +35,7 @@ monitor:
   status_sample_period_sec: 1.0
 
 experiment:
-  experiment_timeout_s: 600
+  experiment_timeout_s: 10800
 
 weather:
   enable: true
@@ -44,8 +44,15 @@ weather:
   temp_c: 18.0
 
   mode: "markov"
-  start_state: "windy"
+  start_state: "rainy"
   transition_period_sec: 12.0
+  transition_matrix:
+    sunny:  {sunny: 0.60, cloudy: 0.25, windy: 0.10, rainy: 0.04, stormy: 0.01}
+    cloudy: {sunny: 0.08, cloudy: 0.55, windy: 0.10, rainy: 0.25, stormy: 0.02}
+    windy:  {sunny: 0.06, cloudy: 0.35, windy: 0.40, rainy: 0.15, stormy: 0.04}
+    rainy:  {sunny: 0.02, cloudy: 0.20, windy: 0.10, rainy: 0.50, stormy: 0.18}
+    stormy: {sunny: 0.01, cloudy: 0.10, windy: 0.14, rainy: 0.35, stormy: 0.40}
+
 fault_injector:
   enable: true
   drop_mode: bus
@@ -68,7 +75,7 @@ sink:
 ugv:
   ugv_id: ugv_1
   charging_policy: role_priority
-  max_parallel_spots: 1
+  max_parallel_spots: 3
 
 battery:
   # Keep UAV and UGV capacity assumptions aligned across nodes.
@@ -79,9 +86,13 @@ battery:
   drain_rate_ch: 0.279272
   # Charging assumption: charger_power_w = 3600 * k * drain_rate, k=1.0 (kept to preserve relative charge/discharge ratio under 8x scaling)
   charge_gain_multiplier: 1.0
+
 coverage_planner:
   enable: true
-
+  taskpoint_generation_mode: fixed_file
+  fixed_taskpoints_file: system_bringup/config/taskpoints/fixed_taskpoints.yaml
+  fixed_taskpoints_count: 10
+  fixed_taskpoints_seed: 0
 planner_viz:
   enable: true
 
@@ -107,12 +118,14 @@ task_telemetry:
   send_prob: 1.0
   ttl_hops: 16
   flow_label: SEARCH_TELEMETRY
+  
 telemetry_policy:
   mode: option_c
   tmax_sec: 120.0
   kmax: 10
   upload_batch: true
-  log_debug: true
+  log_debug: false
+
 uavs:
   ch_ids:
     - ch0
