@@ -61,6 +61,12 @@ public:
     comm_radius_m_ = this->declare_parameter<double>("comm_radius_m", 400.0);
     deployment_resend_period_sec_ =
       this->declare_parameter<double>("deployment_resend_period_sec", 2.0);
+    deployment_max_resends_ =
+      this->declare_parameter<int>("deployment_max_resends", 0);  // 0 = unlimited
+    motion_start_resend_period_sec_ =
+      this->declare_parameter<double>("motion_start_resend_period_sec", 2.0);
+    motion_start_max_resends_ =
+      this->declare_parameter<int>("motion_start_max_resends", 0);  // 0 = unlimited
 
     // Network traffic destined for the sink is processed here.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -116,6 +122,11 @@ public:
     deployment_resend_timer_ = this->create_wall_timer(
       std::chrono::duration_cast<std::chrono::nanoseconds>(resend_period),
       std::bind(&SinkGatewayNode::checkDeploymentAcks, this));
+
+    auto motion_resend_period = std::chrono::duration<double>(motion_start_resend_period_sec_);
+    motion_start_resend_timer_ = this->create_wall_timer(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(motion_resend_period),
+      std::bind(&SinkGatewayNode::checkMotionStartAcks, this));
   }
 
 private:
@@ -138,6 +149,44 @@ private:
     if (msg->flow_type == 1 && msg->control_type == "STATUS_CH") {
       handleStatusCh(msg);
       return;
+    }
+
+    // Handle generic ACK messages that reference DEPLOYMENT or MOTION_START
+    if (msg->flow_type == 1 && msg->control_type == "ACK" && !msg->ref_msg_id.empty()) {
+      const std::string & ref = msg->ref_msg_id;
+
+      // Check if the ACK references a DEPLOYMENT message (DEP_ prefix)
+      if (!all_deployed_ && ref.rfind("DEP_", 0) == 0) {
+        const std::string & u = msg->src_id;
+        if (expected_uavs_.count(u) > 0 && acked_uavs_.count(u) == 0) {
+          acked_uavs_.insert(u);
+          deployment_cache_.erase(u);
+          RCLCPP_INFO(this->get_logger(),
+                      "[DEP-ACK] (via generic ACK) from %s (%zu / %zu)",
+                      u.c_str(), acked_uavs_.size(), expected_uavs_.size());
+          if (!expected_uavs_.empty() &&
+              acked_uavs_.size() == expected_uavs_.size()) {
+            all_deployed_ = true;
+            RCLCPP_INFO(this->get_logger(),
+                        "All deployments ACKed – broadcasting MOTION_START");
+            broadcastStartMobility();
+          }
+        }
+      }
+
+      // Check if the ACK references a MOTION_START message
+      for (auto it = motion_start_cache_.begin(); it != motion_start_cache_.end(); ++it) {
+        if (it->second.msg_id == ref) {
+          motion_start_acked_uavs_.insert(it->first);
+          motion_start_cache_.erase(it);
+          RCLCPP_INFO(this->get_logger(),
+                      "[MOB-ACK] from %s (%zu / %zu)",
+                      msg->src_id.c_str(),
+                      motion_start_acked_uavs_.size(),
+                      expected_uavs_.size());
+          break;
+        }
+      }
     }
 
     // Handle DEPLOYMENT_ACK control messages
@@ -273,6 +322,8 @@ private:
     tm.flow_type = 1;
     tm.creation_time = this->now();
     tm.hop_count = 0;
+    tm.ttl = 12;
+    tm.requires_ack = true;
 
     tm.control_type = "DEPLOYMENT";
 
@@ -313,6 +364,9 @@ private:
       return;
     }
 
+    motion_start_acked_uavs_.clear();
+    motion_start_cache_.clear();
+
     for (const auto & u : expected_uavs_) {
       uav_msgs::msg::TrafficMessage msg;
       msg.msg_id = "MOTION_START_" + u + "_" +
@@ -321,24 +375,32 @@ private:
       msg.dst_id = u;
       msg.next_hop_id = resolveNextHop(u);
       if (msg.next_hop_id.empty()) {
+        msg.next_hop_id = uplink_ch_id_;
         RCLCPP_WARN(this->get_logger(),
-                    "[MOB-START] no route to %s",
-                    u.c_str());
+                    "[MOB-START] no route to %s, falling back to uplink CH %s",
+                    u.c_str(), uplink_ch_id_.c_str());
         publishRoutingEvent("NO_ROUTE_MOTION_START", u, msg.next_hop_id);
-        continue;
       }
 
       msg.flow_type = 1;  // CONTROL_ALERT
       msg.creation_time = this->now();
       msg.hop_count = 0;
+      msg.ttl = 12;
+      msg.requires_ack = true;
 
       msg.control_type = "MOTION_START";
       msg.payload = "";
 
       control_pub_->publish(msg);
+      motion_start_cache_[u] = MotionStartRecord{
+        msg.msg_id,
+        msg.next_hop_id,
+        this->now(),
+        0
+      };
       RCLCPP_INFO(this->get_logger(),
-                  "[MOB-START] sent MOTION_START to %s via %s",
-                  u.c_str(), uplink_ch_id_.c_str());
+                  "[MOB-START] sent MOTION_START to %s via %s (requires_ack=true)",
+                  u.c_str(), msg.next_hop_id.c_str());
     }
   }
 
@@ -469,6 +531,20 @@ private:
         continue;
       }
 
+      if (deployment_max_resends_ > 0 &&
+          it->second.resend_count >= deployment_max_resends_) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "[DEP-RESEND] giving up on DEPLOYMENT to %s after %d resends",
+                     uav_id.c_str(), it->second.resend_count);
+        continue;
+      }
+
+      // Try to update next_hop from current routing table
+      std::string next_hop = resolveNextHop(uav_id);
+      if (!next_hop.empty()) {
+        it->second.next_hop_id = next_hop;
+      }
+
       uav_msgs::msg::TrafficMessage tm;
       tm.msg_id = "DEP_" + uav_id + "_" + std::to_string(msg_counter_++);
       tm.src_id = sink_id_;
@@ -477,12 +553,65 @@ private:
       tm.flow_type = 1;
       tm.creation_time = now;
       tm.hop_count = 0;
+      tm.ttl = 12;
+      tm.requires_ack = true;
       tm.control_type = "DEPLOYMENT";
       tm.payload = it->second.payload;
 
       sendDeployment(tm, "resend");
       it->second.last_sent = now;
       it->second.resend_count++;
+    }
+  }
+
+  void checkMotionStartAcks()
+  {
+    if (!all_deployed_ || motion_start_cache_.empty() || !control_pub_) {
+      return;
+    }
+
+    const auto now = this->now();
+    for (auto & [uav_id, record] : motion_start_cache_) {
+      if (motion_start_acked_uavs_.count(uav_id) > 0) {
+        continue;
+      }
+
+      auto elapsed = now - record.last_sent;
+      if (elapsed.seconds() < motion_start_resend_period_sec_) {
+        continue;
+      }
+
+      if (motion_start_max_resends_ > 0 &&
+          record.resend_count >= motion_start_max_resends_) {
+        RCLCPP_ERROR(this->get_logger(),
+                     "[MOB-START] giving up on MOTION_START to %s after %d resends",
+                     uav_id.c_str(), record.resend_count);
+        continue;
+      }
+
+      uav_msgs::msg::TrafficMessage msg;
+      msg.msg_id = record.msg_id;  // Keep same msg_id for dedup
+      msg.src_id = sink_id_;
+      msg.dst_id = uav_id;
+      msg.next_hop_id = resolveNextHop(uav_id);
+      if (msg.next_hop_id.empty()) {
+        msg.next_hop_id = record.next_hop_id;
+      }
+      msg.flow_type = 1;
+      msg.creation_time = now;
+      msg.hop_count = 0;
+      msg.ttl = 12;
+      msg.requires_ack = true;
+      msg.control_type = "MOTION_START";
+      msg.payload = "";
+
+      control_pub_->publish(msg);
+      record.last_sent = now;
+      record.resend_count++;
+
+      RCLCPP_WARN(this->get_logger(),
+                  "[MOB-START] resend #%d MOTION_START to %s via %s",
+                  record.resend_count, uav_id.c_str(), msg.next_hop_id.c_str());
     }
   }
 
@@ -538,13 +667,30 @@ private:
     int resend_count = 0;
   };
 
+  // MOTION_START tracking
+  struct MotionStartRecord
+  {
+    std::string msg_id;
+    std::string next_hop_id;
+    rclcpp::Time last_sent;
+    int resend_count = 0;
+  };
+
   std::unordered_set<std::string> expected_uavs_;
   std::unordered_set<std::string> acked_uavs_;
   std::unordered_map<std::string, DeploymentRecord> deployment_cache_;
   bool all_deployed_ = false;
   uint64_t start_mobility_seq_ = 0;
   double deployment_resend_period_sec_ = 0.0;
+  int deployment_max_resends_ = 0;
   rclcpp::TimerBase::SharedPtr deployment_resend_timer_;
+
+  // MOTION_START ACK tracking
+  std::unordered_set<std::string> motion_start_acked_uavs_;
+  std::unordered_map<std::string, MotionStartRecord> motion_start_cache_;
+  double motion_start_resend_period_sec_ = 2.0;
+  int motion_start_max_resends_ = 0;
+  rclcpp::TimerBase::SharedPtr motion_start_resend_timer_;
 
   rclcpp::Subscription<uav_msgs::msg::UavDeployment>::SharedPtr deployment_sub_;
   rclcpp::Subscription<uav_msgs::msg::TrafficMessage>::SharedPtr traffic_sub_;

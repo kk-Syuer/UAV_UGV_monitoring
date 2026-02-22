@@ -2087,12 +2087,16 @@ private:
     }
 
     if (msg->control_type == "MOTION_START" && msg->dst_id == "broadcast") {
-      start_mobility_received_ = true;
-      last_pose_time_ = this->now();
-      last_pose_ = pose_;
-      RCLCPP_INFO(this->get_logger(),
-                  "[MOB-START] %s received broadcast MOTION_START from %s",
-                  uav_id_.c_str(), msg->src_id.c_str());
+      if (!start_mobility_received_) {
+        start_mobility_received_ = true;
+        last_pose_time_ = this->now();
+        last_pose_ = pose_;
+        RCLCPP_INFO(this->get_logger(),
+                    "[MOB-START] %s received broadcast MOTION_START from %s",
+                    uav_id_.c_str(), msg->src_id.c_str());
+      }
+      // Always ACK even on duplicate to ensure sender gets confirmation
+      maybePublishAck(*msg);
       return;
     }
 
@@ -2313,14 +2317,17 @@ private:
           (msg->dst_id == uav_id_ || msg->dst_id == "broadcast") &&
           msg->control_type == "MOTION_START") {
 
-        start_mobility_received_ = true;
-        // Reset timing so the first mobility step after the barrier uses the
-        // configured dt instead of a huge elapsed time since deployment.
-        last_pose_time_ = this->now();
-        last_pose_ = pose_;
-        RCLCPP_INFO(this->get_logger(),
-                    "[MOB-START] %s received MOTION_START from %s",
-                    uav_id_.c_str(), msg->src_id.c_str());
+        if (!start_mobility_received_) {
+          start_mobility_received_ = true;
+          // Reset timing so the first mobility step after the barrier uses the
+          // configured dt instead of a huge elapsed time since deployment.
+          last_pose_time_ = this->now();
+          last_pose_ = pose_;
+          RCLCPP_INFO(this->get_logger(),
+                      "[MOB-START] %s received MOTION_START from %s",
+                      uav_id_.c_str(), msg->src_id.c_str());
+        }
+        // Already ACKed via maybePublishAck above (called before this block)
         return;
       }
 
@@ -4006,9 +4013,6 @@ private:
 
   void sendDeploymentAck()
   {
-    if (deployment_ack_sent_) {
-      return;
-    }
     if (!traffic_pub_) {
       return;
     }
