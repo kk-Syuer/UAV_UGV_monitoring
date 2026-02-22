@@ -96,6 +96,7 @@ def _make_nodes(context, *args, **kwargs):
     # Package + executable names (adjust only if your exec names differ)
     # You said most nodes live in their own packages; bringup just launches them.
     nodes = []
+    _optional_node_ids: set[int] = set()  # nodes whose exit should NOT abort
 
     # Common network params
     neighbor_timeout = float(_get(cfg, ["network", "neighbor_timeout_sec"], 3.0))
@@ -117,14 +118,16 @@ def _make_nodes(context, *args, **kwargs):
     if _bool_from_str(_get(cfg, ["planner_viz", "enable"], True), True):
         viz_headless = _bool_from_str(_get(cfg, ["planner_viz", "headless"], False), False)
         viz_env = {"FLEET_VIZ_HEADLESS": "1"} if viz_headless else {}
-        nodes.append(Node(
+        _viz_node = Node(
             package=_get(cfg, ["executables", "planner_viz_pkg"], "planner_viz"),
             executable=_get(cfg, ["executables", "planner_viz_exec"], "fleet_viz"),
             name=f"fleet_viz_{run_id}",
             output="screen",
             parameters=[{}],
             additional_env=viz_env,
-        ))
+        )
+        nodes.append(_viz_node)
+        _optional_node_ids.add(id(_viz_node))
 
     # Monitor
     monitor_params = {
@@ -256,13 +259,15 @@ def _make_nodes(context, *args, **kwargs):
 
     # User device traffic (optional)
     if _bool_from_str(_get(cfg, ["traffic", "user_device_enable"], True), True):
-        nodes.append(Node(
+        _ud_node = Node(
             package=_get(cfg, ["executables", "user_device_pkg"], "user_device"),
             executable=_get(cfg, ["executables", "user_device_exec"], "user_device_node"),
             name=f"user_device_{run_id}",
             output="screen",
             parameters=[{}],
-        ))
+        )
+        nodes.append(_ud_node)
+        _optional_node_ids.add(id(_ud_node))
 
     # UAV params shared
     task_tlm = cfg.get("task_telemetry", {})
@@ -449,32 +454,38 @@ def _make_nodes(context, *args, **kwargs):
     ))
 
     # ---- Launch Safeguard: required-node monitoring ----
-    # Collect all required Node actions (everything except user devices / viz).
+    def _subs_to_str(subs):
+        """Resolve a launch substitution list to a plain string."""
+        if isinstance(subs, str):
+            return subs
+        try:
+            return "".join(getattr(s, "text", str(s)) for s in subs)
+        except TypeError:
+            return str(subs)
+
+    # Collect all required Node actions (everything except optional ones).
     required_nodes: list[Node] = []
     for action in nodes:
         if not isinstance(action, Node):
             continue
-        pkg = action.node_package
-        # Mobile users are not required for the experiment to function.
-        if pkg == "user_device":
-            continue
-        # Fleet visualizer is optional.
-        if pkg in ("planner_viz",):
+        if id(action) in _optional_node_ids:
             continue
         required_nodes.append(action)
 
     started_set: set[int] = set()
 
     for req_node in required_nodes:
+        _display_name = _subs_to_str(req_node.node_name)
+
         # Log when each required node starts.
         nodes.append(RegisterEventHandler(
             OnProcessStart(
                 target_action=req_node,
                 on_start=[
                     OpaqueFunction(
-                        function=lambda context, *a, _n=req_node, **kw: (
+                        function=lambda context, *a, _n=req_node, _dn=_display_name, **kw: (
                             started_set.add(id(_n)),
-                            [LogInfo(msg=f"[LAUNCH_SAFEGUARD] STARTED: {_n.node_name}")]
+                            [LogInfo(msg=f"[LAUNCH_SAFEGUARD] STARTED: {_dn}")]
                         )[1]
                     ),
                 ],
@@ -482,36 +493,35 @@ def _make_nodes(context, *args, **kwargs):
         ))
 
         # If a required node exits, abort the experiment.
-        def _make_on_exit(node_ref):
+        def _make_on_exit(node_ref, display_name):
             def _on_exit(event, context):
                 rc = event.returncode
-                name = node_ref.node_name
                 if shutdown_state["requested"]:
                     return [LogInfo(
-                        msg=f"[LAUNCH_SAFEGUARD] {name} exited (rc={rc}) during shutdown; ignoring."
+                        msg=f"[LAUNCH_SAFEGUARD] {display_name} exited (rc={rc}) during shutdown; ignoring."
                     )]
                 was_started = id(node_ref) in started_set
                 if not was_started:
                     msg = (
-                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{name}' "
+                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{display_name}' "
                         f"failed to start (rc={rc}). Shutting down experiment."
                     )
                 else:
                     msg = (
-                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{name}' "
+                        f"[LAUNCH_SAFEGUARD] ABORT: required node '{display_name}' "
                         f"exited unexpectedly (rc={rc}). Shutting down experiment."
                     )
                 shutdown_state["requested"] = True
                 return [
                     LogInfo(msg=msg),
-                    EmitEvent(event=Shutdown(reason=f"required_node_failure:{name}")),
+                    EmitEvent(event=Shutdown(reason=f"required_node_failure:{display_name}")),
                 ]
             return _on_exit
 
         nodes.append(RegisterEventHandler(
             OnProcessExit(
                 target_action=req_node,
-                on_exit=_make_on_exit(req_node),
+                on_exit=_make_on_exit(req_node, _display_name),
             )
         ))
 

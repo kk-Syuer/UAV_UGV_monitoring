@@ -9,7 +9,16 @@ import matplotlib
 
 _headless_env = os.environ.get("FLEET_VIZ_HEADLESS", "").lower()
 _headless = _headless_env in ("1", "true", "yes") or not os.environ.get("DISPLAY")
-matplotlib.use("Agg" if _headless else "TkAgg")
+if _headless:
+    matplotlib.use("Agg")
+else:
+    try:
+        matplotlib.use("TkAgg")
+        import matplotlib.pyplot as _test_plt  # noqa: F401 – probe backend
+        _test_plt.figure(); _test_plt.close()
+    except Exception:
+        _headless = True
+        matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
 from matplotlib.widgets import Button
