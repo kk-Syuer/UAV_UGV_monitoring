@@ -94,7 +94,7 @@ coverage_planner:
   fixed_taskpoints_count: 10
   fixed_taskpoints_seed: 0
 planner_viz:
-  enable: true
+  enable: false
 
 ch_manager:
   enable: true
@@ -118,7 +118,7 @@ task_telemetry:
   send_prob: 1.0
   ttl_hops: 16
   flow_label: SEARCH_TELEMETRY
-  
+
 telemetry_policy:
   mode: option_c
   tmax_sec: 120.0
