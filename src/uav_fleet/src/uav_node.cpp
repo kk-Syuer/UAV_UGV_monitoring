@@ -840,6 +840,12 @@ private:
 
   void requestCharge(float battery_percent)
   {
+    if (rejoin_pending_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "[REJOIN_GUARD] action=SUPPRESS event=CHARGE_REQUEST state=pending reason=WAITING_FOR_REJOIN uav_id=%s",
+                           uav_id_.c_str());
+      return;
+    }
     if (role_ == 0 && neighbors_.find(my_ch_id_) == neighbors_.end()) {
       RCLCPP_WARN(this->get_logger(),
                   "UAV %s: cannot request charge, CH %s not reachable",
@@ -1005,8 +1011,19 @@ private:
     charge_target_pose_valid_ = false;
     current_charge_slot_id_.clear();
     charge_request_pending_.reset();
+    pending_acks_.clear();
+    carry_buffer_.clear();
+    task_release_pending_.clear();
+    task_release_msg_to_member_.clear();
+    neighbors_.clear();
+    routing_table_.clear();
+    ch_poses_.clear();
+    buffer_manager_ = BufferManager();
+    buffer_manager_.configure(buffer_max_msgs_, buffer_ttl_sec_, buffer_retry_period_sec_);
+    telemetry_rendezvous_active_ = false;
     fallback_mode_active_ = false;
     preemption_backoff_until_ = rclcpp::Time(0, 0, RCL_ROS_TIME);
+    setRejoinPending(true, "RESPAWN_RESET_STATE");
 
     // Reset mobility / deployment state so the UAV navigates back to its
     // deployment position instead of staying frozen at the sink.
@@ -1026,6 +1043,9 @@ private:
                 pose_.position.x,
                 pose_.position.y,
                 pose_.position.z);
+    RCLCPP_INFO(this->get_logger(),
+                "[RECOVERY] UAV %s: identity persisted across respawn (uav_id=%s).",
+                uav_id_.c_str(), uav_id_.c_str());
 
     std::ostringstream payload;
     payload << "sink=" << pose_.position.x << "," << pose_.position.y << "," << pose_.position.z;
@@ -1462,6 +1482,16 @@ private:
       return;
     }
 
+    if (rejoin_pending_) {
+      if (telemetry_rendezvous_active_) {
+        telemetry_rendezvous_active_ = false;
+      }
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "[REJOIN_GUARD] action=SUPPRESS event=TELEMETRY_RENDEZVOUS state=pending reason=WAITING_FOR_REJOIN uav_id=%s buffer=%zu",
+                           uav_id_.c_str(), telemetry_buffer_.size());
+      return;
+    }
+
     double dist_to_ch = 0.0;
     if (isWithinChServiceRange(&dist_to_ch)) {
       return;
@@ -1607,6 +1637,8 @@ private:
     if (role_ == 0 && msg->uav_id == my_ch_id_) {
       updateChDeploymentReached(state);
     }
+
+    evaluateRejoinGuard();
 
   }
 
@@ -2434,6 +2466,59 @@ private:
     }
   }
 
+  void setRejoinPending(bool pending, const std::string & reason)
+  {
+    if (rejoin_pending_ == pending) {
+      return;
+    }
+    rejoin_pending_ = pending;
+    RCLCPP_INFO(this->get_logger(),
+                "[REJOIN_GUARD] action=%s reason=%s uav_id=%s role=%u",
+                pending ? "ENTER" : "EXIT",
+                reason.c_str(),
+                uav_id_.c_str(),
+                static_cast<unsigned>(role_));
+  }
+
+  bool memberHasFreshReachableCh() const
+  {
+    if (my_ch_id_.empty()) {
+      return false;
+    }
+    const bool has_ch_pose =
+      ch_poses_.find(my_ch_id_) != ch_poses_.end() ||
+      neighbors_.find(my_ch_id_) != neighbors_.end();
+    if (!has_ch_pose) {
+      return false;
+    }
+    double dist_to_ch = std::numeric_limits<double>::infinity();
+    return isWithinChServiceRange(&dist_to_ch);
+  }
+
+  bool chHasRouteToUgv() const
+  {
+    auto it = routing_table_.find(ugv_id_);
+    return it != routing_table_.end() && !it->second.empty();
+  }
+
+  void evaluateRejoinGuard()
+  {
+    if (!rejoin_pending_) {
+      return;
+    }
+
+    if (role_ == 0) {
+      if (memberHasFreshReachableCh()) {
+        setRejoinPending(false, "CH_REACHABLE_WITH_FRESH_POSE");
+      }
+      return;
+    }
+
+    if (chHasRouteToUgv()) {
+      setRejoinPending(false, "ROUTE_TO_UGV_AVAILABLE");
+    }
+  }
+
   void routingTableCallback(const uav_msgs::msg::RoutingTable::SharedPtr msg)
   {
     if (msg->node_id != uav_id_) {
@@ -2454,6 +2539,7 @@ private:
     RCLCPP_INFO(this->get_logger(),
                 "UAV %s: routing table updated (%zu entries)",
                 uav_id_.c_str(), routing_table_.size());
+    evaluateRejoinGuard();
   }
 
   void publishRoutingEvent(const std::string & reason,
@@ -4326,6 +4412,13 @@ private:
 
   void sendChargeRequest(ChargeRequestPending & pending)
   {
+    if (rejoin_pending_) {
+      RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                           "[REJOIN_GUARD] action=SUPPRESS event=CHARGE_REQUEST_TX state=pending reason=WAITING_FOR_REJOIN uav_id=%s",
+                           uav_id_.c_str());
+      return;
+    }
+
     // 2) Send a CONTROL_ALERT message through the network to the UGV
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = pending.msg_id;
@@ -4547,6 +4640,7 @@ private:
   bool telemetry_log_debug_ = true;
   bool telemetry_rendezvous_active_ = false;
   std::deque<TaskTelemetryBucket> telemetry_buffer_;
+  bool rejoin_pending_ = false;
   std::mt19937 rng_;
 
 };
