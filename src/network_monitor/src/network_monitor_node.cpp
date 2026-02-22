@@ -1,5 +1,6 @@
 #include <algorithm>
 #include <chrono>
+#include <cctype>
 #include <deque>
 #include <exception>
 #include <filesystem>
@@ -227,6 +228,10 @@ public:
     queue_event_sub_ = this->create_subscription<std_msgs::msg::String>(
       "/ugv/queue_events", 100,
       std::bind(&NetworkMonitorNode::queueEventCallback, this, _1));
+
+    charging_snapshot_sub_ = this->create_subscription<std_msgs::msg::String>(
+      "/ugv/charging_snapshot", 20,
+      std::bind(&NetworkMonitorNode::chargingSnapshotCallback, this, _1));
 
     csv_timer_ = this->create_wall_timer(
       std::chrono::duration<double>(csv_write_period_sec),
@@ -1514,6 +1519,96 @@ private:
     }
   }
 
+  bool parseSnapshotIntField(const std::string & payload, const std::string & key, int & value) const
+  {
+    const std::string pattern = "\"" + key + "\":";
+    auto pos = payload.find(pattern);
+    if (pos == std::string::npos) {
+      return false;
+    }
+    pos += pattern.size();
+    while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+      ++pos;
+    }
+    size_t end = pos;
+    if (end < payload.size() && (payload[end] == '-' || payload[end] == '+')) {
+      ++end;
+    }
+    while (end < payload.size() && std::isdigit(static_cast<unsigned char>(payload[end]))) {
+      ++end;
+    }
+    if (end == pos || (end == pos + 1 && (payload[pos] == '-' || payload[pos] == '+'))) {
+      return false;
+    }
+    try {
+      value = std::stoi(payload.substr(pos, end - pos));
+      return true;
+    } catch (const std::exception &) {
+      return false;
+    }
+  }
+
+  bool parseSnapshotDoubleField(const std::string & payload, const std::string & key, double & value) const
+  {
+    const std::string pattern = "\"" + key + "\":";
+    auto pos = payload.find(pattern);
+    if (pos == std::string::npos) {
+      return false;
+    }
+    pos += pattern.size();
+    while (pos < payload.size() && std::isspace(static_cast<unsigned char>(payload[pos]))) {
+      ++pos;
+    }
+    size_t end = pos;
+    if (end < payload.size() && (payload[end] == '-' || payload[end] == '+')) {
+      ++end;
+    }
+    bool seen_digit = false;
+    bool seen_dot = false;
+    while (end < payload.size()) {
+      const char c = payload[end];
+      if (std::isdigit(static_cast<unsigned char>(c))) {
+        seen_digit = true;
+        ++end;
+      } else if (c == '.' && !seen_dot) {
+        seen_dot = true;
+        ++end;
+      } else {
+        break;
+      }
+    }
+    if (!seen_digit) {
+      return false;
+    }
+    try {
+      value = std::stod(payload.substr(pos, end - pos));
+      return true;
+    } catch (const std::exception &) {
+      return false;
+    }
+  }
+
+  void chargingSnapshotCallback(const std_msgs::msg::String::SharedPtr msg)
+  {
+    if (!msg) {
+      return;
+    }
+
+    UgvChargingSnapshot snapshot;
+    snapshot.received = true;
+    snapshot.received_time = this->now();
+    snapshot.active_sessions_count_valid =
+      parseSnapshotIntField(msg->data, "active_sessions_count", snapshot.active_sessions_count);
+    snapshot.queue_length_valid =
+      parseSnapshotIntField(msg->data, "queue_length", snapshot.queue_length);
+    snapshot.max_parallel_spots_valid =
+      parseSnapshotIntField(msg->data, "max_parallel_spots", snapshot.max_parallel_spots);
+    snapshot.time_valid =
+      parseSnapshotDoubleField(msg->data, "time", snapshot.time);
+
+    latest_ugv_charging_snapshot_ = snapshot;
+  }
+
   void writeChargeQueueTimeseriesRow()
   {
     std::error_code ec;
@@ -1536,10 +1631,11 @@ private:
     charge_queue_timeseries_file_initialized_ = true;
 
     if (need_header) {
-      out << "run_id,time,queue_length,queue_length_ch,queue_length_member,queue_length_unknown,"
-          << "active_charging,ugv_dock_capacity,ugv_dock_utilization,"
+      out << "run_id,time,queue_length_ugv,queue_length_ch,queue_length_member,queue_length_unknown,"
+          << "active_charging_ugv_sessions,ugv_dock_capacity,ugv_dock_utilization,"
           << "mean_wait_ch_ms,mean_wait_member_ms,"
-          << "active_mission_count,going_to_ugv_count,returning_count,dead_count,fleet_size"
+          << "active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,returning_count_uav_status,dead_count,fleet_size,"
+          << "over_capacity_ugv,status_vs_ugv_gap"
           << std::endl;
     }
 
@@ -1583,19 +1679,19 @@ private:
       }
     }
 
-    size_t active_charging = 0;
+    size_t active_charging_uav_status = 0;
     size_t active_mission_count = 0;    // charging_state == 0
-    size_t going_to_ugv_count = 0;      // charging_state == 1
-    size_t returning_count = 0;         // charging_state == 3
+    size_t going_to_ugv_count_uav_status = 0;      // charging_state == 1
+    size_t returning_count_uav_status = 0;         // charging_state == 3
     for (const auto & [uav_id, st] : uav_states_) {
       if (dead_uavs_.count(uav_id) > 0) {
         continue;  // skip dead UAVs, counted separately
       }
       switch (st.charging_state) {
         case 0: active_mission_count++; break;
-        case 1: going_to_ugv_count++; break;
-        case 2: active_charging++; break;
-        case 3: returning_count++; break;
+        case 1: going_to_ugv_count_uav_status++; break;
+        case 2: active_charging_uav_status++; break;
+        case 3: returning_count_uav_status++; break;
         default: active_mission_count++; break;
       }
     }
@@ -1618,9 +1714,33 @@ private:
       mean_wait_member = sum / static_cast<double>(wait_member_ms.size());
     }
 
+    size_t queue_length_ugv = queue_length;
+    size_t active_charging_ugv_sessions = active_charging_uav_status;
+    int ugv_dock_capacity = ugv_dock_capacity_;
+
+    if (latest_ugv_charging_snapshot_.received) {
+      if (latest_ugv_charging_snapshot_.queue_length_valid) {
+        queue_length_ugv = static_cast<size_t>(std::max(0, latest_ugv_charging_snapshot_.queue_length));
+      }
+      if (latest_ugv_charging_snapshot_.active_sessions_count_valid) {
+        active_charging_ugv_sessions = static_cast<size_t>(std::max(0, latest_ugv_charging_snapshot_.active_sessions_count));
+      }
+      if (latest_ugv_charging_snapshot_.max_parallel_spots_valid) {
+        ugv_dock_capacity = std::max(0, latest_ugv_charging_snapshot_.max_parallel_spots);
+      }
+    }
+
+    int over_capacity_ugv = 0;
+    if (static_cast<long long>(active_charging_ugv_sessions) > static_cast<long long>(ugv_dock_capacity)) {
+      over_capacity_ugv = static_cast<int>(static_cast<long long>(active_charging_ugv_sessions) -
+                                           static_cast<long long>(ugv_dock_capacity));
+    }
+    long long status_vs_ugv_gap = static_cast<long long>(active_charging_uav_status) -
+                                  static_cast<long long>(active_charging_ugv_sessions);
+
     double utilization = -1.0;
-    if (ugv_dock_capacity_ > 0) {
-      utilization = static_cast<double>(active_charging) / static_cast<double>(ugv_dock_capacity_);
+    if (ugv_dock_capacity > 0) {
+      utilization = static_cast<double>(active_charging_ugv_sessions) / static_cast<double>(ugv_dock_capacity);
     }
 
     size_t dead_count = dead_uavs_.size();
@@ -1628,20 +1748,23 @@ private:
 
     out << run_id_ << ","
         << this->now().seconds() << ","
-        << queue_length << ","
+        << queue_length_ugv << ","
         << queue_ch << ","
         << queue_member << ","
         << queue_unknown << ","
-        << active_charging << ","
-        << ugv_dock_capacity_ << ","
+        << active_charging_ugv_sessions << ","
+        << ugv_dock_capacity << ","
         << utilization << ","
         << mean_wait_ch << ","
         << mean_wait_member << ","
         << active_mission_count << ","
-        << going_to_ugv_count << ","
-        << returning_count << ","
+        << active_charging_uav_status << ","
+        << going_to_ugv_count_uav_status << ","
+        << returning_count_uav_status << ","
         << dead_count << ","
-        << fleet_size
+        << fleet_size << ","
+        << over_capacity_ugv << ","
+        << status_vs_ugv_gap
         << std::endl;
   }
 
@@ -2188,6 +2311,7 @@ private:
   rclcpp::Subscription<uav_msgs::msg::RoutingTable>::SharedPtr routing_table_sub_;
   rclcpp::Subscription<uav_msgs::msg::WeatherStatus>::SharedPtr weather_sub_;
   rclcpp::Subscription<std_msgs::msg::String>::SharedPtr queue_event_sub_;
+  rclcpp::Subscription<std_msgs::msg::String>::SharedPtr charging_snapshot_sub_;
 
   // Preemption events
   std::vector<PreemptionEvent> preemption_events_;
@@ -2222,6 +2346,20 @@ private:
   std::unordered_map<std::string, uint8_t> latest_role_by_uav_;
   std::unordered_map<std::string, float> latest_request_battery_by_uav_;
   std::unordered_map<std::string, UavState> uav_states_;
+  struct UgvChargingSnapshot
+  {
+    bool received = false;
+    rclcpp::Time received_time;
+    int active_sessions_count = 0;
+    bool active_sessions_count_valid = false;
+    int queue_length = 0;
+    bool queue_length_valid = false;
+    int max_parallel_spots = 0;
+    bool max_parallel_spots_valid = false;
+    double time = 0.0;
+    bool time_valid = false;
+  };
+  UgvChargingSnapshot latest_ugv_charging_snapshot_;
   std::unordered_map<std::string, rclcpp::Time> request_times_;
   size_t total_charging_sessions_;
   double avg_charge_wait_sec_;

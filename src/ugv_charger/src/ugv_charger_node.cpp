@@ -636,9 +636,13 @@ private:
     oss << std::fixed << std::setprecision(3);
     oss << "{"
         << "\"stamp\":" << now.seconds()
+        << ",\"time\":" << now.seconds()
         << ",\"ugv_id\":\"" << escapeJson(ugv_id_) << "\""
         << ",\"policy\":\"" << escapeJson(policy_name_) << "\""
-        << ",\"charging_model\":\"" << escapeJson(charging_model_name_) << "\"";
+        << ",\"charging_model\":\"" << escapeJson(charging_model_name_) << "\""
+        << ",\"active_sessions_count\":" << active_sessions_.size()
+        << ",\"queue_length\":" << queue_.size()
+        << ",\"max_parallel_spots\":" << max_parallel_spots_;
 
     oss << ",\"active_sessions\":[";
     for (size_t i = 0; i < active_sessions_.size(); ++i) {
