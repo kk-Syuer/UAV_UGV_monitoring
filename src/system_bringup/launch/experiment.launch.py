@@ -97,6 +97,14 @@ def _make_nodes(context, *args, **kwargs):
     # You said most nodes live in their own packages; bringup just launches them.
     nodes = []
     _optional_node_ids: set[int] = set()  # nodes whose exit should NOT abort
+    _node_names: dict[int, str] = {}      # id(node) -> human-readable name
+
+    def _add_node(node, name: str, *, optional: bool = False):
+        """Append a Node and record its display name (and optionality)."""
+        nodes.append(node)
+        _node_names[id(node)] = name
+        if optional:
+            _optional_node_ids.add(id(node))
 
     # Common network params
     neighbor_timeout = float(_get(cfg, ["network", "neighbor_timeout_sec"], 3.0))
@@ -118,16 +126,14 @@ def _make_nodes(context, *args, **kwargs):
     if _bool_from_str(_get(cfg, ["planner_viz", "enable"], True), True):
         viz_headless = _bool_from_str(_get(cfg, ["planner_viz", "headless"], False), False)
         viz_env = {"FLEET_VIZ_HEADLESS": "1"} if viz_headless else {}
-        _viz_node = Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "planner_viz_pkg"], "planner_viz"),
             executable=_get(cfg, ["executables", "planner_viz_exec"], "fleet_viz"),
             name=f"fleet_viz_{run_id}",
             output="screen",
             parameters=[{}],
             additional_env=viz_env,
-        )
-        nodes.append(_viz_node)
-        _optional_node_ids.add(id(_viz_node))
+        ), f"fleet_viz_{run_id}", optional=True)
 
     # Monitor
     monitor_params = {
@@ -137,14 +143,13 @@ def _make_nodes(context, *args, **kwargs):
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
         "ugv_dock_capacity": int(_get(cfg, ["ugv", "max_parallel_spots"], 1)),
     }
-    monitor_node = Node(
-        package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),  # change if needed
+    _add_node(Node(
+        package=_get(cfg, ["executables", "monitor_pkg"], "network_monitor"),
         executable=_get(cfg, ["executables", "monitor_exec"], "network_monitor_node"),
         name=f"network_monitor_{run_id}",
         output="screen",
         parameters=[_sanitize_param_dict(monitor_params)],
-    )
-    nodes.append(monitor_node)
+    ), f"network_monitor_{run_id}")
 
     # Weather
     if use_weather:
@@ -169,13 +174,13 @@ def _make_nodes(context, *args, **kwargs):
         weather_seed = _get(cfg, ["weather", "seed"], None)
         if weather_seed is not None:
             weather_params["seed"] = int(weather_seed)
-        nodes.append(Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "weather_pkg"], "weather_server"),
             executable=_get(cfg, ["executables", "weather_exec"], "weather_node"),
             name=f"weather_{run_id}",
             output="screen",
             parameters=[_sanitize_param_dict(weather_params)],
-        ))
+        ), f"weather_{run_id}")
 
     # Fault injector
     if use_injector:
@@ -195,13 +200,13 @@ def _make_nodes(context, *args, **kwargs):
             "drop_control_multiplier": float(inj.get("drop_control_multiplier", 0.2)),
             "drop_data_multiplier": float(inj.get("drop_data_multiplier", 1.0)),
         }
-        nodes.append(Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "injector_pkg"], "fanet_faults"),
             executable=_get(cfg, ["executables", "injector_exec"], "fault_injector_node"),
             name=f"fault_injector_{run_id}",
             output="screen",
             parameters=[_sanitize_param_dict(injector_params)],
-        ))
+        ), f"fault_injector_{run_id}")
 
     # UGV charger
     ugv_id = str(_get(cfg, ["ugv", "ugv_id"], "ugv_1"))
@@ -213,13 +218,13 @@ def _make_nodes(context, *args, **kwargs):
     if sink_uplink_ch_id:
         sink_params["uplink_ch_id"] = sink_uplink_ch_id
     sink_params["ugv_id"] = ugv_id
-    nodes.append(Node(
+    _add_node(Node(
         package=_get(cfg, ["executables", "sink_pkg"], "sink_gateway"),
         executable=_get(cfg, ["executables", "sink_exec"], "sink_gateway_node"),
         name=f"sink_gateway_{run_id}",
         output="screen",
         parameters=[_sanitize_param_dict(sink_params)],
-    ))
+    ), f"sink_gateway_{run_id}")
 
     # UGV charger
     charging_policy = str(_get(cfg, ["ugv", "charging_policy"], "fcfs"))
@@ -249,25 +254,23 @@ def _make_nodes(context, *args, **kwargs):
         ugv_params["preemption_backoff_jitter_s"] = float(preempt_cfg.get("backoff_jitter_s", 30.0))
     ugv_pkg = _get(cfg, ["executables", "ugv_pkg"], "ugv_charger")
     ugv_exec = _get(cfg, ["executables", "ugv_exec"], "ugv_charger_node")
-    nodes.append(Node(
+    _add_node(Node(
         package=ugv_pkg,
         executable=ugv_exec,
         name=f"ugv_charger_{run_id}",
         output="screen",
         parameters=[_sanitize_param_dict(ugv_params)],
-    ))
+    ), f"ugv_charger_{run_id}")
 
     # User device traffic (optional)
     if _bool_from_str(_get(cfg, ["traffic", "user_device_enable"], True), True):
-        _ud_node = Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "user_device_pkg"], "user_device"),
             executable=_get(cfg, ["executables", "user_device_exec"], "user_device_node"),
             name=f"user_device_{run_id}",
             output="screen",
             parameters=[{}],
-        )
-        nodes.append(_ud_node)
-        _optional_node_ids.add(id(_ud_node))
+        ), f"user_device_{run_id}", optional=True)
 
     # UAV params shared
     task_tlm = cfg.get("task_telemetry", {})
@@ -303,7 +306,7 @@ def _make_nodes(context, *args, **kwargs):
 
     # CH UAVs
     for ch_id in ch_ids:
-        nodes.append(Node(
+        _add_node(Node(
             package=uav_pkg,
             executable=uav_exec,
             name=f"{ch_id}_{run_id}",
@@ -312,14 +315,14 @@ def _make_nodes(context, *args, **kwargs):
                 _sanitize_param_dict(shared_uav_params),
                 _sanitize_param_dict({"uav_id": str(ch_id), "role": 1}),
             ],
-        ))
+        ), f"{ch_id}_{run_id}")
 
     # Member UAVs
     for m in members:
         uid = str(m.get("id"))
         role = int(m.get("role", 0))
         my_ch = str(m.get("my_ch_id", ""))
-        nodes.append(Node(
+        _add_node(Node(
             package=uav_pkg,
             executable=uav_exec,
             name=f"{uid}_{run_id}",
@@ -328,7 +331,7 @@ def _make_nodes(context, *args, **kwargs):
                 _sanitize_param_dict(shared_uav_params),
                 _sanitize_param_dict({"uav_id": uid, "role": role, "my_ch_id": my_ch}),
             ],
-        ))
+        ), f"{uid}_{run_id}")
 
     routing_params = {
         "comm_range_m": comm_radius,
@@ -339,13 +342,13 @@ def _make_nodes(context, *args, **kwargs):
         "sink_id": sink_id,
         "ugv_id": ugv_id,
     }
-    nodes.append(Node(
+    _add_node(Node(
         package=_get(cfg, ["executables", "routing_pkg"], "routing_manager"),
         executable=_get(cfg, ["executables", "routing_exec"], "routing_manager_node"),
         name=f"routing_manager_{run_id}",
         output="screen",
         parameters=[_sanitize_param_dict(routing_params)],
-    ))
+    ), f"routing_manager_{run_id}")
 
     if _bool_from_str(_get(cfg, ["recovery_manager", "enable"], True), True):
         recovery_params = {
@@ -356,13 +359,13 @@ def _make_nodes(context, *args, **kwargs):
             "sink_id": sink_id,
             "ugv_id": ugv_id,
         }
-        nodes.append(Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "recovery_pkg"], "recovery_manager"),
             executable=_get(cfg, ["executables", "recovery_exec"], "recovery_manager_node"),
             name=f"recovery_manager_{run_id}",
             output="screen",
             parameters=[_sanitize_param_dict(recovery_params)],
-        ))
+        ), f"recovery_manager_{run_id}")
 
     # Coverage planner (optional)
     if _bool_from_str(_get(cfg, ["coverage_planner", "enable"], True), True):
@@ -372,7 +375,7 @@ def _make_nodes(context, *args, **kwargs):
             _get(cfg, ["coverage_planner", "fixed_taskpoints_file"],
                  "system_bringup/config/taskpoints/fixed_taskpoints.yaml")
         )
-        nodes.append(Node(
+        _add_node(Node(
             package=_get(cfg, ["executables", "planner_pkg"], "coverage_planner"),
             executable=_get(cfg, ["executables", "planner_exec"], "coverage_planner_node"),
             name=f"coverage_planner_{run_id}",
@@ -396,7 +399,7 @@ def _make_nodes(context, *args, **kwargs):
                     _get(cfg, ["coverage_planner", "fixed_taskpoints_seed"], 0)
                 ),
             })],
-        ))
+        ), f"coverage_planner_{run_id}")
 
     # Cluster head manager(s) (optional)
     if _bool_from_str(_get(cfg, ["ch_manager", "enable"], True), True):
@@ -418,17 +421,18 @@ def _make_nodes(context, *args, **kwargs):
                 for idx, ch_id in enumerate(ch_ids)
             ]
         for cfg_entry in cluster_configs:
-            nodes.append(Node(
+            _chm_name = f"ch_manager_{cfg_entry['cluster_id']}"
+            _add_node(Node(
                 package=_get(cfg, ["executables", "ch_manager_pkg"], "ch_manager"),
                 executable=_get(cfg, ["executables", "ch_manager_exec"], "ch_manager_node"),
-                name=f"ch_manager_{cfg_entry['cluster_id']}",
+                name=_chm_name,
                 output="screen",
                 parameters=[_sanitize_param_dict({
                     "cluster_id": cfg_entry["cluster_id"],
                     "ch_id": cfg_entry["ch_id"],
                     "member_ids": [str(member_id) for member_id in cfg_entry["member_ids"]],
                 })],
-            ))
+            ), _chm_name)
 
     shutdown_state = {"requested": False}
 
@@ -454,15 +458,6 @@ def _make_nodes(context, *args, **kwargs):
     ))
 
     # ---- Launch Safeguard: required-node monitoring ----
-    def _subs_to_str(subs):
-        """Resolve a launch substitution list to a plain string."""
-        if isinstance(subs, str):
-            return subs
-        try:
-            return "".join(getattr(s, "text", str(s)) for s in subs)
-        except TypeError:
-            return str(subs)
-
     # Collect all required Node actions (everything except optional ones).
     required_nodes: list[Node] = []
     for action in nodes:
@@ -475,7 +470,7 @@ def _make_nodes(context, *args, **kwargs):
     started_set: set[int] = set()
 
     for req_node in required_nodes:
-        _display_name = _subs_to_str(req_node.node_name)
+        _display_name = _node_names.get(id(req_node), "unknown")
 
         # Log when each required node starts.
         nodes.append(RegisterEventHandler(
