@@ -782,6 +782,7 @@ class FleetVizNode(Node):
         last_request = self.charging_snapshot.get('last_request', {})
         last_decision = self.charging_snapshot.get('last_decision', {})
         policy = self.charging_snapshot.get('policy', 'n/a')
+        max_parallel_spots = int(self.charging_snapshot.get('max_parallel_spots', 0))
 
         if self.last_charging_snapshot_time is None:
             return [
@@ -796,6 +797,10 @@ class FleetVizNode(Node):
         queue_lines = [
             self._title_line('Charging queue (UGV snapshot)'),
             self._line(f"  snapshot age: {self._format_age(self.last_charging_snapshot_time)} ({freshness})"),
+            self._line(
+                f"  UGV max_parallel_spots={max_parallel_spots}, "
+                f"active_sessions_count={len(accepted_sessions)}"
+            ),
             self._title_line('Scheduling'),
             self._line(f"  {policy}"),
             self._title_line(f"Current Waiting List (Q): {len(waiting_queue)}"),
@@ -813,7 +818,11 @@ class FleetVizNode(Node):
         if len(waiting_queue) > row_cap:
             queue_lines.append(self._line(f"    ... +{len(waiting_queue) - row_cap} more"))
 
-        queue_lines.append(self._title_line(f"Accepted List: {len(accepted_sessions)}"))
+        queue_lines.append(
+            self._title_line(
+                f"Active sessions (current, active_sessions): {len(accepted_sessions)}"
+            )
+        )
         for item in accepted_sessions[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 st = float(item.get('start', 0.0))
@@ -833,7 +842,11 @@ class FleetVizNode(Node):
             queue_lines.append(self._line(f"    ... +{len(accepted_sessions) - row_cap} more"))
 
         recent_endings = self.charging_snapshot.get('recent_session_endings', [])
-        queue_lines.append(self._title_line(f"Recent session endings: {len(recent_endings)}"))
+        queue_lines.append(
+            self._title_line(
+                f"Recent session endings (history, recent_session_endings): {len(recent_endings)}"
+            )
+        )
         for item in recent_endings[:row_cap]:
                 uid = item.get('uav_id', 'unknown')
                 reason = str(item.get('session_end_reason', 'n/a'))
@@ -841,7 +854,7 @@ class FleetVizNode(Node):
                 ended_t = item.get('end')
                 end_age_s = max(0.0, now - float(ended_t)) if ended_t is not None else 0.0
                 queue_lines.append(self._line(
-                    f"    - {uid} | {reason} | duration {duration:.1f}s | ended {end_age_s:.1f}s ago"
+                    f"    [HIST] - {uid} | {reason} | duration {duration:.1f}s | ended {end_age_s:.1f}s ago"
                 ))
         if len(recent_endings) > row_cap:
             queue_lines.append(self._line(f"    ... +{len(recent_endings) - row_cap} more"))
