@@ -1106,6 +1106,7 @@ private:
                 accepted ? 1 : 0, slot_id.c_str(), reason.c_str(), target_action.c_str(), msg->payload.c_str());
 
     auto now = this->now();
+    const std::string state_from = chargeStateString(charge_state_);
     last_charge_decision_rx_time_ = now;
     chargeTrace("RECV_DECISION", accepted ? "ACCEPTED" : "REJECTED");
     waiting_for_charge_response_ = false;
@@ -1159,6 +1160,12 @@ private:
     }
 
     if (!accepted) {
+      const std::string state_to = chargeStateString(ChargeState::IDLE);
+      RCLCPP_INFO(this->get_logger(),
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
+                  now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                  msg->next_hop_id.c_str(), msg->control_type.c_str(), accepted ? 1 : 0,
+                  slot_id.c_str(), state_from.c_str(), state_to.c_str());
       has_charge_slot_ = false;
       current_charge_slot_id_.clear();
       charge_target_pose_valid_ = false;
@@ -1176,6 +1183,12 @@ private:
     if (!is_charging_ && battery_energy_ > 0.0f) {
       charge_departure_pose_ = pose_;
       charge_state_ = ChargeState::TO_UGV;
+      const std::string state_to = chargeStateString(charge_state_);
+      RCLCPP_INFO(this->get_logger(),
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
+                  now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                  msg->next_hop_id.c_str(), msg->control_type.c_str(), accepted ? 1 : 0,
+                  slot_id.c_str(), state_from.c_str(), state_to.c_str());
       chargeTrace("ACCEPT_DECISION", "ENTER_TO_UGV");
       chargeTrace("STATE_TRANSITION", "IDLE_TO_TO_UGV");
 
@@ -1217,6 +1230,12 @@ private:
                     uav_id_.c_str(), slot_id.c_str());
       }
     } else {
+      const std::string state_to = chargeStateString(charge_state_);
+      RCLCPP_INFO(this->get_logger(),
+                  "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s accepted=%d slot_id=%s state_from=%s state_to=%s",
+                  now.seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                  msg->next_hop_id.c_str(), msg->control_type.c_str(), accepted ? 1 : 0,
+                  slot_id.c_str(), state_from.c_str(), state_to.c_str());
       has_charge_slot_ = false;
       current_charge_slot_id_.clear();
       charge_target_pose_valid_ = false;
@@ -2363,6 +2382,14 @@ private:
     if (role_ == 1) { // CH
       uav_msgs::msg::TrafficMessage fwd = *msg;
       fwd.next_hop_id = resolveNextHop(msg->dst_id);
+      if (msg->flow_type == 1 &&
+          (msg->control_type == "CHARGE_REQUEST" || msg->control_type == "CHARGE_DECISION")) {
+        const bool will_forward = !fwd.next_hop_id.empty();
+        RCLCPP_INFO(this->get_logger(),
+                    "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s will_forward=%d",
+                    this->now().seconds(), msg->msg_id.c_str(), msg->src_id.c_str(), msg->dst_id.c_str(),
+                    fwd.next_hop_id.c_str(), msg->control_type.c_str(), will_forward ? 1 : 0);
+      }
 
       if (fwd.next_hop_id.empty()) {
         RCLCPP_WARN(this->get_logger(),
@@ -4327,6 +4354,7 @@ private:
   void sendChargeRequest(ChargeRequestPending & pending)
   {
     // 2) Send a CONTROL_ALERT message through the network to the UGV
+    const auto now = this->now();
     uav_msgs::msg::TrafficMessage msg;
     msg.msg_id = pending.msg_id;
     msg.src_id = uav_id_;
@@ -4345,16 +4373,37 @@ private:
       msg.next_hop_id = pickNextHop(ugv_id_, resolveNextHop(ugv_id_));
     }
 
+    if (role_ == 0) {
+      if (msg.next_hop_id.empty()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s reason=NO_NEXT_HOP",
+                    now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                    msg.next_hop_id.c_str(), "CHARGE_REQUEST");
+      } else if (!neighborReachable(msg.next_hop_id, now)) {
+        RCLCPP_WARN(this->get_logger(),
+                    "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s reason=UNREACHABLE_NEXT_HOP",
+                    now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                    msg.next_hop_id.c_str(), "CHARGE_REQUEST");
+      }
+    }
+
     // Optional control metadata to describe the control alert type.
     msg.control_type = "CHARGE_REQUEST";
     // For now payload is empty; UGV will look up status from /fanet/status
 
     RCLCPP_INFO(this->get_logger(),
-                "[TX CTRL] UAV %s sending CHARGE_REQUEST msg_id=%s dst=%s next_hop=%s",
-                uav_id_.c_str(), msg.msg_id.c_str(),
-                msg.dst_id.c_str(), msg.next_hop_id.c_str());
+                "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s",
+                now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(),
+                msg.dst_id.c_str(), msg.next_hop_id.c_str(), msg.control_type.c_str());
 
-    publishToBus(msg);
+    if (!publishToBus(msg)) {
+      if (role_ == 0 && neighbors_.find(my_ch_id_) == neighbors_.end()) {
+        RCLCPP_WARN(this->get_logger(),
+                    "CHARGE_PIPE sim_t=%.3f msg_id=%s src=%s dst=%s next_hop=%s control_type=%s reason=CH_NOT_REACHABLE",
+                    now.seconds(), msg.msg_id.c_str(), msg.src_id.c_str(), msg.dst_id.c_str(),
+                    msg.next_hop_id.c_str(), msg.control_type.c_str());
+      }
+    }
     chargeTrace("SEND_REQUEST", "PUBLISHED_CHARGE_REQUEST");
     registerPendingAck(msg, charge_request_max_retries_, charge_request_retry_sec_);
     pending.last_send_time = this->now();
