@@ -927,7 +927,7 @@ private:
     msg.flow_type = 1;
     msg.control_type = control_type;
     msg.payload = payload;
-    msg.creation_time = this->now();
+    msg.creation_time = now;
     msg.hop_count = 0;
     msg.ttl = 8;
     msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
@@ -1417,6 +1417,52 @@ private:
     return dist <= ch_service_radius;
   }
 
+  bool resolveChRendezvousTarget(geometry_msgs::msg::Point & target,
+                                 std::string & source,
+                                 double & age_sec) const
+  {
+    source = "NONE";
+    age_sec = std::numeric_limits<double>::infinity();
+    const auto now = this->now();
+    const double freshness_sec = (hello_timeout_sec_ > 0.0)
+                                   ? hello_timeout_sec_
+                                   : std::max(status_period_sec_, 1.0);
+
+    auto it_ch_pose = ch_poses_.find(my_ch_id_);
+    if (it_ch_pose != ch_poses_.end()) {
+      auto it_rx = ch_pose_status_rx_time_.find(my_ch_id_);
+      if (it_rx != ch_pose_status_rx_time_.end()) {
+        double rx_age = (now - it_rx->second).seconds();
+        double stamp_age = rx_age;
+        auto it_stamp = ch_pose_status_stamp_.find(my_ch_id_);
+        if (it_stamp != ch_pose_status_stamp_.end() &&
+            it_stamp->second.nanoseconds() > 0 &&
+            it_stamp->second.get_clock_type() == now.get_clock_type()) {
+          stamp_age = (now - it_stamp->second).seconds();
+        }
+        age_sec = std::max(rx_age, stamp_age);
+        if (rx_age <= freshness_sec && stamp_age <= freshness_sec) {
+          target = it_ch_pose->second.position;
+          source = "CH_POSE_STATUS";
+          return true;
+        }
+      }
+    }
+
+    auto it_nb = neighbors_.find(my_ch_id_);
+    if (it_nb != neighbors_.end()) {
+      double neighbor_age = (now - it_nb->second.last_seen).seconds();
+      age_sec = std::min(age_sec, neighbor_age);
+      if (neighbor_age <= freshness_sec) {
+        target = it_nb->second.pose.position;
+        source = "NEIGHBOR_STATUS";
+        return true;
+      }
+    }
+
+    return false;
+  }
+
   void enqueueTaskTelemetry(const uav_msgs::msg::TrafficMessage & msg, int task_index)
   {
     TaskTelemetryBucket bucket;
@@ -1613,6 +1659,16 @@ private:
     state.comm_radius_m = msg->comm_radius_m;
 
     neighbors_[msg->uav_id] = state;
+
+    if (msg->role == 1) {
+      const auto now = this->now();
+      ch_poses_[msg->uav_id] = msg->pose;
+      ch_pose_status_rx_time_[msg->uav_id] = now;
+      ch_pose_status_stamp_[msg->uav_id] = rclcpp::Time(msg->stamp);
+      RCLCPP_DEBUG_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                            "CHARGE_PIPE stage=CH_POSE_UPDATE source=status ch_id=%s sim_t=%.3f",
+                            msg->uav_id.c_str(), now.seconds());
+    }
 
     if (msg->uav_id == ugv_id_) {
       ugv_pose_known_ = true;
@@ -3561,20 +3617,11 @@ private:
             break;
 
           if (telemetry_rendezvous_active_) {
-            bool has_rendezvous_target = false;
             geometry_msgs::msg::Point rendezvous_target;
-
-            auto it_ch = ch_poses_.find(my_ch_id_);
-            if (it_ch != ch_poses_.end()) {
-              rendezvous_target = it_ch->second.position;
-              has_rendezvous_target = true;
-            } else {
-              auto it_nb = neighbors_.find(my_ch_id_);
-              if (it_nb != neighbors_.end()) {
-                rendezvous_target = it_nb->second.pose.position;
-                has_rendezvous_target = true;
-              }
-            }
+            std::string rendezvous_source;
+            double rendezvous_age = std::numeric_limits<double>::infinity();
+            bool has_rendezvous_target = resolveChRendezvousTarget(
+              rendezvous_target, rendezvous_source, rendezvous_age);
 
             if (has_rendezvous_target) {
               bool reached_ch = stepTowards2D(rendezvous_target.x, rendezvous_target.y);
@@ -3593,8 +3640,8 @@ private:
             }
 
             RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
-                                 "UAV %s: telemetry rendezvous active but CH pose unknown; continuing patrol until CH position is known.",
-                                 uav_id_.c_str());
+                                 "UAV %s: telemetry rendezvous active but CH pose unavailable/stale (source=%s age=%.2fs); continuing patrol until CH position is known.",
+                                 uav_id_.c_str(), rendezvous_source.c_str(), rendezvous_age);
           }
 
           geometry_msgs::msg::Point & target = task_points_[current_task_index_];
@@ -4465,6 +4512,8 @@ private:
 
   // CH poses so members can know their CH center
   std::unordered_map<std::string, geometry_msgs::msg::Pose> ch_poses_;
+  std::unordered_map<std::string, rclcpp::Time> ch_pose_status_rx_time_;
+  std::unordered_map<std::string, rclcpp::Time> ch_pose_status_stamp_;
   std::unordered_map<std::string, geometry_msgs::msg::Pose> deployment_positions_;
 
   // Speed tracking

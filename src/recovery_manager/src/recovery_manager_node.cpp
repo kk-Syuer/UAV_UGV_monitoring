@@ -68,6 +68,8 @@ public:
     status_timeout_sec_ = this->declare_parameter<double>("status_timeout_sec", 5.0);
     heartbeat_timeout_sec_ = this->declare_parameter<double>("heartbeat_timeout_sec", 4.0);
     recovery_cooldown_sec_ = this->declare_parameter<double>("recovery_cooldown_sec", 2.0);
+    recovery_consecutive_alert_ticks_ = this->declare_parameter<int>(
+      "recovery_consecutive_alert_ticks", 3);
     movement_delta_m_ = this->declare_parameter<double>("movement_delta_m", 5.0);
     control_ttl_ = static_cast<uint32_t>(this->declare_parameter<int>("control_ttl", 12));
     ack_retry_period_sec_ = this->declare_parameter<double>("ack_retry_period_sec", 0.5);
@@ -288,25 +290,69 @@ private:
       }
     }
 
+    updateConsecutiveCounter(ch_timeout, ch_timeout_ticks_);
+    updateConsecutiveCounter(sink_unreachable_, sink_unreachable_ticks_);
+    updateConsecutiveCounter(ugv_unreachable_, ugv_unreachable_ticks_);
+    updateConsecutiveCounter(recovery_requested_, explicit_request_ticks_);
+
     if (!ch_timeout && !sink_unreachable_ && !ugv_unreachable_ && !recovery_requested_) {
       return;
     }
 
     RCLCPP_WARN(this->get_logger(),
-                "[RECOVERY][DECISION] watchdog trigger: ch_timeout=%d sink_unreachable=%d "
-                "ugv_unreachable=%d recovery_requested=%d",
-                ch_timeout, sink_unreachable_, ugv_unreachable_, recovery_requested_);
+                "[RECOVERY][DECISION] watchdog trigger: ch_timeout=%d(%d/%d) "
+                "sink_unreachable=%d(%d/%d) ugv_unreachable=%d(%d/%d) "
+                "recovery_requested=%d(%d/%d)",
+                ch_timeout, ch_timeout_ticks_, recovery_consecutive_alert_ticks_,
+                sink_unreachable_, sink_unreachable_ticks_, recovery_consecutive_alert_ticks_,
+                ugv_unreachable_, ugv_unreachable_ticks_, recovery_consecutive_alert_ticks_,
+                recovery_requested_, explicit_request_ticks_, recovery_consecutive_alert_ticks_);
 
-    if ((now - last_recovery_time_).seconds() < recovery_cooldown_sec_) {
-      RCLCPP_INFO(this->get_logger(),
-                  "[RECOVERY][DECISION] cooldown active (%.1fs < %.1fs), deferring",
-                  (now - last_recovery_time_).seconds(), recovery_cooldown_sec_);
+    std::string trigger_reason;
+    int trigger_counter = 0;
+    if (!selectRecoveryTrigger(trigger_reason, trigger_counter)) {
       return;
     }
 
+    if ((now - last_recovery_time_).seconds() < recovery_cooldown_sec_) {
+      RCLCPP_INFO(this->get_logger(),
+                  "[RECOVERY][DECISION] cooldown active (%.1fs < %.1fs), deferring "
+                  "reason=%s counter=%d/%d",
+                  (now - last_recovery_time_).seconds(), recovery_cooldown_sec_,
+                  trigger_reason.c_str(), trigger_counter, recovery_consecutive_alert_ticks_);
+      return;
+    }
+
+    active_recovery_reason_ = trigger_reason;
+    active_recovery_counter_ = trigger_counter;
     last_recovery_time_ = now;
     recovery_requested_ = false;
+    explicit_request_ticks_ = 0;
     runRecovery();
+  }
+
+  void updateConsecutiveCounter(bool condition, int & counter)
+  {
+    counter = condition ? counter + 1 : 0;
+  }
+
+  bool selectRecoveryTrigger(std::string & reason, int & counter) const
+  {
+    const std::vector<std::pair<std::string, int>> candidates = {
+      {"explicit_request", explicit_request_ticks_},
+      {"ch_timeout", ch_timeout_ticks_},
+      {"sink_unreachable", sink_unreachable_ticks_},
+      {"ugv_unreachable", ugv_unreachable_ticks_},
+    };
+
+    for (const auto & candidate : candidates) {
+      if (candidate.second >= recovery_consecutive_alert_ticks_) {
+        reason = candidate.first;
+        counter = candidate.second;
+        return true;
+      }
+    }
+    return false;
   }
 
   void runRecovery()
@@ -670,11 +716,15 @@ private:
       msg.next_hop_id = member.id;
       sendWithAck(msg);
       RCLCPP_WARN(this->get_logger(),
-                  "[RECOVERY] MEMBER_FALLBACK %s -> %s (%.1f, %.1f, %.1f)",
+                  "[RECOVERY][PUBLISH] MEMBER_FALLBACK reason=%s target_ids=%s,%s "
+                  "target_pose=(%.1f,%.1f,%.1f) counter=%d sim_time=%.3f",
+                  active_recovery_reason_.c_str(),
                   member.id.c_str(), target_label.c_str(),
                   fallback_pose.position.x,
                   fallback_pose.position.y,
-                  fallback_pose.position.z);
+                  fallback_pose.position.z,
+                  active_recovery_counter_,
+                  rclcpp::Time(msg.creation_time).seconds());
     }
   }
 
@@ -774,8 +824,16 @@ private:
     const std::string cluster_id =
       ch_cluster_ids_.count(ch_id) > 0 ? ch_cluster_ids_.at(ch_id) : std::string("unknown");
     RCLCPP_WARN(this->get_logger(),
-                "[RECOVERY] CLUSTER_REASSIGN member=%s new_ch=%s cluster=%s msg_id=%s",
-                member_id.c_str(), ch_id.c_str(), cluster_id.c_str(), msg.msg_id.c_str());
+                "[RECOVERY][PUBLISH] CLUSTER_REASSIGN reason=%s target_ids=%s,%s "
+                "target_pose=(%.1f,%.1f,%.1f) counter=%d sim_time=%.3f cluster=%s msg_id=%s",
+                active_recovery_reason_.c_str(),
+                member_id.c_str(), ch_id.c_str(),
+                ch_states_.count(ch_id) > 0 ? ch_states_.at(ch_id).pose.position.x : 0.0,
+                ch_states_.count(ch_id) > 0 ? ch_states_.at(ch_id).pose.position.y : 0.0,
+                ch_states_.count(ch_id) > 0 ? ch_states_.at(ch_id).pose.position.z : 0.0,
+                active_recovery_counter_,
+                rclcpp::Time(msg.creation_time).seconds(),
+                cluster_id.c_str(), msg.msg_id.c_str());
   }
 
   void publishTaskAssign(const std::string & member_id,
@@ -842,11 +900,15 @@ private:
     msg.next_hop_id = ch_id;
     sendWithAck(msg);
     RCLCPP_WARN(this->get_logger(),
-                "[RECOVERY] NEW_DEPLOYMENT %s -> (%.1f, %.1f, %.1f)",
+                "[RECOVERY][PUBLISH] NEW_DEPLOYMENT reason=%s target_ids=%s "
+                "target_pose=(%.1f,%.1f,%.1f) counter=%d sim_time=%.3f",
+                active_recovery_reason_.c_str(),
                 ch_id.c_str(),
                 pose.position.x,
                 pose.position.y,
-                pose.position.z);
+                pose.position.z,
+                active_recovery_counter_,
+                rclcpp::Time(msg.creation_time).seconds());
   }
 
   void publishRecoveryDone(int epoch)
@@ -939,6 +1001,7 @@ private:
   double status_timeout_sec_ = 5.0;
   double heartbeat_timeout_sec_ = 4.0;
   double recovery_cooldown_sec_ = 2.0;
+  int recovery_consecutive_alert_ticks_ = 3;
   double movement_delta_m_ = 5.0;
   uint32_t control_ttl_ = 12;
   double ack_retry_period_sec_ = 0.5;
@@ -963,6 +1026,12 @@ private:
   bool sink_unreachable_ = false;
   bool ugv_unreachable_ = false;
   bool recovery_requested_ = false;
+  int ch_timeout_ticks_ = 0;
+  int sink_unreachable_ticks_ = 0;
+  int ugv_unreachable_ticks_ = 0;
+  int explicit_request_ticks_ = 0;
+  std::string active_recovery_reason_ = "unknown";
+  int active_recovery_counter_ = 0;
 
   int epoch_ = 0;
   int msg_counter_ = 0;
