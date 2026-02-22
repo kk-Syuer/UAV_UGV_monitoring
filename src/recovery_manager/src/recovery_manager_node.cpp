@@ -724,7 +724,7 @@ private:
                   fallback_pose.position.y,
                   fallback_pose.position.z,
                   active_recovery_counter_,
-                  msg.creation_time.seconds());
+                  rclcpp::Time(msg.creation_time).seconds());
     }
   }
 
@@ -832,7 +832,7 @@ private:
                 ch_states_.count(ch_id) > 0 ? ch_states_.at(ch_id).pose.position.y : 0.0,
                 ch_states_.count(ch_id) > 0 ? ch_states_.at(ch_id).pose.position.z : 0.0,
                 active_recovery_counter_,
-                msg.creation_time.seconds(),
+                rclcpp::Time(msg.creation_time).seconds(),
                 cluster_id.c_str(), msg.msg_id.c_str());
   }
 
@@ -908,7 +908,7 @@ private:
                 pose.position.y,
                 pose.position.z,
                 active_recovery_counter_,
-                msg.creation_time.seconds());
+                rclcpp::Time(msg.creation_time).seconds());
   }
 
   void publishRecoveryDone(int epoch)
