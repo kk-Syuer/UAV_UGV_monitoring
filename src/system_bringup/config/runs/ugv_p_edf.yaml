@@ -76,6 +76,10 @@ ugv:
   ugv_id: ugv_1
   charging_policy: p_edf
   max_parallel_spots: 3
+  active_session_status_stale_sec: 8.0
+  active_session_no_progress_sec: 20.0
+  active_session_stale_confirm_cycles: 3
+  active_session_no_progress_confirm_cycles: 3
 
 charging_preemption:
   enabled: true

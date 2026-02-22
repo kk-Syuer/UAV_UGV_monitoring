@@ -77,6 +77,10 @@ ugv:
   charging_policy: edf
   max_parallel_spots: 3
 
+  active_session_status_stale_sec: 8.0
+  active_session_no_progress_sec: 20.0
+  active_session_stale_confirm_cycles: 3
+  active_session_no_progress_confirm_cycles: 3
 battery:
   # Keep UAV and UGV capacity assumptions aligned across nodes.
   member_capacity_wh: 77.0
