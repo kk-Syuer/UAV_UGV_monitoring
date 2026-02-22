@@ -36,7 +36,7 @@ typedef struct uav_msgs__msg__WeatherStatus
   float wind_direction_deg;
   /// ambient temperature in Celsius
   float temperature_c;
-  /// "sunny", "windy", "stormy" (current Markov state)
+  /// "sunny", "cloudy", "windy", "rainy", "stormy" (current Markov state)
   rosidl_runtime_c__String regime;
 } uav_msgs__msg__WeatherStatus;
 

@@ -3321,8 +3321,11 @@ CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/msg/_w
   /usr/include/python3.10/numpy/__multiarray_api.h \
   /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/visibility_control.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/primitives_sequence.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.h \
-  rosidl_generator_c/uav_msgs/msg/rosidl_generator_c__visibility_control.h
+  rosidl_generator_c/uav_msgs/msg/rosidl_generator_c__visibility_control.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h
 
 CMakeFiles/uav_msgs__rosidl_generator_py.dir/rosidl_generator_py/uav_msgs/srv/_request_charge_s.c.o: rosidl_generator_py/uav_msgs/srv/_request_charge_s.c \
   /usr/include/stdc-predef.h \

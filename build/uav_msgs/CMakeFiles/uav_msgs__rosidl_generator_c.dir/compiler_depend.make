@@ -1036,6 +1036,8 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/deta
   /usr/include/stdint.h \
   /usr/include/x86_64-linux-gnu/bits/wchar.h \
   /usr/include/x86_64-linux-gnu/bits/stdint-uintn.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/primitives_sequence.h \
   /usr/include/assert.h \
   /usr/include/string.h \
   /usr/include/x86_64-linux-gnu/bits/types/locale_t.h \
@@ -1055,7 +1057,8 @@ CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/msg/deta
   /usr/include/x86_64-linux-gnu/bits/stdio_lim.h \
   /opt/ros/humble/include/rcutils/rcutils/visibility_control.h \
   /opt/ros/humble/include/rcutils/rcutils/visibility_control_macros.h \
-  /opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h
+  /opt/ros/humble/include/rcutils/rcutils/types/rcutils_ret.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h
 
 CMakeFiles/uav_msgs__rosidl_generator_c.dir/rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c.o: rosidl_generator_c/uav_msgs/srv/detail/request_charge__functions.c \
   /usr/include/stdc-predef.h \

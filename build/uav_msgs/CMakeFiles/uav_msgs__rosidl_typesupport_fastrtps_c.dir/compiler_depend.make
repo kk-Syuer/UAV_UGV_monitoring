@@ -3048,9 +3048,11 @@ CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrt
   /usr/include/c++/11/bits/istream.tcc \
   /usr/include/malloc.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__struct.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string.h \
   rosidl_generator_c/uav_msgs/msg/detail/weather_status__functions.h \
   /usr/include/c++/11/stdlib.h \
-  rosidl_generator_c/uav_msgs/msg/rosidl_generator_c__visibility_control.h
+  rosidl_generator_c/uav_msgs/msg/rosidl_generator_c__visibility_control.h \
+  /opt/ros/humble/include/rosidl_runtime_c/rosidl_runtime_c/string_functions.h
 
 CMakeFiles/uav_msgs__rosidl_typesupport_fastrtps_c.dir/rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp.o: rosidl_typesupport_fastrtps_c/uav_msgs/srv/detail/request_charge__type_support_c.cpp \
   /usr/include/stdc-predef.h \

@@ -25,7 +25,7 @@ module uav_msgs {
       float temperature_c;
 
       @verbatim (language="comment", text=
-        "\"sunny\", \"windy\", \"stormy\" (current Markov state)")
+        "\"sunny\", \"cloudy\", \"windy\", \"rainy\", \"stormy\" (current Markov state)")
       string regime;
     };
   };

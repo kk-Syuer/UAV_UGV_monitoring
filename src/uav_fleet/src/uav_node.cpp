@@ -927,7 +927,7 @@ private:
     msg.flow_type = 1;
     msg.control_type = control_type;
     msg.payload = payload;
-    msg.creation_time = now;
+    msg.creation_time = this->now();
     msg.hop_count = 0;
     msg.ttl = 8;
     msg.next_hop_id = pickNextHop(default_dst_id_, resolveNextHop(default_dst_id_));
