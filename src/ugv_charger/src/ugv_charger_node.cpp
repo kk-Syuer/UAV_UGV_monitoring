@@ -101,6 +101,10 @@ public:
       this->declare_parameter<double>("battery_threshold", 30.0);
     charge_request_status_stale_sec_ =
       this->declare_parameter<double>("charge_request_status_stale_sec", 3.0);
+    respawn_clear_min_status_count_ =
+      this->declare_parameter<int>("respawn_clear_min_status_count", 3);
+    respawn_clear_min_window_sec_ =
+      this->declare_parameter<double>("respawn_clear_min_window_sec", 1.0);
     active_session_status_stale_sec_ =
       this->declare_parameter<double>("active_session_status_stale_sec", 4.0);
     active_session_no_progress_sec_ =
@@ -369,6 +373,13 @@ private:
     rclcpp::Time last_preempted_time;
   };
 
+  struct RecoveryObservation
+  {
+    int count = 0;
+    rclcpp::Time first_seen;
+    rclcpp::Time last_seen;
+  };
+
   // ------------- Callbacks -------------
 
   // Cache latest UAV status for policy scoring and dock sizing.
@@ -402,6 +413,30 @@ private:
                   msg->battery_level,
                   static_cast<unsigned>(msg->charging_state),
                   now.seconds());
+    }
+
+    if (msg->battery_level > 0.0f) {
+      auto & recovery = recovery_observations_[msg->uav_id];
+      if (recovery.count == 0) {
+        recovery.first_seen = now;
+      }
+      recovery.last_seen = now;
+      recovery.count++;
+
+      if (dead_uavs_.find(msg->uav_id) != dead_uavs_.end()) {
+        const bool enough_count = recovery.count >= std::max(1, respawn_clear_min_status_count_);
+        const bool enough_window =
+          (now - recovery.first_seen).seconds() >= std::max(0.0, respawn_clear_min_window_sec_);
+        if (enough_count && enough_window) {
+          dead_uavs_.erase(msg->uav_id);
+          recovery_observations_.erase(msg->uav_id);
+          RCLCPP_INFO(this->get_logger(),
+                      "[RECOVERY] UAV %s cleared from dead_uavs after respawn",
+                      msg->uav_id.c_str());
+        }
+      }
+    } else {
+      recovery_observations_.erase(msg->uav_id);
     }
   }
 
@@ -792,6 +827,16 @@ private:
                     msg->control_type.c_str(), msg->src_id.c_str());
       }
       // ACK already sent via maybePublishAck above; idempotent on repeat
+      return;
+    }
+
+    if (msg->control_type == "RESPAWN_COMPLETED") {
+      if (dead_uavs_.erase(msg->src_id) > 0) {
+        RCLCPP_INFO(this->get_logger(),
+                    "[RECOVERY] UAV %s cleared from dead_uavs after respawn",
+                    msg->src_id.c_str());
+      }
+      recovery_observations_.erase(msg->src_id);
       return;
     }
 
@@ -2374,6 +2419,8 @@ private:
   size_t control_dedup_cache_size_ = 200;
   double charge_request_battery_gate_percent_ = 45.0;
   double charge_request_status_stale_sec_ = 3.0;
+  int respawn_clear_min_status_count_ = 3;
+  double respawn_clear_min_window_sec_ = 1.0;
   double active_session_status_stale_sec_ = 4.0;
   double active_session_no_progress_sec_ = 8.0;
   double active_session_progress_epsilon_percent_ = 0.01;
@@ -2420,6 +2467,7 @@ private:
   LastDecisionState last_decision_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
+  std::unordered_map<std::string, RecoveryObservation> recovery_observations_;
   std::unordered_map<std::string, std::string> routing_table_;
   std::unordered_set<std::string> dead_uavs_;
 

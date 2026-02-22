@@ -592,6 +592,7 @@ private:
     if (failure_type == 1) {  // BATTERY_DEAD
       battery_dead_count_++;
       dead_uavs_.insert(msg.src_id);
+      dead_uav_event_history_.push_back(msg.src_id);
       markChargeFailureForUav(msg.src_id, ChargeOutcome::ENERGY_DEPLETED, "ENERGY_DEPLETED");
 
       // Record death event for Kaplan-Meier survival curves
@@ -1634,7 +1635,7 @@ private:
       out << "run_id,time,queue_length_ugv,queue_length_ch,queue_length_member,queue_length_unknown,"
           << "active_charging_ugv_sessions,ugv_dock_capacity,ugv_dock_utilization,"
           << "mean_wait_ch_ms,mean_wait_member_ms,"
-          << "active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,returning_count_uav_status,dead_count,fleet_size,"
+          << "active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,returning_count_uav_status,current_dead_count,dead_event_count,fleet_size,"
           << "over_capacity_ugv,status_vs_ugv_gap"
           << std::endl;
     }
@@ -1743,7 +1744,8 @@ private:
       utilization = static_cast<double>(active_charging_ugv_sessions) / static_cast<double>(ugv_dock_capacity);
     }
 
-    size_t dead_count = dead_uavs_.size();
+    size_t current_dead_count = dead_uavs_.size();
+    size_t dead_event_count = dead_uav_event_history_.size();
     size_t fleet_size = uav_states_.size();
 
     out << run_id_ << ","
@@ -1761,7 +1763,8 @@ private:
         << active_charging_uav_status << ","
         << going_to_ugv_count_uav_status << ","
         << returning_count_uav_status << ","
-        << dead_count << ","
+        << current_dead_count << ","
+        << dead_event_count << ","
         << fleet_size << ","
         << over_capacity_ugv << ","
         << status_vs_ugv_gap
@@ -2037,7 +2040,8 @@ private:
         << "  \"fleet\": {\n"
         << "    \"fleet_size\": " << fleet_size << ",\n"
         << "    \"alive_count\": " << alive_count << ",\n"
-        << "    \"dead_count\": " << dead_uavs_.size() << ",\n"
+        << "    \"current_dead_count\": " << dead_uavs_.size() << ",\n"
+        << "    \"dead_event_count\": " << dead_uav_event_history_.size() << ",\n"
         << "    \"survival_rate\": " << (fleet_size > 0 ? static_cast<double>(alive_count) / static_cast<double>(fleet_size) : 0.0) << "\n"
         << "  },\n"
         << "  \"charging\": {\n"
@@ -2219,6 +2223,11 @@ private:
       parseDeploymentPose(msg.payload, rec.x, rec.y, rec.z);
     } else if (msg.control_type == "RESPAWN_COMPLETED") {
       rec.member_id = msg.src_id;
+      if (dead_uavs_.erase(msg.src_id) > 0) {
+        RCLCPP_INFO(this->get_logger(),
+                    "[RECOVERY] UAV %s cleared from dead_uavs after respawn",
+                    msg.src_id.c_str());
+      }
     }
 
     recovery_events_[msg.msg_id] = rec;
@@ -2338,6 +2347,7 @@ private:
   size_t battery_dead_count_ = 0;
   std::unordered_set<std::string> seen_failure_ids_;
   std::unordered_set<std::string> dead_uavs_;
+  std::vector<std::string> dead_uav_event_history_;
   std::unordered_map<std::string, size_t> drop_reasons_;
 
   // Charging
