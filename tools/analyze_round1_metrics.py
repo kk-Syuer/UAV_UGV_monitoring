@@ -144,8 +144,19 @@ def merge_network_queue(network: pd.DataFrame, queue: pd.DataFrame) -> pd.DataFr
     if network.empty or queue.empty or "time" not in network.columns or "time" not in queue.columns:
         return pd.DataFrame()
 
-    net = network.sort_values(["run_id", "time"]).copy()
-    que = queue.sort_values(["run_id", "time"]).copy()
+    def _prep_asof_frame(df: pd.DataFrame) -> pd.DataFrame:
+        out = df.copy()
+        out["run_id"] = out["run_id"].astype(str)
+        out["time"] = pd.to_numeric(out["time"], errors="coerce")
+        out = out.dropna(subset=["run_id", "time"])
+        # merge_asof requires keys to be monotonically sorted.
+        return out.sort_values(["run_id", "time"], kind="mergesort").reset_index(drop=True)
+
+    net = _prep_asof_frame(network)
+    que = _prep_asof_frame(queue)
+    if net.empty or que.empty:
+        return pd.DataFrame()
+
     return pd.merge_asof(
         net,
         que,
