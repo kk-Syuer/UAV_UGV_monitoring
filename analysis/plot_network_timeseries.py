@@ -123,7 +123,6 @@ def load_ch_death_times(policy_dir: Path) -> list[float]:
     death_df = load_csv_with_hints(death_csv)
     require_columns(death_df, ["role", "time"], death_csv)
 
-
     death_df["role_label"] = normalize_role(death_df["role"])
     death_df = safe_numeric(death_df, ["time"])
     death_df = align_time_seconds(death_df, "time")
@@ -215,8 +214,6 @@ def main() -> int:
             agg = series.groupby("time", as_index=False)[col].mean().sort_values("time")
             ax.plot(agg["time"], agg[col], label=policy_dir.name)
 
-        if args.shade_ch_failures:
-            annotate_ch_failures(ax, policy_dir)
         if args.shade_ch_failures:
             annotate_ch_failures(ax, policy_dir)
 
