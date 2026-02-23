@@ -1197,6 +1197,55 @@ private:
       return;
     }
 
+    if (emergency_recovery_active_) {
+      geometry_msgs::msg::Pose candidate_ugv_pose;
+      bool candidate_pose_ok = false;
+      std::string candidate_source = "NONE";
+      double candidate_age = -1.0;
+
+      if (payload_has_pose) {
+        candidate_ugv_pose = payload_ugv_pose;
+        candidate_ugv_pose.position.z = pose_.position.z;
+        candidate_pose_ok = std::isfinite(candidate_ugv_pose.position.x) &&
+          std::isfinite(candidate_ugv_pose.position.y) &&
+          std::isfinite(candidate_ugv_pose.position.z);
+        candidate_source = candidate_pose_ok ? "DECISION_PAYLOAD" : "DECISION_PAYLOAD_INVALID";
+      } else {
+        candidate_pose_ok = resolveUgvPoseFresh(candidate_ugv_pose, candidate_source, candidate_age);
+        if (candidate_pose_ok) {
+          candidate_ugv_pose.position.z = pose_.position.z;
+        }
+      }
+
+      float dist_to_ugv_m = 0.0f;
+      float energy_to_ugv = -1.0f;
+      if (candidate_pose_ok) {
+        energy_to_ugv = estimateEnergyToPose(candidate_ugv_pose.position, dist_to_ugv_m);
+      }
+      const bool enough_to_retarget_ugv =
+        candidate_pose_ok && energy_to_ugv >= 0.0f &&
+        battery_energy_ >= (energy_to_ugv + ugv_reserve_energy_ + ugv_buffer_energy_);
+
+      if (enough_to_retarget_ugv) {
+        emergency_recovery_active_ = false;
+        emergency_landed_ = false;
+        payload_ugv_pose = candidate_ugv_pose;
+        charge_target_pose_ = candidate_ugv_pose;
+        charge_target_pose_valid_ = true;
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] UAV %s: accepted CHARGE_DECISION while returning to sink; retargeting to UGV "
+                    "(source=%s dist=%.1fm energy_need=%.2fWh batt=%.2fWh).",
+                    uav_id_.c_str(), candidate_source.c_str(), dist_to_ugv_m, energy_to_ugv, battery_energy_);
+      } else {
+        RCLCPP_WARN(this->get_logger(),
+                    "[RECOVERY] UAV %s: received CHARGE_DECISION during emergency return but cannot safely retarget to UGV "
+                    "(pose_ok=%d source=%s dist=%.1fm energy_need=%.2fWh batt=%.2fWh); continuing to sink.",
+                    uav_id_.c_str(), candidate_pose_ok ? 1 : 0, candidate_source.c_str(),
+                    dist_to_ugv_m, energy_to_ugv, battery_energy_);
+        return;
+      }
+    }
+
     has_charge_slot_ = true;
     current_charge_slot_id_ = slot_id;
 
@@ -3699,6 +3748,30 @@ private:
           // Only members have task mobility
           if (role_ != 0)
             break;
+
+          if (waiting_for_charge_response_ && !has_charge_slot_ && !emergency_recovery_active_) {
+            geometry_msgs::msg::Point rendezvous_target;
+            std::string rendezvous_source;
+            double rendezvous_age = std::numeric_limits<double>::infinity();
+            bool has_rendezvous_target = resolveChRendezvousTarget(
+              rendezvous_target, rendezvous_source, rendezvous_age);
+
+            if (has_rendezvous_target) {
+              bool reached_ch = stepTowards2D(rendezvous_target.x, rendezvous_target.y);
+              (void)reached_ch;
+              RCLCPP_INFO_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                                   "[CHARGE_WAIT] UAV %s paused patrol while waiting for CHARGE_DECISION; "
+                                   "moving toward CH source=%s age=%.2fs",
+                                   uav_id_.c_str(), rendezvous_source.c_str(), rendezvous_age);
+            } else {
+              RCLCPP_WARN_THROTTLE(this->get_logger(), *this->get_clock(), 5000,
+                                   "[CHARGE_WAIT] UAV %s paused patrol while waiting for CHARGE_DECISION; "
+                                   "CH pose unavailable/stale source=%s age=%.2fs",
+                                   uav_id_.c_str(), rendezvous_source.c_str(), rendezvous_age);
+            }
+            break;
+          }
+
           if (task_points_.empty() && !telemetry_rendezvous_active_)
             break;
 
@@ -3843,6 +3916,18 @@ private:
       return -1.0f;
     }
     dist_m = static_cast<float>(distance2d(pose_.position, ugv_pose_.position));
+    float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
+    float drain_est = base_drain * temperatureFactor(current_temperature_c_);
+    return (dist_m / static_cast<float>(uav_speed_mps_)) * drain_est;
+  }
+
+  float estimateEnergyToPose(const geometry_msgs::msg::Point & target, float & dist_m) const
+  {
+    if (uav_speed_mps_ <= 0.1f) {
+      dist_m = 0.0f;
+      return -1.0f;
+    }
+    dist_m = static_cast<float>(distance2d(pose_.position, target));
     float base_drain = (role_ == 1) ? drain_rate_ch_ : drain_rate_member_;
     float drain_est = base_drain * temperatureFactor(current_temperature_c_);
     return (dist_m / static_cast<float>(uav_speed_mps_)) * drain_est;
