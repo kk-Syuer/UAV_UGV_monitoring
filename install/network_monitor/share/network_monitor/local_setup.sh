@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/network_monitor/ament_cmake_environment_hooks/local_setup.sh

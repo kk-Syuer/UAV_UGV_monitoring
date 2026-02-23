@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_c/uav_msgs/msg/cluster_info.h

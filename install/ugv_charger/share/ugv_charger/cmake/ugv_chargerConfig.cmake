@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/ugv_charger/ament_cmake_core/ugv_chargerConfig.cmake

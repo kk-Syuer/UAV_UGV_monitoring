@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_c/uav_msgs/msg/detail/heartbeat__rosidl_typesupport_introspection_c.h

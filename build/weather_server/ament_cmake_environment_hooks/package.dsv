@@ -1,4 +1,0 @@
-source;share/weather_server/local_setup.bash
-source;share/weather_server/local_setup.dsv
-source;share/weather_server/local_setup.sh
-source;share/weather_server/local_setup.zsh

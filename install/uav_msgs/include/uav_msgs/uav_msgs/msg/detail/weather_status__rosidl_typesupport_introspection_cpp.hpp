@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_introspection_cpp/uav_msgs/msg/detail/weather_status__rosidl_typesupport_introspection_cpp.hpp

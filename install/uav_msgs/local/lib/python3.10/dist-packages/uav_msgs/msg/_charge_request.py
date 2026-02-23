@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_py/uav_msgs/msg/_charge_request.py

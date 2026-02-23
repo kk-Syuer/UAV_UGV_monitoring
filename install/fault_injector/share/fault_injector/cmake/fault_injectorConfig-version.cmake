@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/fault_injector/ament_cmake_core/fault_injectorConfig-version.cmake

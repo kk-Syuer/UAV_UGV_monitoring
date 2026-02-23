@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/weather_server/ament_cmake_core/weather_serverConfig-version.cmake

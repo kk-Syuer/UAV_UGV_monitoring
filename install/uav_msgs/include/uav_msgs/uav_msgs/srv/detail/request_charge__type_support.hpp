@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_generator_cpp/uav_msgs/srv/detail/request_charge__type_support.hpp

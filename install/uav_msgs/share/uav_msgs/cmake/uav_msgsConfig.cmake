@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/ament_cmake_core/uav_msgsConfig.cmake

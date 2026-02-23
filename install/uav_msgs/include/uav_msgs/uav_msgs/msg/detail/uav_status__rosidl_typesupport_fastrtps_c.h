@@ -1,1 +1,0 @@
-/home/vboxuser/UAV_UGV_netmonitoring/build/uav_msgs/rosidl_typesupport_fastrtps_c/uav_msgs/msg/detail/uav_status__rosidl_typesupport_fastrtps_c.h
