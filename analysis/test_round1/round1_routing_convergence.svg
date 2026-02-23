@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1100" height="650">
+<rect width="100%" height="100%" fill="white"/>
+<text x="90" y="40" font-family="Arial" font-size="26" font-weight="bold">Round1 Network Robustness: Routing Convergence Time</text>
+<line x1="90" y1="530" x2="1050" y2="530" stroke="black"/>
+<line x1="90" y1="80" x2="90" y2="530" stroke="black"/>
+<text x="25" y="305.0" transform="rotate(-90,25,305.0)" font-size="14" font-family="Arial">Seconds</text>
+<line x1="90" y1="530.00" x2="1050" y2="530.00" stroke="#e8e8e8"/>
+<text x="82" y="534.00" text-anchor="end" font-size="12" font-family="Arial">0.000</text>
+<line x1="90" y1="440.00" x2="1050" y2="440.00" stroke="#e8e8e8"/>
+<text x="82" y="444.00" text-anchor="end" font-size="12" font-family="Arial">102.930</text>
+<line x1="90" y1="350.00" x2="1050" y2="350.00" stroke="#e8e8e8"/>
+<text x="82" y="354.00" text-anchor="end" font-size="12" font-family="Arial">205.861</text>
+<line x1="90" y1="260.00" x2="1050" y2="260.00" stroke="#e8e8e8"/>
+<text x="82" y="264.00" text-anchor="end" font-size="12" font-family="Arial">308.791</text>
+<line x1="90" y1="170.00" x2="1050" y2="170.00" stroke="#e8e8e8"/>
+<text x="82" y="174.00" text-anchor="end" font-size="12" font-family="Arial">411.721</text>
+<line x1="90" y1="80.00" x2="1050" y2="80.00" stroke="#e8e8e8"/>
+<text x="82" y="84.00" text-anchor="end" font-size="12" font-family="Arial">514.651</text>
+<rect x="126.00" y="80.00" width="168.00" height="450.00" fill="#1f77b4"/>
+<text x="210.00" y="72.00" text-anchor="middle" font-size="12" font-family="Arial">514.6513</text>
+<text x="210.00" y="554" text-anchor="middle" font-size="12" font-family="Arial">ugv_dynamic</text>
+<rect x="366.00" y="522.35" width="168.00" height="7.65" fill="#ff7f0e"/>
+<text x="450.00" y="514.35" text-anchor="middle" font-size="12" font-family="Arial">8.7513</text>
+<text x="450.00" y="554" text-anchor="middle" font-size="12" font-family="Arial">ugv_edf</text>
+<rect x="606.00" y="524.72" width="168.00" height="5.28" fill="#2ca02c"/>
+<text x="690.00" y="516.72" text-anchor="middle" font-size="12" font-family="Arial">6.0349</text>
+<text x="690.00" y="554" text-anchor="middle" font-size="12" font-family="Arial">ugv_fcfs</text>
+<rect x="846.00" y="523.34" width="168.00" height="6.66" fill="#d62728"/>
+<text x="930.00" y="515.34" text-anchor="middle" font-size="12" font-family="Arial">7.6223</text>
+<text x="930.00" y="554" text-anchor="middle" font-size="12" font-family="Arial">ugv_role_priority</text>
+</svg>
