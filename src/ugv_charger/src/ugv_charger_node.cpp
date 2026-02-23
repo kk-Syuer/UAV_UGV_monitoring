@@ -101,10 +101,22 @@ public:
       this->declare_parameter<double>("battery_threshold", 30.0);
     charge_request_status_stale_sec_ =
       this->declare_parameter<double>("charge_request_status_stale_sec", 3.0);
+    respawn_clear_min_status_count_ =
+      this->declare_parameter<int>("respawn_clear_min_status_count", 3);
+    respawn_clear_min_window_sec_ =
+      this->declare_parameter<double>("respawn_clear_min_window_sec", 1.0);
     active_session_status_stale_sec_ =
-      this->declare_parameter<double>("active_session_status_stale_sec", 4.0);
+      this->declare_parameter<double>("active_session_status_stale_sec", 8.0);
     active_session_no_progress_sec_ =
-      this->declare_parameter<double>("active_session_no_progress_sec", 8.0);
+      this->declare_parameter<double>("active_session_no_progress_sec", 20.0);
+    const int64_t stale_confirm_cycles =
+      this->declare_parameter<int64_t>("active_session_stale_confirm_cycles", 3);
+    active_session_stale_confirm_cycles_ =
+      stale_confirm_cycles < 1 ? 1 : static_cast<int>(stale_confirm_cycles);
+    const int64_t no_progress_confirm_cycles =
+      this->declare_parameter<int64_t>("active_session_no_progress_confirm_cycles", 3);
+    active_session_no_progress_confirm_cycles_ =
+      no_progress_confirm_cycles < 1 ? 1 : static_cast<int>(no_progress_confirm_cycles);
     active_session_progress_epsilon_percent_ =
       this->declare_parameter<double>("active_session_progress_epsilon_percent", 0.01);
     routing_debug_trace_ = this->declare_parameter<bool>("routing_debug_trace", false);
@@ -342,7 +354,18 @@ private:
     rclcpp::Time end_time;
     float last_battery_seen = 0.0f;
     rclcpp::Time last_progress_time;
+    int stale_status_hits = 0;
+    int no_progress_hits = 0;
   };
+
+  bool isUavInActiveSessions(const std::string & uav_id) const
+  {
+    return std::any_of(
+      active_sessions_.begin(), active_sessions_.end(),
+      [&](const ChargingSession & session) {
+        return session.uav_id == uav_id;
+      });
+  }
 
   struct SessionEndRecord
   {
@@ -367,6 +390,13 @@ private:
   {
     int preempt_count = 0;
     rclcpp::Time last_preempted_time;
+  };
+
+  struct RecoveryObservation
+  {
+    int count = 0;
+    rclcpp::Time first_seen;
+    rclcpp::Time last_seen;
   };
 
   // ------------- Callbacks -------------
@@ -402,6 +432,30 @@ private:
                   msg->battery_level,
                   static_cast<unsigned>(msg->charging_state),
                   now.seconds());
+    }
+
+    if (msg->battery_level > 0.0f) {
+      auto & recovery = recovery_observations_[msg->uav_id];
+      if (recovery.count == 0) {
+        recovery.first_seen = now;
+      }
+      recovery.last_seen = now;
+      recovery.count++;
+
+      if (dead_uavs_.find(msg->uav_id) != dead_uavs_.end()) {
+        const bool enough_count = recovery.count >= std::max(1, respawn_clear_min_status_count_);
+        const bool enough_window =
+          (now - recovery.first_seen).seconds() >= std::max(0.0, respawn_clear_min_window_sec_);
+        if (enough_count && enough_window) {
+          dead_uavs_.erase(msg->uav_id);
+          recovery_observations_.erase(msg->uav_id);
+          RCLCPP_INFO(this->get_logger(),
+                      "[RECOVERY] UAV %s cleared from dead_uavs after respawn",
+                      msg->uav_id.c_str());
+        }
+      }
+    } else {
+      recovery_observations_.erase(msg->uav_id);
     }
   }
 
@@ -792,6 +846,16 @@ private:
                     msg->control_type.c_str(), msg->src_id.c_str());
       }
       // ACK already sent via maybePublishAck above; idempotent on repeat
+      return;
+    }
+
+    if (msg->control_type == "RESPAWN_COMPLETED") {
+      if (dead_uavs_.erase(msg->src_id) > 0) {
+        RCLCPP_INFO(this->get_logger(),
+                    "[RECOVERY] UAV %s cleared from dead_uavs after respawn",
+                    msg->src_id.c_str());
+      }
+      recovery_observations_.erase(msg->src_id);
       return;
     }
 
@@ -1522,6 +1586,20 @@ private:
         stale_status = session_age_sec > active_session_status_stale_sec_;
       }
 
+      if (stale_status) {
+        it->stale_status_hits += 1;
+      } else {
+        it->stale_status_hits = 0;
+      }
+      stale_status = it->stale_status_hits >= active_session_stale_confirm_cycles_;
+
+      if (no_progress_timeout) {
+        it->no_progress_hits += 1;
+      } else {
+        it->no_progress_hits = 0;
+      }
+      no_progress_timeout = it->no_progress_hits >= active_session_no_progress_confirm_cycles_;
+
       std::string end_reason;
       if (is_dead) {
         end_reason = "dead";
@@ -1530,7 +1608,7 @@ private:
       } else if (reached_full_soc) {
         end_reason = "full_soc";
       } else if (no_progress_timeout) {
-        end_reason = "timeout";
+        end_reason = "no_progress_timeout";
       } else if (now >= it->end_time) {
         end_reason = "ended_by_time";
       }
@@ -1595,6 +1673,38 @@ private:
       size_t idx = chooseNextIndex(now);
       DecisionRationale rationale = buildDecisionRationale(idx, now);
       QueueEntry job = queue_[idx];
+
+      if (isUavInActiveSessions(job.uav_id)) {
+        RCLCPP_WARN(this->get_logger(),
+                    "OVERBOOK_GUARD active_sessions_size=%zu queue_size=%zu uav_id=%s reason=duplicate_active_session",
+                    active_sessions_.size(), queue_.size(), job.uav_id.c_str());
+        queue_.erase(queue_.begin() + static_cast<long>(idx));
+        continue;
+      }
+
+      auto status_it = uav_status_.find(job.uav_id);
+      if (status_it != uav_status_.end() &&
+          status_it->second.charging_state == kChargingStateCharging) {
+        const auto [recovered_role, recovered_battery] = getLiveRoleAndBattery(job);
+        const double recovered_duration_sec = computeChargeDurationSec(
+          job.uav_id, recovered_role, recovered_battery);
+        const rclcpp::Time recovered_end_time = now +
+          rclcpp::Duration::from_seconds(recovered_duration_sec);
+        const float recovered_initial_battery =
+          std::clamp(status_it->second.battery_level, 0.0f, 100.0f);
+        active_sessions_.push_back({job.uav_id, now, recovered_end_time, recovered_initial_battery, now});
+        RCLCPP_WARN(this->get_logger(),
+                    "OVERBOOK_GUARD active_sessions_size=%zu queue_size=%zu uav_id=%s reason=recovered_from_charging_state",
+                    active_sessions_.size(), queue_.size(), job.uav_id.c_str());
+        queue_.erase(queue_.begin() + static_cast<long>(idx));
+        if (max_parallel_spots_ > static_cast<int>(active_sessions_.size())) {
+          available_spots = static_cast<size_t>(max_parallel_spots_ - active_sessions_.size());
+        } else {
+          available_spots = 0;
+        }
+        continue;
+      }
+
       auto [job_role, job_battery] = getLiveRoleAndBattery(job);
       queue_.erase(queue_.begin() + static_cast<long>(idx));
 
@@ -2374,8 +2484,12 @@ private:
   size_t control_dedup_cache_size_ = 200;
   double charge_request_battery_gate_percent_ = 45.0;
   double charge_request_status_stale_sec_ = 3.0;
-  double active_session_status_stale_sec_ = 4.0;
-  double active_session_no_progress_sec_ = 8.0;
+  int respawn_clear_min_status_count_ = 3;
+  double respawn_clear_min_window_sec_ = 1.0;
+  double active_session_status_stale_sec_ = 8.0;
+  double active_session_no_progress_sec_ = 20.0;
+  int active_session_stale_confirm_cycles_ = 3;
+  int active_session_no_progress_confirm_cycles_ = 3;
   double active_session_progress_epsilon_percent_ = 0.01;
   Policy policy_;
   std::string policy_name_;
@@ -2420,6 +2534,7 @@ private:
   LastDecisionState last_decision_;
 
   std::unordered_map<std::string, UavInfo> uav_status_;
+  std::unordered_map<std::string, RecoveryObservation> recovery_observations_;
   std::unordered_map<std::string, std::string> routing_table_;
   std::unordered_set<std::string> dead_uavs_;
 
