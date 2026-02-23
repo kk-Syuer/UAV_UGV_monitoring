@@ -687,9 +687,11 @@ private:
     if (battery_capacity_ > 0.0f) {
       battery_percent = (battery_energy_ / battery_capacity_) * 100.0f;
     }
-    // backbone activity flag (CH, deployed, not charging, not dead)
+    // backbone activity flag (CH, deployed, healthy, and fully rejoined).
+    // Keep CH out of routing backbone during respawn/rejoin and emergency states.
     bool backbone_active =
-      (role_ == 1) && deployment_received_ && (battery_energy_ > 0.0f) && !is_charging_;
+      (role_ == 1) && deployment_received_ && (battery_energy_ > 0.0f) && !is_charging_ &&
+      !rejoin_pending_ && !emergency_recovery_active_ && !emergency_landed_;
 
     // If we just died from battery, publish a FailureEvent once
     if (battery_energy_ <= 0.0f && !reported_battery_dead_) {
@@ -2578,10 +2580,13 @@ private:
     return isWithinChServiceRange(&dist_to_ch);
   }
 
-  bool chHasRouteToUgv() const
+  bool chReachedDeploymentPose() const
   {
-    auto it = routing_table_.find(ugv_id_);
-    return it != routing_table_.end() && !it->second.empty();
+    if (role_ != 1 || !deployment_received_) {
+      return false;
+    }
+    const double dist_to_goal = distance2d(pose_.position, deployment_goal_pose_.position);
+    return dist_to_goal <= deployment_arrival_eps_;
   }
 
   void evaluateRejoinGuard()
@@ -2597,8 +2602,8 @@ private:
       return;
     }
 
-    if (chHasRouteToUgv()) {
-      setRejoinPending(false, "ROUTE_TO_UGV_AVAILABLE");
+    if (chReachedDeploymentPose()) {
+      setRejoinPending(false, "CH_DEPLOYMENT_POSE_REACHED");
     }
   }
 
@@ -3682,6 +3687,7 @@ private:
             double dist_to_goal = distance2d(pose_.position, deployment_goal_pose_.position);
             if (dist_to_goal <= deployment_arrival_eps_) {
               deployment_arrival_ticks_++;
+              evaluateRejoinGuard();
             } else {
               deployment_arrival_ticks_ = 0;
             }

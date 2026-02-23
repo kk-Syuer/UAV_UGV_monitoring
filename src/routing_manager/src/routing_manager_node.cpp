@@ -22,6 +22,7 @@ struct NodeInfo
 {
   std::string id;
   uint8_t role = 0;
+  bool backbone_active = false;
   geometry_msgs::msg::Pose pose;
   rclcpp::Time stamp;
   float comm_radius_m = 0.0f;
@@ -61,9 +62,9 @@ enum class NodeClass
   Endpoint
 };
 
-bool isBackboneCh(uint8_t role)
+bool isBackboneCh(uint8_t role, bool backbone_active)
 {
-  return role == 1;
+  return role == 1 && backbone_active;
 }
 }  // namespace
 
@@ -112,6 +113,7 @@ private:
     NodeInfo info;
     info.id = msg->uav_id;
     info.role = msg->role;
+    info.backbone_active = msg->backbone_active;
     info.pose = msg->pose;
     info.stamp = msg->stamp;
     info.comm_radius_m = msg->comm_radius_m;
@@ -189,7 +191,7 @@ private:
     endpoint_indices.reserve(active_nodes.size());
 
     for (size_t i = 0; i < active_nodes.size(); ++i) {
-      if (isBackboneCh(active_nodes[i].role)) {
+      if (isBackboneCh(active_nodes[i].role, active_nodes[i].backbone_active)) {
         node_class[i] = NodeClass::BackboneCh;
         ch_node_indices.push_back(i);
       } else {
