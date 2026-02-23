@@ -1,0 +1,10 @@
+run_id,time,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy
+ugv_p_role_priority,1.77186e+09,uav1,ch0,0,1,38.6415,1071.87,1033.23,85.9979,p_role_priority
+ugv_p_role_priority,1.77186e+09,uav3,ch0,0,1,48.9202,1072.36,1023.44,65.4603,p_role_priority
+ugv_p_role_priority,1.77186e+09,uav2,ch1,0,1,40.9605,1082.15,1041.19,97.4313,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav1,ch0,0,1,14.0694,1071.94,1057.88,170.007,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav3,ch0,0,1,14.1667,1072.43,1058.27,183.504,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav1,ch0,0,1,29.9692,1072.39,1042.42,115.497,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav3,uav1,0,0,9.39053,61.4294,52.0388,200.503,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav2,ch0,0,1,34.5212,1070.54,1036.02,137.502,p_role_priority
+ugv_p_role_priority,1.77187e+09,uav2,ch0,0,1,3.38265,1072.24,1068.86,230.51,p_role_priority
