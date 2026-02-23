@@ -107,7 +107,7 @@ coverage_planner:
   fixed_taskpoints_count: 10
   fixed_taskpoints_seed: 0
 planner_viz:
-  enable: false
+  enable: true
 
 ch_manager:
   enable: true

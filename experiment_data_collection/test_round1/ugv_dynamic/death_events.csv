@@ -1,0 +1,8 @@
+run_id,time,uav_id,role,cause,battery_at_death,fleet_size,alive_count
+ugv_dynamic,1.77185e+09,ch1,1,BATTERY_DEAD,0.0232538,7,6
+ugv_dynamic,1.77185e+09,ch0,1,BATTERY_DEAD,0.0219354,7,5
+ugv_dynamic,1.77185e+09,ch1,1,BATTERY_DEAD,0.0184311,7,4
+ugv_dynamic,1.77185e+09,uav2,0,BATTERY_DEAD,0.0396074,7,3
+ugv_dynamic,1.77185e+09,uav3,0,BATTERY_DEAD,0.00992441,7,2
+ugv_dynamic,1.77185e+09,uav3,0,BATTERY_DEAD,88.1149,7,1
+ugv_dynamic,1.77185e+09,uav1,0,BATTERY_DEAD,86.0144,7,0
