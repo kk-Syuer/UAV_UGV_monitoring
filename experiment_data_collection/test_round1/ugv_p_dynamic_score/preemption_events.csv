@@ -1,0 +1,15 @@
+run_id,time,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy
+ugv_p_dynamic_score,1.77187e+09,uav1,ch0,0,1,49.5501,74.5874,25.0373,73.0057,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav3,ch1,0,1,49.5262,86.5475,37.0214,100.012,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav2,ch1,0,1,51.4881,87.0916,35.6035,91.513,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav1,ch0,0,1,30.4472,77.1323,46.6852,183.511,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav2,ch0,0,1,38.3864,77.6269,39.2405,158.003,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,ch0,ch1,1,1,56.0573,91.9122,35.8549,155.504,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav3,ch1,0,1,35.1944,86.2476,51.0532,177.988,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav1,ch0,0,1,45.7627,77.8745,32.1117,93.5016,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav2,ch0,0,1,30.0309,74.4992,44.4683,214.493,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,uav3,ch1,0,1,30.6109,93.3031,62.6922,190.493,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,ch1,uav3,1,0,58.3134,90.6878,32.3744,249.488,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,ch0,uav1,1,0,46.1435,92.4621,46.3187,263.986,p_dynamic_score
+ugv_p_dynamic_score,1.77187e+09,ch0,ch1,1,1,47.0041,87.1936,40.1895,202.558,p_dynamic_score
+ugv_p_dynamic_score,1.77188e+09,ch1,uav1,1,0,47.3215,61.1316,13.8101,282.997,p_dynamic_score
