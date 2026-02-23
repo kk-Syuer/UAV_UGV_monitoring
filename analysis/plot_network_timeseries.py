@@ -32,11 +32,14 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--out_dir", type=Path, default=Path("analysis/test_round1"))
     parser.add_argument("--metric", required=True, choices=["pdr", "delay", "jitter"])
     parser.add_argument("--flow_filter", default="ALL", choices=FLOW_CHOICES)
+<<<<<<< codex/create-network-timeseries-plot-script-64fz0q
     parser.add_argument(
         "--shade_ch_failures",
         action="store_true",
         help="Annotate CH failure periods (status_timeseries preferred) or CH death times.",
     )
+=======
+>>>>>>> master
     return parser.parse_args()
 
 
@@ -75,6 +78,7 @@ def bootstrap_ci(values: np.ndarray, n_boot: int = N_BOOT) -> tuple[float, float
     return float(np.nanpercentile(stats, 2.5)), float(np.nanpercentile(stats, 97.5))
 
 
+<<<<<<< codex/create-network-timeseries-plot-script-64fz0q
 def load_ch_failure_windows_from_status(policy_dir: Path) -> list[tuple[float, float]]:
     status_csv = policy_dir / "status_timeseries.csv"
     if not status_csv.exists():
@@ -122,10 +126,23 @@ def load_ch_death_times(policy_dir: Path) -> list[float]:
 
     death_df = load_csv_with_hints(death_csv)
     require_columns(death_df, ["role", "time"], death_csv)
+=======
+def load_ch_failure_windows(policy_dir: Path) -> list[tuple[float, float]]:
+    death_csv = policy_dir / "death_events.csv"
+    rec_csv = policy_dir / "recovery_events.csv"
+    if not death_csv.exists() or not rec_csv.exists():
+        return []
+
+    death_df = load_csv_with_hints(death_csv)
+    rec_df = load_csv_with_hints(rec_csv)
+    if "role" not in death_df.columns or "time" not in death_df.columns:
+        return []
+>>>>>>> master
 
     death_df["role_label"] = normalize_role(death_df["role"])
     death_df = safe_numeric(death_df, ["time"])
     death_df = align_time_seconds(death_df, "time")
+<<<<<<< codex/create-network-timeseries-plot-script-64fz0q
     death_df, _ = drop_time_resets(death_df, "time")
 
     return sorted(death_df.loc[death_df["role_label"].eq("CH") & death_df["time"].notna(), "time"].tolist())
@@ -152,6 +169,36 @@ def annotate_ch_failures(ax: plt.Axes, policy_dir: Path) -> None:
 
     for t in death_times:
         ax.axvline(t, color="#808080", alpha=0.35, lw=1.0, linestyle="--")
+=======
+
+    if "creation_time" not in rec_df.columns:
+        return []
+    rec_df = safe_numeric(rec_df, ["creation_time"])
+    rec_df = rec_df.rename(columns={"creation_time": "time"})
+    rec_df = align_time_seconds(rec_df, "time")
+
+    ch_deaths = sorted(death_df.loc[death_df["role_label"].eq("CH") & death_df["time"].notna(), "time"].tolist())
+    if not ch_deaths:
+        return []
+
+    respawns = sorted(
+        rec_df.loc[
+            rec_df.get("control_type", pd.Series([], dtype=str)).eq("RESPAWN_COMPLETED")
+            & rec_df["time"].notna(),
+            "time",
+        ].tolist()
+    )
+
+    windows: list[tuple[float, float]] = []
+    j = 0
+    for t0 in ch_deaths:
+        while j < len(respawns) and respawns[j] < t0:
+            j += 1
+        if j < len(respawns):
+            windows.append((t0, respawns[j]))
+            j += 1
+    return windows
+>>>>>>> master
 
 
 def main() -> int:
@@ -170,6 +217,10 @@ def main() -> int:
 
     fig, ax = plt.subplots(figsize=(10, 5))
     y_unit = ""
+<<<<<<< codex/create-network-timeseries-plot-script-64fz0q
+=======
+    shaded = False
+>>>>>>> master
 
     for policy_dir in policies:
         csv_path = policy_dir / "network_timeseries.csv"
@@ -214,8 +265,15 @@ def main() -> int:
             agg = series.groupby("time", as_index=False)[col].mean().sort_values("time")
             ax.plot(agg["time"], agg[col], label=policy_dir.name)
 
+<<<<<<< codex/create-network-timeseries-plot-script-64fz0q
         if args.shade_ch_failures:
             annotate_ch_failures(ax, policy_dir)
+=======
+        if not shaded:
+            for t0, t1 in load_ch_failure_windows(policy_dir):
+                ax.axvspan(t0, t1, color="gray", alpha=0.08, lw=0)
+            shaded = True
+>>>>>>> master
 
     ylabel_map = {
         "pdr": f"Packet Delivery Ratio {y_unit}",
