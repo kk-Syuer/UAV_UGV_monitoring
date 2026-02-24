@@ -72,23 +72,34 @@ def load_tables(input_root: Path) -> list[Table]:
         candidate_csvs = non_summary_csvs
 
     tables: list[Table] = []
+    read_failures: list[str] = []
     for p in candidate_csvs:
         try:
             raw = pd.read_csv(p)
-        except Exception:
-            continue
-        if raw.empty:
+        except Exception as exc:
+            read_failures.append(f"{p.name}: {exc}")
             continue
         raw = _infer_policy_run(p, input_root, raw)
         tables.append(Table(path=p, df=raw))
 
     if not tables:
         listed = "\n".join(f"  - {path.name}" for path in csvs)
+        failures = "\n".join(f"  - {item}" for item in read_failures) if read_failures else "  - (none)"
         raise RuntimeError(
             "No usable non-summary CSV tables were found. "
             f"Directory scanned: {input_root}\n"
-            f"Files seen ({len(csvs)}):\n{listed}"
+            f"Files seen ({len(csvs)}):\n{listed}\n"
+            f"Read failures ({len(read_failures)}):\n{failures}"
         )
+
+    if all(t.df.empty for t in tables):
+        listed = "\n".join(f"  - {t.path.name} (rows={len(t.df)})" for t in tables)
+        raise RuntimeError(
+            "All non-summary CSV tables are readable but empty; cannot build plots from empty data. "
+            f"Directory scanned: {input_root}\n"
+            f"Tables loaded ({len(tables)}):\n{listed}"
+        )
+
     return tables
 
 
@@ -119,7 +130,7 @@ def build_pdr_frame(tables: list[Table]) -> pd.DataFrame:
     pieces: list[pd.DataFrame] = []
     for t in tables:
         df = t.df
-        pdr_col = _first_present(df.columns, ["pdr", "delivery_ratio", "packet_delivery_ratio"])
+        pdr_col = _first_present(df.columns, ["pdr", "pdr_overall", "delivery_ratio", "packet_delivery_ratio"])
         num_col = _first_present(df.columns, ["delivered", "delivered_packets", "rx_packets", "received"])
         den_col = _first_present(df.columns, ["sent", "tx_packets", "total_packets", "generated_packets", "attempted"])
 
