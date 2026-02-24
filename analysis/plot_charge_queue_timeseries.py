@@ -31,6 +31,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out_dir", type=Path, default=Path("analysis/test_round1"))
     p.add_argument("--metric", required=True, choices=["queue_len", "utilisation", "active_sessions", "mean_wait"])
     p.add_argument("--role_scope", default="all", choices=["all", "ch", "member"])
+    p.add_argument(
+        "--plot_mode",
+        choices=["mean", "raw_step"],
+        default="mean",
+        help="mean: aggregate each run and plot cross-run mean (+ CI when available); raw_step: plot per-run step curves.",
+    )
     return p.parse_args()
 
 
@@ -109,6 +115,7 @@ def main() -> int:
         return 1
 
     fig, ax = plt.subplots(figsize=(10, 5))
+    used_multirun_mean = False
 
     for policy_dir in policies:
         csv_path = policy_dir / "charge_queue_timeseries.csv"
@@ -137,6 +144,15 @@ def main() -> int:
                 series.loc[neg_mask, col] = np.nan
             series = series.dropna(subset=[col])
 
+            if args.plot_mode == "raw_step":
+                frac_mask = ~np.isclose(series[col] % 1, 0)
+                frac_count = int(frac_mask.fillna(False).sum())
+                if frac_count:
+                    print(
+                        f"WARNING [{policy_dir.name}]: queue_len has {frac_count} non-integer raw samples",
+                        file=sys.stderr,
+                    )
+
         if args.metric == "utilisation":
             out_mask = (~series[col].between(0, 1)).fillna(False)
             out_count = int(out_mask.sum())
@@ -144,7 +160,23 @@ def main() -> int:
                 print(f"WARNING [{policy_dir.name}]: clamping {out_count} utilisation rows outside [0,1]", file=sys.stderr)
                 series[col] = series[col].clip(0, 1)
 
-        if "run_id" in series.columns and series["run_id"].nunique(dropna=True) > 1:
+        if args.plot_mode == "raw_step" and "run_id" in series.columns and series["run_id"].nunique(dropna=True) > 1:
+            labeled_policy = False
+            for _, run_part in series.groupby("run_id"):
+                run_curve = run_part.groupby("time", as_index=False)[col].mean().sort_values("time")
+                ax.step(
+                    run_curve["time"],
+                    run_curve[col],
+                    where="post",
+                    alpha=0.25,
+                    linewidth=1,
+                    label=policy_dir.name if not labeled_policy else None,
+                )
+                labeled_policy = True
+        elif args.plot_mode == "raw_step":
+            agg = series.groupby("time", as_index=False)[col].mean().sort_values("time")
+            ax.step(agg["time"], agg[col], where="post", label=policy_dir.name)
+        elif "run_id" in series.columns and series["run_id"].nunique(dropna=True) > 1:
             by_run = series.groupby(["run_id", "time"], as_index=False)[col].mean().sort_values(["run_id", "time"])
             mean_curve = by_run.groupby("time", as_index=False)[col].mean()
             ci_rows = []
@@ -154,6 +186,7 @@ def main() -> int:
             ci = pd.DataFrame(ci_rows, columns=["time", "lo", "hi"]).sort_values("time")
             ax.plot(mean_curve["time"], mean_curve[col], label=policy_dir.name)
             ax.fill_between(ci["time"], ci["lo"], ci["hi"], alpha=0.2)
+            used_multirun_mean = True
         else:
             agg = series.groupby("time", as_index=False)[col].mean().sort_values("time")
             ax.plot(agg["time"], agg[col], label=policy_dir.name)
@@ -164,9 +197,14 @@ def main() -> int:
         "active_sessions": "Active charging sessions (count)",
         "mean_wait": "Mean queue wait (ms)",
     }
+    default_title = f"Charge queue dynamics: {args.metric} ({args.role_scope})"
     ax.set_xlabel("Mission time (s)")
-    ax.set_ylabel(ylabel_map[args.metric])
-    ax.set_title(f"Charge queue dynamics: {args.metric} ({args.role_scope})")
+    if args.metric == "queue_len" and args.plot_mode == "mean" and used_multirun_mean:
+        ax.set_ylabel("Mean queue length (vehicles)")
+        ax.set_title(f"{default_title} — CI reflects run-to-run variation")
+    else:
+        ax.set_ylabel(ylabel_map[args.metric])
+        ax.set_title(default_title)
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
     fig.tight_layout()
