@@ -146,7 +146,7 @@ def main() -> int:
             print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
             return 1
         global_end = float(min(ends))
-        print(f"INFO: using common mission-time end = {global_end:.2f}s", file=sys.stderr)
+        print(f"INFO: global truncation window end = {global_end:.2f}s (policy=common_window)", file=sys.stderr)
 
     fig, ax = plt.subplots(figsize=(10, 5))
     table_rows: list[dict] = []
@@ -158,11 +158,29 @@ def main() -> int:
             print(f"ERROR [{policy_dir.name}]: {exc}", file=sys.stderr)
             return 1
 
+        policy_raw_end = float(d["time"].max()) if not d.empty else np.nan
+        policy_cutoff = global_end if args.align_mission_time == "common_window" else policy_raw_end
+        trunc_applied = bool(args.align_mission_time == "common_window" and pd.notna(policy_raw_end) and policy_raw_end > global_end)
+        print(
+            f"INFO [{policy_dir.name}]: effective truncation window end = {policy_cutoff:.2f}s "
+            f"(applied={trunc_applied})",
+            file=sys.stderr,
+        )
+
         if args.align_mission_time == "common_window":
             d = d[d["time"] <= global_end].copy()
 
         if d.empty:
-            table_rows.append({"policy": policy_dir.name, "runs": 0, "mean_final_death_events": 0.0, "std_final_death_events": 0.0})
+            table_rows.append(
+                {
+                    "policy": policy_dir.name,
+                    "runs": 0,
+                    "mean_final_death_events": 0.0,
+                    "std_final_death_events": 0.0,
+                    "truncation_applied": trunc_applied,
+                    "truncation_cutoff_s": policy_cutoff,
+                }
+            )
             ax.plot([0.0], [0.0], label=policy_dir.name)
             continue
 
@@ -202,6 +220,8 @@ def main() -> int:
                 "runs": int(len(finals)),
                 "mean_final_death_events": float(np.mean(finals)) if len(finals) else 0.0,
                 "std_final_death_events": float(np.std(finals, ddof=0)) if len(finals) else 0.0,
+                "truncation_applied": trunc_applied,
+                "truncation_cutoff_s": policy_cutoff,
             }
         )
 
@@ -209,7 +229,8 @@ def main() -> int:
     ax.set_xlabel("Mission time (s)")
     ax.set_ylabel("Cumulative death events (count)")
 
-    ax.set_title(f"Cumulative death events over mission time ({role_title})")
+    suffix = " (common window)" if args.align_mission_time == "common_window" else ""
+    ax.set_title(f"Cumulative death events over mission time ({role_title}){suffix}")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
     fig.tight_layout()

@@ -27,7 +27,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out_dir", type=Path, default=Path("analysis/test_round1"))
     p.add_argument("--pdr_threshold", type=float, default=0.5)
     p.add_argument("--min_duration", type=float, default=10.0)
+    p.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate all policies to a shared mission-time window for fair visual comparison.",
+    )
     return p.parse_args()
+
+
+def _policy_mission_end(policy_dir: Path) -> float:
+    csv_path = policy_dir / "network_timeseries.csv"
+    if not csv_path.exists():
+        return np.nan
+    n = load_csv_with_hints(csv_path)
+    if "time" not in n.columns:
+        return np.nan
+    n = safe_numeric(n, ["time"])
+    n = align_time_seconds(n, "time")
+    t = n["time"].dropna()
+    return float(t.max()) if not t.empty else np.nan
 
 
 def _time_to_collapse(df: pd.DataFrame, threshold: float, min_duration: float) -> float:
@@ -54,6 +73,19 @@ def main() -> int:
     policies = discover_policy_dirs(args.data_root)
     ttc_rows = []
 
+    global_end = np.nan
+    if args.align_mission_time == "common_window":
+        ends = []
+        for p in policies:
+            end_t = _policy_mission_end(p)
+            if pd.notna(end_t):
+                ends.append(float(end_t))
+        if not ends:
+            print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
+            return 1
+        global_end = float(min(ends))
+        print(f"INFO: global truncation window end = {global_end:.2f}s (policy=common_window)", file=sys.stderr)
+
     for p in policies:
         n = load_csv_with_hints(p / "network_timeseries.csv")
         numeric_cols = ["time", "window_pdr"]
@@ -62,6 +94,16 @@ def main() -> int:
         n = safe_numeric(n, numeric_cols)
         n = align_time_seconds(n, "time")
         n = n.dropna(subset=["time"])
+
+        policy_raw_end = float(n["time"].max()) if not n.empty else np.nan
+        policy_cutoff = global_end if args.align_mission_time == "common_window" else policy_raw_end
+        trunc_applied = bool(args.align_mission_time == "common_window" and pd.notna(policy_raw_end) and policy_raw_end > global_end)
+        print(
+            f"INFO [{p.name}]: effective truncation window end = {policy_cutoff:.2f}s (applied={trunc_applied})",
+            file=sys.stderr,
+        )
+        if args.align_mission_time == "common_window":
+            n = n[n["time"] <= global_end].copy()
 
         mask_window_generated = (
             n["window_generated"].le(0) if "window_generated" in n.columns else pd.Series(False, index=n.index)
@@ -83,11 +125,20 @@ def main() -> int:
             part = part.sort_values("time")
             ax.plot(part["time"], part["window_pdr"], alpha=0.5)
             ttc = _time_to_collapse(part, args.pdr_threshold, args.min_duration)
-            ttc_rows.append({"policy": p.name, "run_id": run, "time_to_collapse_s": ttc})
+            ttc_rows.append(
+                {
+                    "policy": p.name,
+                    "run_id": run,
+                    "time_to_collapse_s": ttc,
+                    "truncation_applied": trunc_applied,
+                    "truncation_cutoff_s": policy_cutoff,
+                }
+            )
         ax.axhline(args.pdr_threshold, color="red", ls="--", label="threshold")
         ax.set_xlabel("Mission time (s)")
         ax.set_ylabel("PDR (ratio)")
-        ax.set_title(f"Collapse threshold PDR timeseries: {p.name}")
+        suffix = " (common window)" if args.align_mission_time == "common_window" else ""
+        ax.set_title(f"Collapse threshold PDR timeseries: {p.name}{suffix}")
         ax.grid(alpha=0.3)
         ax.legend(loc="best")
         fig.tight_layout()
@@ -104,7 +155,8 @@ def main() -> int:
     ax.boxplot(data, labels=labels)
     ax.set_xlabel("Policy")
     ax.set_ylabel("Time-to-collapse (s)")
-    ax.set_title("Time-to-collapse by policy")
+    suffix = " (common window)" if args.align_mission_time == "common_window" else ""
+    ax.set_title(f"Time-to-collapse by policy{suffix}")
     ax.grid(axis="y", alpha=0.3)
     fig.tight_layout()
     out = args.out_dir / "time_to_collapse_boxplot"

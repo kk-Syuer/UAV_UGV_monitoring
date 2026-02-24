@@ -33,11 +33,31 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--metric", required=True, choices=["pdr", "delay", "jitter"])
     parser.add_argument("--flow_filter", default="ALL", choices=FLOW_CHOICES)
     parser.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate all policies to a shared mission-time window for fair visual comparison.",
+    )
+    parser.add_argument(
         "--shade_ch_failures",
         action="store_true",
         help="Annotate CH failure periods (status_timeseries preferred) or CH death times.",
     )
     return parser.parse_args()
+
+
+def _policy_mission_end(policy_dir: Path) -> float:
+    csv_path = policy_dir / "network_timeseries.csv"
+    if not csv_path.exists():
+        return np.nan
+    df = load_csv_with_hints(csv_path)
+    if "time" not in df.columns:
+        return np.nan
+    df = safe_numeric(df, ["time"])
+    df = align_time_seconds(df, "time")
+    df, _ = drop_time_resets(df, "time")
+    t = df["time"].dropna()
+    return float(t.max()) if not t.empty else np.nan
 
 
 def metric_column(df: pd.DataFrame, metric: str, flow_filter: str) -> tuple[str, str]:
@@ -168,6 +188,22 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    global_end = np.nan
+    if args.align_mission_time == "common_window":
+        ends = []
+        for p in policies:
+            try:
+                end_t = _policy_mission_end(p)
+                if pd.notna(end_t):
+                    ends.append(float(end_t))
+            except Exception as exc:
+                print(f"WARNING [{p.name}]: failed to estimate mission end time: {exc}", file=sys.stderr)
+        if not ends:
+            print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
+            return 1
+        global_end = float(min(ends))
+        print(f"INFO: global truncation window end = {global_end:.2f}s (policy=common_window)", file=sys.stderr)
+
     fig, ax = plt.subplots(figsize=(10, 5))
     y_unit = ""
 
@@ -193,6 +229,17 @@ def main() -> int:
 
         series_cols = ["time", col] + ([generated_col] if generated_col else []) + (["run_id"] if "run_id" in df.columns else [])
         series = df[series_cols].dropna(subset=["time", col]).copy()
+
+        policy_raw_end = float(series["time"].max()) if not series.empty else np.nan
+        policy_cutoff = global_end if args.align_mission_time == "common_window" else policy_raw_end
+        trunc_applied = bool(args.align_mission_time == "common_window" and pd.notna(policy_raw_end) and policy_raw_end > global_end)
+        print(
+            f"INFO [{policy_dir.name}]: effective truncation window end = {policy_cutoff:.2f}s (applied={trunc_applied})",
+            file=sys.stderr,
+        )
+        if args.align_mission_time == "common_window":
+            series = series[series["time"] <= global_end].copy()
+
         if args.metric == "pdr":
             masked_no_traffic = np.zeros(len(series), dtype=bool)
             if generated_col:
@@ -214,11 +261,7 @@ def main() -> int:
             print(f"INFO [{policy_dir.name}]: PDR plotted only where generated>0", file=sys.stderr)
 
         if "run_id" in series.columns and series["run_id"].nunique(dropna=True) > 1:
-            by_run = (
-                series.groupby(["run_id", "time"], as_index=False)[col]
-                .mean()
-                .sort_values(["run_id", "time"])
-            )
+            by_run = series.groupby(["run_id", "time"], as_index=False)[col].mean().sort_values(["run_id", "time"])
             mean_curve = by_run.groupby("time", as_index=False)[col].mean()
             ci_rows = []
             for t, part in by_run.groupby("time"):
@@ -244,6 +287,8 @@ def main() -> int:
     title = f"Network {args.metric.upper()} over mission time"
     if args.metric == "pdr":
         title += " (generated>0 only)"
+    if args.align_mission_time == "common_window":
+        title += " (common window)"
     ax.set_title(title)
     ax.grid(alpha=0.3)
     ax.legend(loc="best")

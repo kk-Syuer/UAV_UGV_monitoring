@@ -32,12 +32,32 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--metric", required=True, choices=["queue_len", "utilisation", "active_sessions", "mean_wait"])
     p.add_argument("--role_scope", default="all", choices=["all", "ch", "member"])
     p.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate all policies to a shared mission-time window for fair visual comparison.",
+    )
+    p.add_argument(
         "--plot_mode",
         choices=["mean", "raw_step"],
         default="mean",
         help="mean: aggregate each run and plot cross-run mean (+ CI when available); raw_step: plot per-run step curves.",
     )
     return p.parse_args()
+
+
+def _policy_mission_end(policy_dir: Path) -> float:
+    csv_path = policy_dir / "charge_queue_timeseries.csv"
+    if not csv_path.exists():
+        return np.nan
+    df = load_csv_with_hints(csv_path)
+    if "time" not in df.columns:
+        return np.nan
+    df = safe_numeric(df, ["time"])
+    df = align_time_seconds(df, "time")
+    df, _ = drop_time_resets(df, "time")
+    t = df["time"].dropna()
+    return float(t.max()) if not t.empty else np.nan
 
 
 def resolve_metric_column(df: pd.DataFrame, metric: str, role_scope: str) -> tuple[str, str]:
@@ -114,6 +134,22 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    global_end = np.nan
+    if args.align_mission_time == "common_window":
+        ends = []
+        for p in policies:
+            try:
+                end_t = _policy_mission_end(p)
+                if pd.notna(end_t):
+                    ends.append(float(end_t))
+            except Exception as exc:
+                print(f"WARNING [{p.name}]: failed to estimate mission end time: {exc}", file=sys.stderr)
+        if not ends:
+            print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
+            return 1
+        global_end = float(min(ends))
+        print(f"INFO: global truncation window end = {global_end:.2f}s (policy=common_window)", file=sys.stderr)
+
     fig, ax = plt.subplots(figsize=(10, 5))
     used_multirun_mean = False
 
@@ -135,6 +171,16 @@ def main() -> int:
             print(f"WARNING [{policy_dir.name}]: dropped {dropped} rows with decreasing time", file=sys.stderr)
 
         series = df[["time", col] + (["run_id"] if "run_id" in df.columns else [])].dropna(subset=["time", col]).copy()
+
+        policy_raw_end = float(series["time"].max()) if not series.empty else np.nan
+        policy_cutoff = global_end if args.align_mission_time == "common_window" else policy_raw_end
+        trunc_applied = bool(args.align_mission_time == "common_window" and pd.notna(policy_raw_end) and policy_raw_end > global_end)
+        print(
+            f"INFO [{policy_dir.name}]: effective truncation window end = {policy_cutoff:.2f}s (applied={trunc_applied})",
+            file=sys.stderr,
+        )
+        if args.align_mission_time == "common_window":
+            series = series[series["time"] <= global_end].copy()
 
         if args.metric == "queue_len":
             neg_mask = series[col].lt(0).fillna(False)
@@ -198,6 +244,8 @@ def main() -> int:
         "mean_wait": "Mean queue wait (ms)",
     }
     default_title = f"Charge queue dynamics: {args.metric} ({args.role_scope})"
+    if args.align_mission_time == "common_window":
+        default_title += " (common window)"
     ax.set_xlabel("Mission time (s)")
     if args.metric == "queue_len" and args.plot_mode == "mean" and used_multirun_mean:
         ax.set_ylabel("Mean queue length (vehicles)")
