@@ -26,6 +26,7 @@ RNG = np.random.default_rng(42)
 EPS = 1e-6
 
 
+
 def parse_args() -> argparse.Namespace:
     p = argparse.ArgumentParser(description="Plot cumulative death events over mission time")
     p.add_argument("--data_root", required=True, type=Path)
@@ -113,6 +114,7 @@ def _prepare_events(policy_dir: Path, role: str) -> pd.DataFrame:
 
     # Ensure curves always start from (t=0, y=0); move death instants infinitesimally to the right.
     d["time"] = d["time"] + EPS
+
     return d
 
 
@@ -206,6 +208,7 @@ def main() -> int:
     role_title = {"ALL": "all UAV", "CH": "CH only", "MEMBER": "member only"}[args.role]
     ax.set_xlabel("Mission time (s)")
     ax.set_ylabel("Cumulative death events (count)")
+
     ax.set_title(f"Cumulative death events over mission time ({role_title})")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
