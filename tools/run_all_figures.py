@@ -49,6 +49,10 @@ def main() -> int:
         [py, "-m", "tools.plot_collapse_threshold", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
         [py, "-m", "tools.plot_death_events_timeseries", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir), "--role", "ALL"],
         [py, "-m", "tools.plot_energy_charged_timeseries", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir), "--role", "ALL"],
+        [py, "-m", "tools.plot_charge_priority_scatter", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
+        [py, "-m", "tools.plot_round1_network_robustness", "--input-root", str(a.data_root), "--output-dir", str(a.out_dir)],
+        [py, "-m", "tools.plot_round1_uav_battery_timeseries", "--input-root", str(a.data_root), "--output-dir", str(a.out_dir)],
+        [py, "-m", "tools.plot_ugv_locker_usage_comparison", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
     ]
 
     try:
