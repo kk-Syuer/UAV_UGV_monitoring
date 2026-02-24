@@ -72,6 +72,13 @@ def write_csv(path: Path, rows: Iterable[Dict[str, object]], fieldnames: Sequenc
             writer.writerow(row)
 
 
+def write_manifest(out_dir: Path, generated_csvs: Sequence[Path]) -> None:
+    manifest_path = out_dir / "manifest.txt"
+    with manifest_path.open("w", encoding="utf-8") as f:
+        for csv_path in generated_csvs:
+            f.write(f"{csv_path.resolve()}\n")
+
+
 def corr(xs: List[float], ys: List[float]) -> Optional[float]:
     if len(xs) < 2 or len(ys) < 2 or len(xs) != len(ys):
         return None
@@ -326,38 +333,87 @@ def main() -> None:
                 }
             )
 
+    generated_csvs: List[Path] = []
+
+    csv_path = out_dir / "messages_tidy.csv"
     write_csv(
-        out_dir / "messages_tidy.csv",
+        csv_path,
         messages_tidy,
         ["policy", "run", "message_index", "delivered", "control_type", "msg_type", "e2e_delay_ms"],
     )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "pdr_overall_per_run.csv"
     write_csv(
-        out_dir / "pdr_overall_per_run.csv",
+        csv_path,
         pdr_overall_rows,
         ["policy", "run", "messages_total", "messages_delivered", "pdr_overall"],
     )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "pdr_by_type_per_run.csv"
     write_csv(
-        out_dir / "pdr_by_type_per_run.csv",
+        csv_path,
         pdr_by_type_rows,
         ["policy", "run", "category", "messages_total", "messages_delivered", "pdr"],
     )
-    write_csv(out_dir / "delay_samples.csv", delay_rows, ["policy", "run", "message_index", "delay_ms"])
-    write_csv(out_dir / "death_events_tidy.csv", death_rows, ["policy", "run", "uav_id", "event_time"])
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "pdr_raw.csv"
+    write_csv(csv_path, pdr_overall_rows, ["policy", "run", "messages_total", "messages_delivered", "pdr_overall"])
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "delay_samples.csv"
+    write_csv(csv_path, delay_rows, ["policy", "run", "message_index", "delay_ms"])
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "delay_raw.csv"
+    write_csv(csv_path, delay_rows, ["policy", "run", "message_index", "delay_ms"])
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "death_events_tidy.csv"
+    write_csv(csv_path, death_rows, ["policy", "run", "uav_id", "event_time"])
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "charge_wait_samples.csv"
     write_csv(
-        out_dir / "charge_wait_samples.csv",
+        csv_path,
         wait_rows,
         ["policy", "run", "role", "wait_time", "request_time", "dock_start_time"],
     )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "charging_sessions_raw.csv"
     write_csv(
-        out_dir / "charge_throughput_per_run.csv",
+        csv_path,
+        wait_rows,
+        ["policy", "run", "role", "wait_time", "request_time", "dock_start_time"],
+    )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "charge_throughput_per_run.csv"
+    write_csv(
+        csv_path,
         throughput_rows,
         ["policy", "run", "successful_charges", "successful_charges_per_hour", "total_charged_energy"],
     )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "queue_timeseries_tidy.csv"
     write_csv(
-        out_dir / "queue_timeseries_tidy.csv",
+        csv_path,
         queue_rows,
         ["policy", "run", "time", "queue_column", "queue_value", "queue_label"],
     )
+    generated_csvs.append(csv_path)
+
+    csv_path = out_dir / "queue_raw.csv"
+    write_csv(
+        csv_path,
+        queue_rows,
+        ["policy", "run", "time", "queue_column", "queue_value", "queue_label"],
+    )
+    generated_csvs.append(csv_path)
 
     contract_path = out_dir / "data_contract.md"
     with contract_path.open("w", encoding="utf-8") as f:
@@ -371,6 +427,8 @@ def main() -> None:
             f.write(
                 f"| `{fname}` | {entry['present_runs']} | {', '.join(cols) if cols else '(none found)'} | {entry['semantics']} |\n"
             )
+
+    write_manifest(out_dir, generated_csvs)
 
     print(f"WARN: pdr_bins_with_zero_denominator={pdr_zero_denominator_bins} (set to NaN)")
     if non_integer_queue_columns:
