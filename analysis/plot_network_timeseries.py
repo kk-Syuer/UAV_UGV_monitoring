@@ -182,19 +182,36 @@ def main() -> int:
             print(f"ERROR [{policy_dir.name}]: {exc}", file=sys.stderr)
             return 1
 
+        generated_col = "window_generated" if "window_generated" in df.columns else None
+        numeric_cols = ["time", col] + ([generated_col] if generated_col else [])
         y_unit = "(ratio)" if args.metric == "pdr" else f"({unit})"
-        df = safe_numeric(df, ["time", col])
+        df = safe_numeric(df, numeric_cols)
         df = align_time_seconds(df, "time")
         df, dropped = drop_time_resets(df, "time")
         if dropped:
             print(f"WARNING [{policy_dir.name}]: dropped {dropped} rows with decreasing time", file=sys.stderr)
 
-        series = df[["time", col] + (["run_id"] if "run_id" in df.columns else [])].dropna(subset=["time", col]).copy()
+        series_cols = ["time", col] + ([generated_col] if generated_col else []) + (["run_id"] if "run_id" in df.columns else [])
+        series = df[series_cols].dropna(subset=["time", col]).copy()
         if args.metric == "pdr":
-            outside = (~series[col].between(0, 1)).sum()
+            masked_no_traffic = np.zeros(len(series), dtype=bool)
+            if generated_col:
+                masked_no_traffic |= series[generated_col].le(0).to_numpy(dtype=bool)
+            masked_no_traffic |= series[col].lt(0).to_numpy(dtype=bool)
+            masked_count = int(masked_no_traffic.sum())
+            if masked_count:
+                print(
+                    f"WARNING [{policy_dir.name}]: masked {masked_count} PDR bins as no-traffic (generated<=0 or legacy sentinel<0)",
+                    file=sys.stderr,
+                )
+                series.loc[masked_no_traffic, col] = np.nan
+
+            valid_for_clamp = series[col].notna()
+            outside = (~series.loc[valid_for_clamp, col].between(0, 1)).sum()
             if outside:
                 print(f"WARNING [{policy_dir.name}]: {int(outside)} PDR rows outside [0,1], clamping", file=sys.stderr)
             series[col] = series[col].clip(0, 1)
+            print(f"INFO [{policy_dir.name}]: PDR plotted only where generated>0", file=sys.stderr)
 
         if "run_id" in series.columns and series["run_id"].nunique(dropna=True) > 1:
             by_run = (
@@ -224,7 +241,10 @@ def main() -> int:
     }
     ax.set_xlabel("Mission time (s)")
     ax.set_ylabel(ylabel_map[args.metric])
-    ax.set_title(f"Network {args.metric.upper()} over mission time")
+    title = f"Network {args.metric.upper()} over mission time"
+    if args.metric == "pdr":
+        title += " (generated>0 only)"
+    ax.set_title(title)
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
     fig.tight_layout()
