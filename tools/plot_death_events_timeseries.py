@@ -23,6 +23,10 @@ from tools.utils_io import discover_policy_dirs, load_csv_with_hints, require_co
 FONT_SIZE = 12
 N_BOOT = 500
 RNG = np.random.default_rng(42)
+<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
+EPS = 1e-6
+=======
+>>>>>>> master
 
 
 def parse_args() -> argparse.Namespace:
@@ -79,6 +83,11 @@ def _prepare_events(policy_dir: Path, role: str) -> pd.DataFrame:
         d = d[d["role_label"] == target].copy()
 
     d = d.dropna(subset=["time"]).copy()
+<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
+    # Ensure curves always start from (t=0, y=0); move event instants infinitesimally to the right.
+    d["time"] = d["time"].clip(lower=0) + EPS
+=======
+>>>>>>> master
     return d
 
 
@@ -171,7 +180,11 @@ def main() -> int:
 
     role_title = {"ALL": "all UAV", "CH": "CH only", "MEMBER": "member only"}[args.role]
     ax.set_xlabel("Mission time (s)")
+<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
+    ax.set_ylabel("Cumulative death events (count)")
+=======
     ax.set_ylabel("Cumulative death events")
+>>>>>>> master
     ax.set_title(f"Cumulative death events over mission time ({role_title})")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")

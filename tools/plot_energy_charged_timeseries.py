@@ -23,6 +23,7 @@ from tools.utils_io import discover_policy_dirs, load_csv_with_hints, require_co
 FONT_SIZE = 12
 N_BOOT = 500
 RNG = np.random.default_rng(42)
+EPS = 1e-6
 
 
 def parse_args() -> argparse.Namespace:
@@ -83,6 +84,8 @@ def _prepare_charge_events(policy_dir: Path, role: str) -> pd.DataFrame:
 
     c = c.dropna(subset=["time", "energy_recovered"]).copy()
     c = c[c["energy_recovered"] > 0].copy()
+    # Ensure curves always start from (t=0, y=0); move charging instants infinitesimally to the right.
+    c["time"] = c["time"].clip(lower=0) + EPS
 
     if role != "ALL":
         require_columns(c, ["role"], c_path)
@@ -142,7 +145,7 @@ def main() -> int:
             c = c[c["time"] <= global_end].copy()
 
         if c.empty:
-            table_rows.append({"policy": policy_dir.name, "runs": 0, "mean_final_energy_recovered": 0.0, "std_final_energy_recovered": 0.0})
+            table_rows.append({"policy": policy_dir.name, "runs": 0, "mean_final_energy_recovered_pctpt": 0.0, "std_final_energy_recovered_pctpt": 0.0})
             ax.plot([0.0], [0.0], label=policy_dir.name)
             continue
 
@@ -179,14 +182,14 @@ def main() -> int:
             {
                 "policy": policy_dir.name,
                 "runs": int(len(finals)),
-                "mean_final_energy_recovered": float(np.mean(finals)) if len(finals) else 0.0,
-                "std_final_energy_recovered": float(np.std(finals, ddof=0)) if len(finals) else 0.0,
+                "mean_final_energy_recovered_pctpt": float(np.mean(finals)) if len(finals) else 0.0,
+                "std_final_energy_recovered_pctpt": float(np.std(finals, ddof=0)) if len(finals) else 0.0,
             }
         )
 
     role_title = {"ALL": "all UAV", "CH": "CH only", "MEMBER": "member only"}[args.role]
     ax.set_xlabel("Mission time (s)")
-    ax.set_ylabel("Cumulative charged energy")
+    ax.set_ylabel("Cumulative charged energy (battery percentage-points, %pt)")
     ax.set_title(f"Cumulative charged energy over mission time ({role_title})")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
@@ -200,7 +203,7 @@ def main() -> int:
     fig.savefig(svg)
     plt.close(fig)
 
-    summary = pd.DataFrame(table_rows).sort_values("mean_final_energy_recovered", ascending=False)
+    summary = pd.DataFrame(table_rows).sort_values("mean_final_energy_recovered_pctpt", ascending=False)
     summary.to_csv(out / "energy_charged_summary.csv", index=False)
 
     print(f"Saved: {png}")
