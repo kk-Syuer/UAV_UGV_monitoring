@@ -1,0 +1,8 @@
+policy,runs,mean_final_death_events,std_final_death_events
+ugv_p_role_priority,1,3.0,0.0
+ugv_role_priority,1,8.0,0.0
+ugv_p_dynamic_score,1,12.0,0.0
+ugv_fcfs,1,14.0,0.0
+ugv_edf,1,15.0,0.0
+ugv_dynamic,1,18.0,0.0
+ugv_p_edf,1,23.0,0.0

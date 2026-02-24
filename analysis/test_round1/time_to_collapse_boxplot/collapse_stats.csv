@@ -1,0 +1,8 @@
+policy,run_id,time_to_collapse_s
+ugv_dynamic,ugv_dynamic,
+ugv_edf,ugv_edf,0.0
+ugv_fcfs,ugv_fcfs,
+ugv_p_dynamic_score,ugv_p_dynamic_score,0.0
+ugv_p_edf,ugv_p_edf,
+ugv_p_role_priority,ugv_p_role_priority,
+ugv_role_priority,ugv_role_priority,0.0

@@ -1,0 +1,8 @@
+policy,runs,mean_final_energy_recovered_pctpt,std_final_energy_recovered_pctpt
+ugv_edf,1,3918.4857,0.0
+ugv_p_edf,1,3534.1391,0.0
+ugv_dynamic,1,3034.7288,0.0
+ugv_fcfs,1,2195.0398999999998,0.0
+ugv_p_dynamic_score,1,1525.7542,0.0
+ugv_role_priority,1,630.4793,0.0
+ugv_p_role_priority,1,170.9136,0.0
