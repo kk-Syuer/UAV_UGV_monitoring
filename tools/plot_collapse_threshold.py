@@ -38,6 +38,9 @@ def parse_args() -> argparse.Namespace:
 
 def _time_to_collapse(df: pd.DataFrame, threshold: float, min_duration: float) -> float:
     d = df.sort_values("time").copy()
+    d = d.dropna(subset=["window_pdr"])
+    if d.empty:
+        return np.nan
     d["below"] = d["window_pdr"] < threshold
     start = None
     for _, r in d.iterrows():
@@ -59,9 +62,27 @@ def main() -> int:
 
     for p in policies:
         n = load_csv_with_hints(p / "network_timeseries.csv")
-        n = safe_numeric(n, ["time", "window_pdr"])
+        numeric_cols = ["time", "window_pdr"]
+        if "window_generated" in n.columns:
+            numeric_cols.append("window_generated")
+        n = safe_numeric(n, numeric_cols)
         n = align_time_seconds(n, "time")
-        n = n.dropna(subset=["time", "window_pdr"])
+        n = n.dropna(subset=["time"])
+
+        mask_window_generated = (
+            n["window_generated"].le(0) if "window_generated" in n.columns else pd.Series(False, index=n.index)
+        )
+        mask_negative_pdr = n["window_pdr"].lt(0)
+        mask_any = mask_window_generated | mask_negative_pdr
+        n.loc[mask_any, "window_pdr"] = np.nan
+        print(
+            (
+                f"INFO [{p.name}]: masked window_pdr bins total={int(mask_any.sum())} "
+                f"(window_generated<=0: {int(mask_window_generated.sum())}, "
+                f"negative_window_pdr: {int(mask_negative_pdr.sum())})"
+            ),
+            file=sys.stderr,
+        )
 
         if args.align_mission_time == "common_window" and "run_id" in n.columns:
             run_ends = n.groupby("run_id", dropna=True)["time"].max().dropna()
