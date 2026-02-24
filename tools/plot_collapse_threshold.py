@@ -27,6 +27,12 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out_dir", type=Path, default=Path("analysis/test_round1"))
     p.add_argument("--pdr_threshold", type=float, default=0.5)
     p.add_argument("--min_duration", type=float, default=10.0)
+    p.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate per-run timeseries to a shared mission-time window within each policy.",
+    )
     return p.parse_args()
 
 
@@ -57,9 +63,20 @@ def main() -> int:
         n = align_time_seconds(n, "time")
         n = n.dropna(subset=["time", "window_pdr"])
 
+        if args.align_mission_time == "common_window" and "run_id" in n.columns:
+            run_ends = n.groupby("run_id", dropna=True)["time"].max().dropna()
+            if run_ends.empty:
+                print(f"WARNING [{p.name}]: could not infer per-run mission ends; skip alignment", file=sys.stderr)
+            else:
+                global_end = float(run_ends.min())
+                n = n.loc[n["time"] <= global_end].copy()
+                print(f"INFO [{p.name}]: using common mission-time end = {global_end:.2f}s", file=sys.stderr)
+
         fig, ax = plt.subplots(figsize=(10, 4))
         for run, part in n.groupby("run_id") if "run_id" in n.columns else [(p.name, n)]:
             part = part.sort_values("time")
+            if part.empty:
+                continue
             ax.plot(part["time"], part["window_pdr"], alpha=0.5)
             ttc = _time_to_collapse(part, args.pdr_threshold, args.min_duration)
             ttc_rows.append({"policy": p.name, "run_id": run, "time_to_collapse_s": ttc})
