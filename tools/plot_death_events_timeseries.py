@@ -23,10 +23,8 @@ from tools.utils_io import discover_policy_dirs, load_csv_with_hints, require_co
 FONT_SIZE = 12
 N_BOOT = 500
 RNG = np.random.default_rng(42)
-<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
 EPS = 1e-6
-=======
->>>>>>> master
+
 
 
 def parse_args() -> argparse.Namespace:
@@ -66,12 +64,44 @@ def _policy_mission_end(policy_dir: Path) -> float:
     return float(t.max()) if not t.empty else np.nan
 
 
+def _mission_start_by_run(policy_dir: Path) -> dict[str, float]:
+    status_csv = policy_dir / "status_timeseries.csv"
+    if not status_csv.exists():
+        return {}
+    s = load_csv_with_hints(status_csv, dtype_hints={"run_id": "string"})
+    require_columns(s, ["time"], status_csv)
+    s = safe_numeric(s, ["time"])
+    s = s.dropna(subset=["time"]).copy()
+    if s.empty:
+        return {}
+    if "run_id" in s.columns:
+        starts = s.groupby("run_id", dropna=False)["time"].min()
+        return {str(k): float(v) for k, v in starts.items() if pd.notna(v)}
+    return {"__single__": float(s["time"].min())}
+
+
 def _prepare_events(policy_dir: Path, role: str) -> pd.DataFrame:
     d_path = policy_dir / "death_events.csv"
     d = load_csv_with_hints(d_path, dtype_hints={"run_id": "string"})
     require_columns(d, ["time"], d_path)
     d = safe_numeric(d, ["time"])
-    d = align_time_seconds(d, "time")
+
+    starts = _mission_start_by_run(policy_dir)
+    if not starts:
+        raise ValueError("status_timeseries.csv missing/empty; cannot map death times to mission time")
+
+    if "run_id" in d.columns:
+        d["_run_key"] = d["run_id"].astype(str)
+        d["_start_time"] = d["_run_key"].map(starts)
+    else:
+        fallback = starts.get("__single__", min(starts.values()))
+        d["_start_time"] = fallback
+        d["run_id"] = policy_dir.name
+
+    d["time"] = d["time"] - d["_start_time"]
+    d = d.dropna(subset=["time"]).copy()
+    d = d[d["time"] >= 0].copy()
+
     d, dropped = drop_time_resets(d, "time")
     if dropped:
         print(f"WARNING [{policy_dir.name}]: dropped {dropped} rows with decreasing time", file=sys.stderr)
@@ -82,12 +112,9 @@ def _prepare_events(policy_dir: Path, role: str) -> pd.DataFrame:
         target = "CH" if role == "CH" else "member"
         d = d[d["role_label"] == target].copy()
 
-    d = d.dropna(subset=["time"]).copy()
-<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
-    # Ensure curves always start from (t=0, y=0); move event instants infinitesimally to the right.
-    d["time"] = d["time"].clip(lower=0) + EPS
-=======
->>>>>>> master
+    # Ensure curves always start from (t=0, y=0); move death instants infinitesimally to the right.
+    d["time"] = d["time"] + EPS
+
     return d
 
 
@@ -180,11 +207,8 @@ def main() -> int:
 
     role_title = {"ALL": "all UAV", "CH": "CH only", "MEMBER": "member only"}[args.role]
     ax.set_xlabel("Mission time (s)")
-<<<<<<< codex/locate-command-to-retrieve-generated-images-juc99x
     ax.set_ylabel("Cumulative death events (count)")
-=======
-    ax.set_ylabel("Cumulative death events")
->>>>>>> master
+
     ax.set_title(f"Cumulative death events over mission time ({role_title})")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
