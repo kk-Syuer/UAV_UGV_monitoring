@@ -37,6 +37,18 @@ def parse_args() -> argparse.Namespace:
         action="store_true",
         help="Annotate CH failure periods (status_timeseries preferred) or CH death times.",
     )
+    parser.add_argument(
+        "--exclude_policies",
+        nargs="*",
+        default=[],
+        help="Policy directory names to skip (e.g., ugv_p_role_priority).",
+    )
+    parser.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate all policies to a shared mission-time window for fair visual comparison.",
+    )
     return parser.parse_args()
 
 
@@ -168,6 +180,34 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    excluded = set(args.exclude_policies)
+    policies = [p for p in policies if p.name not in excluded]
+    if not policies:
+        print("ERROR: no policy directories left after applying exclude_policies", file=sys.stderr)
+        return 1
+
+    global_end = np.nan
+    if args.align_mission_time == "common_window":
+        policy_ends: list[float] = []
+        for policy_dir in policies:
+            csv_path = policy_dir / "network_timeseries.csv"
+            try:
+                end_df = load_csv_with_hints(csv_path)
+                require_columns(end_df, ["time"], csv_path)
+                end_df = safe_numeric(end_df, ["time"])
+                end_df = align_time_seconds(end_df, "time")
+                end_df, _ = drop_time_resets(end_df, "time")
+                times = end_df["time"].dropna()
+                if not times.empty:
+                    policy_ends.append(float(times.max()))
+            except Exception as exc:
+                print(f"WARNING [{policy_dir.name}]: failed to estimate mission end time: {exc}", file=sys.stderr)
+        if not policy_ends:
+            print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
+            return 1
+        global_end = float(min(policy_ends))
+        print(f"INFO: using common mission-time end = {global_end:.2f}s", file=sys.stderr)
+
     fig, ax = plt.subplots(figsize=(10, 5))
     y_unit = ""
 
@@ -190,6 +230,11 @@ def main() -> int:
             print(f"WARNING [{policy_dir.name}]: dropped {dropped} rows with decreasing time", file=sys.stderr)
 
         series = df[["time", col] + (["run_id"] if "run_id" in df.columns else [])].dropna(subset=["time", col]).copy()
+        if args.align_mission_time == "common_window":
+            series = series.loc[series["time"] <= global_end].copy()
+            if series.empty:
+                print(f"WARNING [{policy_dir.name}]: empty after mission-time alignment; skipping", file=sys.stderr)
+                continue
         if args.metric == "pdr":
             outside = (~series[col].between(0, 1)).sum()
             if outside:

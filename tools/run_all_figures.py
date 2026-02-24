@@ -47,6 +47,8 @@ def main() -> int:
         [py, "-m", "tools.plot_pdr_aligned_to_failure", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
         [py, "-m", "tools.plot_policy_radar", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
         [py, "-m", "tools.plot_collapse_threshold", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir)],
+        [py, "-m", "tools.plot_death_events_timeseries", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir), "--role", "ALL"],
+        [py, "-m", "tools.plot_energy_charged_timeseries", "--data_root", str(a.data_root), "--out_dir", str(a.out_dir), "--role", "ALL"],
     ]
 
     try:
