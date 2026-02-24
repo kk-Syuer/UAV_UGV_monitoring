@@ -31,7 +31,26 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--out_dir", type=Path, default=Path("analysis/test_round1"))
     p.add_argument("--metric", required=True, choices=["queue_len", "utilisation", "active_sessions", "mean_wait"])
     p.add_argument("--role_scope", default="all", choices=["all", "ch", "member"])
+    p.add_argument(
+        "--align_mission_time",
+        choices=["none", "common_window"],
+        default="common_window",
+        help="Truncate all policies to a shared mission-time window for fair visual comparison.",
+    )
     return p.parse_args()
+
+
+def _policy_mission_end(policy_dir: Path) -> float:
+    status_csv = policy_dir / "status_timeseries.csv"
+    if not status_csv.exists():
+        return np.nan
+    s = load_csv_with_hints(status_csv)
+    require_columns(s, ["time"], status_csv)
+    s = safe_numeric(s, ["time"])
+    s = align_time_seconds(s, "time")
+    s, _ = drop_time_resets(s, "time")
+    t = s["time"].dropna()
+    return float(t.max()) if not t.empty else np.nan
 
 
 def resolve_metric_column(df: pd.DataFrame, metric: str, role_scope: str) -> tuple[str, str]:
@@ -108,7 +127,26 @@ def main() -> int:
         print(f"ERROR: {exc}", file=sys.stderr)
         return 1
 
+    global_end = np.nan
+    policy_window_end: dict[str, float] = {}
+    if args.align_mission_time == "common_window":
+        ends = []
+        for p in policies:
+            try:
+                end_t = _policy_mission_end(p)
+                if pd.notna(end_t):
+                    policy_window_end[p.name] = float(end_t)
+                    ends.append(float(end_t))
+            except Exception as exc:
+                print(f"WARNING [{p.name}]: failed to estimate mission end time: {exc}", file=sys.stderr)
+        if not ends:
+            print("ERROR: could not infer mission end times for alignment", file=sys.stderr)
+            return 1
+        global_end = float(min(ends))
+        print(f"INFO: using common mission-time end = {global_end:.2f}s", file=sys.stderr)
+
     fig, ax = plt.subplots(figsize=(10, 5))
+    summary_rows: list[dict] = []
 
     for policy_dir in policies:
         csv_path = policy_dir / "charge_queue_timeseries.csv"
@@ -128,6 +166,15 @@ def main() -> int:
             print(f"WARNING [{policy_dir.name}]: dropped {dropped} rows with decreasing time", file=sys.stderr)
 
         series = df[["time", col] + (["run_id"] if "run_id" in df.columns else [])].dropna(subset=["time", col]).copy()
+
+        if args.align_mission_time == "common_window":
+            series = series[series["time"] <= global_end].copy()
+            end_report = policy_window_end.get(policy_dir.name, np.nan)
+            if pd.notna(end_report):
+                print(
+                    f"INFO [{policy_dir.name}]: truncation window policy_end={end_report:.2f}s, effective_end={global_end:.2f}s",
+                    file=sys.stderr,
+                )
 
         if args.metric == "queue_len":
             neg_mask = series[col].lt(0).fillna(False)
@@ -158,6 +205,18 @@ def main() -> int:
             agg = series.groupby("time", as_index=False)[col].mean().sort_values("time")
             ax.plot(agg["time"], agg[col], label=policy_dir.name)
 
+        valid_vals = series[col].dropna().to_numpy(dtype=float)
+        summary_rows.append(
+            {
+                "policy": policy_dir.name,
+                "rows": int(len(valid_vals)),
+                "mean_value": float(np.mean(valid_vals)) if len(valid_vals) else np.nan,
+                "std_value": float(np.std(valid_vals, ddof=0)) if len(valid_vals) else np.nan,
+                "truncation_applied": args.align_mission_time == "common_window",
+                "truncation_cutoff_s": global_end if args.align_mission_time == "common_window" else np.nan,
+            }
+        )
+
     ylabel_map = {
         "queue_len": "Queue length (vehicles)",
         "utilisation": "Dock utilisation (ratio)",
@@ -166,7 +225,8 @@ def main() -> int:
     }
     ax.set_xlabel("Mission time (s)")
     ax.set_ylabel(ylabel_map[args.metric])
-    ax.set_title(f"Charge queue dynamics: {args.metric} ({args.role_scope})")
+    title_suffix = " (common window)" if args.align_mission_time == "common_window" else ""
+    ax.set_title(f"Charge queue dynamics: {args.metric} ({args.role_scope}){title_suffix}")
     ax.grid(alpha=0.3)
     ax.legend(loc="best")
     fig.tight_layout()
@@ -177,8 +237,12 @@ def main() -> int:
     fig.savefig(pdf)
     plt.close(fig)
 
+    summary = pd.DataFrame(summary_rows)
+    summary.to_csv(target_dir / "charge_queue_summary.csv", index=False)
+
     print(f"Saved: {png}")
     print(f"Saved: {pdf}")
+    print(f"Saved: {target_dir / 'charge_queue_summary.csv'}")
     return 0
 
 
