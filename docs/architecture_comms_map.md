@@ -112,6 +112,7 @@ No action servers or action clients were detected in node source code (action de
 - Nodes are boxed and grouped by subsystem/package clusters.
 - Topics are ellipse nodes with type labels.
 - `/fanet/network_bus_raw`, `/fanet/network_bus`, and `/fanet/delivered` edges are emphasized with bold styling.
+- Layout tuning uses orthogonal splines, topic backbone rank constraints, and edge concentration to produce cleaner circuit-like routing with fewer overlaps.
 
 ## Runtime validation commands (recommended)
 
