@@ -1006,9 +1006,28 @@ private:
     if (waiting_for_acks_ && pending_acks_.empty() && !motion_start_sent_) {
       sendMotionStart();
       motion_start_sent_ = true;
+      motion_start_resend_remaining_ = 10;  // retry broadcast for ~20 s
       waiting_for_acks_ = false;
       RCLCPP_INFO(this->get_logger(),
                   "Coverage planner: all ACKs received, MOTION_START broadcasted.");
+    }
+
+    // Keep re-sending a broadcast MOTION_START until the retry budget is
+    // exhausted.  This covers fault-injector drops and routing-table races
+    // that can swallow the initial one-shot send.
+    if (motion_start_sent_ && motion_start_resend_remaining_ > 0) {
+      --motion_start_resend_remaining_;
+      uav_msgs::msg::TrafficMessage bcast;
+      bcast.msg_id = "MOTION_START_broadcast_" +
+                     std::to_string(deployment_seq_++);
+      bcast.src_id = planner_id_;
+      bcast.dst_id = "broadcast";
+      bcast.flow_type = 1;
+      bcast.creation_time = this->now();
+      bcast.hop_count = 0;
+      bcast.control_type = "MOTION_START";
+      bcast.payload = "";
+      traffic_pub_->publish(bcast);
     }
 
     // Later: only recompute routing if some CH changed backbone state
@@ -2020,6 +2039,7 @@ private:
   bool accept_direct_deployment_;
   bool waiting_for_acks_ = false;
   bool motion_start_sent_ = false;
+  int motion_start_resend_remaining_ = 0;
 
 
   // For network deployment
