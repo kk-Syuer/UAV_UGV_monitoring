@@ -1932,6 +1932,25 @@ private:
                   "[NET-MOTION] to=%s next_hop=%s", dep.uav_id.c_str(),
                   msg.next_hop_id.c_str());
     }
+
+    // Broadcast a routing-independent MOTION_START so that every UAV
+    // unblocks even when the per-UAV routed messages are delayed by
+    // incomplete routing tables or fault-injector drops.
+    {
+      uav_msgs::msg::TrafficMessage bcast;
+      bcast.msg_id = "MOTION_START_broadcast_" +
+                     std::to_string(deployment_seq_++);
+      bcast.src_id = planner_id_;
+      bcast.dst_id = "broadcast";
+      bcast.flow_type = 1;
+      bcast.creation_time = this->now();
+      bcast.hop_count = 0;
+      bcast.control_type = "MOTION_START";
+      bcast.payload = "";
+      traffic_pub_->publish(bcast);
+      RCLCPP_INFO(this->get_logger(),
+                  "[NET-MOTION] sent broadcast MOTION_START (routing-independent)");
+    }
   }
 
   void trafficCallback(const uav_msgs::msg::TrafficMessage::SharedPtr msg)
