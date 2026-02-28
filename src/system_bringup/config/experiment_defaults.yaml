@@ -96,6 +96,10 @@ task_telemetry:
   send_prob: 1.0
   ttl_hops: 16
   flow_label: SEARCH_TELEMETRY
+  requires_ack: true
+  ack_retry_sec: 1.0
+  ack_max_retries: 8
+  ack_wait_timeout_sec: 20.0
 
 telemetry_policy:
   mode: option_c
