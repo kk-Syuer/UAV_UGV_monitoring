@@ -138,7 +138,27 @@ ros2 topic info <topic> -v
 # Optional: render thesis-ready A4 assets if Graphviz is installed
 dot -Tpdf artifacts/ros_graph.dot -o artifacts/ros_graph_a4.pdf
 dot -Tpng artifacts/ros_graph.dot -o artifacts/ros_graph_a4.png
+dot -Tsvg artifacts/ros_graph.dot -o artifacts/ros_graph_a4.svg
+# or use the helper
+bash scripts/render_ros_graph.sh
 ```
+
+### PNG/SVG cannot load? (common cause)
+
+If VS Code says image/SVG cannot be loaded, check your export command format:
+
+- Correct: `dot -Tpng ... -o file.png`, `dot -Tsvg ... -o file.svg`
+- Wrong: `dot -Tps ... > file.png` or `dot -Tps ... > file.svg`
+
+`-Tps` generates **PostScript** data. If you save PostScript bytes into `.png`/`.svg`, viewers cannot decode it.
+
+Quick verification:
+
+```bash
+file artifacts/ros_graph_a4.png artifacts/ros_graph_a4.svg
+```
+
+It should report `PNG image data` and `SVG Scalable Vector Graphics` respectively.
 
 ### Runtime naming pattern note
 
