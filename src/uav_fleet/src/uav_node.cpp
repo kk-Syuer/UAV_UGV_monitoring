@@ -1624,6 +1624,10 @@ private:
                     uav_id_.c_str(), wait_elapsed, dropped);
         return;
       }
+      // Buffer is drained but ACKs are still in flight; nothing left to trigger
+      // a rendezvous for. Return here to avoid accessing telemetry_buffer_.front()
+      // on an empty deque (UB) which could spuriously set telemetry_rendezvous_active_.
+      return;
     } else {
       telemetry_ack_wait_active_ = false;
     }
@@ -3881,6 +3885,9 @@ private:
                                  "UAV %s: telemetry rendezvous active but CH pose unavailable/stale (source=%s age=%.2fs); continuing patrol until CH position is known.",
                                  uav_id_.c_str(), rendezvous_source.c_str(), rendezvous_age);
           }
+
+          if (task_points_.empty())
+            break;
 
           geometry_msgs::msg::Point & target = task_points_[current_task_index_];
 
