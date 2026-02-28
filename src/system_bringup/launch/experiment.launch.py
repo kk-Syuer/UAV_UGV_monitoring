@@ -129,7 +129,11 @@ def _make_nodes(context, *args, **kwargs):
     monitor_params = {
         "run_id": run_id,
         "output_dir": output_dir,
-        "flush_period_sec": float(_get(cfg, ["monitor", "flush_period_sec"], 2.0)),
+        # param renamed from flush_period_sec to csv_write_period_sec (matches node declaration)
+        "csv_write_period_sec": float(_get(cfg, ["monitor", "flush_period_sec"],
+                                          _get(cfg, ["monitor", "csv_write_period_sec"], 10.0))),
+        "protocol_name": str(_get(cfg, ["monitor", "protocol_name"], "unknown")),
+        "replicate_id": int(_get(cfg, ["monitor", "replicate_id"], 0)),
         "status_sample_period_sec": float(_get(cfg, ["monitor", "status_sample_period_sec"], 1.0)),
         "ugv_dock_capacity": int(_get(cfg, ["ugv", "max_parallel_spots"], 1)),
     }

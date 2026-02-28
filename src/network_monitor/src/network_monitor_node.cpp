@@ -77,6 +77,29 @@ enum class ChargeOutcome {
   ENERGY_DEPLETED
 };
 
+// Event types emitted to charge_session_events.csv
+enum class ChargeSessionEventType {
+  DOCK_START,
+  DOCK_END,
+  PREEMPTED,
+  TIMEOUT,
+  ENERGY_DEPLETED,
+  TERMINAL
+};
+
+static std::string chargeSessionEventTypeToString(ChargeSessionEventType t)
+{
+  switch (t) {
+    case ChargeSessionEventType::DOCK_START: return "DOCK_START";
+    case ChargeSessionEventType::DOCK_END: return "DOCK_END";
+    case ChargeSessionEventType::PREEMPTED: return "PREEMPTED";
+    case ChargeSessionEventType::TIMEOUT: return "TIMEOUT";
+    case ChargeSessionEventType::ENERGY_DEPLETED: return "ENERGY_DEPLETED";
+    case ChargeSessionEventType::TERMINAL: return "TERMINAL";
+    default: return "UNKNOWN";
+  }
+}
+
 struct ChargeRecord
 {
   std::string request_msg_id;
@@ -122,6 +145,7 @@ struct UavState
   double y = 0.0;
   double z = 0.0;
   double energy_consumption_rate = 0.0;
+  float battery_capacity = 0.0f;  // from UavStatus.battery_capacity (Wh); 0 = unknown
 };
 
 struct QosAggregate
@@ -176,6 +200,9 @@ public:
   {
     run_id_ = this->declare_parameter<std::string>("run_id", "run0");
     output_dir_ = this->declare_parameter<std::string>("output_dir", "log");
+    protocol_name_ = this->declare_parameter<std::string>("protocol_name", "unknown");
+    replicate_id_ = this->declare_parameter<int>("replicate_id", 0);
+    // Accept both "csv_write_period_sec" and legacy "flush_period_sec"
     double csv_write_period_sec = this->declare_parameter<double>("csv_write_period_sec", 10.0);
     decision_timeout_sec_ = this->declare_parameter<double>("decision_timeout_sec", 30.0);
     status_sample_period_sec_ = this->declare_parameter<double>("status_sample_period_sec", 1.0);
@@ -190,6 +217,10 @@ public:
     qos_weight_jitter_ = this->declare_parameter<double>("qos_weight_jitter", 0.2);
     output_root_ = (std::filesystem::path(output_dir_) / run_id_).string();
     start_time_ = this->now();
+    // Generate a unique instance id (nanoseconds since epoch) to disambiguate restarts
+    run_instance_id_ = std::to_string(
+      std::chrono::duration_cast<std::chrono::nanoseconds>(
+        std::chrono::system_clock::now().time_since_epoch()).count());
 
     // Listen to traffic generation and delivery for latency metrics.
     traffic_sub_ = this->create_subscription<uav_msgs::msg::TrafficMessage>(
@@ -294,6 +325,8 @@ private:
           drop_reason_counts_[msg->drop_reason.empty() ? "UNKNOWN" : msg->drop_reason]++;
           last_drop_time_ = now;
           recordTimestamp(drop_timestamps_, now);
+          // EVENT: packet drop (first occurrence per ref_msg_id)
+          logPacketDropEvent(*msg, now);
         }
 
         auto it_charge = charge_records_.find(msg->ref_msg_id);
@@ -313,6 +346,8 @@ private:
       if (!msg->ref_msg_id.empty()) {
         if (ack_by_ref_.insert({msg->ref_msg_id, now}).second) {
           ack_total_++;
+          // EVENT: ACK (first occurrence per ref_msg_id)
+          logPacketAckEvent(*msg, now);
         }
       }
       return;
@@ -320,6 +355,7 @@ private:
 
     if (msg->control_type == "CHARGE_REQUEST") {
       auto & rec = charge_records_[msg->msg_id];
+      bool is_new_request = rec.request_msg_id.empty();
       rec.request_msg_id = msg->msg_id;
       rec.uav_id = msg->src_id;
       rec.ugv_id = msg->dst_id;
@@ -345,6 +381,10 @@ private:
         rec.outcome = ChargeOutcome::PENDING;
       }
       latest_request_by_uav_[rec.uav_id] = msg->msg_id;
+      // EVENT: charge request (first time we see this request msg_id on the bus)
+      if (is_new_request) {
+        logChargeRequestEvent(*msg, rec, now);
+      }
     }
 
     if (msg->flow_type == 1) {
@@ -395,6 +435,8 @@ private:
       }
       last_msg_time_ = this->now();
       recordTimestamp(generated_timestamps_, last_msg_time_);
+      // EVENT: packet generated (first observation on raw bus = generation proxy)
+      logPacketGeneratedEvent(*msg, last_msg_time_);
 
       RCLCPP_INFO(this->get_logger(),
                   "[GEN] msg_id=%s src=%s dst=%s | total_generated=%zu",
@@ -446,6 +488,8 @@ private:
       parseDecisionRationale(msg->payload, charge_rec);
       fillDecisionNetworkContext("CHARGE_DECISION", charge_rec);
       latest_request_by_uav_[charge_rec.uav_id] = msg->ref_msg_id;
+      // EVENT: charge decision (first delivery of this decision)
+      logChargeDecisionEvent(*msg, charge_rec, delivered_wall_time, accepted, is_preemption);
 
       // Record dedicated preemption event
       if (is_preemption) {
@@ -484,6 +528,8 @@ private:
     avg_delay_sec_ += (delay_sec - avg_delay_sec_) / static_cast<double>(total_delivered_);
     last_delivered_time_ = delivered_wall_time;
     recordTimestamp(delivered_timestamps_, delivered_wall_time);
+    // EVENT: packet delivered (first delivery observation)
+    logPacketDeliveredEvent(*msg, rec, delivered_wall_time);
 
     if (msg->flow_type == 0 && msg->control_type == "SEARCH_TELEMETRY") {
       telemetry_delivered_++;
@@ -594,6 +640,21 @@ private:
       dead_uavs_.insert(msg.src_id);
       dead_uav_event_history_.push_back(msg.src_id);
       markChargeFailureForUav(msg.src_id, ChargeOutcome::ENERGY_DEPLETED, "ENERGY_DEPLETED");
+      // Fire ENERGY_DEPLETED session event for the active charge record
+      {
+        auto req_it = latest_request_by_uav_.find(msg.src_id);
+        if (req_it != latest_request_by_uav_.end()) {
+          auto rec_it = charge_records_.find(req_it->second);
+          if (rec_it != charge_records_.end()) {
+            float batt_cap = 0.0f;
+            auto st_it = uav_states_.find(msg.src_id);
+            if (st_it != uav_states_.end()) { batt_cap = st_it->second.battery_capacity; }
+            logChargeSessionEvent(ChargeSessionEventType::ENERGY_DEPLETED,
+                                  rec_it->second, t,
+                                  -1.0, -1.0, -1.0, -1.0, -1.0, batt_cap);
+          }
+        }
+      }
 
       // Record death event for Kaplan-Meier survival curves
       DeathEvent de;
@@ -640,6 +701,7 @@ private:
     state.y = msg->pose.position.y;
     state.z = msg->pose.position.z;
     state.energy_consumption_rate = msg->energy_consumption_rate;
+    state.battery_capacity = msg->battery_capacity;
     uav_states_[msg->uav_id] = state;
 
     auto req_it = latest_request_by_uav_.find(msg->uav_id);
@@ -663,6 +725,12 @@ private:
       rec.dock_start_time = now;
       rec.start_battery = msg->battery_level;
       rec.terminal_time = now;
+      // EVENT: DOCK_START
+      double waiting_ms = (rec.request_time.nanoseconds() != 0)
+        ? std::max(0.0, (now - rec.request_time).seconds() * 1000.0) : -1.0;
+      logChargeSessionEvent(ChargeSessionEventType::DOCK_START, rec, now,
+                            waiting_ms, -1.0, -1.0, msg->battery_level, -1.0,
+                            state.battery_capacity);
     }
 
     if (rec.outcome == ChargeOutcome::STARTED) {
@@ -672,6 +740,17 @@ private:
         rec.charge_completed = true;
         rec.charge_end_time = now;
         rec.end_battery = msg->battery_level;
+        double charge_duration_s = (rec.dock_start_time.nanoseconds() != 0)
+          ? std::max(0.0, (now - rec.dock_start_time).seconds()) : -1.0;
+        double energy_delta = (rec.start_battery >= 0.0)
+          ? (msg->battery_level - rec.start_battery) : -1.0;
+        double energy_wh = (energy_delta >= 0.0 && state.battery_capacity > 0.0f)
+          ? energy_delta * static_cast<double>(state.battery_capacity) / 100.0 : -1.0;
+        // EVENT: DOCK_END
+        logChargeSessionEvent(ChargeSessionEventType::DOCK_END, rec, now,
+                              -1.0, charge_duration_s, energy_wh,
+                              rec.start_battery, msg->battery_level,
+                              state.battery_capacity);
       }
     }
 
@@ -680,6 +759,10 @@ private:
       rec.outcome = ChargeOutcome::PREEMPTED;
       rec.failure_reason = "RETURNED_BEFORE_DOCK";
       rec.terminal_time = now;
+      // EVENT: PREEMPTED (returned before dock)
+      logChargeSessionEvent(ChargeSessionEventType::PREEMPTED, rec, now,
+                            -1.0, -1.0, -1.0, msg->battery_level, -1.0,
+                            state.battery_capacity);
     }
   }
 
@@ -695,6 +778,12 @@ private:
           rec.outcome = ChargeOutcome::TIMEOUT;
           rec.failure_reason = "NO_DECISION";
           rec.terminal_time = now;
+          // EVENT: TIMEOUT
+          float batt_cap = 0.0f;
+          auto st_it = uav_states_.find(rec.uav_id);
+          if (st_it != uav_states_.end()) { batt_cap = st_it->second.battery_capacity; }
+          logChargeSessionEvent(ChargeSessionEventType::TIMEOUT, rec, now,
+                                -1.0, -1.0, -1.0, -1.0, -1.0, batt_cap);
         }
       }
     }
@@ -722,6 +811,249 @@ private:
     }
     double age = (now - stamp).seconds();
     return age < 0.0 ? 0.0 : age;
+  }
+
+  // ---- Append-only CSV helpers ----
+
+  // Returns seconds since run start (for aligning replicates)
+  double tRelS() const
+  {
+    return (this->now() - start_time_).seconds();
+  }
+
+  double tRelSAt(const rclcpp::Time & t) const
+  {
+    double v = (t - start_time_).seconds();
+    return v;
+  }
+
+  // Run metadata prefix for every CSV row:
+  //   run_id, protocol_name, replicate_id, run_instance_id
+  // (time_s and t_rel_s must be added by the caller since they vary per event)
+  std::string runMeta() const
+  {
+    return run_id_ + "," + protocol_name_ + "," +
+           std::to_string(replicate_id_) + "," + run_instance_id_;
+  }
+
+  // Opens path in append mode; writes header if file did not exist or was empty.
+  // Returns open ofstream. Caller must check is_open().
+  std::ofstream openAppend(const std::string & path_str, const std::string & header)
+  {
+    std::error_code ec;
+    auto path = std::filesystem::path(path_str);
+    std::filesystem::create_directories(path.parent_path(), ec);
+    if (ec) {
+      RCLCPP_WARN(this->get_logger(), "mkdir failed for %s: %s",
+                  path_str.c_str(), ec.message().c_str());
+    }
+    bool need_header = !std::filesystem::exists(path, ec) ||
+                       std::filesystem::file_size(path, ec) == 0;
+    std::ofstream out(path, std::ios::app);
+    if (out.is_open() && need_header) {
+      out << header << "\n";
+    }
+    return out;
+  }
+
+  // ---- New append-only event loggers ----
+
+  // 1) packet_generated_events.csv
+  // Trigger: first observation of msg on /fanet/network_bus_raw (generation proxy).
+  void logPacketGeneratedEvent(const uav_msgs::msg::TrafficMessage & msg,
+                               const rclcpp::Time & observed_at)
+  {
+    if (!already_logged_generated_.insert(msg.msg_id).second) {
+      return;  // already logged (shouldn't happen since we guard in trafficRawCallback)
+    }
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "packet_generated_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "msg_id,flow_type,control_type,src_id,dst_id,"
+      "creation_time_s,payload_bytes");
+    if (!out.is_open()) { return; }
+    double time_s = observed_at.seconds();
+    double t_rel = tRelSAt(observed_at);
+    double creation_s = rclcpp::Time(msg.creation_time).seconds();
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.msg_id << ","
+        << static_cast<int>(msg.flow_type) << ","
+        << msg.control_type << ","
+        << msg.src_id << ","
+        << msg.dst_id << ","
+        << creation_s << ","
+        << msg.payload.size()
+        << "\n";
+  }
+
+  // 2) packet_delivered_events.csv
+  // Trigger: first delivery observation from /fanet/delivered.
+  void logPacketDeliveredEvent(const uav_msgs::msg::TrafficMessage & msg,
+                               const MsgRecord & rec,
+                               const rclcpp::Time & delivered_at)
+  {
+    if (!already_logged_delivered_.insert(msg.msg_id).second) {
+      return;
+    }
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "packet_delivered_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "msg_id,delivered_time_s,receiver_id,hop_count,ttl_hops,delivered_flag");
+    if (!out.is_open()) { return; }
+    double time_s = delivered_at.seconds();
+    double t_rel = tRelSAt(delivered_at);
+    // delivered_time_s: prefer msg.last_rx_time (UAV-stamped receive time)
+    double delivered_time_s = (msg.last_rx_time.sec != 0 || msg.last_rx_time.nanosec != 0)
+      ? rclcpp::Time(msg.last_rx_time).seconds()
+      : delivered_at.seconds();
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.msg_id << ","
+        << delivered_time_s << ","
+        << msg.dst_id << ","
+        << static_cast<int>(rec.hop_count) << ","
+        << static_cast<int>(rec.ttl_hops) << ","
+        << "true"
+        << "\n";
+  }
+
+  // 3) packet_drop_events.csv
+  // Trigger: first DROP observation for a ref_msg_id.
+  void logPacketDropEvent(const uav_msgs::msg::TrafficMessage & msg,
+                          const rclcpp::Time & observed_at)
+  {
+    // Guard is the dropped_ids_ set in the caller — no need for extra set here
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "packet_drop_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "ref_msg_id,drop_reason,dropper_id");
+    if (!out.is_open()) { return; }
+    double time_s = observed_at.seconds();
+    double t_rel = tRelSAt(observed_at);
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.ref_msg_id << ","
+        << (msg.drop_reason.empty() ? "UNKNOWN" : msg.drop_reason) << ","
+        << msg.src_id
+        << "\n";
+  }
+
+  // 4) packet_ack_events.csv
+  // Trigger: first ACK observation for a ref_msg_id.
+  void logPacketAckEvent(const uav_msgs::msg::TrafficMessage & msg,
+                         const rclcpp::Time & observed_at)
+  {
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "packet_ack_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "ref_msg_id,ack_time_s,ack_src_id");
+    if (!out.is_open()) { return; }
+    double time_s = observed_at.seconds();
+    double t_rel = tRelSAt(observed_at);
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.ref_msg_id << ","
+        << time_s << ","
+        << msg.src_id
+        << "\n";
+  }
+
+  // 5) charge_request_events.csv
+  // Trigger: first CHARGE_REQUEST seen on traffic bus.
+  void logChargeRequestEvent(const uav_msgs::msg::TrafficMessage & msg,
+                             const ChargeRecord & rec,
+                             const rclcpp::Time & observed_at)
+  {
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "charge_request_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "request_msg_id,uav_id,role,battery_at_request,request_time_s");
+    if (!out.is_open()) { return; }
+    double time_s = observed_at.seconds();
+    double t_rel = tRelSAt(observed_at);
+    double req_time_s = rec.request_time.nanoseconds() != 0 ? rec.request_time.seconds() : -1.0;
+    int role_val = rec.role_known ? static_cast<int>(rec.role) : -1;
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.msg_id << ","
+        << rec.uav_id << ","
+        << role_val << ","
+        << rec.request_battery << ","
+        << req_time_s
+        << "\n";
+  }
+
+  // 6) charge_decision_events.csv
+  // Trigger: CHARGE_DECISION delivered to UAV.
+  void logChargeDecisionEvent(const uav_msgs::msg::TrafficMessage & msg,
+                              const ChargeRecord & rec,
+                              const rclcpp::Time & delivered_at,
+                              bool accepted, bool is_preemption)
+  {
+    // Deduplicate: only log once per (request_msg_id, decision)
+    if (!already_logged_charge_decision_.insert(msg.ref_msg_id).second) {
+      return;
+    }
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "charge_decision_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "request_msg_id,decision_msg_id,decision_time_s,outcome,failure_reason,"
+      "decision_latency_ms");
+    if (!out.is_open()) { return; }
+    double time_s = delivered_at.seconds();
+    double t_rel = tRelSAt(delivered_at);
+    double latency_ms = (rec.request_time.nanoseconds() != 0)
+      ? (delivered_at - rec.request_time).seconds() * 1000.0 : -1.0;
+    std::string outcome_str = is_preemption ? "PREEMPTED" : (accepted ? "ACCEPTED" : "REJECTED");
+    std::string reason = is_preemption ? "PREEMPTED" : (accepted ? "" : "REJECTED");
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << msg.ref_msg_id << ","
+        << msg.msg_id << ","
+        << time_s << ","
+        << outcome_str << ","
+        << reason << ","
+        << latency_ms
+        << "\n";
+  }
+
+  // 7) charge_session_events.csv
+  // Trigger: DOCK_START / DOCK_END / PREEMPTED / TIMEOUT / ENERGY_DEPLETED
+  void logChargeSessionEvent(ChargeSessionEventType event_type,
+                             const ChargeRecord & rec,
+                             const rclcpp::Time & event_at,
+                             double waiting_time_ms,    // set at DOCK_START; -1 otherwise
+                             double charge_duration_s,  // set at DOCK_END; -1 otherwise
+                             double energy_charged_wh,  // set at DOCK_END; -1 otherwise
+                             double battery_before,     // set at DOCK_START/END; -1 otherwise
+                             double battery_after,      // set at DOCK_END; -1 otherwise
+                             float battery_capacity_wh)
+  {
+    auto out = openAppend(
+      (std::filesystem::path(output_root_) / "charge_session_events.csv").string(),
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "request_msg_id,uav_id,role,event_type,event_time_s,"
+      "waiting_time_ms,charge_duration_s,energy_charged_wh,"
+      "battery_before,battery_after,battery_capacity_wh");
+    if (!out.is_open()) { return; }
+    double time_s = event_at.seconds();
+    double t_rel = tRelSAt(event_at);
+    int role_val = rec.role_known ? static_cast<int>(rec.role) : -1;
+    out << runMeta() << ","
+        << t_rel << "," << time_s << ","
+        << rec.request_msg_id << ","
+        << rec.uav_id << ","
+        << role_val << ","
+        << chargeSessionEventTypeToString(event_type) << ","
+        << time_s << ","
+        << waiting_time_ms << ","
+        << charge_duration_s << ","
+        << energy_charged_wh << ","
+        << battery_before << ","
+        << battery_after << ","
+        << static_cast<double>(battery_capacity_wh)
+        << "\n";
   }
 
   void publishNetworkStats()
@@ -981,20 +1313,22 @@ private:
     }
   }
 
-  void writeOutputs(bool final_flush)
+  void writeOutputs(bool /*final_flush*/)
   {
+    // All files are strictly append-only; final_flush no longer causes truncation.
     reconcileCausality();
-    writeMessagesCsv(final_flush);
-    writeQosMetricsCsv(final_flush);
-    writeChargeEventsCsv(final_flush);
-    writeRecoveryEventsCsv(final_flush);
-    writePreemptionEventsCsv(final_flush);
-    writeDeathEventsCsv(final_flush);
+    writeMessagesCsv();
+    writeQosMetricsCsv();
+    writeChargeEventsCsv();
+    writeRecoveryEventsCsv();
+    writePreemptionEventsCsv();
+    writeDeathEventsCsv();
+    // Timeseries rows are written by their own timers; call once more at flush for completeness.
     writeChargeQueueTimeseriesRow();
     writeStatusTimeseriesRow();
     writeWeatherTimeseriesRow();
     writeNetworkTimeseriesRow();
-    writeSummaryJson();
+    writeSummarySnapshotJsonl();
   }
 
   void reconcileCausality()
@@ -1011,111 +1345,79 @@ private:
     }
   }
 
-  void writeMessagesCsv(bool final_flush)
+  void writeMessagesCsv()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "messages.csv";
-    // On final_flush, truncate to rewrite with latest state; otherwise append.
-    bool need_header = !messages_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!messages_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "messages.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "msg_id,flow_type,control_type,src_id,dst_id,"
+      "creation_time_s,delivered_time_s,delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
+      "payload_bytes,dropped,drop_reason,dropper_id,ack_time_s");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
     }
-    messages_file_initialized_ = true;
 
-    if (need_header) {
-      out << "run_id,msg_id,flow_type,control_type,src_id,dst_id,"
-          << "creation_time_s,delivered_time_s,delivered,e2e_delay_ms,forward_count,hop_count,ttl_hops,"
-          << "payload_bytes,dropped,drop_reason,dropper_id,ack_time" << std::endl;
-    }
-
+    double now_s = this->now().seconds();
+    double t_rel = tRelS();
     for (const auto & [msg_id, rec] : records_) {
-      if (!final_flush && exported_messages_.count(msg_id)) {
-        continue;
+      if (exported_messages_.count(msg_id)) {
+        continue;  // export each record once (first-seen snapshot)
       }
       double delay_ms = rec.delivered
         ? (rec.delivered_time - rec.creation_time).seconds() * 1000.0
         : -1.0;
-      double ack_time = rec.ack_time.nanoseconds() == 0 ? -1.0 : rec.ack_time.seconds();
+      double ack_time_s = rec.ack_time.nanoseconds() == 0 ? -1.0 : rec.ack_time.seconds();
       double delivered_time = rec.delivered ? rec.delivered_time.seconds() : -1.0;
-      out << run_id_ << ','
-          << msg_id << ','
-          << static_cast<int>(rec.flow_type) << ','
-          << rec.control_type << ','
-          << rec.src_id << ','
-          << rec.dst_id << ','
-          << rec.creation_time.seconds() << ','
-          << delivered_time << ','
-          << (rec.delivered ? "true" : "false") << ','
-          << delay_ms << ','
-          << rec.forward_count << ','
-          << rec.hop_count << ','
-          << rec.ttl_hops << ','
-          << rec.payload_bytes << ','
-          << (rec.dropped ? "true" : "false") << ','
-          << rec.drop_reason << ','
-          << rec.dropper_id << ','
-          << ack_time
-          << std::endl;
+      out << runMeta() << ","
+          << t_rel << "," << now_s << ","
+          << msg_id << ","
+          << static_cast<int>(rec.flow_type) << ","
+          << rec.control_type << ","
+          << rec.src_id << ","
+          << rec.dst_id << ","
+          << rec.creation_time.seconds() << ","
+          << delivered_time << ","
+          << (rec.delivered ? "true" : "false") << ","
+          << delay_ms << ","
+          << rec.forward_count << ","
+          << rec.hop_count << ","
+          << rec.ttl_hops << ","
+          << rec.payload_bytes << ","
+          << (rec.dropped ? "true" : "false") << ","
+          << rec.drop_reason << ","
+          << rec.dropper_id << ","
+          << ack_time_s
+          << "\n";
       exported_messages_.insert(msg_id);
     }
   }
 
-  void writeQosMetricsCsv(bool final_flush)
+  // qos_metrics.csv is a snapshot timeseries: all known categories written each flush.
+  void writeQosMetricsCsv()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "qos_metrics.csv";
-    bool need_header = !qos_metrics_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!qos_metrics_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "qos_metrics.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "flow_type,control_type,generated,delivered,dropped,pdr,"
+      "delay_mean_ms,delay_p95_ms,jitter_ms,throughput_bps,generated_bps,qos_score");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
     }
-    qos_metrics_file_initialized_ = true;
 
-    if (need_header) {
-      out << "run_id,flow_type,control_type,generated,delivered,dropped,pdr,"
-          << "delay_mean_ms,delay_p95_ms,jitter_ms,throughput_bps,generated_bps,qos_score"
-          << std::endl;
-    }
-
+    double now_s = this->now().seconds();
+    double t_rel = tRelS();
     auto qos_stats = buildQosStats();
     for (const auto & [key, stats] : qos_stats) {
-      if (!final_flush && exported_qos_keys_.count(key)) {
-        continue;
-      }
       auto sep = key.find(':');
       std::string flow_str = key.substr(0, sep);
       std::string ctrl_str = (sep == std::string::npos) ? "" : key.substr(sep + 1);
       int flow_val = 0;
-      try {
-        flow_val = std::stoi(flow_str);
-      } catch (...) {
-        flow_val = 0;
-      }
+      try { flow_val = std::stoi(flow_str); } catch (...) { flow_val = 0; }
       auto metrics = finalizeQosStats(stats, flow_val, ctrl_str);
-      out << run_id_ << ","
+      out << runMeta() << ","
+          << t_rel << "," << now_s << ","
           << metrics.flow_type << ","
           << metrics.control_type << ","
           << metrics.generated << ","
@@ -1128,47 +1430,40 @@ private:
           << metrics.throughput_bps << ","
           << metrics.generated_bps << ","
           << metrics.qos_score
-          << std::endl;
-      exported_qos_keys_.insert(key);
+          << "\n";
     }
   }
 
-  void writeChargeEventsCsv(bool final_flush)
+  // charge_events.csv: exports each charge record once it reaches a terminal outcome.
+  // Non-terminal (PENDING/ACCEPTED) records are NOT exported here; they are fully
+  // captured by charge_request_events + charge_decision_events + charge_session_events.
+  void writeChargeEventsCsv()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "charge_events.csv";
-    bool need_header = !charge_events_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!charge_events_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "charge_events.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "request_msg_id,uav_id,ugv_id,role,outcome,failure_reason,"
+      "request_time_s,decision_time_s,dock_start_time_s,charge_end_time_s,terminal_time_s,"
+      "decision_latency_ms,waiting_time_ms,charge_duration_ms,effective_wait_ms,"
+      "charge_completed,request_battery,start_battery,end_battery,energy_recovered_pct,"
+      "preempted_flag,preempt_count,"
+      "decision_policy,decision_priority,decision_tte_sec,decision_score,"
+      "decision_rank_index,decision_queue_size,"
+      "decision_ctrl_pdr,decision_ctrl_delay_mean_ms,decision_ctrl_delay_p95_ms,"
+      "decision_ctrl_drop_reasons");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
     }
-    charge_events_file_initialized_ = true;
 
-    if (need_header) {
-      out << "run_id,request_msg_id,uav_id,ugv_id,role,outcome,failure_reason,"
-          << "request_time,decision_time,dock_start_time,charge_end_time,terminal_time,"
-          << "decision_latency_ms,waiting_time_ms,charge_duration_ms,effective_wait_ms,"
-          << "charge_completed,request_battery,start_battery,end_battery,energy_recovered,"
-          << "preempted_flag,preempt_count,"
-          << "decision_policy,decision_priority,decision_tte_sec,decision_score,"
-          << "decision_rank_index,decision_queue_size,"
-          << "decision_ctrl_pdr,decision_ctrl_delay_mean_ms,decision_ctrl_delay_p95_ms,"
-          << "decision_ctrl_drop_reasons" << std::endl;
-    }
-
+    double now_s = this->now().seconds();
+    double t_rel = tRelS();
     for (const auto & [id, rec] : charge_records_) {
-      if (!final_flush && exported_charge_requests_.count(id)) {
+      if (exported_charge_requests_.count(id)) {
+        continue;  // already exported
+      }
+      // Only export records that have reached a terminal outcome
+      if (!isTerminalOutcome(rec.outcome)) {
         continue;
       }
       double decision_latency_ms = (rec.decision_time.nanoseconds() != 0 && rec.request_time.nanoseconds() != 0)
@@ -1198,145 +1493,115 @@ private:
       double terminal_time_s = rec.terminal_time.nanoseconds() != 0
         ? rec.terminal_time.seconds() : -1.0;
 
-      out << run_id_ << ','
-          << rec.request_msg_id << ','
-          << rec.uav_id << ','
-          << rec.ugv_id << ','
-          << (rec.role_known ? static_cast<int>(rec.role) : -1) << ','
-          << chargeOutcomeToString(rec.outcome) << ','
-          << rec.failure_reason << ','
-          << rec.request_time.seconds() << ','
-          << rec.decision_time.seconds() << ','
-          << rec.dock_start_time.seconds() << ','
-          << (rec.charge_end_time.nanoseconds() != 0 ? rec.charge_end_time.seconds() : -1.0) << ','
-          << terminal_time_s << ','
-          << decision_latency_ms << ','
-          << waiting_time_ms << ','
-          << charge_duration_ms << ','
-          << effective_wait_ms << ','
-          << (rec.charge_completed ? "true" : "false") << ','
-          << rec.request_battery << ','
-          << rec.start_battery << ','
-          << rec.end_battery << ','
-          << energy_recovered << ','
-          << (rec.preempted_flag ? "true" : "false") << ','
-          << rec.preempt_count << ','
-          << rec.decision_policy << ','
-          << rec.decision_priority << ','
-          << rec.decision_tte_sec << ','
-          << rec.decision_score << ','
-          << rec.decision_rank_index << ','
-          << rec.decision_queue_size << ','
-          << rec.decision_ctrl_pdr << ','
-          << rec.decision_ctrl_delay_mean_ms << ','
-          << rec.decision_ctrl_delay_p95_ms << ','
+      out << runMeta() << ","
+          << t_rel << "," << now_s << ","
+          << rec.request_msg_id << ","
+          << rec.uav_id << ","
+          << rec.ugv_id << ","
+          << (rec.role_known ? static_cast<int>(rec.role) : -1) << ","
+          << chargeOutcomeToString(rec.outcome) << ","
+          << rec.failure_reason << ","
+          << rec.request_time.seconds() << ","
+          << rec.decision_time.seconds() << ","
+          << rec.dock_start_time.seconds() << ","
+          << (rec.charge_end_time.nanoseconds() != 0 ? rec.charge_end_time.seconds() : -1.0) << ","
+          << terminal_time_s << ","
+          << decision_latency_ms << ","
+          << waiting_time_ms << ","
+          << charge_duration_ms << ","
+          << effective_wait_ms << ","
+          << (rec.charge_completed ? "true" : "false") << ","
+          << rec.request_battery << ","
+          << rec.start_battery << ","
+          << rec.end_battery << ","
+          << energy_recovered << ","
+          << (rec.preempted_flag ? "true" : "false") << ","
+          << rec.preempt_count << ","
+          << rec.decision_policy << ","
+          << rec.decision_priority << ","
+          << rec.decision_tte_sec << ","
+          << rec.decision_score << ","
+          << rec.decision_rank_index << ","
+          << rec.decision_queue_size << ","
+          << rec.decision_ctrl_pdr << ","
+          << rec.decision_ctrl_delay_mean_ms << ","
+          << rec.decision_ctrl_delay_p95_ms << ","
           << rec.decision_ctrl_drop_reasons
-          << std::endl;
+          << "\n";
       exported_charge_requests_.insert(id);
     }
   }
 
-  void writePreemptionEventsCsv(bool final_flush)
+  void writePreemptionEventsCsv()
   {
     if (preemption_events_.empty()) {
       return;
     }
 
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "preemption_events.csv";
-    bool need_header = !preemption_events_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!preemption_events_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "preemption_events.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "victim_uav_id,winner_uav_id,"
+      "victim_role,winner_role,"
+      "victim_priority,winner_priority,delta_priority,"
+      "victim_charge_time_s,policy");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
     }
-    preemption_events_file_initialized_ = true;
 
-    if (need_header) {
-      out << "run_id,time,victim_uav_id,winner_uav_id,"
-          << "victim_role,winner_role,"
-          << "victim_priority,winner_priority,delta_priority,"
-          << "victim_charge_time_s,policy" << std::endl;
-    }
-
-    size_t start_idx = final_flush ? 0 : exported_preemption_count_;
-    for (size_t i = start_idx; i < preemption_events_.size(); ++i) {
+    for (size_t i = exported_preemption_count_; i < preemption_events_.size(); ++i) {
       const auto & pe = preemption_events_[i];
-      out << run_id_ << ','
-          << pe.time.seconds() << ','
-          << pe.victim_uav_id << ','
-          << pe.winner_uav_id << ','
-          << static_cast<int>(pe.victim_role) << ','
-          << static_cast<int>(pe.winner_role) << ','
-          << pe.victim_priority << ','
-          << pe.winner_priority << ','
-          << pe.delta_priority << ','
-          << pe.victim_charge_time_s << ','
+      double t_rel = tRelSAt(pe.time);
+      out << runMeta() << ","
+          << t_rel << "," << pe.time.seconds() << ","
+          << pe.victim_uav_id << ","
+          << pe.winner_uav_id << ","
+          << static_cast<int>(pe.victim_role) << ","
+          << static_cast<int>(pe.winner_role) << ","
+          << pe.victim_priority << ","
+          << pe.winner_priority << ","
+          << pe.delta_priority << ","
+          << pe.victim_charge_time_s << ","
           << pe.policy
-          << std::endl;
+          << "\n";
     }
-    if (final_flush) {
-      exported_preemption_count_ = preemption_events_.size();
-    } else {
-      exported_preemption_count_ = preemption_events_.size();
-    }
+    exported_preemption_count_ = preemption_events_.size();
   }
 
-  void writeRecoveryEventsCsv(bool final_flush)
+  void writeRecoveryEventsCsv()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "recovery_events.csv";
-    bool need_header = !recovery_events_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!recovery_events_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "recovery_events.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "msg_id,control_type,src_id,dst_id,epoch,member_id,ch_id,"
+      "task_count,x,y,z,creation_time_s");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
-    }
-    recovery_events_file_initialized_ = true;
-
-    if (need_header) {
-      out << "run_id,msg_id,control_type,src_id,dst_id,epoch,member_id,ch_id,"
-          << "task_count,x,y,z,creation_time" << std::endl;
     }
 
     for (const auto & [msg_id, rec] : recovery_events_) {
-      if (!final_flush && exported_recovery_events_.count(msg_id) > 0) {
+      if (exported_recovery_events_.count(msg_id) > 0) {
         continue;
       }
-      out << run_id_ << ','
-          << rec.msg_id << ','
-          << rec.control_type << ','
-          << rec.src_id << ','
-          << rec.dst_id << ','
-          << rec.epoch << ','
-          << rec.member_id << ','
-          << rec.ch_id << ','
-          << rec.task_count << ','
-          << rec.x << ','
-          << rec.y << ','
-          << rec.z << ','
-          << rec.creation_time.seconds()
-          << std::endl;
+      double t_rel = tRelSAt(rec.creation_time);
+      double creation_s = rec.creation_time.seconds();
+      out << runMeta() << ","
+          << t_rel << "," << creation_s << ","
+          << rec.msg_id << ","
+          << rec.control_type << ","
+          << rec.src_id << ","
+          << rec.dst_id << ","
+          << rec.epoch << ","
+          << rec.member_id << ","
+          << rec.ch_id << ","
+          << rec.task_count << ","
+          << rec.x << ","
+          << rec.y << ","
+          << rec.z << ","
+          << creation_s
+          << "\n";
       exported_recovery_events_.insert(msg_id);
     }
   }
@@ -1481,32 +1746,20 @@ private:
 
   void writeStatusTimeseriesRow()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "status_timeseries.csv";
-    bool need_header = !status_timeseries_file_initialized_;
-    std::ofstream out(path,
-                      status_timeseries_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
+    auto path = (std::filesystem::path(output_root_) / "status_timeseries.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "uav_id,role,charging_state,battery_level,backbone_active,x,y,z,energy_consumption_rate");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
-    }
-    status_timeseries_file_initialized_ = true;
-
-    if (need_header) {
-      out << "run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z,energy_consumption_rate" << std::endl;
     }
 
     double t = this->now().seconds();
+    double t_rel = tRelS();
     for (const auto & [uav_id, st] : uav_states_) {
-      out << run_id_ << ","
-          << t << ","
+      out << runMeta() << ","
+          << t_rel << "," << t << ","
           << uav_id << ","
           << static_cast<int>(st.role) << ","
           << static_cast<int>(st.charging_state) << ","
@@ -1516,7 +1769,7 @@ private:
           << st.y << ","
           << st.z << ","
           << st.energy_consumption_rate
-          << std::endl;
+          << "\n";
     }
   }
 
@@ -1612,32 +1865,19 @@ private:
 
   void writeChargeQueueTimeseriesRow()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "charge_queue_timeseries.csv";
-    bool need_header = !charge_queue_timeseries_file_initialized_;
-    std::ofstream out(path,
-                      charge_queue_timeseries_file_initialized_ ? std::ios::app
-                                                                : (std::ios::out | std::ios::trunc));
+    auto path = (std::filesystem::path(output_root_) / "charge_queue_timeseries.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "queue_length_total,queue_length_ch,queue_length_member,queue_length_unknown,"
+      "queue_length_total_check,"
+      "active_charging_ugv_sessions,ugv_dock_capacity,ugv_dock_utilization,"
+      "mean_wait_ch_ms,mean_wait_member_ms,"
+      "active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,"
+      "returning_count_uav_status,current_dead_count,dead_event_count,fleet_size,"
+      "over_capacity_ugv,status_vs_ugv_gap");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
-    }
-    charge_queue_timeseries_file_initialized_ = true;
-
-    if (need_header) {
-      out << "run_id,time,queue_length_ugv,queue_length_ch,queue_length_member,queue_length_unknown,"
-          << "active_charging_ugv_sessions,ugv_dock_capacity,ugv_dock_utilization,"
-          << "mean_wait_ch_ms,mean_wait_member_ms,"
-          << "active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,returning_count_uav_status,current_dead_count,dead_event_count,fleet_size,"
-          << "over_capacity_ugv,status_vs_ugv_gap"
-          << std::endl;
     }
 
     size_t queue_length = 0;
@@ -1748,12 +1988,20 @@ private:
     size_t dead_event_count = dead_uav_event_history_.size();
     size_t fleet_size = uav_states_.size();
 
-    out << run_id_ << ","
-        << this->now().seconds() << ","
+    // Invariant: total should equal ch+member+unknown (signed delta for anomaly detection)
+    long long queue_total_check = static_cast<long long>(queue_length_ugv) -
+      (static_cast<long long>(queue_ch) + static_cast<long long>(queue_member) +
+       static_cast<long long>(queue_unknown));
+
+    double t = this->now().seconds();
+    double t_rel = tRelS();
+    out << runMeta() << ","
+        << t_rel << "," << t << ","
         << queue_length_ugv << ","
         << queue_ch << ","
         << queue_member << ","
         << queue_unknown << ","
+        << queue_total_check << ","
         << active_charging_ugv_sessions << ","
         << ugv_dock_capacity << ","
         << utilization << ","
@@ -1768,7 +2016,7 @@ private:
         << fleet_size << ","
         << over_capacity_ugv << ","
         << status_vs_ugv_gap
-        << std::endl;
+        << "\n";
   }
 
   void writeWeatherTimeseriesRow()
@@ -1777,84 +2025,57 @@ private:
       return;
     }
 
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "weather_timeseries.csv";
-    bool need_header = !weather_timeseries_file_initialized_;
-    std::ofstream out(path,
-                      weather_timeseries_file_initialized_ ? std::ios::app : (std::ios::out | std::ios::trunc));
+    auto path = (std::filesystem::path(output_root_) / "weather_timeseries.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "regime,temperature_c,wind_speed,wind_direction_deg,rain_intensity");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
     }
-    weather_timeseries_file_initialized_ = true;
 
-    if (need_header) {
-      out << "run_id,time,regime,temperature_c,wind_speed,wind_direction_deg,rain_intensity" << std::endl;
-    }
-
-    out << run_id_ << ","
-        << this->now().seconds() << ","
+    double t = this->now().seconds();
+    double t_rel = tRelS();
+    out << runMeta() << ","
+        << t_rel << "," << t << ","
         << current_weather_regime_ << ","
         << current_weather_temp_c_ << ","
         << current_weather_wind_speed_ << ","
         << current_weather_wind_dir_ << ","
         << current_weather_rain_
-        << std::endl;
+        << "\n";
   }
 
   // ---- death_events.csv: per-UAV death records for Kaplan-Meier survival ----
-  void writeDeathEventsCsv(bool final_flush)
+  void writeDeathEventsCsv()
   {
     if (death_events_.empty()) {
       return;
     }
 
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "death_events.csv";
-    bool need_header = !death_events_file_initialized_ || final_flush;
-    std::ofstream out(path,
-                      (!death_events_file_initialized_ || final_flush)
-                        ? (std::ios::out | std::ios::trunc)
-                        : std::ios::app);
+    auto path = (std::filesystem::path(output_root_) / "death_events.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "uav_id,role,cause,battery_at_death,fleet_size,alive_count");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
-    }
-    death_events_file_initialized_ = true;
-
-    if (need_header) {
-      out << "run_id,time,uav_id,role,cause,battery_at_death,fleet_size,alive_count"
-          << std::endl;
     }
 
     size_t fleet_size = uav_states_.size();
-    size_t start_idx = final_flush ? 0 : exported_death_event_count_;
-    for (size_t i = start_idx; i < death_events_.size(); ++i) {
+    for (size_t i = exported_death_event_count_; i < death_events_.size(); ++i) {
       const auto & de = death_events_[i];
       size_t alive_at_time = fleet_size - std::min(i + 1, fleet_size);
-      out << run_id_ << ','
-          << de.time.seconds() << ','
-          << de.uav_id << ','
-          << (de.role_known ? static_cast<int>(de.role) : -1) << ','
-          << de.cause << ','
-          << de.battery_at_death << ','
-          << fleet_size << ','
+      double t_rel = tRelSAt(de.time);
+      out << runMeta() << ","
+          << t_rel << "," << de.time.seconds() << ","
+          << de.uav_id << ","
+          << (de.role_known ? static_cast<int>(de.role) : -1) << ","
+          << de.cause << ","
+          << de.battery_at_death << ","
+          << fleet_size << ","
           << alive_at_time
-          << std::endl;
+          << "\n";
     }
     exported_death_event_count_ = death_events_.size();
   }
@@ -1862,31 +2083,16 @@ private:
   // ---- network_timeseries.csv: windowed PDR/delay for weather correlation ----
   void writeNetworkTimeseriesRow()
   {
-    std::error_code ec;
-    std::filesystem::create_directories(output_root_, ec);
-    if (ec) {
-      RCLCPP_WARN(this->get_logger(), "Failed to create output directory %s: %s",
-                  output_root_.c_str(), ec.message().c_str());
-      return;
-    }
-
-    auto path = std::filesystem::path(output_root_) / "network_timeseries.csv";
-    bool need_header = !network_timeseries_file_initialized_;
-    std::ofstream out(path,
-                      network_timeseries_file_initialized_ ? std::ios::app
-                                                           : (std::ios::out | std::ios::trunc));
+    auto path = (std::filesystem::path(output_root_) / "network_timeseries.csv").string();
+    auto out = openAppend(path,
+      "run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,"
+      "window_sec,window_generated,window_delivered,window_dropped,"
+      "window_pdr,window_delay_mean_ms,window_delay_p95_ms,window_jitter_ms,"
+      "ctrl_charge_req_generated,ctrl_charge_req_delivered,ctrl_charge_req_pdr,"
+      "ctrl_charge_dec_generated,ctrl_charge_dec_delivered,ctrl_charge_dec_pdr");
     if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.c_str());
       return;
-    }
-    network_timeseries_file_initialized_ = true;
-
-    if (need_header) {
-      out << "run_id,time,window_sec,window_generated,window_delivered,window_dropped,"
-          << "window_pdr,window_delay_mean_ms,window_delay_p95_ms,window_jitter_ms,"
-          << "ctrl_charge_req_generated,ctrl_charge_req_delivered,ctrl_charge_req_pdr,"
-          << "ctrl_charge_dec_generated,ctrl_charge_dec_delivered,ctrl_charge_dec_pdr"
-          << std::endl;
     }
 
     rclcpp::Time now = this->now();
@@ -1942,8 +2148,9 @@ private:
     }
     double win_jitter = computeJitterMs(win_delays);
 
-    out << run_id_ << ","
-        << now.seconds() << ","
+    double t_rel = tRelSAt(now);
+    out << runMeta() << ","
+        << t_rel << "," << now.seconds() << ","
         << rate_window_sec_ << ","
         << win_gen << ","
         << win_del << ","
@@ -1958,10 +2165,13 @@ private:
         << ctrl_dec_gen << ","
         << ctrl_dec_del << ","
         << ctrl_dec_pdr
-        << std::endl;
+        << "\n";
   }
 
-  void writeSummaryJson()
+  // Replaces summary.json (trunc-rewrite) with append-only summary_snapshots.jsonl.
+  // Each call appends exactly one JSON object on one line.
+  // The consumer uses the last object with matching run_instance_id as the final state.
+  void writeSummarySnapshotJsonl()
   {
     std::error_code ec;
     std::filesystem::create_directories(output_root_, ec);
@@ -2019,12 +2229,16 @@ private:
       mean_energy = sum / static_cast<double>(energy_recovered.size());
     }
 
-    auto path = std::filesystem::path(output_root_) / "summary.json";
-    std::ofstream out(path, std::ios::trunc);
-    if (!out.is_open()) {
-      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path.string().c_str());
+    // Append-only JSONL: each call appends one JSON object (one line).
+    // The full run summary is the LAST object in the file for this run_instance_id.
+    auto path_str = (std::filesystem::path(output_root_) / "summary_snapshots.jsonl").string();
+    auto out_append = openAppend(path_str, "");  // no CSV header for JSONL
+    if (!out_append.is_open()) {
+      RCLCPP_WARN(this->get_logger(), "Failed to open %s for writing", path_str.c_str());
       return;
     }
+    // Reuse the local variable name to keep the rest of the function unchanged
+    auto & out = out_append;
 
     size_t recovery_start = recovery_counts_["RECOVERY_START"];
     size_t recovery_done = recovery_counts_["RECOVERY_DONE"];
@@ -2035,8 +2249,16 @@ private:
     size_t fleet_size = uav_states_.size();
     size_t alive_count = fleet_size - dead_uavs_.size();
 
+    double snap_t_rel = tRelS();
+    double snap_time_s = this->now().seconds();
+    // Emit run metadata fields at the top of the snapshot object
     out << "{\n"
         << "  \"run_id\": \"" << run_id_ << "\",\n"
+        << "  \"protocol_name\": \"" << protocol_name_ << "\",\n"
+        << "  \"replicate_id\": " << replicate_id_ << ",\n"
+        << "  \"run_instance_id\": \"" << run_instance_id_ << "\",\n"
+        << "  \"t_rel_s\": " << snap_t_rel << ",\n"
+        << "  \"time_s\": " << snap_time_s << ",\n"
         << "  \"fleet\": {\n"
         << "    \"fleet_size\": " << fleet_size << ",\n"
         << "    \"alive_count\": " << alive_count << ",\n"
@@ -2178,7 +2400,7 @@ private:
         << "    \"task_assign\": " << task_assign << ",\n"
         << "    \"new_deployment\": " << new_deployment << "\n"
         << "  }\n"
-        << "}\n";
+        << "}\n";  // Each snapshot object is followed by a newline (JSONL convention)
   }
 
   void trackRecoveryEvent(const uav_msgs::msg::TrafficMessage & msg)
@@ -2325,15 +2547,10 @@ private:
   // Preemption events
   std::vector<PreemptionEvent> preemption_events_;
   size_t exported_preemption_count_ = 0;
-  bool preemption_events_file_initialized_ = false;
 
   // Death events (for Kaplan-Meier survival curves)
   std::vector<DeathEvent> death_events_;
   size_t exported_death_event_count_ = 0;
-  bool death_events_file_initialized_ = false;
-
-  // Network timeseries (windowed PDR/delay for weather correlation)
-  bool network_timeseries_file_initialized_ = false;
 
   // Weather
   std::string current_weather_regime_;
@@ -2382,13 +2599,16 @@ private:
   std::string run_id_;
   std::string output_dir_;
   std::string output_root_;
-  bool messages_file_initialized_ = false;
-  bool qos_metrics_file_initialized_ = false;
-  bool charge_events_file_initialized_ = false;
-  bool recovery_events_file_initialized_ = false;
-  bool status_timeseries_file_initialized_ = false;
-  bool charge_queue_timeseries_file_initialized_ = false;
-  bool weather_timeseries_file_initialized_ = false;
+  // Multi-run metadata (HARD REQ C)
+  std::string protocol_name_;
+  int replicate_id_ = 0;
+  std::string run_instance_id_;  // unique per process execution; generated at startup
+  // "already_logged" sets for event tables — prevent double-logging within one run
+  std::unordered_set<std::string> already_logged_generated_;   // packet_generated_events
+  std::unordered_set<std::string> already_logged_delivered_;   // packet_delivered_events
+  std::unordered_set<std::string> already_logged_charge_decision_;  // charge_decision_events
+  // NOTE: drop events use dropped_ids_ (already exists); ack events use ack_by_ref_ (already exists)
+  // Stale init flags removed; openAppend() checks file size instead.
   rclcpp::TimerBase::SharedPtr csv_timer_;
   rclcpp::TimerBase::SharedPtr charge_timeout_timer_;
   rclcpp::TimerBase::SharedPtr status_timeseries_timer_;
@@ -2402,7 +2622,7 @@ private:
   int ugv_dock_capacity_ = 1;
   std::unordered_set<std::string> exported_messages_;
   std::unordered_set<std::string> exported_charge_requests_;
-  std::unordered_set<std::string> exported_qos_keys_;
+  std::unordered_set<std::string> exported_qos_keys_;  // kept for compatibility but unused now
 
   rclcpp::Time start_time_;
   double rate_window_sec_ = 10.0;
