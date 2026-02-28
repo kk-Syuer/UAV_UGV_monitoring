@@ -1,0 +1,2898 @@
+%!PS-Adobe-3.0
+%%Creator: graphviz version 2.43.0 (0)
+%%Title: ROSComms
+%%Pages: (atend)
+%%BoundingBox: (atend)
+%%EndComments
+save
+%%BeginProlog
+/DotDict 200 dict def
+DotDict begin
+
+/setupLatin1 {
+mark
+/EncodingVector 256 array def
+ EncodingVector 0
+
+ISOLatin1Encoding 0 255 getinterval putinterval
+EncodingVector 45 /hyphen put
+
+% Set up ISO Latin 1 character encoding
+/starnetISO {
+        dup dup findfont dup length dict begin
+        { 1 index /FID ne { def }{ pop pop } ifelse
+        } forall
+        /Encoding EncodingVector def
+        currentdict end definefont
+} def
+/Times-Roman starnetISO def
+/Times-Italic starnetISO def
+/Times-Bold starnetISO def
+/Times-BoldItalic starnetISO def
+/Helvetica starnetISO def
+/Helvetica-Oblique starnetISO def
+/Helvetica-Bold starnetISO def
+/Helvetica-BoldOblique starnetISO def
+/Courier starnetISO def
+/Courier-Oblique starnetISO def
+/Courier-Bold starnetISO def
+/Courier-BoldOblique starnetISO def
+cleartomark
+} bind def
+
+%%BeginResource: procset graphviz 0 0
+/coord-font-family /Times-Roman def
+/default-font-family /Times-Roman def
+/coordfont coord-font-family findfont 8 scalefont def
+
+/InvScaleFactor 1.0 def
+/set_scale {
+       dup 1 exch div /InvScaleFactor exch def
+       scale
+} bind def
+
+% styles
+/solid { [] 0 setdash } bind def
+/dashed { [9 InvScaleFactor mul dup ] 0 setdash } bind def
+/dotted { [1 InvScaleFactor mul 6 InvScaleFactor mul] 0 setdash } bind def
+/invis {/fill {newpath} def /stroke {newpath} def /show {pop newpath} def} bind def
+/bold { 2 setlinewidth } bind def
+/filled { } bind def
+/unfilled { } bind def
+/rounded { } bind def
+/diagonals { } bind def
+/tapered { } bind def
+
+% hooks for setting color 
+/nodecolor { sethsbcolor } bind def
+/edgecolor { sethsbcolor } bind def
+/graphcolor { sethsbcolor } bind def
+/nopcolor {pop pop pop} bind def
+
+/beginpage {	% i j npages
+	/npages exch def
+	/j exch def
+	/i exch def
+	/str 10 string def
+	npages 1 gt {
+		gsave
+			coordfont setfont
+			0 0 moveto
+			(\() show i str cvs show (,) show j str cvs show (\)) show
+		grestore
+	} if
+} bind def
+
+/set_font {
+	findfont exch
+	scalefont setfont
+} def
+
+% draw text fitted to its expected width
+/alignedtext {			% width text
+	/text exch def
+	/width exch def
+	gsave
+		width 0 gt {
+			[] 0 setdash
+			text stringwidth pop width exch sub text length div 0 text ashow
+		} if
+	grestore
+} def
+
+/boxprim {				% xcorner ycorner xsize ysize
+		4 2 roll
+		moveto
+		2 copy
+		exch 0 rlineto
+		0 exch rlineto
+		pop neg 0 rlineto
+		closepath
+} bind def
+
+/ellipse_path {
+	/ry exch def
+	/rx exch def
+	/y exch def
+	/x exch def
+	matrix currentmatrix
+	newpath
+	x y translate
+	rx ry scale
+	0 0 1 0 360 arc
+	setmatrix
+} bind def
+
+/endpage { showpage } bind def
+/showpage { } def
+
+/layercolorseq
+	[	% layer color sequence - darkest to lightest
+		[0 0 0]
+		[.2 .8 .8]
+		[.4 .8 .8]
+		[.6 .8 .8]
+		[.8 .8 .8]
+	]
+def
+
+/layerlen layercolorseq length def
+
+/setlayer {/maxlayer exch def /curlayer exch def
+	layercolorseq curlayer 1 sub layerlen mod get
+	aload pop sethsbcolor
+	/nodecolor {nopcolor} def
+	/edgecolor {nopcolor} def
+	/graphcolor {nopcolor} def
+} bind def
+
+/onlayer { curlayer ne {invis} if } def
+
+/onlayers {
+	/myupper exch def
+	/mylower exch def
+	curlayer mylower lt
+	curlayer myupper gt
+	or
+	{invis} if
+} def
+
+/curlayer 0 def
+
+%%EndResource
+%%EndProlog
+%%BeginSetup
+14 default-font-family set_font
+% /arrowlength 10 def
+% /arrowwidth 5 def
+
+% make sure pdfmark is harmless for PS-interpreters other than Distiller
+/pdfmark where {pop} {userdict /pdfmark /cleartomark load put} ifelse
+% make '<<' and '>>' safe on PS Level 1 devices
+/languagelevel where {pop languagelevel}{1} ifelse
+2 lt {
+    userdict (<<) cvn ([) cvn load put
+    userdict (>>) cvn ([) cvn load put
+} if
+
+%%EndSetup
+setupLatin1
+%%Page: 1 1
+%%PageBoundingBox: 150 150 3658 1754
+%%PageOrientation: Portrait
+0 0 1 beginpage
+gsave
+150 150 3508 1604 boxprim clip newpath
+0.81424 0.81424 set_scale 0 rotate 209.421 209.421 translate
+0 0 1 graphcolor
+newpath -25.2 -25.2 moveto
+-25.2 1945.2 lineto
+4283.5191 1945.2 lineto
+4283.5191 -25.2 lineto
+closepath fill
+% cluster_ch_manager
+gsave
+0.5 0.012658 0.92941 graphcolor
+newpath 46.5 344 moveto
+46.5 424 lineto
+295.5 424 lineto
+295.5 344 lineto
+closepath fill
+1 setlinewidth
+filled
+0.5 0.012658 0.92941 graphcolor
+newpath 46.5 344 moveto
+46.5 424 lineto
+295.5 424 lineto
+295.5 344 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+120.5 407.2 moveto 101 (ch_manager) alignedtext
+grestore
+% cluster_coverage_planner
+gsave
+0.77778 0.087866 0.93725 graphcolor
+newpath 8 256 moveto
+8 336 lineto
+334 336 lineto
+334 256 lineto
+closepath fill
+1 setlinewidth
+filled
+0.77778 0.087866 0.93725 graphcolor
+newpath 8 256 moveto
+8 336 lineto
+334 336 lineto
+334 256 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+98 319.2 moveto 146 (coverage_planner) alignedtext
+grestore
+% cluster_fault_injector
+gsave
+0.076923 0.31837 0.96078 graphcolor
+newpath 1880.0996 908 moveto
+1880.0996 988 lineto
+2138.0996 988 lineto
+2138.0996 908 lineto
+closepath fill
+1 setlinewidth
+filled
+0.076923 0.31837 0.96078 graphcolor
+newpath 1880.0996 908 moveto
+1880.0996 988 lineto
+2138.0996 988 lineto
+2138.0996 908 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+1956.0996 971.2 moveto 106 (fault_injector) alignedtext
+grestore
+% cluster_network_monitor
+gsave
+0.78704 0.075 0.94118 graphcolor
+newpath 3367.116 908 moveto
+3367.116 988 lineto
+3679.116 988 lineto
+3679.116 908 lineto
+closepath fill
+1 setlinewidth
+filled
+0.78704 0.075 0.94118 graphcolor
+newpath 3367.116 908 moveto
+3367.116 988 lineto
+3679.116 988 lineto
+3679.116 908 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+3455.116 971.2 moveto 136 (network_monitor) alignedtext
+grestore
+% cluster_planner_viz
+gsave
+0.46465 0.13636 0.94902 graphcolor
+newpath 811.8133 1832 moveto
+811.8133 1912 lineto
+4250.3191 1912 lineto
+4250.3191 1832 lineto
+closepath fill
+1 setlinewidth
+filled
+0.46465 0.13636 0.94902 graphcolor
+newpath 811.8133 1832 moveto
+811.8133 1912 lineto
+4250.3191 1912 lineto
+4250.3191 1832 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+2484.0662 1895.2 moveto 94 (planner_viz) alignedtext
+grestore
+% cluster_recovery_manager
+gsave
+0.13333 0.17857 0.98824 graphcolor
+newpath 1841.0996 746 moveto
+1841.0996 826 lineto
+2177.0996 826 lineto
+2177.0996 746 lineto
+closepath fill
+1 setlinewidth
+filled
+0.13333 0.17857 0.98824 graphcolor
+newpath 1841.0996 746 moveto
+1841.0996 826 lineto
+2177.0996 826 lineto
+2177.0996 746 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+1933.0996 809.2 moveto 152 (recovery_manager) alignedtext
+grestore
+% cluster_routing_manager
+gsave
+0.40625 0.13061 0.96078 graphcolor
+newpath 2258.0996 1744 moveto
+2258.0996 1824 lineto
+2573.0996 1824 lineto
+2573.0996 1744 lineto
+closepath fill
+1 setlinewidth
+filled
+0.40625 0.13061 0.96078 graphcolor
+newpath 2258.0996 1744 moveto
+2258.0996 1824 lineto
+2573.0996 1824 lineto
+2573.0996 1744 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+2346.0996 1807.2 moveto 139 (routing_manager) alignedtext
+grestore
+% cluster_sink_gateway
+gsave
+0.014706 0.136 0.98039 graphcolor
+newpath 1494.0996 828 moveto
+1494.0996 908 lineto
+1760.0996 908 lineto
+1760.0996 828 lineto
+closepath fill
+1 setlinewidth
+filled
+0.014706 0.136 0.98039 graphcolor
+newpath 1494.0996 828 moveto
+1494.0996 908 lineto
+1760.0996 908 lineto
+1760.0996 828 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+1572.5996 891.2 moveto 109 (sink_gateway) alignedtext
+grestore
+% cluster_uav_fleet
+gsave
+0.56863 0.1371 0.97255 graphcolor
+newpath 846.8133 666 moveto
+846.8133 746 lineto
+1013.8133 746 lineto
+1013.8133 666 lineto
+closepath fill
+1 setlinewidth
+filled
+0.56863 0.1371 0.97255 graphcolor
+newpath 846.8133 666 moveto
+846.8133 746 lineto
+1013.8133 746 lineto
+1013.8133 666 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+893.3133 729.2 moveto 74 (uav_fleet) alignedtext
+grestore
+% cluster_ugv_charger
+gsave
+0.1 0.17787 0.99216 graphcolor
+newpath 1501.5996 8 moveto
+1501.5996 88 lineto
+1752.5996 88 lineto
+1752.5996 8 lineto
+closepath fill
+1 setlinewidth
+filled
+0.1 0.17787 0.99216 graphcolor
+newpath 1501.5996 8 moveto
+1501.5996 88 lineto
+1752.5996 88 lineto
+1752.5996 8 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+1576.0996 71.2 moveto 102 (ugv_charger) alignedtext
+grestore
+% cluster_user_devices_sim
+gsave
+0.13333 0.36145 0.97647 graphcolor
+newpath 1868.0996 254 moveto
+1868.0996 334 lineto
+2150.0996 334 lineto
+2150.0996 254 lineto
+closepath fill
+1 setlinewidth
+filled
+0.13333 0.36145 0.97647 graphcolor
+newpath 1868.0996 254 moveto
+1868.0996 334 lineto
+2150.0996 334 lineto
+2150.0996 254 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+1938.0996 317.2 moveto 142 (user_devices_sim) alignedtext
+grestore
+% cluster_weather_server
+gsave
+0.40123 0.11297 0.93725 graphcolor
+newpath 50 1177 moveto
+50 1257 lineto
+292 1257 lineto
+292 1177 lineto
+closepath fill
+1 setlinewidth
+filled
+0.40123 0.11297 0.93725 graphcolor
+newpath 50 1177 moveto
+50 1257 lineto
+292 1257 lineto
+292 1177 lineto
+closepath stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+108.5 1240.2 moveto 125 (weather_server) alignedtext
+grestore
+% cluster_topics
+gsave
+0 0 1 graphcolor
+newpath 427 996 moveto
+427 996 3983.3191 996 3983.3191 996 curveto
+3989.3191 996 3995.3191 1002 3995.3191 1008 curveto
+3995.3191 1008 3995.3191 1724 3995.3191 1724 curveto
+3995.3191 1730 3989.3191 1736 3983.3191 1736 curveto
+3983.3191 1736 427 1736 427 1736 curveto
+421 1736 415 1730 415 1724 curveto
+415 1724 415 1008 415 1008 curveto
+415 1002 421 996 427 996 curveto
+closepath fill
+1 setlinewidth
+dashed
+0.54167 0.018868 0.83137 graphcolor
+newpath 427 996 moveto
+427 996 3983.3191 996 3983.3191 996 curveto
+3989.3191 996 3995.3191 1002 3995.3191 1008 curveto
+3995.3191 1008 3995.3191 1724 3995.3191 1724 curveto
+3995.3191 1730 3989.3191 1736 3983.3191 1736 curveto
+3983.3191 1736 427 1736 427 1736 curveto
+421 1736 415 1730 415 1724 curveto
+415 1724 415 1008 415 1008 curveto
+415 1002 421 996 427 996 curveto
+stroke
+0 0 0 graphcolor
+16 /Helvetica set_font
+2180.6596 1719.2 moveto 49 (topics) alignedtext
+grestore
+% ch_manager/ch_manager_node
+gsave
+0 0 1 nodecolor
+newpath 275.5 390 moveto
+275.5 390 66.5 390 66.5 390 curveto
+60.5 390 54.5 384 54.5 378 curveto
+54.5 378 54.5 364 54.5 364 curveto
+54.5 358 60.5 352 66.5 352 curveto
+66.5 352 275.5 352 275.5 352 curveto
+281.5 352 287.5 358 287.5 364 curveto
+287.5 364 287.5 378 287.5 378 curveto
+287.5 384 281.5 390 275.5 390 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 275.5 390 moveto
+275.5 390 66.5 390 66.5 390 curveto
+60.5 390 54.5 384 54.5 378 curveto
+54.5 378 54.5 364 54.5 364 curveto
+54.5 358 60.5 352 66.5 352 curveto
+66.5 352 275.5 352 275.5 352 curveto
+281.5 352 287.5 358 287.5 364 curveto
+287.5 364 287.5 378 287.5 378 curveto
+287.5 384 281.5 390 275.5 390 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+62.5 374.8 moveto 217 (ch_manager/ch_manager_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+102 359.8 moveto 138 ([ch_manager_node]) alignedtext
+grestore
+% topic_ch_manager_cluster_info
+gsave
+0.5 0.0040161 0.97647 nodecolor
+572.9066 1116 128.8872 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+572.9066 1116 128.8872 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+496.9066 1119.4 moveto 152 (/ch_manager/cluster_info) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+489.9066 1106.4 moveto 166 (uav_msgs::msg::ClusterInfo) alignedtext
+grestore
+% ch_manager/ch_manager_node->topic_ch_manager_cluster_info
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 171.3191 390.1645 moveto
+171.3191 506.7741 171.3191 1116 171.3191 1116 curveto
+171.3191 1116 434.9066 1116 434.9066 1116 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 434.9067 1119.1501 moveto
+443.9066 1116 lineto
+434.9066 1112.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 434.9067 1119.1501 moveto
+443.9066 1116 lineto
+434.9066 1112.8501 lineto
+closepath stroke
+grestore
+% coverage_planner/coverage_planner_node
+gsave
+0 0 1 nodecolor
+newpath 314 302 moveto
+314 302 28 302 28 302 curveto
+22 302 16 296 16 290 curveto
+16 290 16 276 16 276 curveto
+16 270 22 264 28 264 curveto
+28 264 314 264 314 264 curveto
+320 264 326 270 326 276 curveto
+326 276 326 290 326 290 curveto
+326 296 320 302 314 302 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 314 302 moveto
+314 302 28 302 28 302 curveto
+22 302 16 296 16 290 curveto
+16 290 16 276 16 276 curveto
+16 270 22 264 28 264 curveto
+28 264 314 264 314 264 curveto
+320 264 326 270 326 276 curveto
+326 276 326 290 326 290 curveto
+326 296 320 302 314 302 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+24 286.8 moveto 294 (coverage_planner/coverage_planner_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+83 271.8 moveto 176 ([coverage_planner_node]) alignedtext
+grestore
+% topic_coverage_planner_deployment
+gsave
+0.5 0.0040161 0.97647 nodecolor
+572.9066 1292 149.8133 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+572.9066 1292 149.8133 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+479.4066 1295.4 moveto 187 (/coverage_planner/deployment) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+474.9066 1282.4 moveto 196 (uav_msgs::msg::UavDeployment) alignedtext
+grestore
+% coverage_planner/coverage_planner_node->topic_coverage_planner_deployment
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 307.3191 302.2551 moveto
+307.3191 441.7494 307.3191 1292 307.3191 1292 curveto
+307.3191 1292 413.9066 1292 413.9066 1292 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 413.9067 1295.1501 moveto
+422.9066 1292 lineto
+413.9066 1288.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 413.9067 1295.1501 moveto
+422.9066 1292 lineto
+413.9066 1288.8501 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_task_points
+gsave
+0.5 0.0040161 0.97647 nodecolor
+572.9066 1028 143.5854 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+572.9066 1028 143.5854 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+481.4066 1031.4 moveto 183 (/coverage_planner/task_points) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+479.4066 1018.4 moveto 187 (uav_msgs::msg::TaskPointArray) alignedtext
+grestore
+% coverage_planner/coverage_planner_node->topic_coverage_planner_task_points
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 317.3191 302.1645 moveto
+317.3191 418.7741 317.3191 1028 317.3191 1028 curveto
+317.3191 1028 419.9066 1028 419.9066 1028 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 419.9067 1031.1501 moveto
+428.9066 1028 lineto
+419.9066 1024.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 419.9067 1031.1501 moveto
+428.9066 1028 lineto
+419.9066 1024.8501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus_raw
+gsave
+0.5625 0.063745 0.98431 nodecolor
+2809.885 1468 144.9138 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1468 144.9138 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2737.885 1471.4 moveto 144 (/fanet/network_bus_raw) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2715.385 1458.4 moveto 189 (uav_msgs::msg::TrafficMessage) alignedtext
+grestore
+% coverage_planner/coverage_planner_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 297.3191 302.384 moveto
+297.3191 457.1223 297.3191 1486.0312 297.3191 1486.0312 curveto
+297.3191 1486.0312 2655.885 1486.0312 2655.885 1486.0312 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1489.1813 moveto
+2664.885 1486.0312 lineto
+2655.8849 1482.8813 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1489.1813 moveto
+2664.885 1486.0312 lineto
+2655.8849 1482.8813 lineto
+closepath stroke
+grestore
+% fault_injector/fault_injector_node
+gsave
+0 0 1 nodecolor
+newpath 2118.0996 954 moveto
+2118.0996 954 1900.0996 954 1900.0996 954 curveto
+1894.0996 954 1888.0996 948 1888.0996 942 curveto
+1888.0996 942 1888.0996 928 1888.0996 928 curveto
+1888.0996 922 1894.0996 916 1900.0996 916 curveto
+1900.0996 916 2118.0996 916 2118.0996 916 curveto
+2124.0996 916 2130.0996 922 2130.0996 928 curveto
+2130.0996 928 2130.0996 942 2130.0996 942 curveto
+2130.0996 948 2124.0996 954 2118.0996 954 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 2118.0996 954 moveto
+2118.0996 954 1900.0996 954 1900.0996 954 curveto
+1894.0996 954 1888.0996 948 1888.0996 942 curveto
+1888.0996 942 1888.0996 928 1888.0996 928 curveto
+1888.0996 922 1894.0996 916 1900.0996 916 curveto
+1900.0996 916 2118.0996 916 2118.0996 916 curveto
+2124.0996 916 2130.0996 922 2130.0996 928 curveto
+2130.0996 928 2130.0996 942 2130.0996 942 curveto
+2130.0996 948 2124.0996 954 2118.0996 954 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+1896.0996 938.8 moveto 226 (fault_injector/fault_injector_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+1938.0996 923.8 moveto 142 ([fault_injector_node]) alignedtext
+grestore
+% topic_fanet_delivered
+gsave
+0.5625 0.063745 0.98431 nodecolor
+2809.885 1380 77.5641 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1380 77.5641 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2762.885 1383.4 moveto 94 (/fanet/delivered) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2765.385 1370.4 moveto 89 (TrafficMessage) alignedtext
+grestore
+% fault_injector/fault_injector_node->topic_fanet_delivered
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2122.3191 954.2574 moveto
+2122.3191 1039.2461 2122.3191 1376.5655 2122.3191 1376.5655 curveto
+2122.3191 1376.5655 2722.885 1376.5655 2722.885 1376.5655 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1379.7156 moveto
+2731.885 1376.5655 lineto
+2722.8849 1373.4156 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1379.7156 moveto
+2731.885 1376.5655 lineto
+2722.8849 1373.4156 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus
+gsave
+0.5625 0.063745 0.98431 nodecolor
+2809.885 1028 144.9138 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1028 144.9138 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2752.385 1031.4 moveto 115 (/fanet/network_bus) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2715.385 1018.4 moveto 189 (uav_msgs::msg::TrafficMessage) alignedtext
+grestore
+% fault_injector/fault_injector_node->topic_fanet_network_bus
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2126.3191 954.2847 moveto
+2126.3191 979.3591 2126.3191 1019.9861 2126.3191 1019.9861 curveto
+2126.3191 1019.9861 2655.885 1019.9861 2655.885 1019.9861 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1023.1362 moveto
+2664.885 1019.9861 lineto
+2655.8849 1016.8362 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1023.1362 moveto
+2664.885 1019.9861 lineto
+2655.8849 1016.8362 lineto
+closepath stroke
+grestore
+% network_monitor/network_monitor_node
+gsave
+0 0 1 nodecolor
+newpath 3659.116 954 moveto
+3659.116 954 3387.116 954 3387.116 954 curveto
+3381.116 954 3375.116 948 3375.116 942 curveto
+3375.116 942 3375.116 928 3375.116 928 curveto
+3375.116 922 3381.116 916 3387.116 916 curveto
+3387.116 916 3659.116 916 3659.116 916 curveto
+3665.116 916 3671.116 922 3671.116 928 curveto
+3671.116 928 3671.116 942 3671.116 942 curveto
+3671.116 948 3665.116 954 3659.116 954 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 3659.116 954 moveto
+3659.116 954 3387.116 954 3387.116 954 curveto
+3381.116 954 3375.116 948 3375.116 942 curveto
+3375.116 942 3375.116 928 3375.116 928 curveto
+3375.116 922 3381.116 916 3387.116 916 curveto
+3387.116 916 3659.116 916 3659.116 916 curveto
+3665.116 916 3671.116 922 3671.116 928 curveto
+3671.116 928 3671.116 942 3671.116 942 curveto
+3671.116 948 3665.116 954 3659.116 954 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+3383.116 938.8 moveto 280 (network_monitor/network_monitor_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+3438.616 923.8 moveto 169 ([network_monitor_node]) alignedtext
+grestore
+% topic_network_monitor_stats
+gsave
+0.5 0.0040161 0.97647 nodecolor
+3877.7176 1353 109.7032 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+3877.7176 1353 109.7032 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+3808.2176 1356.4 moveto 139 (/network_monitor/stats) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+3811.7176 1343.4 moveto 132 (std_msgs::msg::String) alignedtext
+grestore
+% network_monitor/network_monitor_node->topic_network_monitor_stats
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 3671.182 935 moveto
+3768.6457 935 3878.3191 935 3878.3191 935 curveto
+3878.3191 935 3878.3191 1344 3878.3191 1344 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3875.1692 1344 moveto
+3878.3191 1353 lineto
+3881.4692 1344 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3875.1692 1344 moveto
+3878.3191 1353 lineto
+3881.4692 1344 lineto
+closepath stroke
+grestore
+% planner_viz/planner_viz_node
+gsave
+0 0 1 nodecolor
+newpath 1028.8133 1878 moveto
+1028.8133 1878 831.8133 1878 831.8133 1878 curveto
+825.8133 1878 819.8133 1872 819.8133 1866 curveto
+819.8133 1866 819.8133 1852 819.8133 1852 curveto
+819.8133 1846 825.8133 1840 831.8133 1840 curveto
+831.8133 1840 1028.8133 1840 1028.8133 1840 curveto
+1034.8133 1840 1040.8133 1846 1040.8133 1852 curveto
+1040.8133 1852 1040.8133 1866 1040.8133 1866 curveto
+1040.8133 1872 1034.8133 1878 1028.8133 1878 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 1028.8133 1878 moveto
+1028.8133 1878 831.8133 1878 831.8133 1878 curveto
+825.8133 1878 819.8133 1872 819.8133 1866 curveto
+819.8133 1866 819.8133 1852 819.8133 1852 curveto
+819.8133 1846 825.8133 1840 831.8133 1840 curveto
+831.8133 1840 1028.8133 1840 1028.8133 1840 curveto
+1034.8133 1840 1040.8133 1846 1040.8133 1852 curveto
+1040.8133 1852 1040.8133 1866 1040.8133 1866 curveto
+1040.8133 1872 1034.8133 1878 1028.8133 1878 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+827.8133 1862.8 moveto 205 (planner_viz/planner_viz_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+864.3133 1847.8 moveto 132 ([planner_viz_node]) alignedtext
+grestore
+% planner_viz/fleet_viz
+gsave
+0 0 1 nodecolor
+newpath 4230.3191 1878 moveto
+4230.3191 1878 4096.3191 1878 4096.3191 1878 curveto
+4090.3191 1878 4084.3191 1872 4084.3191 1866 curveto
+4084.3191 1866 4084.3191 1852 4084.3191 1852 curveto
+4084.3191 1846 4090.3191 1840 4096.3191 1840 curveto
+4096.3191 1840 4230.3191 1840 4230.3191 1840 curveto
+4236.3191 1840 4242.3191 1846 4242.3191 1852 curveto
+4242.3191 1852 4242.3191 1866 4242.3191 1866 curveto
+4242.3191 1872 4236.3191 1878 4230.3191 1878 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 4230.3191 1878 moveto
+4230.3191 1878 4096.3191 1878 4096.3191 1878 curveto
+4090.3191 1878 4084.3191 1872 4084.3191 1866 curveto
+4084.3191 1866 4084.3191 1852 4084.3191 1852 curveto
+4084.3191 1846 4090.3191 1840 4096.3191 1840 curveto
+4096.3191 1840 4230.3191 1840 4230.3191 1840 curveto
+4236.3191 1840 4242.3191 1846 4242.3191 1852 curveto
+4242.3191 1852 4242.3191 1866 4242.3191 1866 curveto
+4242.3191 1872 4236.3191 1878 4230.3191 1878 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+4092.3191 1862.8 moveto 142 (planner_viz/fleet_viz) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+4108.8191 1847.8 moveto 109 ([fleet_viz_node]) alignedtext
+grestore
+% recovery_manager/recovery_manager_node
+gsave
+0 0 1 nodecolor
+newpath 2157.0996 792 moveto
+2157.0996 792 1861.0996 792 1861.0996 792 curveto
+1855.0996 792 1849.0996 786 1849.0996 780 curveto
+1849.0996 780 1849.0996 766 1849.0996 766 curveto
+1849.0996 760 1855.0996 754 1861.0996 754 curveto
+1861.0996 754 2157.0996 754 2157.0996 754 curveto
+2163.0996 754 2169.0996 760 2169.0996 766 curveto
+2169.0996 766 2169.0996 780 2169.0996 780 curveto
+2169.0996 786 2163.0996 792 2157.0996 792 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 2157.0996 792 moveto
+2157.0996 792 1861.0996 792 1861.0996 792 curveto
+1855.0996 792 1849.0996 786 1849.0996 780 curveto
+1849.0996 780 1849.0996 766 1849.0996 766 curveto
+1849.0996 760 1855.0996 754 1861.0996 754 curveto
+1861.0996 754 2157.0996 754 2157.0996 754 curveto
+2163.0996 754 2169.0996 760 2169.0996 766 curveto
+2169.0996 766 2169.0996 780 2169.0996 780 curveto
+2169.0996 786 2163.0996 792 2157.0996 792 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+1857.0996 776.8 moveto 304 (recovery_manager/recovery_manager_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+1918.5996 761.8 moveto 181 ([recovery_manager_node]) alignedtext
+grestore
+% recovery_manager/recovery_manager_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2150.3191 792.3401 moveto
+2150.3191 903.4861 2150.3191 1455.9792 2150.3191 1455.9792 curveto
+2150.3191 1455.9792 2655.885 1455.9792 2655.885 1455.9792 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1459.1293 moveto
+2664.885 1455.9792 lineto
+2655.8849 1452.8293 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1459.1293 moveto
+2664.885 1455.9792 lineto
+2655.8849 1452.8293 lineto
+closepath stroke
+grestore
+% routing_manager/routing_manager_node
+gsave
+0 0 1 nodecolor
+newpath 2553.0996 1790 moveto
+2553.0996 1790 2278.0996 1790 2278.0996 1790 curveto
+2272.0996 1790 2266.0996 1784 2266.0996 1778 curveto
+2266.0996 1778 2266.0996 1764 2266.0996 1764 curveto
+2266.0996 1758 2272.0996 1752 2278.0996 1752 curveto
+2278.0996 1752 2553.0996 1752 2553.0996 1752 curveto
+2559.0996 1752 2565.0996 1758 2565.0996 1764 curveto
+2565.0996 1764 2565.0996 1778 2565.0996 1778 curveto
+2565.0996 1784 2559.0996 1790 2553.0996 1790 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 2553.0996 1790 moveto
+2553.0996 1790 2278.0996 1790 2278.0996 1790 curveto
+2272.0996 1790 2266.0996 1784 2266.0996 1778 curveto
+2266.0996 1778 2266.0996 1764 2266.0996 1764 curveto
+2266.0996 1758 2272.0996 1752 2278.0996 1752 curveto
+2278.0996 1752 2553.0996 1752 2553.0996 1752 curveto
+2559.0996 1752 2565.0996 1758 2565.0996 1764 curveto
+2565.0996 1764 2565.0996 1778 2565.0996 1778 curveto
+2565.0996 1784 2559.0996 1790 2553.0996 1790 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+2274.0996 1774.8 moveto 283 (routing_manager/routing_manager_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+2330.0996 1759.8 moveto 171 ([routing_manager_node]) alignedtext
+grestore
+% topic_fanet_routing_table
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2809.885 1116 135.5294 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1116 135.5294 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2750.885 1119.4 moveto 118 (/fanet/routing_table) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2721.885 1106.4 moveto 176 (uav_msgs::msg::RoutingTable) alignedtext
+grestore
+% routing_manager/routing_manager_node->topic_fanet_routing_table
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2565.1589 1761.5 moveto
+2582.0374 1761.5 2593.3191 1761.5 2593.3191 1761.5 curveto
+2593.3191 1761.5 2593.3191 1116 2593.3191 1116 curveto
+2593.3191 1116 2664.885 1116 2664.885 1116 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2664.885 1119.1501 moveto
+2673.885 1116 lineto
+2664.8849 1112.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2664.885 1119.1501 moveto
+2673.885 1116 lineto
+2664.8849 1112.8501 lineto
+closepath stroke
+grestore
+% topic_routing_manager_alerts
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2809.885 1556 113.6886 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1556 113.6886 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2737.385 1559.4 moveto 145 (/routing_manager/alerts) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2743.885 1546.4 moveto 132 (std_msgs::msg::String) alignedtext
+grestore
+% routing_manager/routing_manager_node->topic_routing_manager_alerts
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2565.1075 1780.5 moveto
+2676.8281 1780.5 2810.3191 1780.5 2810.3191 1780.5 curveto
+2810.3191 1780.5 2810.3191 1565 2810.3191 1565 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2813.4692 1565 moveto
+2810.3191 1556 lineto
+2807.1692 1565 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2813.4692 1565 moveto
+2810.3191 1556 lineto
+2807.1692 1565 lineto
+closepath stroke
+grestore
+% sink_gateway/sink_gateway_node
+gsave
+0 0 1 nodecolor
+newpath 1740.0996 874 moveto
+1740.0996 874 1514.0996 874 1514.0996 874 curveto
+1508.0996 874 1502.0996 868 1502.0996 862 curveto
+1502.0996 862 1502.0996 848 1502.0996 848 curveto
+1502.0996 842 1508.0996 836 1514.0996 836 curveto
+1514.0996 836 1740.0996 836 1740.0996 836 curveto
+1746.0996 836 1752.0996 842 1752.0996 848 curveto
+1752.0996 848 1752.0996 862 1752.0996 862 curveto
+1752.0996 868 1746.0996 874 1740.0996 874 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 1740.0996 874 moveto
+1740.0996 874 1514.0996 874 1514.0996 874 curveto
+1508.0996 874 1502.0996 868 1502.0996 862 curveto
+1502.0996 862 1502.0996 848 1502.0996 848 curveto
+1502.0996 842 1508.0996 836 1514.0996 836 curveto
+1514.0996 836 1740.0996 836 1740.0996 836 curveto
+1746.0996 836 1752.0996 842 1752.0996 848 curveto
+1752.0996 848 1752.0996 862 1752.0996 862 curveto
+1752.0996 868 1746.0996 874 1740.0996 874 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+1510.0996 858.8 moveto 234 (sink_gateway/sink_gateway_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+1554.0996 843.8 moveto 146 ([sink_gateway_node]) alignedtext
+grestore
+% sink_gateway/sink_gateway_node->topic_fanet_delivered
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 1733.3191 874.0517 moveto
+1733.3191 969.4104 1733.3191 1390.3036 1733.3191 1390.3036 curveto
+1733.3191 1390.3036 2722.885 1390.3036 2722.885 1390.3036 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1393.4537 moveto
+2731.885 1390.3036 lineto
+2722.8849 1387.1537 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1393.4537 moveto
+2731.885 1390.3036 lineto
+2722.8849 1387.1537 lineto
+closepath stroke
+grestore
+% sink_gateway/sink_gateway_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 1729.3191 874.2045 moveto
+1729.3191 978.6868 1729.3191 1474.0104 1729.3191 1474.0104 curveto
+1729.3191 1474.0104 2655.885 1474.0104 2655.885 1474.0104 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1477.1605 moveto
+2664.885 1474.0104 lineto
+2655.8849 1470.8605 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1477.1605 moveto
+2664.885 1474.0104 lineto
+2655.8849 1470.8605 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_event
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2009.0996 1186 104.8038 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2009.0996 1186 104.8038 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+1948.5996 1189.4 moveto 121 (/fanet/routing_event) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+1943.0996 1176.4 moveto 132 (std_msgs::msg::String) alignedtext
+grestore
+% sink_gateway/sink_gateway_node->topic_fanet_routing_event
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1741.3191 874.0167 moveto
+1741.3191 945.0548 1741.3191 1190.8083 1741.3191 1190.8083 curveto
+1741.3191 1190.8083 1895.0996 1190.8083 1895.0996 1190.8083 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1193.9584 moveto
+1904.0996 1190.8083 lineto
+1895.0996 1187.6584 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1193.9584 moveto
+1904.0996 1190.8083 lineto
+1895.0996 1187.6584 lineto
+closepath stroke
+grestore
+% topic_fanet_status
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2809.885 1204 125.316 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1204 125.316 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2771.885 1207.4 moveto 76 (/fanet/status) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2729.385 1194.4 moveto 161 (uav_msgs::msg::UavStatus) alignedtext
+grestore
+% sink_gateway/sink_gateway_node->topic_fanet_status
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1737.3191 874.1563 moveto
+1737.3191 948.7969 1737.3191 1216.0416 1737.3191 1216.0416 curveto
+1737.3191 1216.0416 2675.885 1216.0416 2675.885 1216.0416 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1219.1917 moveto
+2684.885 1216.0416 lineto
+2675.8849 1212.8917 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1219.1917 moveto
+2684.885 1216.0416 lineto
+2675.8849 1212.8917 lineto
+closepath stroke
+grestore
+% uav_fleet/uav_node
+gsave
+0 0 1 nodecolor
+newpath 993.8133 712 moveto
+993.8133 712 866.8133 712 866.8133 712 curveto
+860.8133 712 854.8133 706 854.8133 700 curveto
+854.8133 700 854.8133 686 854.8133 686 curveto
+854.8133 680 860.8133 674 866.8133 674 curveto
+866.8133 674 993.8133 674 993.8133 674 curveto
+999.8133 674 1005.8133 680 1005.8133 686 curveto
+1005.8133 686 1005.8133 700 1005.8133 700 curveto
+1005.8133 706 999.8133 712 993.8133 712 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 993.8133 712 moveto
+993.8133 712 866.8133 712 866.8133 712 curveto
+860.8133 712 854.8133 706 854.8133 700 curveto
+854.8133 700 854.8133 686 854.8133 686 curveto
+854.8133 680 860.8133 674 866.8133 674 curveto
+866.8133 674 993.8133 674 993.8133 674 curveto
+999.8133 674 1005.8133 680 1005.8133 686 curveto
+1005.8133 686 1005.8133 700 1005.8133 700 curveto
+1005.8133 706 999.8133 712 993.8133 712 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+862.8133 696.8 moveto 135 (uav_fleet/uav_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+891.3133 681.8 moveto 78 ([uav_node]) alignedtext
+grestore
+% uav_fleet/uav_node->topic_fanet_delivered
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 951.3191 712.2001 moveto
+951.3191 825.0586 951.3191 1397.1726 951.3191 1397.1726 curveto
+951.3191 1397.1726 2722.885 1397.1726 2722.885 1397.1726 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1400.3227 moveto
+2731.885 1397.1726 lineto
+2722.8849 1394.0227 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1400.3227 moveto
+2731.885 1397.1726 lineto
+2722.8849 1394.0227 lineto
+closepath stroke
+grestore
+% uav_fleet/uav_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 937.3191 712.0646 moveto
+937.3191 832.2554 937.3191 1480.0208 937.3191 1480.0208 curveto
+937.3191 1480.0208 2655.885 1480.0208 2655.885 1480.0208 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1483.1709 moveto
+2664.885 1480.0208 lineto
+2655.8849 1476.8709 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1483.1709 moveto
+2664.885 1480.0208 lineto
+2655.8849 1476.8709 lineto
+closepath stroke
+grestore
+% uav_fleet/uav_node->topic_fanet_routing_event
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1005.9315 699.3333 moveto
+1218.9038 699.3333 1808.3191 699.3333 1808.3191 699.3333 curveto
+1808.3191 699.3333 1808.3191 1181.1917 1808.3191 1181.1917 curveto
+1808.3191 1181.1917 1895.0996 1181.1917 1895.0996 1181.1917 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1184.3418 moveto
+1904.0996 1181.1917 lineto
+1895.0996 1178.0418 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1184.3418 moveto
+1904.0996 1181.1917 lineto
+1895.0996 1178.0418 lineto
+closepath stroke
+grestore
+% uav_fleet/uav_node->topic_fanet_status
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 965.3191 712.0691 moveto
+965.3191 806.5568 965.3191 1220.0416 965.3191 1220.0416 curveto
+965.3191 1220.0416 2675.885 1220.0416 2675.885 1220.0416 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1223.1917 moveto
+2684.885 1220.0416 lineto
+2675.8849 1216.8917 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1223.1917 moveto
+2684.885 1220.0416 lineto
+2675.8849 1216.8917 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_charge_requests
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2415.5996 1678 146.2423 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2415.5996 1678 146.2423 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2335.0996 1681.4 moveto 161 (/uav_fleet/charge_requests) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2320.0996 1668.4 moveto 191 (uav_msgs::msg::ChargeRequest) alignedtext
+grestore
+% uav_fleet/uav_node->topic_uav_fleet_charge_requests
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 924.3191 712.2341 moveto
+924.3191 849.7384 924.3191 1678 924.3191 1678 curveto
+924.3191 1678 2259.5996 1678 2259.5996 1678 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2259.5997 1681.1501 moveto
+2268.5996 1678 lineto
+2259.5996 1674.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2259.5997 1681.1501 moveto
+2268.5996 1678 lineto
+2259.5996 1674.8501 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_failure_events
+gsave
+0.5 0.0040161 0.97647 nodecolor
+1271.4565 1028 133.7865 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+1271.4565 1028 133.7865 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+1198.4565 1031.4 moveto 146 (/uav_fleet/failure_events) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+1184.9565 1018.4 moveto 173 (uav_msgs::msg::FailureEvent) alignedtext
+grestore
+% uav_fleet/uav_node->topic_uav_fleet_failure_events
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 992.3191 712.459 moveto
+992.3191 783.9562 992.3191 1028 992.3191 1028 curveto
+992.3191 1028 1128.4565 1028 1128.4565 1028 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1128.4565 1031.1501 moveto
+1137.4565 1028 lineto
+1128.4564 1024.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1128.4565 1031.1501 moveto
+1137.4565 1028 lineto
+1128.4564 1024.8501 lineto
+closepath stroke
+grestore
+% ugv_charger/ugv_charger_node
+gsave
+0 0 1 nodecolor
+newpath 1732.5996 54 moveto
+1732.5996 54 1521.5996 54 1521.5996 54 curveto
+1515.5996 54 1509.5996 48 1509.5996 42 curveto
+1509.5996 42 1509.5996 28 1509.5996 28 curveto
+1509.5996 22 1515.5996 16 1521.5996 16 curveto
+1521.5996 16 1732.5996 16 1732.5996 16 curveto
+1738.5996 16 1744.5996 22 1744.5996 28 curveto
+1744.5996 28 1744.5996 42 1744.5996 42 curveto
+1744.5996 48 1738.5996 54 1732.5996 54 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 1732.5996 54 moveto
+1732.5996 54 1521.5996 54 1521.5996 54 curveto
+1515.5996 54 1509.5996 48 1509.5996 42 curveto
+1509.5996 42 1509.5996 28 1509.5996 28 curveto
+1509.5996 22 1515.5996 16 1521.5996 16 curveto
+1521.5996 16 1732.5996 16 1732.5996 16 curveto
+1738.5996 16 1744.5996 22 1744.5996 28 curveto
+1744.5996 28 1744.5996 42 1744.5996 42 curveto
+1744.5996 48 1738.5996 54 1732.5996 54 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+1517.5996 38.8 moveto 219 (ugv_charger/ugv_charger_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+1557.5996 23.8 moveto 139 ([ugv_charger_node]) alignedtext
+grestore
+% ugv_charger/ugv_charger_node->topic_fanet_delivered
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 1744.7824 46.4 moveto
+1765.3563 46.4 1780.3191 46.4 1780.3191 46.4 curveto
+1780.3191 46.4 1780.3191 1383.4345 1780.3191 1383.4345 curveto
+1780.3191 1383.4345 2722.885 1383.4345 2722.885 1383.4345 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1386.5846 moveto
+2731.885 1383.4345 lineto
+2722.8849 1380.2846 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1386.5846 moveto
+2731.885 1383.4345 lineto
+2722.8849 1380.2846 lineto
+closepath stroke
+grestore
+% ugv_charger/ugv_charger_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 1744.8712 50.2 moveto
+1757.7533 50.2 1766.3191 50.2 1766.3191 50.2 curveto
+1766.3191 50.2 1766.3191 1468 1766.3191 1468 curveto
+1766.3191 1468 2655.885 1468 2655.885 1468 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1471.1501 moveto
+2664.885 1468 lineto
+2655.8849 1464.8501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1471.1501 moveto
+2664.885 1468 lineto
+2655.8849 1464.8501 lineto
+closepath stroke
+grestore
+% ugv_charger/ugv_charger_node->topic_fanet_routing_event
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1744.6023 38.8 moveto
+1785.9471 38.8 1822.3191 38.8 1822.3191 38.8 curveto
+1822.3191 38.8 1822.3191 1171.575 1822.3191 1171.575 curveto
+1822.3191 1171.575 1895.0996 1171.575 1895.0996 1171.575 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1174.7251 moveto
+1904.0996 1171.575 lineto
+1895.0996 1168.4251 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1895.0997 1174.7251 moveto
+1904.0996 1171.575 lineto
+1895.0996 1168.4251 lineto
+closepath stroke
+grestore
+% ugv_charger/ugv_charger_node->topic_fanet_status
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1744.6288 31.2 moveto
+1923.199 31.2 2242.3191 31.2 2242.3191 31.2 curveto
+2242.3191 31.2 2242.3191 1189.9861 2242.3191 1189.9861 curveto
+2242.3191 1189.9861 2675.885 1189.9861 2675.885 1189.9861 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1193.1362 moveto
+2684.885 1189.9861 lineto
+2675.8849 1186.8362 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2675.885 1193.1362 moveto
+2684.885 1189.9861 lineto
+2675.8849 1186.8362 lineto
+closepath stroke
+grestore
+% topic_ugv_charge_decisions
+gsave
+0.5 0.0040161 0.97647 nodecolor
+2809.885 1292 147.5709 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+2809.885 1292 147.5709 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+2743.885 1295.4 moveto 132 (/ugv/charge_decisions) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+2713.385 1282.4 moveto 193 (uav_msgs::msg::ChargeDecision) alignedtext
+grestore
+% ugv_charger/ugv_charger_node->topic_ugv_charge_decisions
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1744.6005 42.6 moveto
+1772.4873 42.6 1794.3191 42.6 1794.3191 42.6 curveto
+1794.3191 42.6 1794.3191 1274.8274 1794.3191 1274.8274 curveto
+1794.3191 1274.8274 2652.885 1274.8274 2652.885 1274.8274 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2652.885 1277.9775 moveto
+2661.885 1274.8274 lineto
+2652.8849 1271.6775 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2652.885 1277.9775 moveto
+2661.885 1274.8274 lineto
+2652.8849 1271.6775 lineto
+closepath stroke
+grestore
+% topic_ugv_charging_snapshot
+gsave
+0.5 0.0040161 0.97647 nodecolor
+3166.3931 1465 111.9462 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+3166.3931 1465 111.9462 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+3095.3931 1468.4 moveto 142 (/ugv/charging_snapshot) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+3100.3931 1455.4 moveto 132 (std_msgs::msg::String) alignedtext
+grestore
+% ugv_charger/ugv_charger_node->topic_ugv_charging_snapshot
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1744.6632 19.8 moveto
+2098.503 19.8 3129.3191 19.8 3129.3191 19.8 curveto
+3129.3191 19.8 3129.3191 1456 3129.3191 1456 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3126.1692 1456 moveto
+3129.3191 1465 lineto
+3132.4692 1456 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3126.1692 1456 moveto
+3129.3191 1465 lineto
+3132.4692 1456 lineto
+closepath stroke
+grestore
+% topic_ugv_queue_events
+gsave
+0.5 0.0040161 0.97647 nodecolor
+3166.3931 1553 104.8038 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+3166.3931 1553 104.8038 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+3109.8931 1556.4 moveto 113 (/ugv/queue_events) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+3100.3931 1543.4 moveto 132 (std_msgs::msg::String) alignedtext
+grestore
+% ugv_charger/ugv_charger_node->topic_ugv_queue_events
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1744.6372 23.6 moveto
+2080.9871 23.6 3023.3191 23.6 3023.3191 23.6 curveto
+3023.3191 23.6 3023.3191 1546.9861 3023.3191 1546.9861 curveto
+3023.3191 1546.9861 3052.3931 1546.9861 3052.3931 1546.9861 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3052.3932 1550.1362 moveto
+3061.3931 1546.9861 lineto
+3052.3931 1543.8362 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3052.3932 1550.1362 moveto
+3061.3931 1546.9861 lineto
+3052.3931 1543.8362 lineto
+closepath stroke
+grestore
+% user_devices_sim/user_device_node
+gsave
+0 0 1 nodecolor
+newpath 2130.0996 300 moveto
+2130.0996 300 1888.0996 300 1888.0996 300 curveto
+1882.0996 300 1876.0996 294 1876.0996 288 curveto
+1876.0996 288 1876.0996 274 1876.0996 274 curveto
+1876.0996 268 1882.0996 262 1888.0996 262 curveto
+1888.0996 262 2130.0996 262 2130.0996 262 curveto
+2136.0996 262 2142.0996 268 2142.0996 274 curveto
+2142.0996 274 2142.0996 288 2142.0996 288 curveto
+2142.0996 294 2136.0996 300 2130.0996 300 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 2130.0996 300 moveto
+2130.0996 300 1888.0996 300 1888.0996 300 curveto
+1882.0996 300 1876.0996 294 1876.0996 288 curveto
+1876.0996 288 1876.0996 274 1876.0996 274 curveto
+1876.0996 268 1882.0996 262 1888.0996 262 curveto
+1888.0996 262 2130.0996 262 2130.0996 262 curveto
+2136.0996 262 2142.0996 268 2142.0996 274 curveto
+2142.0996 274 2142.0996 288 2142.0996 288 curveto
+2142.0996 294 2136.0996 300 2130.0996 300 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+1884.0996 284.8 moveto 250 (user_devices_sim/user_device_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+1941.5996 269.8 moveto 135 ([user_device_node]) alignedtext
+grestore
+% user_devices_sim/user_device_node->topic_fanet_delivered
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2142.1942 281 moveto
+2183.4569 281 2218.3191 281 2218.3191 281 curveto
+2218.3191 281 2218.3191 1369.6964 2218.3191 1369.6964 curveto
+2218.3191 1369.6964 2722.885 1369.6964 2722.885 1369.6964 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1372.8465 moveto
+2731.885 1369.6964 lineto
+2722.8849 1366.5465 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2722.885 1372.8465 moveto
+2731.885 1369.6964 lineto
+2722.8849 1366.5465 lineto
+closepath stroke
+grestore
+% user_devices_sim/user_device_node->topic_fanet_network_bus_raw
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2142.2323 290.5 moveto
+2171.6803 290.5 2194.3191 290.5 2194.3191 290.5 curveto
+2194.3191 290.5 2194.3191 1449.9688 2194.3191 1449.9688 curveto
+2194.3191 1449.9688 2655.885 1449.9688 2655.885 1449.9688 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1453.1189 moveto
+2664.885 1449.9688 lineto
+2655.8849 1446.8189 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2655.885 1453.1189 moveto
+2664.885 1449.9688 lineto
+2655.8849 1446.8189 lineto
+closepath stroke
+grestore
+% weather_server/weather_node
+gsave
+0 0 1 nodecolor
+newpath 272 1223 moveto
+272 1223 70 1223 70 1223 curveto
+64 1223 58 1217 58 1211 curveto
+58 1211 58 1197 58 1197 curveto
+58 1191 64 1185 70 1185 curveto
+70 1185 272 1185 272 1185 curveto
+278 1185 284 1191 284 1197 curveto
+284 1197 284 1211 284 1211 curveto
+284 1217 278 1223 272 1223 curveto
+closepath fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+newpath 272 1223 moveto
+272 1223 70 1223 70 1223 curveto
+64 1223 58 1217 58 1211 curveto
+58 1211 58 1197 58 1197 curveto
+58 1191 64 1185 70 1185 curveto
+70 1185 272 1185 272 1185 curveto
+278 1185 284 1191 284 1197 curveto
+284 1197 284 1211 284 1211 curveto
+284 1217 278 1223 272 1223 curveto
+stroke
+0 0 0 nodecolor
+14 /Helvetica set_font
+66 1207.8 moveto 210 (weather_server/weather_node) alignedtext
+0 0 0 nodecolor
+14 /Helvetica set_font
+116.5 1192.8 moveto 109 ([weather_node]) alignedtext
+grestore
+% topic_environment_weather
+gsave
+0.5 0.0040161 0.97647 nodecolor
+572.9066 1204 105.218 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+572.9066 1204 105.218 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+506.4066 1207.4 moveto 133 (/environment/weather) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+528.4066 1194.4 moveto 89 (WeatherStatus) alignedtext
+grestore
+% weather_server/weather_node->topic_environment_weather
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 284.1362 1204 moveto
+284.1362 1204 457.9066 1204 457.9066 1204 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 457.9067 1207.1501 moveto
+466.9066 1204 lineto
+457.9066 1200.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 457.9067 1207.1501 moveto
+466.9066 1204 lineto
+457.9066 1200.8501 lineto
+closepath stroke
+grestore
+% topic_ch_manager_cluster_info->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 701.9066 1134.0312 moveto
+701.9066 1134.0312 2635.3191 1134.0312 2635.3191 1134.0312 curveto
+2635.3191 1134.0312 2635.3191 1854.25 2635.3191 1854.25 curveto
+2635.3191 1854.25 4075.1188 1854.25 4075.1188 1854.25 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1189 1857.4001 moveto
+4084.1188 1854.25 lineto
+4075.1188 1851.1001 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1189 1857.4001 moveto
+4084.1188 1854.25 lineto
+4075.1188 1851.1001 lineto
+closepath stroke
+grestore
+% topic_ch_manager_cluster_info->recovery_manager/recovery_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 701.9066 1128.0208 moveto
+701.9066 1128.0208 1875.3191 1128.0208 1875.3191 1128.0208 curveto
+1875.3191 1128.0208 1875.3191 801.0875 1875.3191 801.0875 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1878.4692 801.0874 moveto
+1875.3191 792.0875 lineto
+1872.1692 801.0875 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1878.4692 801.0874 moveto
+1875.3191 792.0875 lineto
+1872.1692 801.0875 lineto
+closepath stroke
+grestore
+% topic_ch_manager_cluster_info->uav_fleet/uav_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 701.9066 1122.0104 moveto
+701.9066 1122.0104 882.3191 1122.0104 882.3191 1122.0104 curveto
+882.3191 1122.0104 882.3191 721.2671 882.3191 721.2671 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 885.4692 721.2671 moveto
+882.3191 712.2671 lineto
+879.1692 721.2672 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 885.4692 721.2671 moveto
+882.3191 712.2671 lineto
+879.1692 721.2672 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_deployment->planner_viz/planner_viz_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 722.9066 1309.1726 moveto
+722.9066 1309.1726 837.3191 1309.1726 837.3191 1309.1726 curveto
+837.3191 1309.1726 837.3191 1830.7537 837.3191 1830.7537 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 834.1692 1830.7537 moveto
+837.3191 1839.7537 lineto
+840.4692 1830.7538 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 834.1692 1830.7537 moveto
+837.3191 1839.7537 lineto
+840.4692 1830.7538 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_deployment->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 722.9066 1302.3036 moveto
+722.9066 1302.3036 2579.3191 1302.3036 2579.3191 1302.3036 curveto
+2579.3191 1302.3036 2579.3191 1863.75 2579.3191 1863.75 curveto
+2579.3191 1863.75 4075.2264 1863.75 4075.2264 1863.75 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.2264 1866.9001 moveto
+4084.2264 1863.75 lineto
+4075.2263 1860.6001 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.2264 1866.9001 moveto
+4084.2264 1863.75 lineto
+4075.2263 1860.6001 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_deployment->sink_gateway/sink_gateway_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 722.9066 1295.4345 moveto
+722.9066 1295.4345 1516.3191 1295.4345 1516.3191 1295.4345 curveto
+1516.3191 1295.4345 1516.3191 883.2081 1516.3191 883.2081 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1519.4692 883.2081 moveto
+1516.3191 874.2081 lineto
+1513.1692 883.2082 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1519.4692 883.2081 moveto
+1516.3191 874.2081 lineto
+1513.1692 883.2082 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_deployment->uav_fleet/uav_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 722.9066 1288.5655 moveto
+722.9066 1288.5655 910.3191 1288.5655 910.3191 1288.5655 curveto
+910.3191 1288.5655 910.3191 721.141 910.3191 721.141 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 913.4692 721.141 moveto
+910.3191 712.141 lineto
+907.1692 721.141 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 913.4692 721.141 moveto
+910.3191 712.141 lineto
+907.1692 721.141 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_deployment->ugv_charger/ugv_charger_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 722.9066 1281.6964 moveto
+722.9066 1281.6964 771.3191 1281.6964 771.3191 1281.6964 curveto
+771.3191 1281.6964 771.3191 28.6667 771.3191 28.6667 curveto
+771.3191 28.6667 1500.4538 28.6667 1500.4538 28.6667 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1500.4538 31.8168 moveto
+1509.4538 28.6667 lineto
+1500.4537 25.5168 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1500.4538 31.8168 moveto
+1509.4538 28.6667 lineto
+1500.4537 25.5168 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_task_points->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 716.9066 1040.0208 moveto
+716.9066 1040.0208 1089.3191 1040.0208 1089.3191 1040.0208 curveto
+1089.3191 1040.0208 1089.3191 1873.25 1089.3191 1873.25 curveto
+1089.3191 1873.25 4075.2431 1873.25 4075.2431 1873.25 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.2431 1876.4001 moveto
+4084.2431 1873.25 lineto
+4075.243 1870.1001 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.2431 1876.4001 moveto
+4084.2431 1873.25 lineto
+4075.243 1870.1001 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_task_points->recovery_manager/recovery_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 573.3191 1028 moveto
+573.3191 1028 573.3191 773 573.3191 773 curveto
+573.3191 773 1839.923 773 1839.923 773 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1839.923 776.1501 moveto
+1848.923 773 lineto
+1839.9229 769.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1839.923 776.1501 moveto
+1848.923 773 lineto
+1839.9229 769.8501 lineto
+closepath stroke
+grestore
+% topic_coverage_planner_task_points->uav_fleet/uav_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 716.9066 1015.9792 moveto
+716.9066 1015.9792 869.3191 1015.9792 869.3191 1015.9792 curveto
+869.3191 1015.9792 869.3191 721.2366 869.3191 721.2366 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 872.4692 721.2365 moveto
+869.3191 712.2366 lineto
+866.1692 721.2366 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 872.4692 721.2365 moveto
+869.3191 712.2366 lineto
+866.1692 721.2366 lineto
+closepath stroke
+grestore
+% topic_environment_weather->fault_injector/fault_injector_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 678.9066 1212.0416 moveto
+678.9066 1212.0416 1899.3191 1212.0416 1899.3191 1212.0416 curveto
+1899.3191 1212.0416 1899.3191 963.0422 1899.3191 963.0422 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1902.4692 963.0422 moveto
+1899.3191 954.0422 lineto
+1896.1692 963.0422 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1902.4692 963.0422 moveto
+1899.3191 954.0422 lineto
+1896.1692 963.0422 lineto
+closepath stroke
+grestore
+% topic_environment_weather->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 678.9066 1214.0416 moveto
+678.9066 1214.0416 2137.3191 1214.0416 2137.3191 1214.0416 curveto
+2137.3191 1214.0416 2137.3191 922.3333 2137.3191 922.3333 curveto
+2137.3191 922.3333 3365.8115 922.3333 3365.8115 922.3333 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.8115 925.4834 moveto
+3374.8115 922.3333 lineto
+3365.8114 919.1834 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.8115 925.4834 moveto
+3374.8115 922.3333 lineto
+3365.8114 919.1834 lineto
+closepath stroke
+grestore
+% topic_environment_weather->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 678.9066 1222.0416 moveto
+678.9066 1222.0416 2621.3191 1222.0416 2621.3191 1222.0416 curveto
+2621.3191 1222.0416 2621.3191 1859 2621.3191 1859 curveto
+2621.3191 1859 4075.1972 1859 4075.1972 1859 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1972 1862.1501 moveto
+4084.1972 1859 lineto
+4075.1971 1855.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1972 1862.1501 moveto
+4084.1972 1859 lineto
+4075.1971 1855.8501 lineto
+closepath stroke
+grestore
+% topic_environment_weather->uav_fleet/uav_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 678.9066 1195 moveto
+678.9066 1195 896.3191 1195 896.3191 1195 curveto
+896.3191 1195 896.3191 721.066 896.3191 721.066 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 899.4692 721.066 moveto
+896.3191 712.066 lineto
+893.1692 721.066 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 899.4692 721.066 moveto
+896.3191 712.066 lineto
+893.1692 721.066 lineto
+closepath stroke
+grestore
+% topic_fanet_delivered->network_monitor/network_monitor_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2887.885 1370.0139 moveto
+2887.885 1370.0139 3573.3191 1370.0139 3573.3191 1370.0139 curveto
+3573.3191 1370.0139 3573.3191 963.2533 3573.3191 963.2533 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 3576.4692 963.2533 moveto
+3573.3191 954.2533 lineto
+3570.1692 963.2533 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 3576.4692 963.2533 moveto
+3573.3191 954.2533 lineto
+3570.1692 963.2533 lineto
+closepath stroke
+grestore
+% topic_fanet_delivered->planner_viz/fleet_viz
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2887.885 1390.5416 moveto
+2887.885 1390.5416 4116.3191 1390.5416 4116.3191 1390.5416 curveto
+4116.3191 1390.5416 4116.3191 1830.7625 4116.3191 1830.7625 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 4113.1692 1830.7625 moveto
+4116.3191 1839.7625 lineto
+4119.4692 1830.7626 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 4113.1692 1830.7625 moveto
+4116.3191 1839.7625 lineto
+4119.4692 1830.7626 lineto
+closepath stroke
+grestore
+% topic_fanet_delivered->topic_fanet_status
+% topic_fanet_delivered_raw
+gsave
+0.5 0.0040161 0.97647 nodecolor
+1627.0996 1186 98.0761 24.0833 ellipse_path fill
+1 setlinewidth
+filled
+0 0 0 nodecolor
+1627.0996 1186 98.0761 24.0833 ellipse_path stroke
+0 0 0 nodecolor
+12 /Helvetica set_font
+1565.5996 1189.4 moveto 123 (/fanet/delivered_raw) alignedtext
+0 0 0 nodecolor
+12 /Helvetica set_font
+1582.5996 1176.4 moveto 89 (TrafficMessage) alignedtext
+grestore
+% topic_fanet_delivered_raw->fault_injector/fault_injector_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1725.0996 1200.425 moveto
+1725.0996 1200.425 1894.3191 1200.425 1894.3191 1200.425 curveto
+1894.3191 1200.425 1894.3191 963.0887 1894.3191 963.0887 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1897.4692 963.0887 moveto
+1894.3191 954.0887 lineto
+1891.1692 963.0887 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1897.4692 963.0887 moveto
+1894.3191 954.0887 lineto
+1891.1692 963.0887 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->ch_manager/ch_manager_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2762.3191 1028 moveto
+2762.3191 1028 2762.3191 364.6667 2762.3191 364.6667 curveto
+2762.3191 364.6667 296.8016 364.6667 296.8016 364.6667 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 296.8016 361.5168 moveto
+287.8016 364.6667 lineto
+296.8015 367.8168 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 296.8016 361.5168 moveto
+287.8016 364.6667 lineto
+296.8015 367.8168 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->coverage_planner/coverage_planner_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1044.0278 moveto
+2954.885 1044.0278 1470.3191 1044.0278 1470.3191 1044.0278 curveto
+1470.3191 1044.0278 1470.3191 276 1470.3191 276 curveto
+1470.3191 276 335.1157 276 335.1157 276 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 335.1157 272.8501 moveto
+326.1157 276 lineto
+335.1156 279.1501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 335.1157 272.8501 moveto
+326.1157 276 lineto
+335.1156 279.1501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->network_monitor/network_monitor_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2907.3191 1028 moveto
+2907.3191 1028 2907.3191 935 2907.3191 935 curveto
+2907.3191 935 3365.8337 935 3365.8337 935 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 3365.8337 938.1501 moveto
+3374.8337 935 lineto
+3365.8336 931.8501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 3365.8337 938.1501 moveto
+3374.8337 935 lineto
+3365.8336 931.8501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->planner_viz/fleet_viz
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1015.9792 moveto
+2954.885 1015.9792 4211.3191 1015.9792 4211.3191 1015.9792 curveto
+4211.3191 1015.9792 4211.3191 1830.8084 4211.3191 1830.8084 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 4208.1692 1830.8084 moveto
+4211.3191 1839.8084 lineto
+4214.4692 1830.8084 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 4208.1692 1830.8084 moveto
+4211.3191 1839.8084 lineto
+4214.4692 1830.8084 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->recovery_manager/recovery_manager_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1011.9722 moveto
+2954.885 1011.9722 2163.3191 1011.9722 2163.3191 1011.9722 curveto
+2163.3191 1011.9722 2163.3191 801.1521 2163.3191 801.1521 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2166.4692 801.1521 moveto
+2163.3191 792.1521 lineto
+2160.1692 801.1522 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2166.4692 801.1521 moveto
+2163.3191 792.1521 lineto
+2160.1692 801.1522 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->sink_gateway/sink_gateway_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1028 moveto
+2954.885 1028 1748.3191 1028 1748.3191 1028 curveto
+1748.3191 1028 1748.3191 883.175 1748.3191 883.175 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 1751.4692 883.175 moveto
+1748.3191 874.175 lineto
+1745.1692 883.1751 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 1751.4692 883.175 moveto
+1748.3191 874.175 lineto
+1745.1692 883.1751 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->uav_fleet/uav_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2713.3191 1028 moveto
+2713.3191 1028 2713.3191 686.6667 2713.3191 686.6667 curveto
+2713.3191 686.6667 1015.072 686.6667 1015.072 686.6667 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 1015.072 683.5168 moveto
+1006.072 686.6667 lineto
+1015.0719 689.8168 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 1015.072 683.5168 moveto
+1006.072 686.6667 lineto
+1015.0719 689.8168 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->ugv_charger/ugv_charger_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2858.3191 1028 moveto
+2858.3191 1028 2858.3191 27.4 2858.3191 27.4 curveto
+2858.3191 27.4 1753.8751 27.4 1753.8751 27.4 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 1753.8752 24.2501 moveto
+1744.8751 27.4 lineto
+1753.8751 30.5501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 1753.8752 24.2501 moveto
+1744.8751 27.4 lineto
+1753.8751 30.5501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->user_devices_sim/user_device_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2810.3191 1028 moveto
+2810.3191 1028 2810.3191 271.5 2810.3191 271.5 curveto
+2810.3191 271.5 2151.3041 271.5 2151.3041 271.5 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2151.3042 268.3501 moveto
+2142.3041 271.5 lineto
+2151.3041 274.6501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2151.3042 268.3501 moveto
+2142.3041 271.5 lineto
+2151.3041 274.6501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus->topic_fanet_delivered
+% topic_fanet_network_bus_raw->fault_injector/fault_injector_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1461.9896 moveto
+2954.885 1461.9896 2118.3191 1461.9896 2118.3191 1461.9896 curveto
+2118.3191 1461.9896 2118.3191 963.0672 2118.3191 963.0672 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 2121.4692 963.0671 moveto
+2118.3191 954.0672 lineto
+2115.1692 963.0672 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 2121.4692 963.0671 moveto
+2118.3191 954.0672 lineto
+2115.1692 963.0672 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus_raw->network_monitor/network_monitor_node
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2954.885 1474.0139 moveto
+2954.885 1474.0139 3039.3191 1474.0139 3039.3191 1474.0139 curveto
+3039.3191 1474.0139 3039.3191 941.3333 3039.3191 941.3333 curveto
+3039.3191 941.3333 3366.0028 941.3333 3366.0028 941.3333 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 3366.0028 944.4834 moveto
+3375.0028 941.3333 lineto
+3366.0027 938.1834 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 3366.0028 944.4834 moveto
+3375.0028 941.3333 lineto
+3366.0027 938.1834 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus_raw->planner_viz/fleet_viz
+gsave
+3 setlinewidth
+0.56667 0.78014 0.55294 edgecolor
+newpath 2939.3191 1468 moveto
+2939.3191 1468 2939.3191 1849.5 2939.3191 1849.5 curveto
+2939.3191 1849.5 4074.9522 1849.5 4074.9522 1849.5 curveto
+stroke
+0.56667 0.78014 0.55294 edgecolor
+newpath 4074.9522 1852.6501 moveto
+4083.9522 1849.5 lineto
+4074.9521 1846.3501 lineto
+closepath fill
+3 setlinewidth
+solid
+0.56667 0.78014 0.55294 edgecolor
+newpath 4074.9522 1852.6501 moveto
+4083.9522 1849.5 lineto
+4074.9521 1846.3501 lineto
+closepath stroke
+grestore
+% topic_fanet_network_bus_raw->topic_fanet_network_bus
+% topic_fanet_routing_event->routing_manager/routing_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2009.3191 1186 moveto
+2009.3191 1186 2009.3191 1771 2009.3191 1771 curveto
+2009.3191 1771 2257.0466 1771 2257.0466 1771 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2257.0467 1774.1501 moveto
+2266.0466 1771 lineto
+2257.0466 1767.8501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2257.0467 1774.1501 moveto
+2266.0466 1771 lineto
+2257.0466 1767.8501 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_table->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2945.885 1107.9861 moveto
+2945.885 1107.9861 3425.3191 1107.9861 3425.3191 1107.9861 curveto
+3425.3191 1107.9861 3425.3191 963.1735 3425.3191 963.1735 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3428.4692 963.1735 moveto
+3425.3191 954.1735 lineto
+3422.1692 963.1735 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3428.4692 963.1735 moveto
+3425.3191 954.1735 lineto
+3422.1692 963.1735 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_table->sink_gateway/sink_gateway_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2945.885 1103.9792 moveto
+2945.885 1103.9792 1745.3191 1103.9792 1745.3191 1103.9792 curveto
+1745.3191 1103.9792 1745.3191 883.1236 1745.3191 883.1236 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1748.4692 883.1235 moveto
+1745.3191 874.1236 lineto
+1742.1692 883.1236 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1748.4692 883.1235 moveto
+1745.3191 874.1236 lineto
+1742.1692 883.1236 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_table->uav_fleet/uav_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2945.885 1109.9896 moveto
+2945.885 1109.9896 979.3191 1109.9896 979.3191 1109.9896 curveto
+979.3191 1109.9896 979.3191 721.0007 979.3191 721.0007 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 982.4692 721.0007 moveto
+979.3191 712.0007 lineto
+976.1692 721.0008 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 982.4692 721.0007 moveto
+979.3191 712.0007 lineto
+976.1692 721.0008 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_table->ugv_charger/ugv_charger_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2945.885 1097.9688 moveto
+2945.885 1097.9688 1835.3191 1097.9688 1835.3191 1097.9688 curveto
+1835.3191 1097.9688 1835.3191 35 1835.3191 35 curveto
+1835.3191 35 1753.8994 35 1753.8994 35 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1753.8995 31.8501 moveto
+1744.8994 35 lineto
+1753.8994 38.1501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1753.8995 31.8501 moveto
+1744.8994 35 lineto
+1753.8994 38.1501 lineto
+closepath stroke
+grestore
+% topic_fanet_routing_table->topic_routing_manager_alerts
+% topic_fanet_status->coverage_planner/coverage_planner_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2934.885 1218.0416 moveto
+2934.885 1218.0416 1438.3191 1218.0416 1438.3191 1218.0416 curveto
+1438.3191 1218.0416 1438.3191 288 1438.3191 288 curveto
+1438.3191 288 335.0811 288 335.0811 288 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 335.0811 284.8501 moveto
+326.0811 288 lineto
+335.081 291.1501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 335.0811 284.8501 moveto
+326.0811 288 lineto
+335.081 291.1501 lineto
+closepath stroke
+grestore
+% topic_fanet_status->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2934.885 1195.9861 moveto
+2934.885 1195.9861 3474.3191 1195.9861 3474.3191 1195.9861 curveto
+3474.3191 1195.9861 3474.3191 963.1909 3474.3191 963.1909 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3477.4692 963.1909 moveto
+3474.3191 954.1909 lineto
+3471.1692 963.191 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3477.4692 963.1909 moveto
+3474.3191 954.1909 lineto
+3471.1692 963.191 lineto
+closepath stroke
+grestore
+% topic_fanet_status->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2934.885 1212.0139 moveto
+2934.885 1212.0139 4179.3191 1212.0139 4179.3191 1212.0139 curveto
+4179.3191 1212.0139 4179.3191 1830.9873 4179.3191 1830.9873 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4176.1692 1830.9873 moveto
+4179.3191 1839.9873 lineto
+4182.4692 1830.9874 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4176.1692 1830.9873 moveto
+4179.3191 1839.9873 lineto
+4182.4692 1830.9874 lineto
+closepath stroke
+grestore
+% topic_fanet_status->recovery_manager/recovery_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2934.885 1200.0139 moveto
+2934.885 1200.0139 2156.3191 1200.0139 2156.3191 1200.0139 curveto
+2156.3191 1200.0139 2156.3191 801.1775 2156.3191 801.1775 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2159.4692 801.1774 moveto
+2156.3191 792.1775 lineto
+2153.1692 801.1775 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2159.4692 801.1774 moveto
+2156.3191 792.1775 lineto
+2153.1692 801.1775 lineto
+closepath stroke
+grestore
+% topic_fanet_status->routing_manager/routing_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2934.885 1224.0416 moveto
+2934.885 1224.0416 2607.3191 1224.0416 2607.3191 1224.0416 curveto
+2607.3191 1224.0416 2607.3191 1771 2607.3191 1771 curveto
+2607.3191 1771 2574.2455 1771 2574.2455 1771 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2574.2455 1767.8501 moveto
+2565.2455 1771 lineto
+2574.2454 1774.1501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2574.2455 1767.8501 moveto
+2565.2455 1771 lineto
+2574.2454 1774.1501 lineto
+closepath stroke
+grestore
+% topic_fanet_status->topic_fanet_routing_table
+% topic_network_monitor_stats->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 3987.7176 1353 moveto
+3987.7176 1353 4148.3191 1353 4148.3191 1353 curveto
+4148.3191 1353 4148.3191 1830.7821 4148.3191 1830.7821 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4145.1692 1830.782 moveto
+4148.3191 1839.7821 lineto
+4151.4692 1830.7821 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4145.1692 1830.782 moveto
+4148.3191 1839.7821 lineto
+4151.4692 1830.7821 lineto
+closepath stroke
+grestore
+% topic_routing_manager_alerts->recovery_manager/recovery_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2923.885 1556 moveto
+2923.885 1556 2143.3191 1556 2143.3191 1556 curveto
+2143.3191 1556 2143.3191 801.3552 2143.3191 801.3552 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 2146.4692 801.3551 moveto
+2143.3191 792.3552 lineto
+2140.1692 801.3552 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 2146.4692 801.3551 moveto
+2143.3191 792.3552 lineto
+2140.1692 801.3552 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_charge_requests->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2416.3191 1678 moveto
+2416.3191 1678 2416.3191 928.6667 2416.3191 928.6667 curveto
+2416.3191 928.6667 3365.9969 928.6667 3365.9969 928.6667 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.9969 931.8168 moveto
+3374.9969 928.6667 lineto
+3365.9969 925.5168 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.9969 931.8168 moveto
+3374.9969 928.6667 lineto
+3365.9969 925.5168 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_failure_events->ch_manager/ch_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1227.3191 1028 moveto
+1227.3191 1028 1227.3191 377.3333 1227.3191 377.3333 curveto
+1227.3191 377.3333 296.573 377.3333 296.573 377.3333 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 296.573 374.1834 moveto
+287.573 377.3333 lineto
+296.573 380.4834 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 296.573 374.1834 moveto
+287.573 377.3333 lineto
+296.573 380.4834 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_failure_events->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1272.3191 1028 moveto
+1272.3191 1028 1272.3191 1868.5 1272.3191 1868.5 curveto
+1272.3191 1868.5 4075.1156 1868.5 4075.1156 1868.5 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1156 1871.6501 moveto
+4084.1156 1868.5 lineto
+4075.1156 1865.3501 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1156 1871.6501 moveto
+4084.1156 1868.5 lineto
+4075.1156 1865.3501 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_failure_events->recovery_manager/recovery_manager_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1405.4565 1036.0139 moveto
+1405.4565 1036.0139 1862.3191 1036.0139 1862.3191 1036.0139 curveto
+1862.3191 1036.0139 1862.3191 801.34 1862.3191 801.34 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1865.4692 801.34 moveto
+1862.3191 792.34 lineto
+1859.1692 801.3401 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1865.4692 801.34 moveto
+1862.3191 792.34 lineto
+1859.1692 801.3401 lineto
+closepath stroke
+grestore
+% topic_uav_fleet_failure_events->ugv_charger/ugv_charger_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 1316.3191 1028 moveto
+1316.3191 1028 1316.3191 41.3333 1316.3191 41.3333 curveto
+1316.3191 41.3333 1500.1637 41.3333 1500.1637 41.3333 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 1500.1637 44.4834 moveto
+1509.1637 41.3333 lineto
+1500.1637 38.1834 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 1500.1637 44.4834 moveto
+1509.1637 41.3333 lineto
+1500.1637 38.1834 lineto
+closepath stroke
+grestore
+% topic_ugv_charge_decisions->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 2957.885 1292 moveto
+2957.885 1292 3523.3191 1292 3523.3191 1292 curveto
+3523.3191 1292 3523.3191 963.1939 3523.3191 963.1939 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3526.4692 963.1938 moveto
+3523.3191 954.1939 lineto
+3520.1692 963.1939 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3526.4692 963.1938 moveto
+3523.3191 954.1939 lineto
+3520.1692 963.1939 lineto
+closepath stroke
+grestore
+% topic_ugv_charging_snapshot->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 3204.3191 1465 moveto
+3204.3191 1465 3204.3191 947.6667 3204.3191 947.6667 curveto
+3204.3191 947.6667 3365.9171 947.6667 3365.9171 947.6667 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.9171 950.8168 moveto
+3374.9171 947.6667 lineto
+3365.917 944.5168 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3365.9171 950.8168 moveto
+3374.9171 947.6667 lineto
+3365.917 944.5168 lineto
+closepath stroke
+grestore
+% topic_ugv_charging_snapshot->planner_viz/fleet_viz
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 3275.3191 1465 moveto
+3275.3191 1465 3275.3191 1844.75 3275.3191 1844.75 curveto
+3275.3191 1844.75 4075.1247 1844.75 4075.1247 1844.75 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1247 1847.9001 moveto
+4084.1247 1844.75 lineto
+4075.1247 1841.6001 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 4075.1247 1847.9001 moveto
+4084.1247 1844.75 lineto
+4075.1247 1841.6001 lineto
+closepath stroke
+grestore
+% topic_ugv_queue_events->network_monitor/network_monitor_node
+gsave
+1 setlinewidth
+0.58586 0.2619 0.49412 edgecolor
+newpath 3271.3931 1553 moveto
+3271.3931 1553 3622.3191 1553 3622.3191 1553 curveto
+3622.3191 1553 3622.3191 963.1732 3622.3191 963.1732 curveto
+stroke
+0.58586 0.2619 0.49412 edgecolor
+newpath 3625.4692 963.1732 moveto
+3622.3191 954.1732 lineto
+3619.1692 963.1732 lineto
+closepath fill
+1 setlinewidth
+solid
+0.58586 0.2619 0.49412 edgecolor
+newpath 3625.4692 963.1732 moveto
+3622.3191 954.1732 lineto
+3619.1692 963.1732 lineto
+closepath stroke
+grestore
+endpage
+showpage
+grestore
+%%PageTrailer
+%%EndPage: 1
+%%Trailer
+%%Pages: 1
+%%BoundingBox: 150 150 3658 1754
+end
+restore
+%%EOF
