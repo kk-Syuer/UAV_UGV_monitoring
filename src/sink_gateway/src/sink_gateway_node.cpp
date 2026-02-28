@@ -592,10 +592,14 @@ private:
     }
 
     const auto now = this->now();
+    bool any_pending = false;
+
     for (auto & [uav_id, record] : motion_start_cache_) {
       if (motion_start_acked_uavs_.count(uav_id) > 0) {
         continue;
       }
+
+      any_pending = true;
 
       auto elapsed = now - record.last_sent;
       if (elapsed.seconds() < motion_start_resend_period_sec_) {
@@ -633,6 +637,25 @@ private:
       RCLCPP_WARN(this->get_logger(),
                   "[MOB-START] resend #%d MOTION_START to %s via %s",
                   record.resend_count, uav_id.c_str(), msg.next_hop_id.c_str());
+    }
+
+    // Re-send broadcast MOTION_START on every retry tick while any UAV
+    // has not ACKed.  This covers the case where the initial broadcast
+    // was dropped by the fault injector.
+    if (any_pending) {
+      uav_msgs::msg::TrafficMessage bcast;
+      bcast.msg_id = "MOTION_START_broadcast_" +
+                     std::to_string(start_mobility_seq_++);
+      bcast.src_id = sink_id_;
+      bcast.dst_id = "broadcast";
+      bcast.flow_type = 1;
+      bcast.creation_time = now;
+      bcast.hop_count = 0;
+      bcast.ttl = 1;
+      bcast.requires_ack = false;
+      bcast.control_type = "MOTION_START";
+      bcast.payload = "";
+      control_pub_->publish(bcast);
     }
   }
 
