@@ -340,6 +340,10 @@ public:
     task_telemetry_ttl_ = static_cast<uint32_t>(
       this->declare_parameter<int>("task_telemetry_ttl", 16));
     task_telemetry_flow_label_ = this->declare_parameter<std::string>("task_telemetry_flow_label", "SEARCH_TELEMETRY");
+    task_telemetry_requires_ack_ = this->declare_parameter<bool>("task_telemetry_requires_ack", true);
+    task_telemetry_ack_retry_sec_ = this->declare_parameter<double>("task_telemetry_ack_retry_sec", 1.0);
+    task_telemetry_ack_max_retries_ = std::max<int>(
+      1, this->declare_parameter<int>("task_telemetry_ack_max_retries", 8));
     telemetry_policy_mode_ = this->declare_parameter<std::string>("telemetry_policy_mode", "option_c");
     telemetry_tmax_sec_ = this->declare_parameter<double>("telemetry_tmax_sec", 120.0);
     int telemetry_kmax_param = this->declare_parameter<int>("telemetry_kmax", 10);
@@ -1566,6 +1570,12 @@ private:
         }
         break;
       }
+      if (oldest.msg.requires_ack) {
+        registerPendingAck(
+          oldest.msg,
+          task_telemetry_ack_max_retries_,
+          task_telemetry_ack_retry_sec_);
+      }
       telemetry_buffer_.pop_front();
       ++sent_count;
       if (!burst) {
@@ -1589,7 +1599,7 @@ private:
 
     uploadBufferedTelemetryIfInRange(false);
 
-    if (telemetry_buffer_.empty()) {
+    if (telemetry_buffer_.empty() && !hasPendingTelemetryAcks()) {
       telemetry_rendezvous_active_ = false;
       return;
     }
@@ -1660,6 +1670,7 @@ private:
       msg.creation_time = this->now();
       msg.hop_count = 0;
       msg.ttl = task_telemetry_ttl_;
+      msg.requires_ack = task_telemetry_requires_ack_;
 
       size_t payload_len = static_cast<size_t>(dist_bytes(rng_));
       msg.payload = buildTelemetryPayload(p, task_index, payload_len);
@@ -1683,6 +1694,12 @@ private:
       bool in_range = isWithinChServiceRange(&dist_to_ch);
       if (in_range) {
         bool sent = publishToBus(msg, false);
+        if (sent && msg.requires_ack) {
+          registerPendingAck(
+            msg,
+            task_telemetry_ack_max_retries_,
+            task_telemetry_ack_retry_sec_);
+        }
         RCLCPP_INFO(this->get_logger(),
                     "[TASK-TLM] %s telemetry immediate send in_range=true sent=%s dist_to_ch=%.2f",
                     uav_id_.c_str(), sent ? "true" : "false", dist_to_ch);
@@ -2335,8 +2352,7 @@ private:
 
     // If I'm the final destination
     if (msg->dst_id == uav_id_) {
-      if (msg->flow_type == 1 && msg->requires_ack &&
-          msg->control_type != "ACK" &&
+      if (msg->requires_ack && msg->control_type != "ACK" &&
           isDuplicateControlMessage(*msg)) {
         maybePublishAck(*msg);
         return;
@@ -3147,7 +3163,7 @@ private:
 
   bool isDuplicateControlMessage(const uav_msgs::msg::TrafficMessage & msg)
   {
-    if (msg.flow_type != 1 || msg.control_type == "ACK" || !msg.requires_ack) {
+    if (!msg.requires_ack || msg.control_type == "ACK" || msg.msg_id.empty()) {
       return false;
     }
     std::string key = msg.src_id + "|" + msg.msg_id;
@@ -3170,7 +3186,7 @@ private:
                           int max_retries,
                           double retry_interval_sec)
   {
-    if (msg.flow_type != 1 || !msg.requires_ack || msg.msg_id.empty()) {
+    if (!msg.requires_ack || msg.msg_id.empty()) {
       return;
     }
     PendingAck pending;
@@ -3192,7 +3208,21 @@ private:
       }
     } else if (pending.msg.control_type == "TASK_RELEASE") {
       pending.msg.next_hop_id = pending.msg.dst_id;
+    } else {
+      pending.msg.next_hop_id = pickNextHop(
+        pending.msg.dst_id, resolveNextHop(pending.msg.dst_id));
     }
+  }
+
+  bool hasPendingTelemetryAcks() const
+  {
+    for (const auto & kv : pending_acks_) {
+      const auto & m = kv.second.msg;
+      if (m.flow_type == 0 && m.control_type == task_telemetry_flow_label_) {
+        return true;
+      }
+    }
+    return false;
   }
 
   void handleAckTimeout(const uav_msgs::msg::TrafficMessage & msg)
@@ -3794,7 +3824,7 @@ private:
               double dist_to_ch = 0.0;
               if (isWithinChServiceRange(&dist_to_ch)) {
                 uploadBufferedTelemetryIfInRange(true);
-                if (telemetry_buffer_.empty()) {
+                if (telemetry_buffer_.empty() && !hasPendingTelemetryAcks()) {
                   telemetry_rendezvous_active_ = false;
                   RCLCPP_INFO(this->get_logger(),
                               "UAV %s: telemetry rendezvous complete, resuming patrol.",
@@ -4821,6 +4851,9 @@ private:
   double task_telemetry_send_prob_ = 1.0;
   uint32_t task_telemetry_ttl_ = 16;
   std::string task_telemetry_flow_label_ = "SEARCH_TELEMETRY";
+  bool task_telemetry_requires_ack_ = true;
+  double task_telemetry_ack_retry_sec_ = 1.0;
+  int task_telemetry_ack_max_retries_ = 8;
   std::string telemetry_policy_mode_ = "option_c";
   bool telemetry_policy_option_c_ = true;
   double telemetry_tmax_sec_ = 120.0;
