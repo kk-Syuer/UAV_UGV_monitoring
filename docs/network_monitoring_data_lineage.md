@@ -1,398 +1,632 @@
-# Network Monitoring Data Lineage + Variable/State Provenance + Column Domain Spec
+# Network Monitoring Data Lineage — v2 (Append-Only Event-Sourced Design)
 
-## 0) Scope + method
+## 0) Scope + Method
 
-- **CONFIRMED** = directly supported by `src/` code.
+- **CONFIRMED** = directly supported by `src/` code after this revision.
 - **INFERRED** = best-effort interpretation where code does not enforce constraints.
-- Authoritative source tree: `src/` only.
+- Authoritative source tree: `src/network_monitor/src/network_monitor_node.cpp` (v2).
 
-Discovery commands run:
-- `rg -n "ofstream|fopen|\.csv|\.json|output_dir|run_id|filesystem::path|std::ofstream|fprintf|open\(" src`
-- `rg -n "\.csv|\.json|std::ofstream|ofstream|fopen|json" src`
-- `rg -n "last_tx_time|last_rx_time" src`
-- `rg -n "network_bus_raw|network_bus|/fanet/delivered|creation_time|last_tx_time|last_rx_time" src`
-- targeted `nl -ba ... | sed -n ...` on monitor and producer nodes.
+**Design goals of this revision:**
 
-## 1) ASCII trace map
+| Goal | Status |
+|---|---|
+| All artifacts append-only (no `std::ios::trunc`) | ✅ Implemented |
+| Event-sourced atomic tables (one primary fact per file) | ✅ New tables added |
+| Every row carries `run_id`, `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s` | ✅ Implemented |
+| `summary.json` → `summary_snapshots.jsonl` (append) | ✅ Implemented |
+| `flush_period_sec` launch param aligned to `csv_write_period_sec` node param | ✅ Fixed in launch |
+
+---
+
+## 1) ASCII Trace Map
 
 ```text
-/fanet/network_bus_raw -> [FaultInjectorNode] -> /fanet/network_bus
-                                            \-> DROP control messages (WEATHER_DROP)
-/fanet/network_bus + /fanet/network_bus_raw + /fanet/delivered
-  -> NetworkMonitorNode callbacks
-  -> in-memory stores (records_, charge_records_, drop_by_ref_, ack_by_ref_, etc.)
-  -> periodic timers + shutdown flush
-  -> CSV/JSON artifacts under output_dir/run_id
+/fanet/network_bus_raw → [FaultInjectorNode] → /fanet/network_bus
+                                           \→ DROP control messages (WEATHER_DROP)
+
+/fanet/network_bus_raw → trafficRawCallback → logPacketGeneratedEvent()
+                                           → records_[msg_id] init
+
+/fanet/network_bus  → trafficCallback → DROP branch  → logPacketDropEvent()
+                                     → ACK branch   → logPacketAckEvent()
+                                     → CHARGE_REQUEST → logChargeRequestEvent()
+
+/fanet/delivered → deliveredCallback → logPacketDeliveredEvent()
+                                    → CHARGE_DECISION → logChargeDecisionEvent()
+
+/fanet/status → statusCallback → uav_states_ update
+                              → DOCK_START / DOCK_END / PRE-DOCK PREEMPT
+                                → logChargeSessionEvent()
+
+charge_timeout_timer → checkChargeTimeouts → TIMEOUT → logChargeSessionEvent()
+
+FAILURE_EVENT (via trafficCallback) → handleFailureFromTraffic
+  → ENERGY_DEPLETED → logChargeSessionEvent()
+
+Periodic timers → writeStatusTimeseriesRow / writeWeatherTimeseriesRow /
+                  writeChargeQueueTimeseriesRow / writeNetworkTimeseriesRow
+
+csv_timer_ + shutdown → writeOutputs() → append-only snapshot writers
+                                       → writeSummarySnapshotJsonl()
 ```
 
 ---
 
-## A) Outputs Inventory (Artifacts Catalog)
+## A) Outputs Inventory
 
-**CONFIRMED:** In `src/`, only `network_monitor_node.cpp` writes experiment files (all via `std::ofstream`).
+**Path construction:** `output_root_ = output_dir / run_id`
 
-**Path construction**
-- `run_id_` + `output_dir_` parameters declared in monitor constructor.
-- `output_root_ = std::filesystem::path(output_dir_) / run_id_`.
-- Launch passes `run_id` and `output_dir` to monitor params.
+All files opened exclusively with `std::ios::app`. Header written only if file is absent or zero-size (via `openAppend()` helper which checks `filesystem::file_size == 0`).
 
-| File | Pattern | Creator | Created | Write style | Flush cadence/triggers | Finalization | Code pointer(s) | Risks |
-|---|---|---|---|---|---|---|---|---|
-| `messages.csv` | `${output_dir}/${run_id}/messages.csv` | network_monitor_node | first write call | append; final flush truncates+rewrites | `csv_timer_` + shutdown + destructor | `writeOutputs(true)` | `writeMessagesCsv` (1014-1073), `writeOutputs` (984-998), shutdown/destructor (266-276) | crash before final flush leaves stale rows |
-| `qos_metrics.csv` | same root | network_monitor_node | first write | append by key; final rewrite | same | same | 1075-1134 | key dedup means updated QoS appears at final rewrite |
-| `charge_events.csv` | same root | network_monitor_node | first write | append by request id; final rewrite | same | same | 1136-1237 | pending records may be partial mid-run |
-| `preemption_events.csv` | same root | network_monitor_node | lazy (only if events exist) | append by vector suffix; final rewrite | same | same | 1239-1293 | absent when no events |
-| `recovery_events.csv` | same root | network_monitor_node | first write | append by msg_id; final rewrite | same | same | 1295-1342 | unordered-map row order unstable |
-| `status_timeseries.csv` | same root | network_monitor_node | first timer/call | append-only | `status_timeseries_timer_` + `writeOutputs` | none | 1482-1521, timer 244-247 | duplicate close-in-time rows possible |
-| `charge_queue_timeseries.csv` | same root | network_monitor_node | first timer/call | append-only | queue timer + `writeOutputs` | none | 1613-1772, timer 252-255 | mixed-source snapshot inconsistency |
-| `weather_timeseries.csv` | same root | network_monitor_node | first weather+write | append-only | weather timer + `writeOutputs` | none | 1774-1810, timer 248-250 | file absent if no weather |
-| `death_events.csv` | same root | network_monitor_node | lazy (non-empty death events) | append suffix; final rewrite | periodic+shutdown | final rewrite | 1813-1860 | absent when no deaths |
-| `network_timeseries.csv` | same root | network_monitor_node | first timer/call | append-only | network timer + `writeOutputs` | none | 1863-1962, timer 256-258 | window metrics depend on current in-memory set |
-| `summary.json` | same root | network_monitor_node | each write | always truncate+rewrite | every `writeOutputs` | final overwrite at shutdown | 1964-2182 | crash during truncation can leave partial JSON |
-
----
-
-## B) Per-file schema + column lineage + domain specification
-
-## B.1 `messages.csv`
-Header at 1038-1040.
-
-| Column | Type | Domain | Units | Missing encoding | Key | Source | First stored where/when | Pointer |
-|---|---|---|---|---|---|---|---|---|
-| run_id | string | run label | n/a | none | composite | param | ctor | 177,1052 |
-| msg_id | string | DOMAIN UNKNOWN | n/a | empty possible | msg key | TrafficMessage.msg_id | `records_[msg_id]` init in callbacks | 354-357,381-384,456-459,1053 |
-| flow_type | int | INFERRED {0,1} | n/a | default 0 | qos key part | msg.flow_type | rec init | 358,385,459,1054 |
-| control_type | string | TrafficMessage control category | n/a | empty possible | qos key part | msg.control_type | rec init | 359,386,460,1055 |
-| src_id | string | node id | n/a | empty possible | join key | msg.src_id | rec init | 360,387,461,1056 |
-| dst_id | string | node id | n/a | empty possible | join key | msg.dst_id | rec init | 361,388,462,1057 |
-| creation_time_s | timestamp(float) | ROS time seconds | s | may be 0 if msg unset | no | msg.creation_time | rec init | 362,389,463,1058 |
-| delivered_time_s | timestamp(float) | ROS time seconds | s | `-1.0` | no | derived from delivered path | delivered callback | 409-413,477,1051,1059 |
-| delivered | bool | {true,false} | n/a | none | no | rec flag | delivered callback | 476,1060 |
-| e2e_delay_ms | float | >=0 expected; negative possible if clock anomalies | ms | `-1.0` undelivered | no | delivered-creation | write compute | 1047-1049,1061 |
-| forward_count | int | ℕ0 | count | 0 | no | bus seen count | trafficCallback | 368,1062 |
-| hop_count | int | ℕ0 or -1 | hops | `-1` unknown | no | delivered msg.hop_count | delivered callback | 479,1063 |
-| ttl_hops | int | ℕ0 or -1 | hops | `-1` unknown | no | delivered msg.ttl | delivered callback | 480,1064 |
-| payload_bytes | int | ℕ0 | bytes | 0 | no | payload size | rec init | 363,390,464,1065 |
-| dropped | bool | {true,false} | n/a | false default | no | drop_by_ref reconciliation | reconcile pass | 1002-1007,1066 |
-| drop_reason | string | free text (`WEATHER_DROP`, `TTL_EXPIRED`, etc.) | n/a | empty string | no | DROP msg.drop_reason | traffic/reconcile | 289-294,1003-1006,1067 |
-| dropper_id | string | node id | n/a | empty string | no | DROP msg.src_id | traffic/reconcile | 291,1006,1068 |
-| ack_time | timestamp(float) | ROS time seconds | s | `-1.0` | no | ACK seen time | traffic/reconcile | 312-315,1008-1010,1050,1069 |
-
-## B.2 `qos_metrics.csv`
-Header at 1098-1100.
-
-Columns and domains:
-- `run_id` string.
-- `flow_type` int (from key parsing).
-- `control_type` string.
-- `generated,delivered,dropped` int ℕ0.
-- `pdr` float in [0,1] (generated=0 => 0.0).
-- `delay_mean_ms,delay_p95_ms,jitter_ms` float ms; sentinel `-1.0` when insufficient samples.
-- `throughput_bps,generated_bps` float bps; `-1.0` until duration > 0.
-- `qos_score` float [0,1] from weighted objective.
-
-Source pipeline: `records_` -> `buildQosStats` -> `finalizeQosStats` -> writer (1452-1479,1390-1449,1103-1131).
-
-## B.3 `charge_events.csv`
-Header at 1159-1167.
-
-All 34 columns written 1201-1233 in this exact order. Sentinel usage:
-- time fields often emit `rec.<time>.seconds()` (zero if unset), except explicit `-1.0` for `charge_end_time` and `terminal_time` when unset.
-- derived durations and energy: `-1.0` sentinel when insufficient inputs.
-- role: `-1` when `role_known==false`.
-
-Outcome domain from `chargeOutcomeToString`: `PENDING, ACCEPTED, REJECTED, ROUTING_DROP, TIMEOUT, STARTED, PREEMPTED, ENERGY_DEPLETED, UNKNOWN`.
-
-Primary lineage inputs:
-- CHARGE_REQUEST on traffic bus sets request identity and `request_time` from message `creation_time` (321-348).
-- Delivered CHARGE_DECISION sets `decision_time`, accepted/rejected/preempted states + parsed rationale (414-454,856-909).
-- `statusCallback` marks STARTED/charge completion/pre-dock return preemption (660-683).
-- timeout timer marks TIMEOUT (686-700).
-- failure path marks ENERGY_DEPLETED (592-607,812-828).
-
-## B.4 `preemption_events.csv`
-Header 1266-1269; rows 1275-1286.
-
-Columns: `run_id,time,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy`.
-
-Source:
-- mostly parsed from `/ugv/queue_events` string payload (931-955).
-- event time is monitor local `this->now()` (935), not embedded stamp.
-
-## B.5 `recovery_events.csv`
-Header 1318-1319; rows 1326-1339.
-
-Columns: `run_id,msg_id,control_type,src_id,dst_id,epoch,member_id,ch_id,task_count,x,y,z,creation_time`.
-
-Source:
-- `trackRecoveryEvent` filters control types and parses payload variants (2184-2235).
-- `epoch` parse fail => `-1` (2210-2214).
-- task_count derived by semicolon token count (2237-2251).
-- deployment pose parsed from first 3 comma-separated numbers, default 0,0,0 on parse failure (2253-2284).
-
-## B.6 `status_timeseries.csv`
-Header 1503; rows 1508-1519.
-
-Columns: `run_id,time,uav_id,role,charging_state,battery_level,backbone_active,x,y,z,energy_consumption_rate`.
-
-Source:
-- `uav_states_` written from `/fanet/status` callback (630-643).
-- `time` uses monitor now (1506).
-
-## B.7 `charge_queue_timeseries.csv`
-Header 1635-1640; rows 1751-1770.
-
-Columns (20):
-`run_id,time,queue_length_ugv,queue_length_ch,queue_length_member,queue_length_unknown,active_charging_ugv_sessions,ugv_dock_capacity,ugv_dock_utilization,mean_wait_ch_ms,mean_wait_member_ms,active_mission_count,active_charging_uav_status,going_to_ugv_count_uav_status,returning_count_uav_status,current_dead_count,dead_event_count,fleet_size,over_capacity_ugv,status_vs_ugv_gap`.
-
-Domains:
-- counts are ℕ0 except `status_vs_ugv_gap` signed.
-- utilization ratio, sentinel `-1.0` when capacity<=0.
-- mean waits ms, sentinel `-1.0` no samples.
-
-Sources:
-- queue from non-terminal charge records not started (1650-1667).
-- wait means from started records (1668-1716).
-- active state counts from `uav_states_` excluding dead_uavs_ (1683-1698).
-- optional UGV snapshot overrides from parsed string fields (1722-1732,1592-1611).
-
-## B.8 `weather_timeseries.csv`
-Header 1799; row 1802-1808.
-
-Columns: `run_id,time,regime,temperature_c,wind_speed,wind_direction_deg,rain_intensity`.
-
-Source: cached weather fields from `/environment/weather` callback (834-853).
-
-## B.9 `death_events.csv`
-Header 1840; rows 1849-1857.
-
-Columns: `run_id,time,uav_id,role,cause,battery_at_death,fleet_size,alive_count`.
-
-Domain:
-- `cause` currently `BATTERY_DEAD` from failure handler path.
-- `role` sentinel `-1` when unknown.
-- `alive_count` computed as `fleet_size - min(i+1,fleet_size)` at export order.
-
-## B.10 `network_timeseries.csv`
-Header 1885-1889; row 1945-1960.
-
-Columns:
-`run_id,time,window_sec,window_generated,window_delivered,window_dropped,window_pdr,window_delay_mean_ms,window_delay_p95_ms,window_jitter_ms,ctrl_charge_req_generated,ctrl_charge_req_delivered,ctrl_charge_req_pdr,ctrl_charge_dec_generated,ctrl_charge_dec_delivered,ctrl_charge_dec_pdr`.
-
-Domain:
-- window_* counts: ℕ0 over `records_` where `creation_time >= cutoff`.
-- pdr fields: ratio; sentinel `-1.0` for zero denominators in window/control subgroups.
-- delay/jitter ms: `-1.0` sentinel if no delivery samples.
-
-## B.11 `summary.json`
-Writer 1964-2182.
-
-Schema (dot-path fields):
-- `run_id` string
-- `fleet.fleet_size`, `fleet.alive_count`, `fleet.current_dead_count`, `fleet.dead_event_count` (int)
-- `fleet.survival_rate` float [0,1]
-- `charging.requests_total,accepted,rejected,dropped,timeouts,started,preempted,energy_depleted` int
-- `charging.success_rate` float [0,1]
-- `charging.decision_latency_ms.mean,p95` float (`-1` possible)
-- `charging.waiting_time_ms.mean` float (`-1` possible)
-- `charging.energy_recovered.mean` float (`-1` possible)
-- `charging_fairness.rejections_by_uav` object map string->int
-- `charging_fairness.timeouts_by_uav` object map string->int
-- `charging_fairness.max_waiting_time_ms_by_uav` object map string->float
-- `network.qos_targets.{pdr,delay_ms,jitter_ms}` float params
-- `network.qos_weights.{pdr,delay,jitter}` float params
-- `network.by_category[]` objects with:
-  - `flow_type` int, `control_type` string
-  - `generated,delivered,dropped` int
-  - `pdr` float
-  - `delay_ms.mean,p95` float
-  - `jitter_ms,throughput_bps,generated_bps,qos_score` float
-  - `drops` map reason->count
-- `recovery.start,done,cluster_reassign,task_assign,new_deployment` int
+| File | Mode | Creator | Trigger | Notes |
+|---|---|---|---|---|
+| `packet_generated_events.csv` | **APPEND** | monitor | per-msg, `trafficRawCallback` first-seen | NEW: event-sourced generation table |
+| `packet_delivered_events.csv` | **APPEND** | monitor | per-delivery, `deliveredCallback` | NEW: event-sourced delivery table |
+| `packet_drop_events.csv` | **APPEND** | monitor | per-drop, `trafficCallback` DROP branch | NEW: event-sourced drop table |
+| `packet_ack_events.csv` | **APPEND** | monitor | per-ACK, `trafficCallback` ACK branch | NEW: event-sourced ACK table |
+| `charge_request_events.csv` | **APPEND** | monitor | per-request, `trafficCallback` CHARGE_REQUEST | NEW: atomic charge request table |
+| `charge_decision_events.csv` | **APPEND** | monitor | per-decision, `deliveredCallback` CHARGE_DECISION | NEW: atomic charge decision table |
+| `charge_session_events.csv` | **APPEND** | monitor | DOCK_START/END/PREEMPTED/TIMEOUT/ENERGY_DEPLETED | NEW: atomic session lifecycle events |
+| `messages.csv` | **APPEND** | monitor | per-record, first-seen snapshot, `writeMessagesCsv()` | Supplemental; each record exported once |
+| `qos_metrics.csv` | **APPEND** | monitor | snapshot per flush, all known categories | Updated: timeseries of cumulative QoS state |
+| `charge_events.csv` | **APPEND** | monitor | per terminal outcome, `writeChargeEventsCsv()` | Updated: only terminal records exported once |
+| `preemption_events.csv` | **APPEND** | monitor | incremental, `writePreemptionEventsCsv()` | Updated: no rewrite |
+| `recovery_events.csv` | **APPEND** | monitor | per-event, `writeRecoveryEventsCsv()` | Updated: no rewrite |
+| `status_timeseries.csv` | **APPEND** | monitor | per `status_timeseries_timer_` tick + flush | Updated: run metadata added |
+| `charge_queue_timeseries.csv` | **APPEND** | monitor | per `queue_timeseries_timer_` tick + flush | Updated: invariant check column added |
+| `weather_timeseries.csv` | **APPEND** | monitor | per `weather_timeseries_timer_` tick + flush | Updated: run metadata added |
+| `death_events.csv` | **APPEND** | monitor | incremental, `writeDeathEventsCsv()` | Updated: no rewrite |
+| `network_timeseries.csv` | **APPEND** | monitor | per `network_timeseries_timer_` tick + flush | Updated: run metadata added |
+| `summary_snapshots.jsonl` | **APPEND** | monitor | per `writeOutputs()` + shutdown | **REPLACES** `summary.json`; one JSON object per line |
 
 ---
 
-## C) Timestamp provenance + truth table
+## B) Per-File Schemas
 
-| Field | Defined by node | Created at event | Stored in variable | Persisted to | Clock domain | Representation | Pointers |
-|---|---|---|---|---|---|---|---|
-| `TrafficMessage.creation_time` | producer nodes (UAV/UGV/Sink/User/Fault drop reports) | message creation before publish | message field | many monitor CSVs via `rec.creation_time` / charge `request_time` | ROS clock of producer (`this->now()`) | builtin Time (sec,nanosec) | e.g. UAV 4594; UGV 2589/2225; Sink 253/323; User 58 |
-| `TrafficMessage.last_tx_time` | **mostly UAV forwarder/delivery path** | before forwarding / at delivered clone in UAV | message field | not directly persisted by monitor | ROS clock | builtin Time | UAV stamp 3019,3129 |
-| `TrafficMessage.last_rx_time` | UAV forwarding and delivered clone | receive-forward boundary / delivery | message field | monitor uses as delivered timestamp fallback-preferred | ROS clock | builtin Time | UAV 3020/3043/3127; monitor 409-413 |
-| `delivered_wall_time` (monitor local variable) | network_monitor_node | on delivered callback | local var | `messages.delivered_time_s`; delay calculations; charge decision time | ROS clock of monitor unless last_rx_time present | rclcpp::Time | 407-413,423,477,482 |
-| `MsgRecord.creation_time` | monitor | when rec first initialized from message | `records_[id].creation_time` | `messages.creation_time_s`; QoS and network window delay bases | inherits producer-stamped msg time | rclcpp::Time | 362/389/463,1058 |
-| `MsgRecord.delivered_time` | monitor | first delivery observation | `records_[id].delivered_time` | `messages.delivered_time_s`, QoS delay, network window delay | monitor chosen delivered_wall_time | rclcpp::Time | 476-483,1464,1907 |
-| `ChargeRecord.request_time` | monitor | on CHARGE_REQUEST traffic msg | `charge_records_[msg_id].request_time` | `charge_events.request_time` + derived waits/latencies | from message creation_time | rclcpp::Time | 321-329,1208 |
-| `ChargeRecord.decision_time` | monitor | on delivered CHARGE_DECISION | `charge_records_[ref].decision_time` | `charge_events.decision_time`, `decision_latency_ms` | delivered_wall_time | rclcpp::Time | 414-424,1174-1176,1209 |
-| `ChargeRecord.dock_start_time` | monitor | on status transition ACCEPTED -> charging | `charge_records_[id].dock_start_time` | `charge_events.dock_start_time`, waiting metrics | monitor now | rclcpp::Time | 660-666,1210 |
-| `ChargeRecord.charge_end_time` | monitor | on status transition charging->not charging | `charge_records_[id].charge_end_time` | `charge_events.charge_end_time`, charge_duration | monitor now | rclcpp::Time | 668-675,1211 |
-| `ChargeRecord.terminal_time` | monitor | on terminal outcomes | `charge_records_[id].terminal_time` | `charge_events.terminal_time`, `effective_wait_ms` | monitor now | rclcpp::Time | 306,431,434,665,682,697,827,1212 |
-| `ChargeRequest.stamp` (direct topic) | UAV node | when publishing ChargeRequest | request message field | monitor `request_times_` only (not file column directly) | UAV ROS clock | builtin Time | UAV 878-883; monitor 508-513 |
-| `DeathEvent.time` | monitor from failure message | when FAILURE_EVENT handled | `death_events_[].time` | `death_events.time` | from failure msg creation_time | rclcpp::Time | 564-574,599-601,1849-1850 |
+### Universal run-metadata columns (present in ALL files)
 
-### Explicit answers requested
+| Column | Type | Domain | Notes |
+|---|---|---|---|
+| `run_id` | string | run label | from launch param |
+| `protocol_name` | string | e.g. `FCFS`, `PRIORITY_CH_FIRST`, … | from launch param `protocol_name` |
+| `replicate_id` | int | 1..3 (or 0..2) | from launch param `replicate_id` |
+| `run_instance_id` | string | nanoseconds since Unix epoch at startup | unique per process execution; disambiguates restarts |
+| `t_rel_s` | float | seconds since node start | `(this->now() - start_time_).seconds()`; use for cross-replicate alignment |
+| `time_s` | float | ROS clock seconds at write | producer or monitor clock (see timestamp table) |
 
-1) **What is `time_generated`?**
-- **NOT FOUND as a named field.**
-- **CONFIRMED nearest equivalent** is `TrafficMessage.creation_time` (producer-side stamp) and monitor `messages.creation_time_s`. Set in producer nodes before publishing (`uav_node`, `ugv_charger_node`, `sink_gateway_node`, `user_device_node`).
+### B.1 `packet_generated_events.csv` (NEW)
 
-2) **What is `time_delivered`?**
-- **NOT FOUND as a named field.**
-- **CONFIRMED equivalent** is monitor `delivered_wall_time` then `MsgRecord.delivered_time`, persisted as `messages.delivered_time_s`.
-- It is computed in monitor delivered callback, preferring incoming `msg.last_rx_time`; fallback to monitor `now()` if missing.
+**Definition:** First observation of `msg_id` on `/fanet/network_bus_raw`.
+This is the generation proxy: the raw bus carries messages before fault injection.
 
-3) **send_time / receive_time packed fields**
-- **send_time analogue:** `last_tx_time` set in UAV forwarding (`stampForSend`) and delivery clone in UAV path.
-- **receive_time analogue:** `last_rx_time` updated in UAV forward path and at UAV delivery clone.
-- **Intermediate hops?** In UAV forward path `last_rx_time` is updated before resend; thus yes, intermediate updates occur where UAV handles forwarding.
-- **Monitor extraction:** monitor only reads `last_rx_time` on delivered callback for delivered timestamp; it does not persist raw `last_tx_time`/`last_rx_time` columns.
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `msg_id` | string | unique message id | — | never | PK |
+| `flow_type` | int | {0=DATA, 1=CONTROL} | — | never | — |
+| `control_type` | string | NONE, CHARGE_REQUEST, … | — | "" | — |
+| `src_id` | string | node id | — | "" | — |
+| `dst_id` | string | node id | — | "" | — |
+| `creation_time_s` | float | `msg.creation_time` (producer ROS clock) | s | 0.0 if unset | — |
+| `payload_bytes` | int | ≥0 | bytes | 0 | — |
 
-Clock-risk notes:
-- monitor timers use node `this->now()`; producer stamps also use each node `this->now()`.
-- if `/use_sim_time` differs across nodes or time jumps backward, negative delay can appear at `(delivered_time - creation_time)`.
-- monitor clamps some derived ages/waits to non-negative in specific helpers, but not all delay calculations (e.g., messages/e2e_delay_ms not clamped).
+Guard: `already_logged_generated_` set; only first observation logged.
 
----
+### B.2 `packet_delivered_events.csv` (NEW)
 
-## D) Variable/State provenance appendix (logging contributors)
+**Definition:** First delivery observation from `/fanet/delivered`.
 
-### D.1 Core message lifecycle state
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `msg_id` | string | unique message id | — | never | PK |
+| `delivered_time_s` | float | prefer `msg.last_rx_time`; fallback to monitor `now()` | s | — | — |
+| `receiver_id` | string | `msg.dst_id` | — | "" | — |
+| `hop_count` | int | ≥0 or -1 (unknown) | hops | -1 | — |
+| `ttl_hops` | int | ≥0 or -1 | hops | -1 | — |
+| `delivered_flag` | bool | always `true` | — | — | — |
 
-- `records_ : unordered_map<string, MsgRecord>`
-  - stores per-msg lineage: ids, flow/control, creation/delivery, counts, drop/ack flags.
-  - defined as member; updated in `trafficRawCallback`, `trafficCallback`, `deliveredCallback`, `reconcileCausality`.
-  - lifecycle: created lazily by msg_id; never evicted.
-  - reverse deps: `messages.csv`, `qos_metrics.csv`, `network_timeseries.csv`, parts of `summary.json`.
+Guard: `already_logged_delivered_` set.
 
-- `drop_by_ref_ : unordered_map<string,pair<string,string>>`
-  - `ref_msg_id -> (drop_reason, dropper_id)` from DROP control msgs.
-  - set in `trafficCallback` DROP branch.
-  - consumed by `reconcileCausality` to set record dropped fields.
-  - reverse deps: `messages.csv`, QoS drop counts, summary drop maps.
+**Clock note:** `delivered_time_s` uses `msg.last_rx_time` (UAV ROS clock at final receive) when non-zero, else monitor `now()`. Both are ROS clock time. `creation_time_s` lives in `packet_generated_events.csv` — join on `msg_id` for e2e delay.
 
-- `ack_by_ref_ : unordered_map<string,rclcpp::Time>`
-  - ref msg ack observation times from ACK messages.
-  - set in ACK branch.
-  - consumed in `reconcileCausality` => `MsgRecord.ack_time`.
-  - reverse deps: `messages.csv`.
+### B.3 `packet_drop_events.csv` (NEW)
 
-- `exported_messages_`, `exported_qos_keys_`, `exported_charge_requests_`, `exported_recovery_events_`, `exported_preemption_count_`, `exported_death_event_count_`
-  - export cursors for incremental append mode.
-  - set in each writer after row emission.
-  - reset behavior: final flush truncates files and rewrites from all records (logic uses `final_flush`).
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `ref_msg_id` | string | joinable to `packet_generated_events.msg_id` | — | never | PK |
+| `drop_reason` | string | `WEATHER_DROP`, `TTL_EXPIRED`, `UNKNOWN`, … | — | `UNKNOWN` | — |
+| `dropper_id` | string | node that emitted DROP | — | "" | — |
 
-### D.2 Charge-state lineage state
+Guard: `dropped_ids_` set (first DROP per `ref_msg_id` only).
 
-- `charge_records_ : unordered_map<string, ChargeRecord>`
-  - key: request message id.
-  - population paths: CHARGE_REQUEST on `/fanet/network_bus`, CHARGE_DECISION on `/fanet/delivered`, status transitions, timeout timer, failure hooks, preemption parsing.
-  - no eviction.
-  - reverse deps: `charge_events.csv`, `charge_queue_timeseries.csv`, `summary.json` charging/fairness sections.
+### B.4 `packet_ack_events.csv` (NEW)
 
-- `latest_request_by_uav_ : unordered_map<string,string>`
-  - UAV -> latest request msg id.
-  - set in traffic CHARGE_REQUEST and delivered CHARGE_DECISION path.
-  - used by `statusCallback`, `markChargeFailureForUav`, preemption helper.
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `ref_msg_id` | string | joinable to `msg_id` | — | never | PK |
+| `ack_time_s` | float | monitor `now()` at ACK observation | s | — | — |
+| `ack_src_id` | string | `msg.src_id` of ACK message | — | "" | — |
 
-- `latest_role_by_uav_`, `latest_request_battery_by_uav_`
-  - set by direct `/uav_fleet/charge_requests` callback.
-  - used to backfill charge record role/request battery.
+Guard: `ack_by_ref_` map (first ACK per `ref_msg_id`).
 
-- `request_times_`
-  - from direct ChargeRequest topic; used only for aggregate wait stats in `chargeDecisionCallback` (not persisted directly).
+### B.5 `charge_request_events.csv` (NEW)
 
-### D.3 Other logging state
+**Trigger:** First time `CHARGE_REQUEST` `msg_id` appears on `/fanet/network_bus`.
 
-- `uav_states_ : unordered_map<string,UavState>` from `/fanet/status`.
-  - reverse deps: `status_timeseries.csv`, charge transition logic, death role/battery enrichment, queue timeseries counts.
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `request_msg_id` | string | = `msg_id` of CHARGE_REQUEST | — | never | PK |
+| `uav_id` | string | `msg.src_id` | — | "" | — |
+| `role` | int | {0=MEMBER, 1=CH, 2=BACKUP_CH, -1=unknown} | — | -1 | — |
+| `battery_at_request` | float | battery % at request time | % | -1.0 | — |
+| `request_time_s` | float | `msg.creation_time` (producer ROS clock) | s | -1.0 | — |
 
-- `preemption_events_ : vector<PreemptionEvent>` from `/ugv/queue_events` parser.
-  - reverse deps: `preemption_events.csv`.
+### B.6 `charge_decision_events.csv` (NEW)
 
-- `death_events_ : vector<DeathEvent>` from `FAILURE_EVENT` handling.
-  - reverse deps: `death_events.csv`.
+**Trigger:** First delivery of `CHARGE_DECISION` on `/fanet/delivered`.
 
-- weather cache (`current_weather_*`, `weather_received_`) from `/environment/weather`.
-  - reverse deps: `weather_timeseries.csv`.
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `request_msg_id` | string | = `msg.ref_msg_id` | — | never | FK → charge_request_events |
+| `decision_msg_id` | string | = `msg.msg_id` | — | — | PK |
+| `decision_time_s` | float | `delivered_wall_time` (monitor, prefer `msg.last_rx_time`) | s | — | — |
+| `outcome` | string | {ACCEPTED, REJECTED, PREEMPTED} | — | — | — |
+| `failure_reason` | string | REJECTED / PREEMPTED / "" | — | "" | — |
+| `decision_latency_ms` | float | `(decision_time - request_time) * 1000` | ms | -1.0 if request_time unknown | — |
 
-- `latest_ugv_charging_snapshot_` from `/ugv/charging_snapshot` string parser.
-  - reverse deps: `charge_queue_timeseries.csv` override columns.
+Guard: `already_logged_charge_decision_` set.
 
-Concurrency/staleness:
-- no mutexes; assumes non-concurrent callback execution (single-threaded executor typical).
-- maps are append/update only; no TTL eviction => long runs grow memory.
+### B.7 `charge_session_events.csv` (NEW)
 
----
+**Trigger:** At each lifecycle transition: DOCK_START, DOCK_END, PREEMPTED, TIMEOUT, ENERGY_DEPLETED.
 
-## E) Join keys & data model
+| Column | Type | Domain | Units | Missing | Key |
+|---|---|---|---|---|---|
+| *(run metadata)* | — | — | — | — | — |
+| `request_msg_id` | string | FK → charge_request_events | — | — | FK |
+| `uav_id` | string | — | — | "" | — |
+| `role` | int | {0,1,2,-1} | — | -1 | — |
+| `event_type` | string | {DOCK_START, DOCK_END, PREEMPTED, TIMEOUT, ENERGY_DEPLETED, TERMINAL} | — | — | — |
+| `event_time_s` | float | monitor `now()` (ROS clock) | s | — | — |
+| `waiting_time_ms` | float | `(dock_start - request_time) * 1000`; set at DOCK_START | ms | -1.0 | — |
+| `charge_duration_s` | float | `(charge_end - dock_start)`; set at DOCK_END | s | -1.0 | — |
+| `energy_charged_wh` | float | `energy_delta_pct * battery_capacity_wh / 100`; set at DOCK_END | Wh | -1.0 if capacity unknown | — |
+| `battery_before` | float | battery % before event | % | -1.0 | — |
+| `battery_after` | float | battery % after event | % | -1.0 | — |
+| `battery_capacity_wh` | float | `UavStatus.battery_capacity` (cached) | Wh | 0.0 if unset | — |
 
-Recommended stable join keys:
-- `run_id` (all files).
-- `msg_id` (messages/recovery).
-- `request_msg_id` in `charge_events` joins to `messages.msg_id` and CHARGE_DECISION `ref_msg_id` semantics.
-- entity ids: `uav_id`, `ugv_id`, `src_id`, `dst_id`.
-- safest time for lifecycle join = `messages.creation_time_s` + `messages.delivered_time_s` (same table), then align with timeseries using `merge_asof`.
+**Energy formula:** `energy_charged_wh = (battery_after - battery_before) * battery_capacity_wh / 100.0` when `battery_capacity_wh > 0` and delta ≥ 0; else -1.0.
 
-Primary key guidance:
-- `messages`: (`run_id`,`msg_id`) expected unique; duplicates possible if producer reuses ids (not enforced).
-- `charge_events`: (`run_id`,`request_msg_id`) expected unique.
-- `preemption_events`: no natural strict key; use (`run_id`,`time`,`victim_uav_id`,`winner_uav_id`).
-- `status_timeseries`: (`run_id`,`time`,`uav_id`) not guaranteed unique (extra writes on `writeOutputs`).
-- `network_timeseries`, `weather_timeseries`, `queue_timeseries`: `time` not strictly unique.
+**No deduplication guard** on session events — each transition fires exactly once per lifecycle because the state machine in `statusCallback`/`checkChargeTimeouts`/`handleFailureFromTraffic` gates entry.
 
-Join strategy:
-- exact joins for id-based tables (`messages`↔`charge_events`↔`recovery_events`).
-- time-tolerant joins (`merge_asof`) for timeseries with tolerance 0.5–1.0s (INFERRED from timer periods ~1s).
+### B.8 `messages.csv` (UPDATED)
 
----
+Supplemental; each record exported **once** (first-seen snapshot, append-only). Reconciled drop/ack info may be incomplete if DROP arrived after the record was exported — use `packet_drop_events.csv` for authoritative drop data.
 
-## F) Concrete union/intersection recommendations
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`, `time_s`.
+Renamed: `ack_time` → `ack_time_s`.
 
-1) **Message lifecycle dataset**
-- sources: `messages.csv` (+ optionally filter control_type in same table), `qos_metrics.csv`, `network_timeseries.csv`.
-- keys: exact (`run_id`,`msg_id`); group by (`flow_type`,`control_type`).
-- computed: latency_ms, delivered flag, dropped reason categories, hop distributions, per-control PDR.
-- pitfall: dropped and delivered can both appear false for in-flight messages.
-- pseudo-query:
-```sql
-SELECT m.run_id,m.msg_id,m.control_type,m.src_id,m.dst_id,m.e2e_delay_ms,m.hop_count,m.dropped,m.drop_reason
-FROM messages m;
+### B.9 `qos_metrics.csv` (UPDATED)
+
+Now a **snapshot timeseries**: every periodic flush writes one row per known `(flow_type, control_type)` category with current cumulative stats. Consumer should take the last row per `(run_id, flow_type, control_type)` for final values.
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`, `time_s`.
+
+### B.10 `charge_events.csv` (UPDATED)
+
+Now exports only **terminal** records (STARTED, REJECTED, DROPPED, TIMEOUT, PREEMPTED, ENERGY_DEPLETED) — each record exported once on first terminal state.
+Non-terminal (PENDING/ACCEPTED) records are NOT present here; they are covered by the atomic event tables.
+Renamed `energy_recovered` → `energy_recovered_pct`.
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`, `time_s`.
+
+### B.11 `preemption_events.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed existing `time` → `time_s`.
+
+### B.12 `recovery_events.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed `creation_time` → `creation_time_s`.
+
+### B.13 `status_timeseries.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed existing `time` → `time_s`.
+
+Columns: `run_id, protocol_name, replicate_id, run_instance_id, t_rel_s, time_s, uav_id, role, charging_state, battery_level, backbone_active, x, y, z, energy_consumption_rate`
+
+### B.14 `charge_queue_timeseries.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`, `queue_length_total_check`.
+Renamed `time` → `time_s`, `queue_length_ugv` → `queue_length_total`.
+
+**Invariant column:**
+`queue_length_total_check = queue_length_total - (queue_length_ch + queue_length_member + queue_length_unknown)`
+
+Should be 0; non-zero values indicate a counting anomaly (snapshot from UGV vs. monitor-inferred disagreement).
+
+**Mean wait note:** `mean_wait_ch_ms` and `mean_wait_member_ms` represent the mean across all STARTED records in the current run (not just those currently waiting). This is a cumulative mean, not an instantaneous queue wait.
+
+### B.15 `weather_timeseries.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed `time` → `time_s`.
+
+Columns: `run_id, protocol_name, replicate_id, run_instance_id, t_rel_s, time_s, regime, temperature_c, wind_speed, wind_direction_deg, rain_intensity`
+
+### B.16 `death_events.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed `time` → `time_s`.
+
+### B.17 `network_timeseries.csv` (UPDATED)
+
+Added columns: `protocol_name`, `replicate_id`, `run_instance_id`, `t_rel_s`.
+Renamed `time` → `time_s`.
+
+### B.18 `summary_snapshots.jsonl` (NEW — replaces `summary.json`)
+
+Append-only JSON Lines file. Each `writeOutputs()` call appends one complete JSON object followed by `\n`.
+
+**Additional top-level fields in each snapshot:**
+```json
+{
+  "run_id": "...",
+  "protocol_name": "...",
+  "replicate_id": 0,
+  "run_instance_id": "...",
+  "t_rel_s": 42.5,
+  "time_s": 1234567890.5,
+  "fleet": { ... },
+  "charging": { ... },
+  "charging_fairness": { ... },
+  "network": { ... },
+  "recovery": { ... }
+}
 ```
 
-2) **Charging episode dataset**
-- sources: `charge_events.csv` + `charge_queue_timeseries.csv` + `status_timeseries.csv` + `death_events.csv`.
-- keys: exact on (`run_id`,`request_msg_id`) for message linkage; `merge_asof` on (`run_id`,`uav_id`,`time`).
-- computed: waiting distributions, fairness by role, preemption victim/winner rates, success/failure.
-- pitfall: role may be unknown (`-1`), many duration fields `-1` sentinel.
-
-3) **Routing stability / recovery dataset**
-- sources: `recovery_events.csv` + `messages.csv` (DROP reasons, delivery) + `network_timeseries.csv`.
-- keys: exact msg_id for recovery control messages; time-asof for network quality context.
-- computed: recovery churn by epoch/control_type, route-break symptom correlation via drop reasons.
+Consumer: load the last JSON object with matching `run_instance_id` for the final run state.
 
 ---
 
-## G) Coverage gaps & instrumentation TODO (no patches)
+## C) Timestamp Truth Table
 
-1. **Missing raw hop timestamps in exports**
-- Why: monitor uses `last_rx_time` for delivery but does not persist `last_rx_time`/`last_tx_time` columns.
-- Patch location: `writeMessagesCsv`.
-- Add columns: `last_rx_time_s`, `last_tx_time_s` (float seconds, `-1` sentinel).
+| Field | Producer node | Event | Clock domain | Representation | Persisted to |
+|---|---|---|---|---|---|
+| `TrafficMessage.creation_time` | Producer nodes (UAV/UGV/Sink/User) | message creation before publish | ROS clock of producer | `builtin_interfaces/Time` → float s | `packet_generated_events.creation_time_s`, `charge_request_events.request_time_s`, `messages.creation_time_s` |
+| `TrafficMessage.last_rx_time` | UAV forwarder / delivery clone | at receive or delivery | UAV ROS clock | `builtin_interfaces/Time` → float s | `packet_delivered_events.delivered_time_s` (preferred) |
+| `delivered_wall_time` (monitor local) | NetworkMonitorNode | on `/fanet/delivered` callback | Monitor ROS clock (fallback when `last_rx_time` == 0) | `rclcpp::Time` → float s | `packet_delivered_events.delivered_time_s` (fallback), `charge_decision_events.decision_time_s`, `messages.delivered_time_s` |
+| `t_rel_s` | NetworkMonitorNode | at row write time | Monitor ROS clock, relative to `start_time_` | float s | ALL tables |
+| `time_s` | NetworkMonitorNode | at row write time (or event time) | Monitor ROS clock | float s | ALL tables |
+| `event_time_s` in `charge_session_events` | NetworkMonitorNode | at lifecycle transition | Monitor ROS clock | float s | `charge_session_events.event_time_s` |
+| `UavStatus.stamp` | UAV node | when publishing status | UAV ROS clock | `builtin_interfaces/Time` | Not directly persisted |
+| `DeathEvent.time` | NetworkMonitorNode | from `FAILURE_EVENT msg.creation_time` | Producer ROS clock | `rclcpp::Time` → float s | `death_events.time_s` |
 
-2. **No explicit clock-domain column**
-- Why: difficult to diagnose sim/wall-time mismatch.
-- Patch: all writers; add `clock_domain` enum string (`ROS_TIME`/`SYSTEM_TIME`).
+**Clock alignment note:**
+All nodes should share `/use_sim_time=true` (or all false). If clocks diverge, `t_rel_s` computed at the monitor is the safest alignment key across replicates because it is relative to each run's `start_time_`. For cross-run alignment, use `t_rel_s` rather than `time_s`.
 
-3. **No explicit drop reason taxonomy enforcement**
-- Why: free-text drop reasons complicate joins.
-- Patch: drop producers (`uav_node`, `fault_injector_node`, `ugv_charger_node`) and monitor normalization map.
-- Add: `drop_reason_code` categorical + `drop_reason_text`.
+---
 
-4. **`flush_period_sec` launch param mismatch**
-- Why: launch sets `flush_period_sec`, monitor declares `csv_write_period_sec`; potential silent default use.
-- Patch: `experiment.launch.py` monitor param name or monitor declare alias.
+## D) Variable/State Provenance
 
-5. **No routing table snapshot artifacts despite subscribed topic**
-- Why: routing stability analysis lacks ground-truth route state.
-- Patch: `routingTableCallback` currently empty; add `routing_table_timeseries.csv` with route epoch/next-hop matrix metadata.
+### D.1 New event-logging "already_logged" sets
 
+| Set | Member name | Keys | Guards |
+|---|---|---|---|
+| Packet generated | `already_logged_generated_` | `msg_id` | `packet_generated_events.csv` — one row per `msg_id` |
+| Packet delivered | `already_logged_delivered_` | `msg_id` | `packet_delivered_events.csv` — one row per `msg_id` |
+| Charge decision | `already_logged_charge_decision_` | `request_msg_id` (= `ref_msg_id` of decision) | `charge_decision_events.csv` — one row per request |
+| Drop events | `dropped_ids_` (existing) | `ref_msg_id` | `packet_drop_events.csv` — one row per `ref_msg_id` |
+| ACK events | `ack_by_ref_` (existing, first-insert) | `ref_msg_id` | `packet_ack_events.csv` — one row per `ref_msg_id` |
+| Charge session | state machine in `statusCallback` / `checkChargeTimeouts` / `handleFailureFromTraffic` | implicit (each transition fires at most once) | `charge_session_events.csv` |
+
+### D.2 `run_instance_id_` generation
+
+```
+run_instance_id_ = std::to_string(
+  std::chrono::duration_cast<std::chrono::nanoseconds>(
+    std::chrono::system_clock::now().time_since_epoch()).count())
+```
+
+This is a wall-clock nanosecond timestamp as a string. It is unique per process execution and is included in every row of every table.
+
+### D.3 `battery_capacity_wh` provenance
+
+Cached from `UavStatus.battery_capacity` (float32, in Wh) in `uav_states_[uav_id].battery_capacity`.
+Updated on every `/fanet/status` message. Used in `charge_session_events.csv` to compute `energy_charged_wh`.
+If `battery_capacity == 0.0`, `energy_charged_wh = -1.0` (sentinel).
+
+### D.4 Existing state maps (unchanged)
+
+- `records_`, `drop_by_ref_`, `ack_by_ref_` — unchanged; `messages.csv` and new event tables both read them.
+- `charge_records_` — unchanged; `charge_events.csv` (terminal snapshots) and new event tables both reference it.
+- `uav_states_` — updated to cache `battery_capacity`.
+- `recovery_events_`, `preemption_events_`, `death_events_` — unchanged; writers now append-only.
+
+---
+
+## E) Join Guidance for All Plots
+
+### E.1 Plot 1 — Per-UAV battery time series (per-run validation)
+
+```
+Table:  status_timeseries.csv
+Filter: run_id = <run>
+Group:  uav_id
+Plot:   battery_level vs t_rel_s
+Color:  charging_state (0=active, 1=going, 2=charging, 3=returning)
+```
+
+**Alignment:** Use `t_rel_s` (not `time_s`) so that multi-replicate plots share a common time axis.
+
+### E.2 Plot 2 — Per-UAV battery time series (statistical, per protocol)
+
+```
+Tables: status_timeseries.csv (filtered by protocol_name)
+Group:  protocol_name, uav_id
+Align:  t_rel_s (interpolate to common grid per replicate_id)
+Agg:    median / mean over replicate_id for each (uav_id, t_rel_bin)
+```
+
+**Required columns:** `protocol_name`, `replicate_id`, `t_rel_s`, `uav_id`, `battery_level`, `role`.
+
+### E.3 Plot 3 — PDR distribution + box plot
+
+**Option A (preferred):** Window samples from `network_timeseries.csv`
+```
+Table:  network_timeseries.csv
+Filter: protocol_name, replicate_id
+Column: window_pdr
+Group:  protocol_name
+Agg:    distribution / box plot across (replicate_id, t_rel_s windows)
+```
+
+**Option B:** Compute per-bin PDR from event tables
+```python
+gen = pd.read_csv("packet_generated_events.csv")
+del_ = pd.read_csv("packet_delivered_events.csv")
+# bin by t_rel_s in 10s windows
+gen["t_bin"] = (gen.t_rel_s // 10).astype(int)
+del_["t_bin"] = (del_.t_rel_s // 10).astype(int)
+gen_cnt = gen.groupby(["run_id","protocol_name","replicate_id","t_bin"]).size()
+del_cnt = del_.groupby(["run_id","protocol_name","replicate_id","t_bin"]).size()
+pdr = (del_cnt / gen_cnt).fillna(0)
+```
+
+### E.4 Plot 4 — End-to-end delay distribution
+
+```python
+gen = pd.read_csv("packet_generated_events.csv")
+del_ = pd.read_csv("packet_delivered_events.csv")
+merged = del_.merge(gen[["run_id","msg_id","creation_time_s"]],
+                    on=["run_id","msg_id"], how="inner")
+merged["delay_ms"] = (merged.delivered_time_s - merged.creation_time_s) * 1000.0
+# Filter out negative delays (clock skew)
+merged = merged[merged.delay_ms >= 0]
+```
+
+**Join key:** `(run_id, msg_id)` exact.
+**Clock note:** `creation_time_s` = producer ROS clock; `delivered_time_s` = UAV `last_rx_time` or monitor clock. Clock domains are the same (`/use_sim_time=true`) but skew < 1 ms typically.
+
+### E.5 Plot 5 — Total energy charged per run/protocol
+
+```python
+sess = pd.read_csv("charge_session_events.csv")
+dock_end = sess[sess.event_type == "DOCK_END"]
+# energy_charged_wh is -1.0 when battery_capacity_wh == 0; exclude those
+valid = dock_end[dock_end.energy_charged_wh >= 0]
+total = valid.groupby(["run_id","protocol_name","replicate_id","uav_id"])\
+             .energy_charged_wh.sum()
+```
+
+**Fallback:** If `energy_charged_wh == -1.0`, use `charge_events.csv` field `energy_recovered_pct` × mean battery capacity.
+
+### E.6 Plot 6 — Average queue waiting time (by role)
+
+```python
+sess = pd.read_csv("charge_session_events.csv")
+dock_start = sess[sess.event_type == "DOCK_START"]
+# waiting_time_ms is set at DOCK_START
+wait = dock_start[dock_start.waiting_time_ms >= 0]
+avg_wait = wait.groupby(["protocol_name","replicate_id","role"])\
+               .waiting_time_ms.mean()
+```
+
+**Alternative via join:**
+```python
+req = pd.read_csv("charge_request_events.csv")
+dock_start = sess[sess.event_type == "DOCK_START"][
+    ["run_id","request_msg_id","event_time_s","role"]]
+merged = dock_start.merge(req[["run_id","request_msg_id","request_time_s"]],
+                           on=["run_id","request_msg_id"])
+merged["waiting_ms"] = (merged.event_time_s - merged.request_time_s) * 1000
+```
+
+### E.7 Plot 7 — Charge queue length timeseries
+
+```python
+q = pd.read_csv("charge_queue_timeseries.csv")
+# Verify invariant
+assert (q.queue_length_total_check == 0).all(), "Invariant violated"
+# Plot
+q.groupby(["protocol_name","replicate_id"]).apply(
+    lambda df: df.set_index("t_rel_s")[["queue_length_total","queue_length_ch",
+                                         "queue_length_member"]].plot())
+```
+
+**Join key for cross-run comparison:** `protocol_name`, `replicate_id`, `t_rel_s` (use `merge_asof` tolerance=0.5s).
+
+### E.8 Plot 8 — Waiting time CDF for CH vs Members
+
+```python
+sess = pd.read_csv("charge_session_events.csv")
+dock_start = sess[(sess.event_type == "DOCK_START") & (sess.waiting_time_ms >= 0)]
+ch   = dock_start[dock_start.role == 1].waiting_time_ms
+mem  = dock_start[dock_start.role == 0].waiting_time_ms
+# CDF
+import numpy as np
+for data, label in [(ch,"CH"),(mem,"Member")]:
+    x = np.sort(data)
+    y = np.arange(1, len(x)+1) / len(x)
+    plt.plot(x, y, label=label)
+```
+
+### E.9 Plot 9 — Average decision latency
+
+```python
+dec = pd.read_csv("charge_decision_events.csv")
+# decision_latency_ms is pre-computed; filter out sentinel
+valid = dec[dec.decision_latency_ms >= 0]
+avg = valid.groupby(["protocol_name","replicate_id"]).decision_latency_ms.mean()
+```
+
+**Alternative via join:**
+```python
+req = pd.read_csv("charge_request_events.csv")
+merged = dec.merge(req[["run_id","request_msg_id","request_time_s"]],
+                    on=["run_id","request_msg_id"])
+merged["latency_ms"] = (merged.decision_time_s - merged.request_time_s) * 1000
+```
+
+### E.10 Plot 10 — Cumulative charged energy over mission time
+
+```python
+sess = pd.read_csv("charge_session_events.csv")
+dock_end = sess[(sess.event_type=="DOCK_END") & (sess.energy_charged_wh >= 0)]
+dock_end = dock_end.sort_values("t_rel_s")
+dock_end["cum_energy"] = dock_end.groupby(
+    ["run_id","protocol_name","replicate_id"]).energy_charged_wh.cumsum()
+```
+
+### E.11 Plot 11 — PDR and delay by weather regime
+
+```python
+weather = pd.read_csv("weather_timeseries.csv")
+gen = pd.read_csv("packet_generated_events.csv")
+del_ = pd.read_csv("packet_delivered_events.csv")
+# Assign weather regime to each packet via asof join on t_rel_s
+gen_w = pd.merge_asof(gen.sort_values("t_rel_s"),
+                       weather[["run_id","t_rel_s","regime"]].sort_values("t_rel_s"),
+                       on="t_rel_s", by="run_id", direction="backward")
+del_w = pd.merge_asof(del_.sort_values("t_rel_s"),
+                       weather[["run_id","t_rel_s","regime"]].sort_values("t_rel_s"),
+                       on="t_rel_s", by="run_id", direction="backward")
+# PDR per regime
+gen_cnt = gen_w.groupby(["protocol_name","replicate_id","regime"]).size()
+del_cnt = del_w.groupby(["protocol_name","replicate_id","regime"]).size()
+pdr_by_regime = (del_cnt / gen_cnt).fillna(0)
+```
+
+### E.12 Plot 12 — Battery drain rate vs weather regime
+
+```python
+status = pd.read_csv("status_timeseries.csv")
+weather = pd.read_csv("weather_timeseries.csv")
+# Asof join: assign regime to each status sample
+status_w = pd.merge_asof(
+    status.sort_values("t_rel_s"),
+    weather[["run_id","t_rel_s","regime"]].sort_values("t_rel_s"),
+    on="t_rel_s", by="run_id", direction="backward", tolerance=2.0)
+# Drain rate = energy_consumption_rate (if available) or compute battery slope
+drain = status_w.groupby(["protocol_name","replicate_id","uav_id","regime"])\
+                .energy_consumption_rate.mean()
+```
+
+### E.13 Radar Plot — Policy comparison (per protocol, aggregated over 3 replicates)
+
+**Axis inputs:**
+
+| Axis | Source | Computation |
+|---|---|---|
+| Mean e2e delay | `packet_generated_events` + `packet_delivered_events` joined on `msg_id` | `mean(delivered_time_s - creation_time_s) * 1000` |
+| Overall PDR | same two tables | `count(delivered) / count(generated)` |
+| Fairness (Jain's index) | `charge_session_events` DOCK_END, per-UAV `energy_charged_wh` sum | `(Σ x_i)² / (n Σ x_i²)` |
+| Mean charged energy | `charge_session_events` DOCK_END | `mean(energy_charged_wh)` per session |
+| Death count (less death) | `death_events` | `count(uav_id)` per run |
+
+**Aggregation over replicates:** compute the metric for each of 3 replicates, then take median across replicates for the radar value.
+
+---
+
+## F) Append-Only Correctness Verification
+
+### Smoke test commands
+
+```bash
+# 1. Build
+cd /home/user/UAV_UGV_monitoring
+colcon build --symlink-install
+source install/setup.bash
+
+# 2. Find launch files
+find src/system_bringup/launch -name "*.launch.py"
+
+# 3. Run smoke test (short duration)
+ros2 launch system_bringup experiment.launch.py run_id:=smoke01 protocol_name:=FCFS replicate_id:=1
+
+# 4. Verify append-only after first run
+ls -lh log/smoke01/
+wc -l log/smoke01/*.csv log/smoke01/*.jsonl
+
+# 5. Re-run (restart same run_id) — files should GROW, not shrink
+ros2 launch system_bringup experiment.launch.py run_id:=smoke01 protocol_name:=FCFS replicate_id:=1
+
+# 6. Verify files appended (sizes larger than step 4)
+ls -lh log/smoke01/
+# Confirm header appears only ONCE per file (file-size-0 guard at process start)
+head -n 5 log/smoke01/packet_generated_events.csv
+grep -c "^run_id" log/smoke01/packet_generated_events.csv  # should be 1
+
+# 7. Verify run_instance_id disambiguates the two runs
+python3 -c "
+import pandas as pd
+df = pd.read_csv('log/smoke01/packet_generated_events.csv')
+print(df.run_instance_id.nunique(), 'distinct run_instance_ids (expect 2)')
+print(df.groupby('run_instance_id').size())
+"
+
+# 8. Verify JSONL summary appends
+wc -l log/smoke01/summary_snapshots.jsonl  # should increase after restart
+python3 -c "
+import json
+with open('log/smoke01/summary_snapshots.jsonl') as f:
+    for line in f:
+        obj = json.loads(line)
+        print(obj['run_instance_id'], obj['t_rel_s'])
+"
+```
+
+---
+
+## G) Coverage Gaps Resolved vs. Remaining
+
+### Resolved in this revision
+
+| # | Gap | Resolution |
+|---|---|---|
+| 1 | `messages.csv` + `charge_events.csv` truncate on final flush | Replaced with pure append; terminal-only export for charge_events |
+| 2 | No separate generated/delivered/drop/ACK tables | New event tables added |
+| 3 | No `run_instance_id` for restart safety | Generated at startup, included in every row |
+| 4 | No `t_rel_s` for replicate alignment | Added to every table |
+| 5 | No `protocol_name` / `replicate_id` in rows | Added to every table |
+| 6 | `summary.json` truncated on every write | Replaced with `summary_snapshots.jsonl` (append) |
+| 7 | `flush_period_sec` launch param ignored by node | Fixed: launch passes `csv_write_period_sec` |
+| 8 | No invariant check in queue timeseries | `queue_length_total_check` column added |
+| 9 | No energy_charged_Wh for plot 5/10 | Computed from `battery_capacity` (from `UavStatus`) at DOCK_END |
+| 10 | No fairness index inputs | `energy_charged_wh` per session enables per-UAV Jain's index |
+
+### Remaining gaps (not addressed in this revision)
+
+| # | Gap | Suggested patch |
+|---|---|---|
+| 1 | No routing table snapshot | `routingTableCallback` is empty; add `routing_table_timeseries.csv` |
+| 2 | `drop_reason` is free text | Add normalization map → `drop_reason_code` enum |
+| 3 | `messages.csv` rows may lack drop info (reconciled after export) | Use `packet_drop_events.csv` as authoritative drop source |
+| 4 | No per-message `cluster_id` or `category` in generated events | Add from `UavStatus.cluster_id` if needed for per-cluster PDR |
