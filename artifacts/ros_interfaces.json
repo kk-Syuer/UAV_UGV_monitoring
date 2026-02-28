@@ -1,0 +1,1420 @@
+{
+  "nodes": [
+    {
+      "package": "ch_manager",
+      "executable": "ch_manager_node",
+      "sources": [
+        "src/ch_manager_node.cpp"
+      ],
+      "node_name_hint": "ch_manager_node",
+      "publishers": [
+        {
+          "name": "/ch_manager/cluster_info",
+          "type": "uav_msgs::msg::ClusterInfo",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/uav_fleet/failure_events",
+          "type": "uav_msgs::msg::FailureEvent",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "1s",
+          "callback": "publishClusterInfo"
+        }
+      ]
+    },
+    {
+      "package": "coverage_planner",
+      "executable": "coverage_planner_node",
+      "sources": [
+        "src/coverage_planner_node.cpp"
+      ],
+      "node_name_hint": "coverage_planner_node",
+      "publishers": [
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "uav_msgs::msg::UavDeployment",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/task_points",
+          "type": "uav_msgs::msg::TaskPointArray",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "2s",
+          "callback": "periodicUpdate"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry)",
+          "callback": "resendPendingAcks"
+        }
+      ]
+    },
+    {
+      "package": "fault_injector",
+      "executable": "fault_injector_node",
+      "sources": [
+        "src/fault_injector_node.cpp"
+      ],
+      "node_name_hint": "fault_injector_node",
+      "publishers": [
+        {
+          "name": "/fanet/network_bus",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered_raw",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/environment/weather",
+          "type": "WeatherStatus",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": []
+    },
+    {
+      "package": "network_monitor",
+      "executable": "network_monitor_node",
+      "sources": [
+        "src/network_monitor_node.cpp"
+      ],
+      "node_name_hint": "network_monitor_node",
+      "publishers": [
+        {
+          "name": "/network_monitor/stats",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/charge_requests",
+          "type": "uav_msgs::msg::ChargeRequest",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/charge_decisions",
+          "type": "uav_msgs::msg::ChargeDecision",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_table",
+          "type": "uav_msgs::msg::RoutingTable",
+          "dynamic": false
+        },
+        {
+          "name": "/environment/weather",
+          "type": "uav_msgs::msg::WeatherStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/queue_events",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/charging_snapshot",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "std::chrono::duration<double>(csv_write_period_sec)",
+          "callback": "<callback>"
+        },
+        {
+          "period_expr": "std::chrono::seconds(1)",
+          "callback": "checkChargeTimeouts"
+        },
+        {
+          "period_expr": "std::chrono::duration<double>(status_sample_period_sec_)",
+          "callback": "writeStatusTimeseriesRow"
+        },
+        {
+          "period_expr": "std::chrono::duration<double>(status_sample_period_sec_)",
+          "callback": "writeWeatherTimeseriesRow"
+        },
+        {
+          "period_expr": "std::chrono::duration<double>(queue_stats_period_sec_)",
+          "callback": "writeChargeQueueTimeseriesRow"
+        },
+        {
+          "period_expr": "std::chrono::duration<double>(status_sample_period_sec_)",
+          "callback": "writeNetworkTimeseriesRow"
+        },
+        {
+          "period_expr": "std::chrono::duration<double>(0.5)",
+          "callback": "publishNetworkStats"
+        }
+      ]
+    },
+    {
+      "package": "planner_viz",
+      "executable": "planner_viz_node",
+      "sources": [
+        "planner_viz/planner_viz_node.py"
+      ],
+      "node_name_hint": "planner_viz_node",
+      "publishers": [],
+      "subscribers": [
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "UavDeployment",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "0.2",
+          "callback": "self.redraw"
+        }
+      ]
+    },
+    {
+      "package": "planner_viz",
+      "executable": "fleet_viz",
+      "sources": [
+        "planner_viz/fleet_viz_node.py"
+      ],
+      "node_name_hint": "fleet_viz_node",
+      "publishers": [],
+      "subscribers": [
+        {
+          "name": "/fanet/status",
+          "type": "UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "UavDeployment",
+          "dynamic": false
+        },
+        {
+          "name": "/environment/weather",
+          "type": "WeatherStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/task_points",
+          "type": "TaskPointArray",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/network_monitor/stats",
+          "type": "String",
+          "dynamic": false
+        },
+        {
+          "name": "/ch_manager/cluster_info",
+          "type": "ClusterInfo",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/failure_events",
+          "type": "FailureEvent",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/charging_snapshot",
+          "type": "String",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "0.2",
+          "callback": "self.update_plot"
+        }
+      ]
+    },
+    {
+      "package": "recovery_manager",
+      "executable": "recovery_manager_node",
+      "sources": [
+        "src/recovery_manager_node.cpp"
+      ],
+      "node_name_hint": "recovery_manager_node",
+      "publishers": [
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/routing_manager/alerts",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/failure_events",
+          "type": "uav_msgs::msg::FailureEvent",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/task_points",
+          "type": "uav_msgs::msg::TaskPointArray",
+          "dynamic": false
+        },
+        {
+          "name": "/ch_manager/cluster_info",
+          "type": "uav_msgs::msg::ClusterInfo",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>( std::chrono::duration<double>(ack_retry_period_sec_))",
+          "callback": "resendPendingAcks"
+        },
+        {
+          "period_expr": "500ms",
+          "callback": "watchdog"
+        }
+      ]
+    },
+    {
+      "package": "routing_manager",
+      "executable": "routing_manager_node",
+      "sources": [
+        "src/routing_manager_node.cpp"
+      ],
+      "node_name_hint": "routing_manager_node",
+      "publishers": [
+        {
+          "name": "/fanet/routing_table",
+          "type": "uav_msgs::msg::RoutingTable",
+          "dynamic": false
+        },
+        {
+          "name": "/routing_manager/alerts",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_event",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(period)",
+          "callback": "recomputeTimer"
+        }
+      ]
+    },
+    {
+      "package": "sink_gateway",
+      "executable": "sink_gateway_node",
+      "sources": [
+        "src/sink_gateway_node.cpp"
+      ],
+      "node_name_hint": "sink_gateway_node",
+      "publishers": [
+        {
+          "name": "/fanet/delivered",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_event",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "uav_msgs::msg::UavDeployment",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_table",
+          "type": "uav_msgs::msg::RoutingTable",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(dur)",
+          "callback": "publishControlToUav"
+        },
+        {
+          "period_expr": "1s",
+          "callback": "checkChTimeouts"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(status_period)",
+          "callback": "publishStatus"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(resend_period)",
+          "callback": "checkDeploymentAcks"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(motion_resend_period)",
+          "callback": "checkMotionStartAcks"
+        }
+      ]
+    },
+    {
+      "package": "uav_fleet",
+      "executable": "uav_node",
+      "sources": [
+        "src/uav_node.cpp"
+      ],
+      "node_name_hint": "uav_node",
+      "publishers": [
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_event",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/charge_requests",
+          "type": "uav_msgs::msg::ChargeRequest",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/failure_events",
+          "type": "uav_msgs::msg::FailureEvent",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/ch_manager/cluster_info",
+          "type": "uav_msgs::msg::ClusterInfo",
+          "dynamic": false
+        },
+        {
+          "name": "/environment/weather",
+          "type": "uav_msgs::msg::WeatherStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "uav_msgs::msg::UavDeployment",
+          "dynamic": false
+        },
+        {
+          "name": "/coverage_planner/task_points",
+          "type": "uav_msgs::msg::TaskPointArray",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_table",
+          "type": "uav_msgs::msg::RoutingTable",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [
+        {
+          "name": "\"/uav_fleet/\" + uav_id_ + \"/send_debug_text\"",
+          "type": "uav_msgs::srv::SendDebugText",
+          "dynamic": true
+        }
+      ],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "1s",
+          "callback": "publishStatus"
+        },
+        {
+          "period_expr": "1s",
+          "callback": "publishHeartbeat"
+        },
+        {
+          "period_expr": "2s",
+          "callback": "publishTraffic"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period)",
+          "callback": "pruneNeighbors"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>( std::chrono::duration<double>(buffer_retry_period_sec_))",
+          "callback": "bufferTick"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(carry_retry)",
+          "callback": "flushBufferedMessagesTimer"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(status_period)",
+          "callback": "publishStatusCh"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(charge_request_retry)",
+          "callback": "chargeRequestRetryTick"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry)",
+          "callback": "resendPendingAcks"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(dt)",
+          "callback": "mobilityStep"
+        },
+        {
+          "period_expr": "200ms",
+          "callback": "<callback>"
+        },
+        {
+          "period_expr": "1s",
+          "callback": "publishStatus"
+        },
+        {
+          "period_expr": "1s",
+          "callback": "publishHeartbeat"
+        },
+        {
+          "period_expr": "2s",
+          "callback": "publishTraffic"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(hello_period)",
+          "callback": "pruneNeighbors"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>( std::chrono::duration<double>(buffer_retry_period_sec_))",
+          "callback": "bufferTick"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(status_period)",
+          "callback": "publishStatusCh"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(charge_request_retry)",
+          "callback": "chargeRequestRetryTick"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry)",
+          "callback": "resendPendingAcks"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(dt)",
+          "callback": "mobilityStep"
+        }
+      ]
+    },
+    {
+      "package": "ugv_charger",
+      "executable": "ugv_charger_node",
+      "sources": [
+        "src/ugv_charger_node.cpp"
+      ],
+      "node_name_hint": "ugv_charger_node",
+      "publishers": [
+        {
+          "name": "/ugv/charge_decisions",
+          "type": "uav_msgs::msg::ChargeDecision",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_event",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/queue_events",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        },
+        {
+          "name": "/ugv/charging_snapshot",
+          "type": "std_msgs::msg::String",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/coverage_planner/deployment",
+          "type": "uav_msgs::msg::UavDeployment",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/status",
+          "type": "uav_msgs::msg::UavStatus",
+          "dynamic": false
+        },
+        {
+          "name": "/uav_fleet/failure_events",
+          "type": "uav_msgs::msg::FailureEvent",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/routing_table",
+          "type": "uav_msgs::msg::RoutingTable",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "500ms",
+          "callback": "schedulerLoop"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(status_period)",
+          "callback": "publishStatus"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(ack_retry)",
+          "callback": "resendPendingAcks"
+        },
+        {
+          "period_expr": "1s",
+          "callback": "publishChargingSnapshot"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(timeout_period)",
+          "callback": "pruneNeighbors"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(dt)",
+          "callback": "mobilityStep"
+        }
+      ]
+    },
+    {
+      "package": "user_devices_sim",
+      "executable": "user_device_node",
+      "sources": [
+        "src/user_device_node.cpp"
+      ],
+      "node_name_hint": "user_device_node",
+      "publishers": [
+        {
+          "name": "/fanet/network_bus_raw",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        },
+        {
+          "name": "/fanet/delivered",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [
+        {
+          "name": "/fanet/network_bus",
+          "type": "uav_msgs::msg::TrafficMessage",
+          "dynamic": false
+        }
+      ],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "3s",
+          "callback": "publishTraffic"
+        }
+      ]
+    },
+    {
+      "package": "weather_server",
+      "executable": "weather_node",
+      "sources": [
+        "src/weather_node.cpp"
+      ],
+      "node_name_hint": "weather_node",
+      "publishers": [
+        {
+          "name": "/environment/weather",
+          "type": "uav_msgs::msg::WeatherStatus",
+          "dynamic": false
+        }
+      ],
+      "subscribers": [],
+      "service_servers": [],
+      "service_clients": [],
+      "action_servers": [],
+      "action_clients": [],
+      "timers": [
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(period)",
+          "callback": "updateCallback"
+        },
+        {
+          "period_expr": "std::chrono::duration_cast<std::chrono::nanoseconds>(macro_period)",
+          "callback": "stepRegime"
+        }
+      ]
+    }
+  ],
+  "topic_inventory": {
+    "/ch_manager/cluster_info": {
+      "type": "uav_msgs::msg::ClusterInfo",
+      "publishers": [
+        "ch_manager/ch_manager_node"
+      ],
+      "subscribers": [
+        "planner_viz/fleet_viz",
+        "recovery_manager/recovery_manager_node",
+        "uav_fleet/uav_node"
+      ]
+    },
+    "/uav_fleet/failure_events": {
+      "type": "uav_msgs::msg::FailureEvent",
+      "publishers": [
+        "uav_fleet/uav_node"
+      ],
+      "subscribers": [
+        "ch_manager/ch_manager_node",
+        "planner_viz/fleet_viz",
+        "recovery_manager/recovery_manager_node",
+        "ugv_charger/ugv_charger_node"
+      ]
+    },
+    "/fanet/network_bus": {
+      "type": "uav_msgs::msg::TrafficMessage",
+      "publishers": [
+        "fault_injector/fault_injector_node"
+      ],
+      "subscribers": [
+        "ch_manager/ch_manager_node",
+        "coverage_planner/coverage_planner_node",
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz",
+        "recovery_manager/recovery_manager_node",
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node",
+        "user_devices_sim/user_device_node"
+      ]
+    },
+    "/coverage_planner/deployment": {
+      "type": "uav_msgs::msg::UavDeployment",
+      "publishers": [
+        "coverage_planner/coverage_planner_node"
+      ],
+      "subscribers": [
+        "planner_viz/planner_viz_node",
+        "planner_viz/fleet_viz",
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node"
+      ]
+    },
+    "/coverage_planner/task_points": {
+      "type": "uav_msgs::msg::TaskPointArray",
+      "publishers": [
+        "coverage_planner/coverage_planner_node"
+      ],
+      "subscribers": [
+        "planner_viz/fleet_viz",
+        "recovery_manager/recovery_manager_node",
+        "uav_fleet/uav_node"
+      ]
+    },
+    "/fanet/network_bus_raw": {
+      "type": "uav_msgs::msg::TrafficMessage",
+      "publishers": [
+        "coverage_planner/coverage_planner_node",
+        "recovery_manager/recovery_manager_node",
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node",
+        "user_devices_sim/user_device_node"
+      ],
+      "subscribers": [
+        "fault_injector/fault_injector_node",
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz"
+      ]
+    },
+    "/fanet/status": {
+      "type": "uav_msgs::msg::UavStatus",
+      "publishers": [
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node"
+      ],
+      "subscribers": [
+        "coverage_planner/coverage_planner_node",
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz",
+        "recovery_manager/recovery_manager_node",
+        "routing_manager/routing_manager_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node"
+      ]
+    },
+    "/fanet/delivered": {
+      "type": "TrafficMessage",
+      "publishers": [
+        "fault_injector/fault_injector_node",
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node",
+        "user_devices_sim/user_device_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz"
+      ]
+    },
+    "/fanet/delivered_raw": {
+      "type": "TrafficMessage",
+      "publishers": [],
+      "subscribers": [
+        "fault_injector/fault_injector_node"
+      ]
+    },
+    "/environment/weather": {
+      "type": "WeatherStatus",
+      "publishers": [
+        "weather_server/weather_node"
+      ],
+      "subscribers": [
+        "fault_injector/fault_injector_node",
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz",
+        "uav_fleet/uav_node"
+      ]
+    },
+    "/network_monitor/stats": {
+      "type": "std_msgs::msg::String",
+      "publishers": [
+        "network_monitor/network_monitor_node"
+      ],
+      "subscribers": [
+        "planner_viz/fleet_viz"
+      ]
+    },
+    "/uav_fleet/charge_requests": {
+      "type": "uav_msgs::msg::ChargeRequest",
+      "publishers": [
+        "uav_fleet/uav_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node"
+      ]
+    },
+    "/ugv/charge_decisions": {
+      "type": "uav_msgs::msg::ChargeDecision",
+      "publishers": [
+        "ugv_charger/ugv_charger_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node"
+      ]
+    },
+    "/fanet/routing_table": {
+      "type": "uav_msgs::msg::RoutingTable",
+      "publishers": [
+        "routing_manager/routing_manager_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node",
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node"
+      ]
+    },
+    "/ugv/queue_events": {
+      "type": "std_msgs::msg::String",
+      "publishers": [
+        "ugv_charger/ugv_charger_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node"
+      ]
+    },
+    "/ugv/charging_snapshot": {
+      "type": "std_msgs::msg::String",
+      "publishers": [
+        "ugv_charger/ugv_charger_node"
+      ],
+      "subscribers": [
+        "network_monitor/network_monitor_node",
+        "planner_viz/fleet_viz"
+      ]
+    },
+    "/routing_manager/alerts": {
+      "type": "std_msgs::msg::String",
+      "publishers": [
+        "routing_manager/routing_manager_node"
+      ],
+      "subscribers": [
+        "recovery_manager/recovery_manager_node"
+      ]
+    },
+    "/fanet/routing_event": {
+      "type": "std_msgs::msg::String",
+      "publishers": [
+        "sink_gateway/sink_gateway_node",
+        "uav_fleet/uav_node",
+        "ugv_charger/ugv_charger_node"
+      ],
+      "subscribers": [
+        "routing_manager/routing_manager_node"
+      ]
+    }
+  },
+  "service_inventory": {
+    "\"/uav_fleet/\" + uav_id_ + \"/send_debug_text\"": {
+      "type": "uav_msgs::srv::SendDebugText",
+      "servers": [
+        "uav_fleet/uav_node"
+      ],
+      "clients": []
+    }
+  },
+  "action_inventory": {},
+  "launch_nodes": [
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "ugv_pkg",
+      "executable_expr": "ugv_exec",
+      "name_expr": "f\"ugv_charger_{run_id}\""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "uav_pkg",
+      "executable_expr": "uav_exec",
+      "name_expr": "f\"{ch_id}_{run_id}\""
+    },
+    {
+      "package_expr": "uav_pkg",
+      "executable_expr": "uav_exec",
+      "name_expr": "f\"{uid}_{run_id}\""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    },
+    {
+      "package_expr": "_get(cfg",
+      "executable_expr": "",
+      "name_expr": ""
+    }
+  ],
+  "run_configs": {
+    "example_run.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    },
+    "ugv_dynamic.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    },
+    "ugv_edf.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    },
+    "ugv_fcfs.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    },
+    "ugv_p_dynamic_score.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": false
+      }
+    },
+    "ugv_p_edf.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": false
+      }
+    },
+    "ugv_p_role_priority.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    },
+    "ugv_role_priority.yaml": {
+      "executables": {
+        "monitor_pkg": "network_monitor",
+        "monitor_exec": "network_monitor_node",
+        "weather_pkg": "weather_server",
+        "weather_exec": "weather_node",
+        "injector_pkg": "fault_injector",
+        "injector_exec": "fault_injector_node",
+        "sink_pkg": "sink_gateway",
+        "sink_exec": "sink_gateway_node",
+        "routing_pkg": "routing_manager",
+        "routing_exec": "routing_manager_node",
+        "ugv_pkg": "ugv_charger",
+        "ugv_exec": "ugv_charger_node",
+        "planner_pkg": "coverage_planner",
+        "planner_exec": "coverage_planner_node",
+        "planner_viz_pkg": "planner_viz",
+        "planner_viz_exec": "fleet_viz",
+        "ch_manager_pkg": "ch_manager",
+        "ch_manager_exec": "ch_manager_node",
+        "user_device_pkg": "user_devices_sim",
+        "user_device_exec": "user_device_node",
+        "uav_pkg": "uav_fleet",
+        "uav_exec": "uav_node"
+      },
+      "enables": {
+        "weather.enable": true,
+        "fault_injector.enable": true,
+        "traffic.user_device_enable": false,
+        "recovery_manager.enable": true,
+        "coverage_planner.enable": true,
+        "ch_manager.enable": true,
+        "planner_viz.enable": true
+      }
+    }
+  }
+}
