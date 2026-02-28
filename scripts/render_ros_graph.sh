@@ -18,7 +18,7 @@ fi
 mkdir -p "$OUT_DIR"
 
 dot -Tpdf "$DOT_FILE" -o "$OUT_DIR/${BASE}.pdf"
-dot -Tpng "$DOT_FILE" -o "$OUT_DIR/${BASE}.png"
+dot -Gdpi=600 -Tpng "$DOT_FILE" -o "$OUT_DIR/${BASE}.png"
 dot -Tsvg "$DOT_FILE" -o "$OUT_DIR/${BASE}.svg"
 
 if command -v file >/dev/null 2>&1; then
@@ -27,9 +27,10 @@ fi
 
 echo "Rendered:"
 echo "  $OUT_DIR/${BASE}.pdf"
-echo "  $OUT_DIR/${BASE}.png"
+echo "  $OUT_DIR/${BASE}.png (high-DPI raster preview)"
 echo "  $OUT_DIR/${BASE}.svg"
 
 echo
 echo "NOTE: Do NOT use '-Tps' when writing .png/.svg files."
 echo "      Type and extension must match (e.g., -Tpng -> .png, -Tsvg -> .svg)."
+echo "      For thesis print, prefer PDF/SVG (vector) to avoid blur."

@@ -113,7 +113,8 @@ No action servers or action clients were detected in node source code (action de
 - Topics are ellipse nodes with type labels.
 - `/fanet/network_bus_raw`, `/fanet/network_bus`, and `/fanet/delivered` edges are emphasized with bold styling.
 - Layout tuning uses orthogonal splines, topic backbone rank constraints, and edge concentration to produce cleaner circuit-like routing with fewer overlaps.
-- Thesis export tuning: larger label fonts and A4 landscape sizing are embedded in DOT (`size="11.69,8.27!"`, `dpi=300`) for page-ready rendering.
+- Thesis export tuning: compact A4 landscape sizing + larger labels are embedded in DOT (`size="11.69,8.27"`, `page="11.69,8.27"`, `dpi=450`) to reduce wasted whitespace and improve readability.
+- For final thesis printing, prefer `PDF`/`SVG` (vector) outputs; `PNG` is only a high-DPI raster preview.
 
 ## Runtime validation commands (recommended)
 
@@ -137,7 +138,7 @@ ros2 topic info <topic> -v
 ```bash
 # Optional: render thesis-ready A4 assets if Graphviz is installed
 dot -Tpdf artifacts/ros_graph.dot -o artifacts/ros_graph_a4.pdf
-dot -Tpng artifacts/ros_graph.dot -o artifacts/ros_graph_a4.png
+dot -Gdpi=600 -Tpng artifacts/ros_graph.dot -o artifacts/ros_graph_a4.png
 dot -Tsvg artifacts/ros_graph.dot -o artifacts/ros_graph_a4.svg
 # or use the helper
 bash scripts/render_ros_graph.sh
