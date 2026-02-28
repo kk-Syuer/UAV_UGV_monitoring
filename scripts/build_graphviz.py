@@ -53,11 +53,11 @@ def main():
     lines.append("  overlap=false;")
     lines.append("  newrank=true;")
     lines.append("  concentrate=true;")
-    lines.append("  ranksep=1.15;")
-    lines.append("  nodesep=0.45;")
-    lines.append("  graph [fontsize=10, fontname=Helvetica, pad=0.3, bgcolor=white];")
-    lines.append("  node [fontname=Helvetica];")
-    lines.append("  edge [fontname=Helvetica, fontsize=9, arrowsize=0.7];")
+    lines.append("  ranksep=1.35;")
+    lines.append("  nodesep=0.55;")
+    lines.append("  graph [fontsize=18, fontname=Helvetica, pad=0.35, bgcolor=white, size=\"11.69,8.27!\", ratio=compress, dpi=300];")
+    lines.append("  node [fontname=Helvetica, fontsize=14];")
+    lines.append("  edge [fontname=Helvetica, fontsize=11, arrowsize=0.9];")
 
     by_pkg = {}
     for n in nodes:
@@ -66,7 +66,7 @@ def main():
     for pkg, members in sorted(by_pkg.items()):
         color = SUBSYSTEM_COLORS.get(pkg, "#FFFFFF")
         lines.append(f'  subgraph cluster_{pkg} {{')
-        lines.append(f'    label="{pkg}"; style=filled; color="{color}";')
+        lines.append(f'    label="{pkg}"; style=filled; color="{color}"; fontsize=16;')
         for n in members:
             nid = f"{n['package']}/{n['executable']}"
             label = f"{nid}\\n[{n.get('node_name_hint') or 'name dynamic'}]"
@@ -74,12 +74,12 @@ def main():
         lines.append("  }")
 
     lines.append("  subgraph cluster_topics {")
-    lines.append("    label=\"topics\"; style=\"rounded,dashed\"; color=\"#D0D3D4\";")
+    lines.append("    label=\"topics\"; style=\"rounded,dashed\"; color=\"#D0D3D4\"; fontsize=16;")
     for topic, tmeta in sorted(topics.items()):
         tid = topic_node_id(topic)
         label = f"{topic}\\n{tmeta.get('type') or 'unknown'}"
         topic_fill = "#EBF5FB" if topic in BUS_TOPICS else "#F8F9F9"
-        lines.append(f'    "{esc(tid)}" [shape=ellipse, label="{esc(label)}", style=filled, fillcolor="{topic_fill}"];')
+        lines.append(f'    "{esc(tid)}" [shape=ellipse, label="{esc(label)}", style=filled, fillcolor="{topic_fill}", fontsize=12];')
     lines.append("  }")
 
     lines.append("  {")

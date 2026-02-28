@@ -4,80 +4,80 @@ digraph ROSComms {
   overlap=false;
   newrank=true;
   concentrate=true;
-  ranksep=1.15;
-  nodesep=0.45;
-  graph [fontsize=10, fontname=Helvetica, pad=0.3, bgcolor=white];
-  node [fontname=Helvetica];
-  edge [fontname=Helvetica, fontsize=9, arrowsize=0.7];
+  ranksep=1.35;
+  nodesep=0.55;
+  graph [fontsize=18, fontname=Helvetica, pad=0.35, bgcolor=white, size="11.69,8.27!", ratio=compress, dpi=300];
+  node [fontname=Helvetica, fontsize=14];
+  edge [fontname=Helvetica, fontsize=11, arrowsize=0.9];
   subgraph cluster_ch_manager {
-    label="ch_manager"; style=filled; color="#EAEDED";
+    label="ch_manager"; style=filled; color="#EAEDED"; fontsize=16;
     "ch_manager/ch_manager_node" [shape=box, style="rounded,filled", fillcolor=white, label="ch_manager/ch_manager_node\n[ch_manager_node]"];
   }
   subgraph cluster_coverage_planner {
-    label="coverage_planner"; style=filled; color="#E8DAEF";
+    label="coverage_planner"; style=filled; color="#E8DAEF"; fontsize=16;
     "coverage_planner/coverage_planner_node" [shape=box, style="rounded,filled", fillcolor=white, label="coverage_planner/coverage_planner_node\n[coverage_planner_node]"];
   }
   subgraph cluster_fault_injector {
-    label="fault_injector"; style=filled; color="#F5CBA7";
+    label="fault_injector"; style=filled; color="#F5CBA7"; fontsize=16;
     "fault_injector/fault_injector_node" [shape=box, style="rounded,filled", fillcolor=white, label="fault_injector/fault_injector_node\n[fault_injector_node]"];
   }
   subgraph cluster_network_monitor {
-    label="network_monitor"; style=filled; color="#EBDEF0";
+    label="network_monitor"; style=filled; color="#EBDEF0"; fontsize=16;
     "network_monitor/network_monitor_node" [shape=box, style="rounded,filled", fillcolor=white, label="network_monitor/network_monitor_node\n[network_monitor_node]"];
   }
   subgraph cluster_planner_viz {
-    label="planner_viz"; style=filled; color="#D1F2EB";
+    label="planner_viz"; style=filled; color="#D1F2EB"; fontsize=16;
     "planner_viz/planner_viz_node" [shape=box, style="rounded,filled", fillcolor=white, label="planner_viz/planner_viz_node\n[planner_viz_node]"];
     "planner_viz/fleet_viz" [shape=box, style="rounded,filled", fillcolor=white, label="planner_viz/fleet_viz\n[fleet_viz_node]"];
   }
   subgraph cluster_recovery_manager {
-    label="recovery_manager"; style=filled; color="#FCF3CF";
+    label="recovery_manager"; style=filled; color="#FCF3CF"; fontsize=16;
     "recovery_manager/recovery_manager_node" [shape=box, style="rounded,filled", fillcolor=white, label="recovery_manager/recovery_manager_node\n[recovery_manager_node]"];
   }
   subgraph cluster_routing_manager {
-    label="routing_manager"; style=filled; color="#D5F5E3";
+    label="routing_manager"; style=filled; color="#D5F5E3"; fontsize=16;
     "routing_manager/routing_manager_node" [shape=box, style="rounded,filled", fillcolor=white, label="routing_manager/routing_manager_node\n[routing_manager_node]"];
   }
   subgraph cluster_sink_gateway {
-    label="sink_gateway"; style=filled; color="#FADBD8";
+    label="sink_gateway"; style=filled; color="#FADBD8"; fontsize=16;
     "sink_gateway/sink_gateway_node" [shape=box, style="rounded,filled", fillcolor=white, label="sink_gateway/sink_gateway_node\n[sink_gateway_node]"];
   }
   subgraph cluster_uav_fleet {
-    label="uav_fleet"; style=filled; color="#D6EAF8";
+    label="uav_fleet"; style=filled; color="#D6EAF8"; fontsize=16;
     "uav_fleet/uav_node" [shape=box, style="rounded,filled", fillcolor=white, label="uav_fleet/uav_node\n[uav_node]"];
   }
   subgraph cluster_ugv_charger {
-    label="ugv_charger"; style=filled; color="#FDEBD0";
+    label="ugv_charger"; style=filled; color="#FDEBD0"; fontsize=16;
     "ugv_charger/ugv_charger_node" [shape=box, style="rounded,filled", fillcolor=white, label="ugv_charger/ugv_charger_node\n[ugv_charger_node]"];
   }
   subgraph cluster_user_devices_sim {
-    label="user_devices_sim"; style=filled; color="#F9E79F";
+    label="user_devices_sim"; style=filled; color="#F9E79F"; fontsize=16;
     "user_devices_sim/user_device_node" [shape=box, style="rounded,filled", fillcolor=white, label="user_devices_sim/user_device_node\n[user_device_node]"];
   }
   subgraph cluster_weather_server {
-    label="weather_server"; style=filled; color="#D4EFDF";
+    label="weather_server"; style=filled; color="#D4EFDF"; fontsize=16;
     "weather_server/weather_node" [shape=box, style="rounded,filled", fillcolor=white, label="weather_server/weather_node\n[weather_node]"];
   }
   subgraph cluster_topics {
-    label="topics"; style="rounded,dashed"; color="#D0D3D4";
-    "topic_ch_manager_cluster_info" [shape=ellipse, label="/ch_manager/cluster_info\nuav_msgs::msg::ClusterInfo", style=filled, fillcolor="#F8F9F9"];
-    "topic_coverage_planner_deployment" [shape=ellipse, label="/coverage_planner/deployment\nuav_msgs::msg::UavDeployment", style=filled, fillcolor="#F8F9F9"];
-    "topic_coverage_planner_task_points" [shape=ellipse, label="/coverage_planner/task_points\nuav_msgs::msg::TaskPointArray", style=filled, fillcolor="#F8F9F9"];
-    "topic_environment_weather" [shape=ellipse, label="/environment/weather\nWeatherStatus", style=filled, fillcolor="#F8F9F9"];
-    "topic_fanet_delivered" [shape=ellipse, label="/fanet/delivered\nTrafficMessage", style=filled, fillcolor="#EBF5FB"];
-    "topic_fanet_delivered_raw" [shape=ellipse, label="/fanet/delivered_raw\nTrafficMessage", style=filled, fillcolor="#F8F9F9"];
-    "topic_fanet_network_bus" [shape=ellipse, label="/fanet/network_bus\nuav_msgs::msg::TrafficMessage", style=filled, fillcolor="#EBF5FB"];
-    "topic_fanet_network_bus_raw" [shape=ellipse, label="/fanet/network_bus_raw\nuav_msgs::msg::TrafficMessage", style=filled, fillcolor="#EBF5FB"];
-    "topic_fanet_routing_event" [shape=ellipse, label="/fanet/routing_event\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9"];
-    "topic_fanet_routing_table" [shape=ellipse, label="/fanet/routing_table\nuav_msgs::msg::RoutingTable", style=filled, fillcolor="#F8F9F9"];
-    "topic_fanet_status" [shape=ellipse, label="/fanet/status\nuav_msgs::msg::UavStatus", style=filled, fillcolor="#F8F9F9"];
-    "topic_network_monitor_stats" [shape=ellipse, label="/network_monitor/stats\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9"];
-    "topic_routing_manager_alerts" [shape=ellipse, label="/routing_manager/alerts\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9"];
-    "topic_uav_fleet_charge_requests" [shape=ellipse, label="/uav_fleet/charge_requests\nuav_msgs::msg::ChargeRequest", style=filled, fillcolor="#F8F9F9"];
-    "topic_uav_fleet_failure_events" [shape=ellipse, label="/uav_fleet/failure_events\nuav_msgs::msg::FailureEvent", style=filled, fillcolor="#F8F9F9"];
-    "topic_ugv_charge_decisions" [shape=ellipse, label="/ugv/charge_decisions\nuav_msgs::msg::ChargeDecision", style=filled, fillcolor="#F8F9F9"];
-    "topic_ugv_charging_snapshot" [shape=ellipse, label="/ugv/charging_snapshot\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9"];
-    "topic_ugv_queue_events" [shape=ellipse, label="/ugv/queue_events\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9"];
+    label="topics"; style="rounded,dashed"; color="#D0D3D4"; fontsize=16;
+    "topic_ch_manager_cluster_info" [shape=ellipse, label="/ch_manager/cluster_info\nuav_msgs::msg::ClusterInfo", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_coverage_planner_deployment" [shape=ellipse, label="/coverage_planner/deployment\nuav_msgs::msg::UavDeployment", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_coverage_planner_task_points" [shape=ellipse, label="/coverage_planner/task_points\nuav_msgs::msg::TaskPointArray", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_environment_weather" [shape=ellipse, label="/environment/weather\nWeatherStatus", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_fanet_delivered" [shape=ellipse, label="/fanet/delivered\nTrafficMessage", style=filled, fillcolor="#EBF5FB", fontsize=12];
+    "topic_fanet_delivered_raw" [shape=ellipse, label="/fanet/delivered_raw\nTrafficMessage", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_fanet_network_bus" [shape=ellipse, label="/fanet/network_bus\nuav_msgs::msg::TrafficMessage", style=filled, fillcolor="#EBF5FB", fontsize=12];
+    "topic_fanet_network_bus_raw" [shape=ellipse, label="/fanet/network_bus_raw\nuav_msgs::msg::TrafficMessage", style=filled, fillcolor="#EBF5FB", fontsize=12];
+    "topic_fanet_routing_event" [shape=ellipse, label="/fanet/routing_event\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_fanet_routing_table" [shape=ellipse, label="/fanet/routing_table\nuav_msgs::msg::RoutingTable", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_fanet_status" [shape=ellipse, label="/fanet/status\nuav_msgs::msg::UavStatus", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_network_monitor_stats" [shape=ellipse, label="/network_monitor/stats\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_routing_manager_alerts" [shape=ellipse, label="/routing_manager/alerts\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_uav_fleet_charge_requests" [shape=ellipse, label="/uav_fleet/charge_requests\nuav_msgs::msg::ChargeRequest", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_uav_fleet_failure_events" [shape=ellipse, label="/uav_fleet/failure_events\nuav_msgs::msg::FailureEvent", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_ugv_charge_decisions" [shape=ellipse, label="/ugv/charge_decisions\nuav_msgs::msg::ChargeDecision", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_ugv_charging_snapshot" [shape=ellipse, label="/ugv/charging_snapshot\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9", fontsize=12];
+    "topic_ugv_queue_events" [shape=ellipse, label="/ugv/queue_events\nstd_msgs::msg::String", style=filled, fillcolor="#F8F9F9", fontsize=12];
   }
   {
     rank=same;

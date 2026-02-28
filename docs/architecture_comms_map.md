@@ -113,6 +113,7 @@ No action servers or action clients were detected in node source code (action de
 - Topics are ellipse nodes with type labels.
 - `/fanet/network_bus_raw`, `/fanet/network_bus`, and `/fanet/delivered` edges are emphasized with bold styling.
 - Layout tuning uses orthogonal splines, topic backbone rank constraints, and edge concentration to produce cleaner circuit-like routing with fewer overlaps.
+- Thesis export tuning: larger label fonts and A4 landscape sizing are embedded in DOT (`size="11.69,8.27!"`, `dpi=300`) for page-ready rendering.
 
 ## Runtime validation commands (recommended)
 
@@ -131,6 +132,12 @@ ros2 service list
 ros2 action list
 ros2 node info /<node_name>
 ros2 topic info <topic> -v
+```
+
+```bash
+# Optional: render thesis-ready A4 assets if Graphviz is installed
+dot -Tpdf artifacts/ros_graph.dot -o artifacts/ros_graph_a4.pdf
+dot -Tpng artifacts/ros_graph.dot -o artifacts/ros_graph_a4.png
 ```
 
 ### Runtime naming pattern note
