@@ -161,6 +161,13 @@ file artifacts/ros_graph_a4.png artifacts/ros_graph_a4.svg
 
 It should report `PNG image data` and `SVG Scalable Vector Graphics` respectively.
 
+
+### `dot` segmentation fault during rendering
+
+If `bash scripts/render_ros_graph.sh` fails with `Segmentation fault` on your machine, this is a Graphviz runtime issue (often version-specific) rather than a ROS graph extraction issue.
+
+The helper script now auto-retries with a safer fallback layout profile (disables `ortho+concentrate` combination and relaxes some layout knobs). If fallback still fails, upgrade Graphviz and retry.
+
 ### Runtime naming pattern note
 
 Most launched nodes include a run suffix: `<base_name>_<run_id>`. Multi-instance node names include IDs (e.g., `<uav_id>_<run_id>`, `ch_manager_<cluster_id>`).
