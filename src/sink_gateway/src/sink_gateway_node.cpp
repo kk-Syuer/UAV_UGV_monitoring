@@ -402,6 +402,27 @@ private:
                   "[MOB-START] sent MOTION_START to %s via %s (requires_ack=true)",
                   u.c_str(), msg.next_hop_id.c_str());
     }
+
+    // Broadcast a routing-independent MOTION_START so that every UAV
+    // unblocks even when the per-UAV routed messages are delayed by
+    // incomplete routing tables or fault-injector drops.
+    {
+      uav_msgs::msg::TrafficMessage bcast;
+      bcast.msg_id = "MOTION_START_broadcast_" +
+                     std::to_string(start_mobility_seq_++);
+      bcast.src_id = sink_id_;
+      bcast.dst_id = "broadcast";
+      bcast.flow_type = 1;
+      bcast.creation_time = this->now();
+      bcast.hop_count = 0;
+      bcast.ttl = 1;
+      bcast.requires_ack = false;
+      bcast.control_type = "MOTION_START";
+      bcast.payload = "";
+      control_pub_->publish(bcast);
+      RCLCPP_INFO(this->get_logger(),
+                  "[MOB-START] sent broadcast MOTION_START (routing-independent)");
+    }
   }
 
   // Parse STATUS_CH updates from CHs to track liveness.
