@@ -22,6 +22,7 @@ else:
         matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 from matplotlib.lines import Line2D
+import matplotlib.patheffects as path_effects
 from matplotlib.widgets import Button
 
 from geometry_msgs.msg import Pose
@@ -918,6 +919,8 @@ class FleetVizNode(Node):
 
     def update_plot(self):
         """Redraw the full figure from cached state."""
+        node_label_effects = [path_effects.withStroke(linewidth=2.4, foreground='black')]
+
         self.ax.cla()
         self.ax.set_facecolor('black')
         self.ax.set_xlabel('X [m]', color='white')
@@ -934,29 +937,34 @@ class FleetVizNode(Node):
         if self.sink_pose is not None:
             self.ax.scatter(self.sink_pose.position.x,
                             self.sink_pose.position.y,
-                            marker='s', s=90, edgecolors='white', facecolors='none')
-            self.ax.text(self.sink_pose.position.x,
-                         self.sink_pose.position.y + 5,
-                         'sink', color='white', fontsize=8)
+                            marker='s', s=220, linewidths=2.0,
+                            edgecolors='white', facecolors='none')
+            sink_label = self.ax.text(self.sink_pose.position.x,
+                                      self.sink_pose.position.y + 14,
+                                      'sink', color='white', fontsize=12, weight='bold')
+            sink_label.set_path_effects(node_label_effects)
 
         if self.ugv_pose is not None:
             self.ax.scatter(self.ugv_pose.position.x,
                             self.ugv_pose.position.y,
-                            marker='^', s=80, edgecolors='yellow', facecolors='none')
-            self.ax.text(self.ugv_pose.position.x,
-                         self.ugv_pose.position.y + 5,
-                         'ugv', color='yellow', fontsize=8)
+                            marker='^', s=210, linewidths=2.0,
+                            edgecolors='yellow', facecolors='none')
+            ugv_label = self.ax.text(self.ugv_pose.position.x,
+                                     self.ugv_pose.position.y + 14,
+                                     'ugv', color='yellow', fontsize=12, weight='bold')
+            ugv_label.set_path_effects(node_label_effects)
 
         # draw task points first so UAVs appear above
         task_legend = None
         for tp in self.task_points:
             color = self.color_for_cluster(self._cluster_key_for_task_point(tp.cluster_id))
             self.ax.scatter(tp.position.x, tp.position.y,
-                            marker='x', s=40, color=color, alpha=0.9)
-            self.ax.text(tp.position.x, tp.position.y - 5,
-                         tp.id, color=color, fontsize=7)
+                            marker='x', s=90, linewidths=2.0, color=color, alpha=0.95)
+            task_label = self.ax.text(tp.position.x, tp.position.y - 12,
+                                      tp.id, color=color, fontsize=10, weight='bold')
+            task_label.set_path_effects(node_label_effects)
         if self.task_points:
-            task_legend = self.ax.scatter([], [], marker='x', s=40, color='white',
+            task_legend = self.ax.scatter([], [], marker='x', s=90, linewidths=2.0, color='white',
                                           label='task point')
 
         # draw assignment points from recovery first
@@ -968,11 +976,14 @@ class FleetVizNode(Node):
             key = self._cluster_key_for_uav(member_id, state) if state else ''
             color = self.color_for_cluster(key)
             for idx, (x, y) in enumerate(points):
-                self.ax.scatter(x, y, marker='.', s=22, color=color, alpha=0.9)
+                self.ax.scatter(x, y, marker='.', s=45, color=color, alpha=0.95)
                 if idx == 0:
-                    self.ax.text(x, y - 6, f"{member_id}:assign", color=color, fontsize=6)
+                    assign_label = self.ax.text(
+                        x, y - 12, f"{member_id}:assign", color=color, fontsize=9, weight='bold'
+                    )
+                    assign_label.set_path_effects(node_label_effects)
             if assigned_legend is None:
-                assigned_legend = self.ax.scatter([], [], marker='.', s=22, color='white',
+                assigned_legend = self.ax.scatter([], [], marker='.', s=45, color='white',
                                                   label='recovery task assign')
 
         # draw UAVs
@@ -990,23 +1001,31 @@ class FleetVizNode(Node):
 
             if st.role == 1:
                 # CH: red + service radius
-                self.ax.scatter(x, y, c=color, s=30)
-                self.ax.text(x, y + 3, f"{uav_id} ({role_tag}, {cluster_label})", color=color, fontsize=8)
+                self.ax.scatter(x, y, c=color, s=180, edgecolors='white', linewidths=1.1)
+                ch_label = self.ax.text(
+                    x, y + 15, f"{uav_id} ({role_tag}, {cluster_label})",
+                    color=color, fontsize=11, weight='bold'
+                )
+                ch_label.set_path_effects(node_label_effects)
 
                 # service_radius is in the status; comm radius is a viz parameter
                 service_circle = plt.Circle((x, y), st.service_radius, linestyle='--',
-                                            fill=False, edgecolor=color, alpha=0.4)
+                                            linewidth=1.5, fill=False, edgecolor=color, alpha=0.55)
                 self.ax.add_patch(service_circle)
 
                 if self.comm_radius_ch > 0.0:
                     comm_circle = plt.Circle((x, y), self.comm_radius_ch, linestyle=':',
-                                             linewidth=1.2, fill=False,
-                                             edgecolor='white', alpha=0.35)
+                                             linewidth=1.6, fill=False,
+                                             edgecolor='white', alpha=0.45)
                     self.ax.add_patch(comm_circle)
             else:
                 # member: green
-                self.ax.scatter(x, y, c=color, s=20)
-                self.ax.text(x, y + 3, f"{uav_id} ({role_tag}, {cluster_label})", color=color, fontsize=8)
+                self.ax.scatter(x, y, c=color, s=120, edgecolors='white', linewidths=0.9)
+                mem_label = self.ax.text(
+                    x, y + 12, f"{uav_id} ({role_tag}, {cluster_label})",
+                    color=color, fontsize=10, weight='bold'
+                )
+                mem_label.set_path_effects(node_label_effects)
 
         legend_handles = []
         if task_legend:
@@ -1025,7 +1044,7 @@ class FleetVizNode(Node):
                 label=f"group {cluster_key}",
                 markerfacecolor=self.color_for_cluster(cluster_key),
                 markeredgecolor=self.color_for_cluster(cluster_key),
-                markersize=6
+                markersize=10
             ))
         if legend_handles:
             self.ax.legend(
@@ -1033,7 +1052,8 @@ class FleetVizNode(Node):
                 loc='upper right',
                 facecolor='black',
                 edgecolor='white',
-                labelcolor='white'
+                labelcolor='white',
+                prop={'size': 10, 'weight': 'bold'}
             )
 
         self.ax.set_aspect('equal', adjustable='box')
