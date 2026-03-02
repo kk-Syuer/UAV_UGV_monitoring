@@ -1,5 +1,5 @@
 global:
-  run_id: ugv_p_dynamic_score_2
+  run_id: ugv_p_dynamic_score_3
   output_dir: /home/vboxuser/UAV_UGV_netmonitoring/experiment_data_collection/test_round2
 
 executables:

@@ -156,5 +156,6 @@
         "typeinfo": "cpp",
         "variant": "cpp"
     },
-    "ros.distro": "humble"
+    "ros.distro": "humble",
+    "cmake.sourceDirectory": "/home/vboxuser/UAV_UGV_netmonitoring/src/ch_manager"
 }

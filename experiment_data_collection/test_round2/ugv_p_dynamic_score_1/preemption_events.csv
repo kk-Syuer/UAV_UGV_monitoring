@@ -1,0 +1,16 @@
+run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,266.095,1.77243e+09,uav1,ch0,0,1,50.2575,74.5723,24.3149,67.5049,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,280.095,1.77243e+09,uav3,ch0,0,1,57.6656,78.216,20.5504,60.4985,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,315.593,1.77243e+09,uav2,ch0,0,1,52.9395,86.7529,33.8134,91.9997,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,386.591,1.77243e+09,uav1,ch0,0,1,50.9215,104.536,53.6145,66.0001,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,861.599,1.77243e+09,uav3,uav1,0,0,31.8614,61.6795,29.8181,193.008,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1037.6,1.77243e+09,uav1,uav3,0,0,28.3643,66.1664,37.8021,175.997,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1040.1,1.77243e+09,uav2,uav3,0,0,34.8629,66.77,31.9072,181.506,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1192.1,1.77243e+09,uav3,uav1,0,0,39.5813,60.7864,21.2051,154.501,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1246.62,1.77243e+09,ch1,ch0,1,1,49.285,77.51,28.225,272.024,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,2032.6,1.77243e+09,ch0,uav1,1,0,46.2502,61.448,15.1978,205,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,3395.12,1.77243e+09,uav2,ch1,0,1,40.9448,83.0671,42.1223,146.002,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,6223.13,1.77243e+09,ch0,uav2,1,0,48.8824,68.553,19.6706,192.001,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,6682.63,1.77243e+09,ch0,uav2,1,0,48.6761,68.9391,20.2629,246.997,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,7174.64,1.77243e+09,ch1,uav3,1,0,49.4988,83.838,34.3393,266.985,p_dynamic_score
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,7732.25,1.77243e+09,ch1,uav2,1,0,44.1899,92.2256,48.0356,309.608,p_dynamic_score

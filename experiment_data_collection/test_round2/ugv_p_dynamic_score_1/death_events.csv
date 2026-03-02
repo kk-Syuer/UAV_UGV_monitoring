@@ -1,0 +1,16 @@
+run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,uav_id,role,cause,battery_at_death,fleet_size,alive_count
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,390.063,1.77243e+09,ch0,1,BATTERY_DEAD,0.123741,7,6
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1430.5,1.77243e+09,uav3,0,BATTERY_DEAD,0.112355,7,5
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,1767.23,1.77243e+09,uav2,0,BATTERY_DEAD,0.183938,7,4
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,2379.22,1.77243e+09,ch1,1,BATTERY_DEAD,0.199203,7,3
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,2993.3,1.77243e+09,uav1,0,BATTERY_DEAD,0.239091,7,2
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,3028.43,1.77243e+09,uav2,0,BATTERY_DEAD,0.189411,7,1
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,3640.64,1.77243e+09,uav2,0,BATTERY_DEAD,0.153457,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,3660.71,1.77243e+09,uav3,0,BATTERY_DEAD,0.285896,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,4383.55,1.77243e+09,uav1,0,BATTERY_DEAD,0.0672789,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,5076.85,1.77243e+09,uav2,0,BATTERY_DEAD,0.0268367,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,5078.92,1.77243e+09,uav3,0,BATTERY_DEAD,0.271288,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,5734.82,1.77243e+09,uav1,0,BATTERY_DEAD,0.116466,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,6491.03,1.77243e+09,uav1,0,BATTERY_DEAD,0.00545282,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,8344.15,1.77243e+09,uav3,0,BATTERY_DEAD,0.172968,7,0
+ugv_p_dynamic_score_1,unknown,0,1772425507671046297,8925.09,1.77243e+09,uav2,0,BATTERY_DEAD,0.198357,7,0

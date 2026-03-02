@@ -1,0 +1,10 @@
+run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy
+ugv_p_role_priority_1,unknown,0,1772447478906364863,284.546,1.77245e+09,uav1,ch0,0,1,38.7153,1071.77,1033.06,85.0015,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,287.05,1.77245e+09,uav3,ch0,0,1,48.8476,1072.26,1023.41,67.5037,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,326.546,1.77245e+09,uav2,ch1,0,1,40.5494,1082.17,1041.62,98.001,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,864.547,1.77245e+09,uav1,ch0,0,1,12.1624,1069.43,1057.26,177.493,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,1231.55,1.77245e+09,uav3,uav2,0,0,53.5721,68.4416,14.8695,74.5012,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,1293.55,1.77245e+09,uav2,uav3,0,0,52.3591,73.0818,20.7227,64.5001,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,1355.55,1.77245e+09,uav3,uav1,0,0,55.7511,60.5439,4.79286,64.4994,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,1428.55,1.77245e+09,uav1,ch0,0,1,43.4793,1069.46,1025.98,75.4994,p_role_priority
+ugv_p_role_priority_1,unknown,0,1772447478906364863,1430.61,1.77245e+09,uav2,ch0,0,1,44.1162,1069.96,1025.85,86.5673,p_role_priority
