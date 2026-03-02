@@ -1,6 +1,6 @@
 global:
-  run_id: ugv_p_edf
-  output_dir: /tmp/fanet_logs
+  run_id: ugv_p_edf_1
+  output_dir: /home/vboxuser/UAV_UGV_netmonitoring/experiment_data_collection/test_round2
 
 executables:
   monitor_pkg: network_monitor
@@ -107,7 +107,7 @@ coverage_planner:
   fixed_taskpoints_count: 10
   fixed_taskpoints_seed: 0
 planner_viz:
-  enable: false
+  enable: true
 
 ch_manager:
   enable: true
