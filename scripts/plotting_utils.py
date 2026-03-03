@@ -320,12 +320,13 @@ def boxplot_multi(
     labels = list(data_by_label.keys())
     data = [data_by_label[lbl] for lbl in labels]
     fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 5))
-    bp = ax.boxplot(data, tick_labels=labels, patch_artist=True, showfliers=False)
+    bp = ax.boxplot(data, patch_artist=True, showfliers=False)
     cmap = plt.get_cmap("tab10")
     for i, patch in enumerate(bp["boxes"]):
         patch.set_facecolor(cmap(i % 10))
         patch.set_alpha(0.65)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.tick_params(axis="x", rotation=20)
+    ax.set_xticks(range(1, len(labels) + 1))
+    ax.set_xticklabels(labels, rotation=20, ha="right")
     savefig(fig, fig_dir, name)
