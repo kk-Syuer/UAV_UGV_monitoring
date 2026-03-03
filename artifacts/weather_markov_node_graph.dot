@@ -1,0 +1,37 @@
+digraph WeatherMarkov {
+  rankdir=LR;
+  labelloc="t";
+  label="Weather Markov Transition Graph";
+  node [shape=circle, style=filled, fillcolor="#f4f8ff", color="#4a6fa5", fontname="Helvetica"];
+  edge [color="#556270", fontname="Helvetica", arrowsize=0.8];
+  sunny;
+  cloudy;
+  windy;
+  rainy;
+  stormy;
+  sunny -> sunny [label="0.60", penwidth=2.80];
+  sunny -> cloudy [label="0.25", penwidth=1.75];
+  sunny -> windy [label="0.10", penwidth=1.30];
+  sunny -> rainy [label="0.04", penwidth=1.12];
+  sunny -> stormy [label="0.01", penwidth=1.03];
+  cloudy -> sunny [label="0.08", penwidth=1.24];
+  cloudy -> cloudy [label="0.55", penwidth=2.65];
+  cloudy -> windy [label="0.10", penwidth=1.30];
+  cloudy -> rainy [label="0.25", penwidth=1.75];
+  cloudy -> stormy [label="0.02", penwidth=1.06];
+  windy -> sunny [label="0.06", penwidth=1.18];
+  windy -> cloudy [label="0.35", penwidth=2.05];
+  windy -> windy [label="0.40", penwidth=2.20];
+  windy -> rainy [label="0.15", penwidth=1.45];
+  windy -> stormy [label="0.04", penwidth=1.12];
+  rainy -> sunny [label="0.02", penwidth=1.06];
+  rainy -> cloudy [label="0.20", penwidth=1.60];
+  rainy -> windy [label="0.10", penwidth=1.30];
+  rainy -> rainy [label="0.50", penwidth=2.50];
+  rainy -> stormy [label="0.18", penwidth=1.54];
+  stormy -> sunny [label="0.01", penwidth=1.03];
+  stormy -> cloudy [label="0.10", penwidth=1.30];
+  stormy -> windy [label="0.14", penwidth=1.42];
+  stormy -> rainy [label="0.35", penwidth=2.05];
+  stormy -> stormy [label="0.40", penwidth=2.20];
+}

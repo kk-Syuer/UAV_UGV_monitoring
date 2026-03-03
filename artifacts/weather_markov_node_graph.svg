@@ -1,0 +1,70 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="640" viewBox="0 0 900 640">
+<defs>
+<marker id="arrow" markerWidth="10" markerHeight="8" refX="9" refY="4" orient="auto" markerUnits="strokeWidth">
+<path d="M0,0 L10,4 L0,8 z" fill="#556270"/>
+</marker>
+</defs>
+<rect width="100%" height="100%" fill="white"/>
+<text x="450" y="30" text-anchor="middle" font-family="Helvetica" font-size="24" fill="#1f2d3d">Weather Markov Transition Graph</text>
+<path d="M 350.0 64.0 c 0 -26 52 -26 52 0 c 0 26 -52 26 -52 0" fill="none" stroke="#556270" stroke-width="2.80" marker-end="url(#arrow)" opacity="0.85"/>
+<text x="394.0" y="32.0" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.60</text>
+<path d="M 372.7 106.5 Q 439.3 177.1 527.1 218.6" fill="none" stroke="#556270" stroke-width="1.75" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="434.6" y="183.6" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.25</text>
+<path d="M 358.7 116.6 Q 394.6 285.5 464.8 443.3" fill="none" stroke="#556270" stroke-width="1.30" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="387.0" y="288.0" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.10</text>
+<path d="M 341.3 116.6 Q 271.2 274.4 235.2 443.3" fill="none" stroke="#556270" stroke-width="1.12" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="263.6" y="271.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.04</text>
+<path d="M 327.3 106.5 Q 239.6 148.0 172.9 218.6" fill="none" stroke="#556270" stroke-width="1.03" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="234.9" y="141.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.01</text>
+<path d="M 527.1 218.6 Q 460.4 148.0 372.7 106.5" fill="none" stroke="#556270" stroke-width="1.24" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="465.1" y="141.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.08</text>
+<path d="M 549.7218684219822 209.10643118126103 c 0 -26 52 -26 52 0 c 0 26 -52 26 -52 0" fill="none" stroke="#556270" stroke-width="2.65" marker-end="url(#arrow)" opacity="0.85"/>
+<text x="593.7" y="177.1" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.55</text>
+<path d="M 541.1 261.7 Q 494.5 346.9 482.1 443.3" fill="none" stroke="#556270" stroke-width="1.30" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="486.9" y="344.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.10</text>
+<path d="M 527.1 251.6 Q 377.6 337.9 249.2 453.4" fill="none" stroke="#556270" stroke-width="1.75" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="372.9" y="331.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.25</text>
+<path d="M 521.7 235.1 Q 350.0 217.1 178.3 235.1" fill="none" stroke="#556270" stroke-width="1.06" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="350.0" y="209.1" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.02</text>
+<path d="M 464.8 443.3 Q 428.8 274.4 358.7 116.6" fill="none" stroke="#556270" stroke-width="1.18" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="436.4" y="271.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.06</text>
+<path d="M 482.1 443.3 Q 528.7 358.1 541.1 261.7" fill="none" stroke="#556270" stroke-width="2.05" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="536.3" y="360.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.35</text>
+<path d="M 473.4349029814193 443.89356881873897 c 0 -26 52 -26 52 0 c 0 26 -52 26 -52 0" fill="none" stroke="#556270" stroke-width="2.20" marker-end="url(#arrow)" opacity="0.85"/>
+<text x="517.4" y="411.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.40</text>
+<path d="M 445.4 469.9 Q 350.0 451.9 254.6 469.9" fill="none" stroke="#556270" stroke-width="1.45" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="350.0" y="443.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.15</text>
+<path d="M 450.8 453.4 Q 322.4 337.9 172.9 251.6" fill="none" stroke="#556270" stroke-width="1.12" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="327.1" y="331.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.04</text>
+<path d="M 235.2 443.3 Q 305.4 285.5 341.3 116.6" fill="none" stroke="#556270" stroke-width="1.06" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="313.0" y="288.0" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.02</text>
+<path d="M 249.2 453.4 Q 398.7 367.1 527.1 251.6" fill="none" stroke="#556270" stroke-width="1.60" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="403.4" y="373.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.20</text>
+<path d="M 254.6 469.9 Q 350.0 487.9 445.4 469.9" fill="none" stroke="#556270" stroke-width="1.30" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="350.0" y="495.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.10</text>
+<path d="M 226.56509701858067 443.89356881873897 c 0 -26 52 -26 52 0 c 0 26 -52 26 -52 0" fill="none" stroke="#556270" stroke-width="2.50" marker-end="url(#arrow)" opacity="0.85"/>
+<text x="270.6" y="411.9" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.50</text>
+<path d="M 217.9 443.3 Q 205.5 346.9 158.9 261.7" fill="none" stroke="#556270" stroke-width="1.54" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="213.1" y="344.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.18</text>
+<path d="M 172.9 218.6 Q 260.7 177.1 327.3 106.5" fill="none" stroke="#556270" stroke-width="1.03" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="265.4" y="183.6" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.01</text>
+<path d="M 178.3 235.1 Q 350.0 253.1 521.7 235.1" fill="none" stroke="#556270" stroke-width="1.30" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="350.0" y="261.1" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.10</text>
+<path d="M 172.9 251.6 Q 301.3 367.1 450.8 453.4" fill="none" stroke="#556270" stroke-width="1.42" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="296.6" y="373.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.14</text>
+<path d="M 158.9 261.7 Q 171.3 358.1 217.9 443.3" fill="none" stroke="#556270" stroke-width="2.05" marker-end="url(#arrow)" opacity="0.75"/>
+<text x="163.7" y="360.5" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.35</text>
+<path d="M 150.27813157801774 209.1064311812611 c 0 -26 52 -26 52 0 c 0 26 -52 26 -52 0" fill="none" stroke="#556270" stroke-width="2.20" marker-end="url(#arrow)" opacity="0.85"/>
+<text x="194.3" y="177.1" font-family="Helvetica" font-size="11" fill="#2f3e4e">0.40</text>
+<circle cx="350.0" cy="90.0" r="28" fill="#f4f8ff" stroke="#4a6fa5" stroke-width="2"/>
+<text x="350.0" y="94.0" text-anchor="middle" font-family="Helvetica" font-size="14" fill="#1f2d3d">sunny</text>
+<circle cx="549.7" cy="235.1" r="28" fill="#f4f8ff" stroke="#4a6fa5" stroke-width="2"/>
+<text x="549.7" y="239.1" text-anchor="middle" font-family="Helvetica" font-size="14" fill="#1f2d3d">cloudy</text>
+<circle cx="473.4" cy="469.9" r="28" fill="#f4f8ff" stroke="#4a6fa5" stroke-width="2"/>
+<text x="473.4" y="473.9" text-anchor="middle" font-family="Helvetica" font-size="14" fill="#1f2d3d">windy</text>
+<circle cx="226.6" cy="469.9" r="28" fill="#f4f8ff" stroke="#4a6fa5" stroke-width="2"/>
+<text x="226.6" y="473.9" text-anchor="middle" font-family="Helvetica" font-size="14" fill="#1f2d3d">rainy</text>
+<circle cx="150.3" cy="235.1" r="28" fill="#f4f8ff" stroke="#4a6fa5" stroke-width="2"/>
+<text x="150.3" y="239.1" text-anchor="middle" font-family="Helvetica" font-size="14" fill="#1f2d3d">stormy</text>
+</svg>
