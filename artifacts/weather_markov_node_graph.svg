@@ -6,7 +6,6 @@
 </marker>
 </defs>
 <rect width="100%" height="100%" fill="white"/>
-<text x="490" y="34" text-anchor="middle" font-family="Helvetica" font-size="26" font-weight="700" fill="#1b2a3a">Weather Markov Transition Graph</text>
 <path d="M 360.0 60.0 c 0 -30 60 -30 60 0 c 0 30 -60 30 -60 0" fill="none" stroke="#445566" stroke-width="3.48" marker-end="url(#arrow)" opacity="0.82"/>
 <rect x="397.0" y="9.0" width="36.0" height="18" rx="4" ry="4" fill="white" fill-opacity="0.92" stroke="#c7d4e2" stroke-width="0.8"/>
 <text x="415.0" y="22.0" text-anchor="middle" font-family="Helvetica" font-size="13" font-weight="700" fill="#162635">60%</text>

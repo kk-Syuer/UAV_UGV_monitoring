@@ -1,7 +1,5 @@
 digraph WeatherMarkov {
   rankdir=LR;
-  labelloc="t";
-  label="Weather Markov Transition Graph";
   bgcolor="white";
   splines=true;
   overlap=false;
