@@ -196,14 +196,47 @@ def _mean_latency_from_csvs(run: dict, missing: list) -> float:
     return float(df["decision_latency_ms"].replace(-1, float("nan")).mean())
 
 
+def _energy_recovered_series(run: dict, missing: list) -> "np.ndarray | None":
+    """Return an array of energy-recovered (%) values for completed charge sessions.
+
+    Tries schemas in order:
+    1. charge_events.csv  — column ``energy_recovered`` or ``energy_recovered_pct``,
+       filtered to outcome STARTED | ENERGY_DEPLETED.
+    2. charge_session_events.csv (new schema) — DOCK_END rows,
+       ``battery_after - battery_before`` (both already in % units).
+    Returns None only when neither file is present; returns an empty array
+    when files exist but no completed sessions are found.
+    """
+    # --- old schema (charge_events.csv) ---
+    # Use a probe list so that "file missing" is not reported when the new-schema
+    # file below covers the same information.
+    _probe: list = []
+    df = _load(run, "charge_events", _probe)
+    if df is not None:
+        col = next((c for c in ("energy_recovered_pct", "energy_recovered") if c in df.columns), None)
+        if col is not None:
+            if "outcome" in df.columns:
+                df = df[df["outcome"].isin(["STARTED", "ENERGY_DEPLETED"])].copy()
+            return df[col].replace(-1, float("nan")).dropna().values
+
+    # --- new schema (charge_session_events.csv) ---
+    df2 = _load(run, "charge_session_events", missing)
+    if df2 is not None and "event_type" in df2.columns:
+        ended = df2[df2["event_type"] == "DOCK_END"].copy()
+        if "battery_before" in ended.columns and "battery_after" in ended.columns:
+            vals = (ended["battery_after"] - ended["battery_before"]).replace(-1, float("nan")).dropna()
+            return vals.values
+
+    # Both files absent — propagate old-schema probe warnings now.
+    missing.extend(_probe)
+    return None
+
+
 def _mean_energy_from_csvs(run: dict, missing: list) -> float:
-    df = _load(run, "charge_events", missing)
-    if df is None:
+    vals = _energy_recovered_series(run, missing)
+    if vals is None or len(vals) == 0:
         return float("nan")
-    col = next((c for c in ("energy_recovered_pct", "energy_recovered") if c in df.columns), None)
-    if col is None:
-        return float("nan")
-    return float(df[col].replace(-1, float("nan")).mean())
+    return float(np.nanmean(vals))
 
 
 # ===========================================================================
@@ -382,20 +415,8 @@ def _plot_02_energy_recovered(runs, fig_dir, missing):
     """G2/P4 — Box plot: energy recovered per completed charge session."""
     data: dict = {}
     for run in runs:
-        df = _load(run, "charge_events", missing)
-        if df is None:
-            continue
-        col = next(
-            (c for c in ("energy_recovered_pct", "energy_recovered") if c in df.columns),
-            None,
-        )
-        if col is None:
-            continue
-        # Restrict to sessions where charging was actually started.
-        if "outcome" in df.columns:
-            df = df[df["outcome"].isin(["STARTED", "ENERGY_DEPLETED"])].copy()
-        vals = df[col].replace(-1, float("nan")).dropna().values
-        if len(vals) > 0:
+        vals = _energy_recovered_series(run, missing)
+        if vals is not None and len(vals) > 0:
             data[run["label"]] = vals.tolist()
 
     if not data:
