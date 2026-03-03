@@ -122,20 +122,32 @@ def _load(run: dict, key: str, missing: list) -> pd.DataFrame | None:
 
 def _load_summary(run: dict) -> dict | None:
     """
-    Load ``summary.json`` for *run*.  Falls back to the last line of
-    ``summary_snapshots.jsonl`` (new schema).  Returns ``None`` if neither
-    file is present.
+    Load ``summary.json`` for *run*.  Falls back to the last *valid* line of
+    ``summary_snapshots.jsonl`` (new schema, append-only JSONL).
+
+    Handles truncated/empty trailing lines from unclean node shutdowns by
+    scanning JSONL lines in reverse and returning the first that parses
+    successfully.  Returns ``None`` if neither file is present or parseable.
     """
     path = run["folder"] / "summary.json"
-    if path.exists():
-        with open(path) as fh:
-            return json.load(fh)
+    if path.exists() and path.stat().st_size > 0:
+        try:
+            with open(path) as fh:
+                return json.load(fh)
+        except json.JSONDecodeError as exc:
+            warnings.warn(f"Malformed {path}: {exc} — skipping")
 
     jsonl_path = run["folder"] / "summary_snapshots.jsonl"
-    if jsonl_path.exists():
+    if jsonl_path.exists() and jsonl_path.stat().st_size > 0:
         lines = [ln.strip() for ln in jsonl_path.read_text().splitlines() if ln.strip()]
-        if lines:
-            return json.loads(lines[-1])
+        # Scan from last line backwards — the tail may be truncated.
+        for line in reversed(lines):
+            try:
+                return json.loads(line)
+            except json.JSONDecodeError:
+                continue
+        warnings.warn(f"No valid JSON found in {jsonl_path}")
+
     return None
 
 
