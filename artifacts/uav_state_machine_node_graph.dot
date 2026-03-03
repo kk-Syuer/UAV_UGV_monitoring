@@ -1,0 +1,18 @@
+digraph UAVStateMachine {
+  rankdir=LR;
+  bgcolor="white";
+  splines=true;
+  overlap=false;
+  node [shape=circle, style=filled, fillcolor="#f4f8ff", color="#2f5f98", penwidth=1.8, fontname="Helvetica", fontsize=13];
+  edge [color="#556270", fontname="Helvetica", fontsize=11, arrowsize=0.8, penwidth=2.15];
+
+  active [label="Active"];
+  going_to_ugv [label="Going to UGV"];
+  charging [label="Charging"];
+  returning [label="Returning"];
+
+  active -> going_to_ugv [label="low battery"];
+  going_to_ugv -> charging [label="dock"];
+  charging -> returning [label="charged"];
+  returning -> active [label="resume mission"];
+}
