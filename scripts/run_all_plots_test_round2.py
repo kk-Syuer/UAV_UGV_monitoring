@@ -139,14 +139,31 @@ def _load_summary(run: dict) -> dict | None:
 
     jsonl_path = run["folder"] / "summary_snapshots.jsonl"
     if jsonl_path.exists() and jsonl_path.stat().st_size > 0:
-        lines = [ln.strip() for ln in jsonl_path.read_text().splitlines() if ln.strip()]
-        # Scan from last line backwards — the tail may be truncated.
-        for line in reversed(lines):
+        # The C++ writer emits pretty-printed (multi-line) JSON objects, so we
+        # cannot split by newline.  Use raw_decode() to extract complete objects
+        # from the concatenated file content and return the last valid one.
+        content = jsonl_path.read_text()
+        decoder = json.JSONDecoder()
+        last_obj = None
+        idx = 0
+        while idx < len(content):
+            # Skip inter-object whitespace / blank lines.
+            while idx < len(content) and content[idx] in " \t\n\r":
+                idx += 1
+            if idx >= len(content):
+                break
             try:
-                return json.loads(line)
+                obj, idx = decoder.raw_decode(content, idx)
+                last_obj = obj
             except json.JSONDecodeError:
-                continue
-        warnings.warn(f"No valid JSON found in {jsonl_path}")
+                # Skip to the next newline and retry.
+                nl = content.find("\n", idx)
+                if nl == -1:
+                    break
+                idx = nl + 1
+        if last_obj is not None:
+            return last_obj
+        warnings.warn(f"No valid JSON objects found in {jsonl_path}")
 
     return None
 
@@ -700,10 +717,12 @@ def _plot_05_pdr_vs_weather_regime(runs, fig_dir, missing):
     data = [regime_pdr[r] for r in regimes]
 
     fig, ax = plt.subplots(figsize=(max(6, len(regimes) * 1.5), 5))
-    bp = ax.boxplot(data, tick_labels=regimes, patch_artist=True, showfliers=False)
+    bp = ax.boxplot(data, patch_artist=True, showfliers=False)
     for patch in bp["boxes"]:
         patch.set_facecolor("#4878d0")
         patch.set_alpha(0.6)
+    ax.set_xticks(range(1, len(regimes) + 1))
+    ax.set_xticklabels(regimes)
     ax.set_ylabel("Window PDR")
     ax.set_title("Network PDR vs Weather Regime (all protocols)")
     ax.set_ylim(-0.05, 1.05)
