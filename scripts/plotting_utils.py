@@ -327,5 +327,5 @@ def boxplot_multi(
         patch.set_alpha(0.65)
     ax.set_ylabel(ylabel)
     ax.set_title(title)
-    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.tick_params(axis="x", rotation=20)
     savefig(fig, fig_dir, name)
