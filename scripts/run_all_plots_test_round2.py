@@ -239,6 +239,57 @@ def _mean_energy_from_csvs(run: dict, missing: list) -> float:
     return float(np.nanmean(vals))
 
 
+# ---------------------------------------------------------------------------
+# Merged-replicate helpers
+# ---------------------------------------------------------------------------
+
+def _group_by_protocol(runs: list) -> dict:
+    """Return OrderedDict mapping protocol_name → list[run], preserving discovery order."""
+    groups: dict = {}
+    for run in runs:
+        groups.setdefault(run["protocol"], []).append(run)
+    return groups
+
+
+def _ts_to_grid(t_arr, y_arr, t_grid):
+    """Interpolate (t_arr, y_arr) onto *t_grid*; returns NaN outside the data range."""
+    mask = ~np.isnan(y_arr)
+    if mask.sum() < 2:
+        return np.full(len(t_grid), float("nan"))
+    return np.interp(t_grid, t_arr[mask], y_arr[mask],
+                     left=float("nan"), right=float("nan"))
+
+
+def _merged_ts(run_list, load_key, ycol, missing, bin_sec):
+    """
+    Resample *ycol* from each run in *run_list* to a common time grid of width
+    *bin_sec*, then return *(t_grid, mean_array, std_array)*.
+    Returns *(None, None, None)* if no data are found.
+    """
+    series = []
+    t_max = 0.0
+    for run in run_list:
+        df = _load(run, load_key, missing)
+        if df is None or ycol not in df.columns or "t_rel_s" not in df.columns:
+            continue
+        df = df[df[ycol] >= 0].dropna(subset=[ycol, "t_rel_s"])
+        if df.empty:
+            continue
+        t = df["t_rel_s"].values
+        y = df[ycol].values
+        t_max = max(t_max, t.max())
+        series.append((t, y))
+    if not series:
+        return None, None, None
+    t_grid = np.arange(0, t_max + bin_sec, bin_sec)
+    interpolated = np.array([_ts_to_grid(t, y, t_grid) for t, y in series])
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", RuntimeWarning)
+        mean = np.nanmean(interpolated, axis=0)
+        std  = np.nan_to_num(np.nanstd(interpolated, axis=0), nan=0.0)
+    return t_grid, mean, std
+
+
 # ===========================================================================
 # GROUP 01 — Validation
 # ===========================================================================
@@ -800,6 +851,576 @@ def _plot_05_weather_timeseries(runs, fig_dir, missing):
 
 
 # ===========================================================================
+# MERGED PLOTS — one entry per protocol, replicates pooled
+# ===========================================================================
+
+# --- Group 01 merged --------------------------------------------------------
+
+def _plot_01_network_pdr_over_time_merged(runs, fig_dir, missing, bin_sec):
+    """G1/P1-M — PDR timeseries: mean ± 1σ band per protocol (replicates merged)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(12, 5))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        t_grid, mean, std = _merged_ts(
+            run_list, "network_timeseries", "window_pdr", missing, bin_sec
+        )
+        if t_grid is None:
+            continue
+        valid = ~np.isnan(mean)
+        ax.plot(t_grid[valid] / 60, mean[valid],
+                color=colors[proto], linewidth=1.8, label=proto)
+        ax.fill_between(
+            t_grid[valid] / 60,
+            np.clip(mean[valid] - std[valid], 0.0, 1.0),
+            np.clip(mean[valid] + std[valid], 0.0, 1.0),
+            color=colors[proto], alpha=0.15,
+        )
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 01_network_pdr_over_time_merged: no valid window_pdr data")
+        plt.close(fig)
+        return
+
+    ax.axhline(0.95, color="red", linestyle="--", linewidth=1, label="PDR target 0.95")
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel("Window PDR  (mean ± 1σ across replicates)")
+    ax.set_title("Network PDR Over Time — Merged Replicates")
+    ax.set_ylim(-0.05, 1.05)
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "01_network_pdr_over_time_merged")
+    print("  [OK] 01_network_pdr_over_time_merged")
+
+
+def _plot_01_battery_ecdf_merged(runs, fig_dir, missing):
+    """G1/P2-M — Battery ECDF: one curve per protocol, all replicates pooled."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(9, 6))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            df = _load(run, "status_timeseries", missing)
+            if df is None or "battery_level" not in df.columns:
+                continue
+            if "uav_id" in df.columns:
+                df = df[df["uav_id"] != "sink_gateway"]
+            all_vals.extend(df["battery_level"].dropna().tolist())
+        if not all_vals:
+            continue
+        xs, ys = ecdf(np.array(all_vals))
+        ax.plot(xs, ys, linewidth=1.8, color=colors[proto], label=proto)
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 01_battery_ecdf_merged: no battery_level data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Battery level (%)")
+    ax.set_ylabel("Cumulative probability")
+    ax.set_title("UAV Battery Level ECDF — Merged Replicates")
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "01_battery_ecdf_merged")
+    print("  [OK] 01_battery_ecdf_merged")
+
+
+# --- Group 02 merged --------------------------------------------------------
+
+def _plot_02_charge_success_rate_merged(runs, fig_dir, missing):
+    """G2/P1-M — Success rate bar: mean ± std across replicates, one bar per protocol."""
+    groups = _group_by_protocol(runs)
+    labels, means, errs = [], [], []
+    colors_map = protocol_color_map(list(groups.keys()))
+
+    for proto, run_list in groups.items():
+        rates = []
+        for run in run_list:
+            summary = _load_summary(run)
+            if summary is not None:
+                ch = summary.get("charging", {})
+                total = ch.get("requests_total", 0)
+                started = ch.get("started", 0)
+                rate = started / total if total > 0 else float("nan")
+            else:
+                df = _load(run, "charge_events", missing)
+                if df is None or "outcome" not in df.columns:
+                    continue
+                total = len(df)
+                rate = int((df["outcome"] == "STARTED").sum()) / total if total > 0 else float("nan")
+            rates.append(rate)
+        if not rates:
+            continue
+        labels.append(proto)
+        means.append(float(np.nanmean(rates)))
+        errs.append(float(np.nanstd(rates)))
+
+    if not labels:
+        missing.append("PLOT 02_charge_success_rate_merged: no data")
+        return
+
+    bar_colors = [colors_map[lbl] for lbl in labels]
+    fig, ax = plt.subplots(figsize=(max(6, len(labels) * 1.5), 5))
+    x = np.arange(len(labels))
+    bars = ax.bar(x, means, yerr=errs, color=bar_colors, edgecolor="white",
+                  linewidth=0.5, capsize=5, error_kw={"elinewidth": 1.2})
+    label_bars(ax, bars, fmt="{:.1%}")
+    ax.set_ylabel("Success rate  (mean ± std across replicates)")
+    ax.set_title("Charge Success Rate — Merged Replicates")
+    ax.set_ylim(0, 1.2)
+    ax.set_xticks(x)
+    ax.set_xticklabels(labels, rotation=20, ha="right")
+    savefig(fig, fig_dir, "02_charge_success_rate_merged")
+    print("  [OK] 02_charge_success_rate_merged")
+
+
+def _plot_02_decision_latency_merged(runs, fig_dir, missing):
+    """G2/P2-M — Decision latency boxplot, one box per protocol (replicates pooled)."""
+    groups = _group_by_protocol(runs)
+    data: dict = {}
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            df = _load(run, "charge_events", missing)
+            if df is None or "decision_latency_ms" not in df.columns:
+                continue
+            all_vals.extend(
+                df["decision_latency_ms"].replace(-1, float("nan")).dropna().tolist()
+            )
+        if all_vals:
+            data[proto] = all_vals
+
+    if not data:
+        missing.append("PLOT 02_decision_latency_merged: no decision_latency_ms data")
+        return
+
+    boxplot_multi(
+        data, "Decision latency (ms)",
+        "Charge Decision Latency — Merged Replicates",
+        fig_dir, "02_decision_latency_merged",
+    )
+    print("  [OK] 02_decision_latency_merged")
+
+
+def _plot_02_effective_wait_merged(runs, fig_dir, missing):
+    """G2/P3-M — Effective wait boxplot, one box per protocol (replicates pooled)."""
+    groups = _group_by_protocol(runs)
+    data: dict = {}
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            df = _load(run, "charge_events", missing)
+            if df is None or "effective_wait_ms" not in df.columns:
+                continue
+            all_vals.extend(
+                df["effective_wait_ms"].replace(-1, float("nan")).dropna().tolist()
+            )
+        if all_vals:
+            data[proto] = all_vals
+
+    if not data:
+        missing.append("PLOT 02_effective_wait_merged: no effective_wait_ms data")
+        return
+
+    boxplot_multi(
+        data, "Effective wait (ms)",
+        "Effective Wait Time — Merged Replicates",
+        fig_dir, "02_effective_wait_merged",
+    )
+    print("  [OK] 02_effective_wait_merged")
+
+
+def _plot_02_energy_recovered_merged(runs, fig_dir, missing):
+    """G2/P4-M — Energy recovered boxplot, one box per protocol (replicates pooled)."""
+    groups = _group_by_protocol(runs)
+    data: dict = {}
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            vals = _energy_recovered_series(run, missing)
+            if vals is not None:
+                all_vals.extend(vals.tolist())
+        if all_vals:
+            data[proto] = all_vals
+
+    if not data:
+        missing.append("PLOT 02_energy_recovered_merged: no energy_recovered data")
+        return
+
+    boxplot_multi(
+        data, "Energy recovered (%)",
+        "Energy Recovered per Charge Session — Merged Replicates",
+        fig_dir, "02_energy_recovered_merged",
+    )
+    print("  [OK] 02_energy_recovered_merged")
+
+
+# --- Group 03 merged --------------------------------------------------------
+
+def _plot_03_charge_queue_length_merged(runs, fig_dir, missing, bin_sec):
+    """G3/P1-M — Queue length: mean ± 1σ per protocol (replicates merged)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(12, 5))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            df = _load(run, "charge_queue_timeseries", missing)
+            if df is None or "t_rel_s" not in df.columns:
+                continue
+            role_cols = [c for c in ("queue_length_ugv", "queue_length_ch", "queue_length_member")
+                         if c in df.columns]
+            if not role_cols:
+                continue
+            df = df.sort_values("t_rel_s")
+            t = df["t_rel_s"].values
+            y = df[role_cols].clip(lower=0).sum(axis=1).values
+            t_max = max(t_max, t.max())
+            series.append((t, y))
+        if not series:
+            continue
+        t_grid = np.arange(0, t_max + bin_sec, bin_sec)
+        interpolated = np.array([_ts_to_grid(t, y, t_grid) for t, y in series])
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            mean = np.nanmean(interpolated, axis=0)
+            std  = np.nan_to_num(np.nanstd(interpolated, axis=0), nan=0.0)
+        valid = ~np.isnan(mean)
+        ax.plot(t_grid[valid] / 60, mean[valid],
+                color=colors[proto], linewidth=1.8, label=proto)
+        ax.fill_between(
+            t_grid[valid] / 60,
+            np.clip(mean[valid] - std[valid], 0.0, None),
+            mean[valid] + std[valid],
+            color=colors[proto], alpha=0.15,
+        )
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 03_charge_queue_length_merged: no charge_queue_timeseries data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel("Total charge queue length  (mean ± 1σ)")
+    ax.set_title("Charge Queue Length — Merged Replicates")
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "03_charge_queue_length_merged")
+    print("  [OK] 03_charge_queue_length_merged")
+
+
+def _plot_03_dock_utilization_merged(runs, fig_dir, missing, bin_sec):
+    """G3/P2-M — Dock utilisation: mean ± 1σ per protocol (replicates merged)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(12, 5))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        t_grid, mean, std = _merged_ts(
+            run_list, "charge_queue_timeseries", "ugv_dock_utilization", missing, bin_sec
+        )
+        if t_grid is None:
+            continue
+        valid = ~np.isnan(mean)
+        ax.plot(t_grid[valid] / 60, mean[valid],
+                color=colors[proto], linewidth=1.8, label=proto)
+        ax.fill_between(
+            t_grid[valid] / 60,
+            np.clip(mean[valid] - std[valid], 0.0, 1.0),
+            np.clip(mean[valid] + std[valid], 0.0, 1.0),
+            color=colors[proto], alpha=0.15,
+        )
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 03_dock_utilization_merged: no ugv_dock_utilization data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel("Dock utilisation  (mean ± 1σ)")
+    ax.set_title("UGV Dock Utilisation — Merged Replicates")
+    ax.set_ylim(-0.05, 1.05)
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "03_dock_utilization_merged")
+    print("  [OK] 03_dock_utilization_merged")
+
+
+def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
+    """G3/P3-M — Stacked bar of outcomes per protocol (counts summed across replicates)."""
+    OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
+    PALETTE = {
+        "STARTED":         "#2ca02c",
+        "REJECTED":        "#d62728",
+        "DROPPED":         "#ff7f0e",
+        "TIMEOUT":         "#9467bd",
+        "PREEMPTED":       "#8c564b",
+        "ENERGY_DEPLETED": "#1f77b4",
+    }
+
+    groups = _group_by_protocol(runs)
+    rows = []
+    for proto, run_list in groups.items():
+        row = {o: 0 for o in OUTCOMES}
+        row["label"] = proto
+        has_data = False
+        for run in run_list:
+            df = _load(run, "charge_events", missing)
+            if df is None or "outcome" not in df.columns:
+                continue
+            counts = df["outcome"].value_counts()
+            for o in OUTCOMES:
+                row[o] += int(counts.get(o, 0))
+            has_data = True
+        if has_data:
+            rows.append(row)
+
+    if not rows:
+        missing.append("PLOT 03_charge_outcome_breakdown_merged: no outcome data")
+        return
+
+    summary_df = pd.DataFrame(rows).set_index("label")
+    labels = summary_df.index.tolist()
+    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
+    bottom = np.zeros(len(labels))
+    for outcome in OUTCOMES:
+        if outcome not in summary_df.columns:
+            continue
+        vals = summary_df[outcome].values
+        ax.bar(labels, vals, bottom=bottom, color=PALETTE[outcome],
+               label=outcome, edgecolor="white", linewidth=0.3)
+        bottom += vals
+
+    ax.set_ylabel("Number of charge requests  (all replicates summed)")
+    ax.set_title("Charge Request Outcomes — Merged Replicates")
+    ax.set_xticks(np.arange(len(labels)))
+    ax.set_xticklabels(labels, rotation=20, ha="right")
+    ax.legend(loc="upper right", fontsize=8)
+    savefig(fig, fig_dir, "03_charge_outcome_breakdown_merged")
+    print("  [OK] 03_charge_outcome_breakdown_merged")
+
+
+def _plot_03_dead_uav_cumulative_merged(runs, fig_dir, missing, bin_sec):
+    """G3/P4-M — Cumulative deaths: mean ± 1σ per protocol (replicates merged)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(12, 5))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            df = _load(run, "death_events", missing)
+            if df is not None and "t_rel_s" in df.columns and len(df) > 0:
+                df = df.sort_values("t_rel_s")
+                t = df["t_rel_s"].values
+                y = np.arange(1, len(df) + 1, dtype=float)
+                t_max = max(t_max, t[-1])
+                series.append((t, y))
+            else:
+                dfq = _load(run, "charge_queue_timeseries", missing)
+                if (dfq is not None and "dead_event_count" in dfq.columns
+                        and "t_rel_s" in dfq.columns):
+                    dfq = dfq.sort_values("t_rel_s")
+                    t = dfq["t_rel_s"].values
+                    y = dfq["dead_event_count"].values.astype(float)
+                    t_max = max(t_max, t.max())
+                    series.append((t, y))
+
+        if not series:
+            continue
+
+        t_grid = np.arange(0, t_max + bin_sec, bin_sec)
+        # Cumulative step series → forward-fill via searchsorted
+        interped = []
+        for t, y in series:
+            idx = np.searchsorted(t, t_grid, side="right")
+            y_ext = np.where(idx == 0, 0.0, y[np.minimum(idx - 1, len(y) - 1)])
+            interped.append(y_ext)
+        arr = np.array(interped, dtype=float)
+        mean = np.mean(arr, axis=0)
+        std  = np.std(arr, axis=0)
+
+        ax.plot(t_grid / 60, mean, color=colors[proto], linewidth=1.8, label=proto)
+        ax.fill_between(
+            t_grid / 60,
+            np.clip(mean - std, 0.0, None),
+            mean + std,
+            color=colors[proto], alpha=0.15,
+        )
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 03_dead_uav_cumulative_merged: no death data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel("Cumulative dead UAVs  (mean ± 1σ)")
+    ax.set_title("Cumulative UAV Deaths — Merged Replicates")
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "03_dead_uav_cumulative_merged")
+    print("  [OK] 03_dead_uav_cumulative_merged")
+
+
+# --- Group 04 merged --------------------------------------------------------
+
+def _plot_04_policy_radar_merged(runs, fig_dir, missing):
+    """G4/P1-M — Radar chart: KPIs averaged across replicates, one polygon per protocol."""
+    AXES = [
+        ("pdr",      "PDR",           1.0,     True),
+        ("success",  "Success rate",  1.0,     True),
+        ("latency",  "Low latency",   100_000, False),
+        ("energy",   "Energy recov.", 100.0,   True),
+        ("survival", "Survival",      1.0,     True),
+    ]
+
+    def _norm(val, max_val, higher_is_better):
+        if np.isnan(val):
+            return 0.0
+        n = float(val) / max_val
+        if not higher_is_better:
+            n = 1.0 - min(n, 1.0)
+        return float(np.clip(n, 0.0, 1.0))
+
+    groups = _group_by_protocol(runs)
+    protocol_scores: dict = {}
+
+    for proto, run_list in groups.items():
+        replicate_scores = []
+        for run in run_list:
+            summary = _load_summary(run)
+            if summary is not None:
+                net = summary.get("network", {})
+                by_cat = net.get("by_category", [])
+                total_gen = sum(c.get("generated", 0) for c in by_cat)
+                total_del = sum(c.get("delivered", 0) for c in by_cat)
+                pdr = total_del / total_gen if total_gen > 0 else float("nan")
+                ch = summary.get("charging", {})
+                success  = ch.get("success_rate", float("nan"))
+                latency  = ch.get("decision_latency_ms", {}).get("mean", float("nan"))
+                energy   = ch.get("energy_recovered", {}).get("mean", float("nan"))
+                survival = summary.get("fleet", {}).get("survival_rate", float("nan"))
+            else:
+                pdr      = _overall_pdr_from_csvs(run, missing)
+                success  = _success_rate_from_csvs(run, missing)
+                latency  = _mean_latency_from_csvs(run, missing)
+                energy   = _mean_energy_from_csvs(run, missing)
+                survival = float("nan")
+
+            raw = [pdr, success, latency, energy, survival]
+            replicate_scores.append(
+                [_norm(v, AXES[i][2], AXES[i][3]) for i, v in enumerate(raw)]
+            )
+
+        if not replicate_scores:
+            continue
+        protocol_scores[proto] = list(np.nanmean(replicate_scores, axis=0))
+
+    if not protocol_scores:
+        missing.append("PLOT 04_policy_radar_merged: no summary data available")
+        return
+
+    axis_labels = [a[1] for a in AXES]
+    N = len(axis_labels)
+    angles = np.linspace(0, 2 * np.pi, N, endpoint=False).tolist()
+    angles += angles[:1]
+
+    fig, ax = plt.subplots(figsize=(7, 7), subplot_kw={"polar": True})
+    colors = protocol_color_map(list(protocol_scores.keys()))
+
+    for label, scores in protocol_scores.items():
+        vals = scores + scores[:1]
+        ax.plot(angles, vals, linewidth=1.8, label=label, color=colors[label])
+        ax.fill(angles, vals, alpha=0.10, color=colors[label])
+
+    ax.set_xticks(angles[:-1])
+    ax.set_xticklabels(axis_labels, fontsize=9)
+    ax.set_ylim(0, 1)
+    ax.set_yticks([0.25, 0.5, 0.75, 1.0])
+    ax.set_yticklabels(["0.25", "0.5", "0.75", "1.0"], fontsize=7)
+    ax.set_title("Policy Radar — Merged Replicates", pad=20)
+    ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
+    savefig(fig, fig_dir, "04_policy_radar_merged")
+    print("  [OK] 04_policy_radar_merged")
+
+
+# --- Group 05 merged --------------------------------------------------------
+
+def _plot_05_pdr_vs_weather_regime_merged(runs, fig_dir, missing):
+    """G5/P1-M — Grouped bar: mean PDR per (protocol, regime), replicates pooled."""
+    groups = _group_by_protocol(runs)
+    # proto → regime → [pdr values pooled across replicates]
+    proto_regime_pdr: dict = {}
+
+    for proto, run_list in groups.items():
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            w_df   = _load(run, "weather_timeseries", missing)
+            if net_df is None or w_df is None:
+                continue
+            if "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].copy()
+            merged = merge_asof_weather(
+                net_df, w_df, time_col="t_rel_s", weather_time_col="t_rel_s"
+            )
+            if "regime" not in merged.columns:
+                continue
+            for regime, grp in merged.groupby("regime"):
+                (proto_regime_pdr
+                 .setdefault(proto, {})
+                 .setdefault(str(regime), [])
+                 .extend(grp["window_pdr"].dropna().tolist()))
+
+    if not proto_regime_pdr:
+        missing.append("PLOT 05_pdr_vs_weather_regime_merged: no merged PDR+weather data")
+        return
+
+    all_regimes = sorted({r for p in proto_regime_pdr.values() for r in p})
+    protocols   = list(proto_regime_pdr.keys())
+    colors      = protocol_color_map(protocols)
+
+    n_proto  = len(protocols)
+    n_regime = len(all_regimes)
+    bar_w    = 0.8 / n_proto
+
+    fig, ax = plt.subplots(figsize=(max(8, n_regime * n_proto * 0.8), 5))
+    for pi, proto in enumerate(protocols):
+        regime_data = proto_regime_pdr.get(proto, {})
+        offsets = np.arange(n_regime) + (pi - (n_proto - 1) / 2.0) * bar_w
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            means = [float(np.nanmean(regime_data.get(r, [float("nan")]))) for r in all_regimes]
+            stds  = [float(np.nan_to_num(np.nanstd(regime_data.get(r, [0.0])), nan=0.0))
+                     for r in all_regimes]
+        ax.bar(offsets, means, width=bar_w * 0.9, color=colors[proto], label=proto,
+               yerr=stds, capsize=3, error_kw={"elinewidth": 1.0},
+               edgecolor="white", linewidth=0.3)
+
+    ax.set_xticks(np.arange(n_regime))
+    ax.set_xticklabels(all_regimes, rotation=15, ha="right")
+    ax.set_ylabel("Mean window PDR")
+    ax.set_title("Network PDR vs Weather Regime — Merged Replicates")
+    ax.set_ylim(0, 1.15)
+    ax.legend(fontsize=8, loc="upper right")
+    savefig(fig, fig_dir, "05_pdr_vs_weather_regime_merged")
+    print("  [OK] 05_pdr_vs_weather_regime_merged")
+
+
+# ===========================================================================
 # Derived tables
 # ===========================================================================
 
@@ -1044,6 +1665,31 @@ def main():
     print("\n[Group 05] Weather")
     _plot_05_pdr_vs_weather_regime(runs, fig_dirs["05"], missing)
     _plot_05_weather_timeseries(runs, fig_dirs["05"], missing)
+
+    # ------------------------------------------------------------------
+    # Merged plots — one entry per protocol, replicates pooled  (12 plots)
+    # ------------------------------------------------------------------
+    print("\n[Group 01 Merged]")
+    _plot_01_network_pdr_over_time_merged(runs, fig_dirs["01"], missing, bin_sec)
+    _plot_01_battery_ecdf_merged(runs, fig_dirs["01"], missing)
+
+    print("\n[Group 02 Merged]")
+    _plot_02_charge_success_rate_merged(runs, fig_dirs["02"], missing)
+    _plot_02_decision_latency_merged(runs, fig_dirs["02"], missing)
+    _plot_02_effective_wait_merged(runs, fig_dirs["02"], missing)
+    _plot_02_energy_recovered_merged(runs, fig_dirs["02"], missing)
+
+    print("\n[Group 03 Merged]")
+    _plot_03_charge_queue_length_merged(runs, fig_dirs["03"], missing, bin_sec)
+    _plot_03_dock_utilization_merged(runs, fig_dirs["03"], missing, bin_sec)
+    _plot_03_charge_outcome_breakdown_merged(runs, fig_dirs["03"], missing)
+    _plot_03_dead_uav_cumulative_merged(runs, fig_dirs["03"], missing, bin_sec)
+
+    print("\n[Group 04 Merged]")
+    _plot_04_policy_radar_merged(runs, fig_dirs["04"], missing)
+
+    print("\n[Group 05 Merged]")
+    _plot_05_pdr_vs_weather_regime_merged(runs, fig_dirs["05"], missing)
 
     # ------------------------------------------------------------------
     # Derived tables
