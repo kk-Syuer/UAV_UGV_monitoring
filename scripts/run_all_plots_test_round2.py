@@ -217,17 +217,25 @@ def _energy_recovered_series(run: dict, missing: list) -> "np.ndarray | None":
         if col is not None:
             if "outcome" in df.columns:
                 df = df[df["outcome"].isin(["STARTED", "ENERGY_DEPLETED"])].copy()
-            return df[col].replace(-1, float("nan")).dropna().values
+            vals = df[col].replace(-1, float("nan")).dropna().values
+            if len(vals) > 0:
+                return vals
+            # All values were -1 sentinels (sessions not yet completed at writeOutputs
+            # time) — fall through to charge_session_events DOCK_END data below.
 
     # --- new schema (charge_session_events.csv) ---
+    # DOCK_END rows capture battery_before/battery_after for every session that
+    # actually entered the charging state, including sessions cut short by preemption
+    # or experiment end, giving richer coverage than charge_events.csv alone.
     df2 = _load(run, "charge_session_events", missing)
     if df2 is not None and "event_type" in df2.columns:
         ended = df2[df2["event_type"] == "DOCK_END"].copy()
         if "battery_before" in ended.columns and "battery_after" in ended.columns:
             vals = (ended["battery_after"] - ended["battery_before"]).replace(-1, float("nan")).dropna()
-            return vals.values
+            if len(vals) > 0:
+                return vals
 
-    # Both files absent — propagate old-schema probe warnings now.
+    # Both files absent or contained no valid data.
     missing.extend(_probe)
     return None
 
