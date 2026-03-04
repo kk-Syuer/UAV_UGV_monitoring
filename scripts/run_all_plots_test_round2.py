@@ -1691,17 +1691,55 @@ def _plot_06_qos_heatmap_merged(runs, fig_dir, missing):
     print("  [OK] 06_qos_heatmap_merged")
 
 
-def _plot_06_e2e_delay(runs, fig_dir, missing):
-    """G6/P2 — Boxplot: per-packet E2E delay distribution per protocol.
+def _e2e_delay_vals_for_run(run: dict, missing: list) -> "list[float]":
+    """Return a list of E2E delay values (ms) for one run.
 
-    Source: packet_generated_events + packet_delivered_events join on msg_id
-    (primary), falling back to messages.csv e2e_delay_ms.
+    Source priority:
+    1. network_timeseries.csv  window_delay_mean_ms  (≥ 0 rows) — computed by
+       the ROS node from internal rclcpp::Time objects; immune to CSV timestamp
+       precision / clock-synchronisation issues.
+    2. packet_generated_events + packet_delivered_events join on msg_id —
+       per-packet delay, used when network_timeseries is absent.
+    3. messages.csv  e2e_delay_ms — old-schema fallback.
+    """
+    # --- primary: ROS-node-computed window means ---
+    net_df = _load(run, "network_timeseries", [])
+    if net_df is not None and "window_delay_mean_ms" in net_df.columns:
+        vals = net_df["window_delay_mean_ms"]
+        vals = vals[vals >= 0].dropna()
+        if not vals.empty:
+            return vals.tolist()
+
+    # --- secondary: per-packet join ---
+    pkt_df = _load_e2e_delays(run, [])
+    if pkt_df is not None and not pkt_df.empty:
+        return pkt_df["e2e_delay_ms"].tolist()
+
+    # --- fallback: messages.csv ---
+    msg_df = _load(run, "messages", missing)
+    if msg_df is not None and "e2e_delay_ms" in msg_df.columns:
+        if "delivered" in msg_df.columns:
+            msg_df = msg_df[msg_df["delivered"] == "true"]
+        vals = msg_df["e2e_delay_ms"]
+        vals = vals[vals >= 0].dropna()
+        if not vals.empty:
+            return vals.tolist()
+
+    return []
+
+
+def _plot_06_e2e_delay(runs, fig_dir, missing):
+    """G6/P2 — Boxplot: E2E delay distribution per protocol.
+
+    Values are window mean delays from network_timeseries.csv (one point per
+    10-second window), which is the ROS node's own authoritative computation.
+    Falls back to per-packet delay from packet event join or messages.csv.
     """
     data: dict = {}
     for run in runs:
-        df = _load_e2e_delays(run, missing)
-        if df is not None and not df.empty:
-            data[run["label"]] = df["e2e_delay_ms"].tolist()
+        vals = _e2e_delay_vals_for_run(run, missing)
+        if vals:
+            data[run["label"]] = vals
 
     if not data:
         missing.append("PLOT 06_e2e_delay: no e2e_delay_ms data")
@@ -1724,9 +1762,7 @@ def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
     for proto, run_list in groups.items():
         all_vals = []
         for run in run_list:
-            df = _load_e2e_delays(run, missing)
-            if df is not None:
-                all_vals.extend(df["e2e_delay_ms"].tolist())
+            all_vals.extend(_e2e_delay_vals_for_run(run, missing))
         if all_vals:
             data[proto] = all_vals
 
@@ -1745,36 +1781,34 @@ def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
 
 
 def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
-    """G5/P3 — Boxplot: per-packet E2E delay grouped by weather regime (all protocols).
+    """G5/P3 — Boxplot: window mean E2E delay grouped by weather regime (all protocols).
 
-    E2E delay from packet_generated_events + packet_delivered_events join.
-    t_rel_s (from the generation event) is used to match the weather regime.
+    Source: network_timeseries.csv  window_delay_mean_ms — computed by the ROS
+    node from internal rclcpp::Time objects, so it is immune to CSV timestamp
+    precision or clock-synchronisation artefacts.  Pattern mirrors
+    05_pdr_vs_weather_regime exactly (same file, same join, different column).
     """
     regime_delay: dict = {}
 
     for run in runs:
-        msg_df = _load_e2e_delays(run, [])
+        net_df = _load(run, "network_timeseries", missing)
         w_df   = _load(run, "weather_timeseries", missing)
-        if msg_df is None or w_df is None:
+        if net_df is None or w_df is None:
+            continue
+        if "window_delay_mean_ms" not in net_df.columns or "t_rel_s" not in net_df.columns:
             continue
         if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
             continue
 
-        # Use t_rel_s (from packet_generated_events) or creation_time_s as join key
-        time_col = next(
-            (c for c in ("t_rel_s", "creation_time_s") if c in msg_df.columns), None
-        )
-        if time_col is None:
-            continue
-
+        net_df = net_df[net_df["window_delay_mean_ms"] >= 0].copy()
         merged = merge_asof_weather(
-            msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"
+            net_df, w_df, time_col="t_rel_s", weather_time_col="t_rel_s"
         )
         if "regime" not in merged.columns:
             continue
         for regime, grp in merged.groupby("regime"):
             regime_delay.setdefault(str(regime), []).extend(
-                grp["e2e_delay_ms"].dropna().tolist()
+                grp["window_delay_mean_ms"].dropna().tolist()
             )
 
     if not regime_delay:
@@ -1791,34 +1825,35 @@ def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
         patch.set_alpha(0.65)
     ax.set_xticks(range(1, len(regimes) + 1))
     ax.set_xticklabels(regimes)
-    ax.set_ylabel("E2E delay (ms)")
+    ax.set_ylabel("Window mean E2E delay (ms)")
     ax.set_title("Message E2E Delay vs Weather Regime (all protocols)")
     savefig(fig, fig_dir, "05_delay_vs_weather_regime")
     print("  [OK] 05_delay_vs_weather_regime")
 
 
 def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
-    """G5/P3-M — Grouped bar: mean E2E delay per (protocol, weather regime), replicates pooled."""
+    """G5/P3-M — Grouped bar: mean E2E delay per (protocol, weather regime), replicates pooled.
+
+    Source: network_timeseries.csv  window_delay_mean_ms — same authoritative
+    source as the non-merged variant; mirrors 05_pdr_vs_weather_regime_merged.
+    """
     groups = _group_by_protocol(runs)
     proto_regime_delay: dict = {}
 
     for proto, run_list in groups.items():
         for run in run_list:
-            msg_df = _load_e2e_delays(run, [])
+            net_df = _load(run, "network_timeseries", missing)
             w_df   = _load(run, "weather_timeseries", missing)
-            if msg_df is None or w_df is None:
+            if net_df is None or w_df is None:
+                continue
+            if "window_delay_mean_ms" not in net_df.columns or "t_rel_s" not in net_df.columns:
                 continue
             if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
                 continue
 
-            time_col = next(
-                (c for c in ("t_rel_s", "creation_time_s") if c in msg_df.columns), None
-            )
-            if time_col is None:
-                continue
-
+            net_df = net_df[net_df["window_delay_mean_ms"] >= 0].copy()
             merged = merge_asof_weather(
-                msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"
+                net_df, w_df, time_col="t_rel_s", weather_time_col="t_rel_s"
             )
             if "regime" not in merged.columns:
                 continue
@@ -1826,7 +1861,7 @@ def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
                 (proto_regime_delay
                  .setdefault(proto, {})
                  .setdefault(str(regime), [])
-                 .extend(grp["e2e_delay_ms"].dropna().tolist()))
+                 .extend(grp["window_delay_mean_ms"].dropna().tolist()))
 
     if not proto_regime_delay:
         missing.append("PLOT 05_delay_vs_weather_regime_merged: no merged delay+weather data")
@@ -1855,7 +1890,7 @@ def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
 
     ax.set_xticks(np.arange(n_regime))
     ax.set_xticklabels(all_regimes, rotation=15, ha="right")
-    ax.set_ylabel("Mean E2E delay (ms)")
+    ax.set_ylabel("Mean window E2E delay (ms)")
     ax.set_title("Message E2E Delay vs Weather Regime — Merged Replicates")
     ax.legend(fontsize=8, loc="upper right")
     savefig(fig, fig_dir, "05_delay_vs_weather_regime_merged")
