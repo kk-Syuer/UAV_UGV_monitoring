@@ -872,12 +872,6 @@ def _plot_01_network_pdr_over_time_merged(runs, fig_dir, missing, bin_sec):
         valid = ~np.isnan(mean)
         ax.plot(t_grid[valid] / 60, mean[valid],
                 color=colors[proto], linewidth=1.8, label=proto)
-        ax.fill_between(
-            t_grid[valid] / 60,
-            np.clip(mean[valid] - std[valid], 0.0, 1.0),
-            np.clip(mean[valid] + std[valid], 0.0, 1.0),
-            color=colors[proto], alpha=0.15,
-        )
         any_data = True
 
     if not any_data:
@@ -887,7 +881,7 @@ def _plot_01_network_pdr_over_time_merged(runs, fig_dir, missing, bin_sec):
 
     ax.axhline(0.95, color="red", linestyle="--", linewidth=1, label="PDR target 0.95")
     ax.set_xlabel("Experiment time (min)")
-    ax.set_ylabel("Window PDR  (mean ± 1σ across replicates)")
+    ax.set_ylabel("Window PDR  (mean across replicates)")
     ax.set_title("Network PDR Over Time — Merged Replicates")
     ax.set_ylim(-0.05, 1.05)
     deduplicate_legend(ax)
@@ -967,10 +961,9 @@ def _plot_02_charge_success_rate_merged(runs, fig_dir, missing):
     bar_colors = [colors_map[lbl] for lbl in labels]
     fig, ax = plt.subplots(figsize=(max(6, len(labels) * 1.5), 5))
     x = np.arange(len(labels))
-    bars = ax.bar(x, means, yerr=errs, color=bar_colors, edgecolor="white",
-                  linewidth=0.5, capsize=5, error_kw={"elinewidth": 1.2})
+    bars = ax.bar(x, means, color=bar_colors, edgecolor="white", linewidth=0.5)
     label_bars(ax, bars, fmt="{:.1%}")
-    ax.set_ylabel("Success rate  (mean ± std across replicates)")
+    ax.set_ylabel("Success rate  (mean across replicates)")
     ax.set_title("Charge Success Rate — Merged Replicates")
     ax.set_ylim(0, 1.2)
     ax.set_xticks(x)
@@ -1096,12 +1089,6 @@ def _plot_03_charge_queue_length_merged(runs, fig_dir, missing, bin_sec):
         valid = ~np.isnan(mean)
         ax.plot(t_grid[valid] / 60, mean[valid],
                 color=colors[proto], linewidth=1.8, label=proto)
-        ax.fill_between(
-            t_grid[valid] / 60,
-            np.clip(mean[valid] - std[valid], 0.0, None),
-            mean[valid] + std[valid],
-            color=colors[proto], alpha=0.15,
-        )
         any_data = True
 
     if not any_data:
@@ -1110,7 +1097,7 @@ def _plot_03_charge_queue_length_merged(runs, fig_dir, missing, bin_sec):
         return
 
     ax.set_xlabel("Experiment time (min)")
-    ax.set_ylabel("Total charge queue length  (mean ± 1σ)")
+    ax.set_ylabel("Total charge queue length  (mean across replicates)")
     ax.set_title("Charge Queue Length — Merged Replicates")
     deduplicate_legend(ax)
     savefig(fig, fig_dir, "03_charge_queue_length_merged")
@@ -1133,12 +1120,6 @@ def _plot_03_dock_utilization_merged(runs, fig_dir, missing, bin_sec):
         valid = ~np.isnan(mean)
         ax.plot(t_grid[valid] / 60, mean[valid],
                 color=colors[proto], linewidth=1.8, label=proto)
-        ax.fill_between(
-            t_grid[valid] / 60,
-            np.clip(mean[valid] - std[valid], 0.0, 1.0),
-            np.clip(mean[valid] + std[valid], 0.0, 1.0),
-            color=colors[proto], alpha=0.15,
-        )
         any_data = True
 
     if not any_data:
@@ -1147,7 +1128,7 @@ def _plot_03_dock_utilization_merged(runs, fig_dir, missing, bin_sec):
         return
 
     ax.set_xlabel("Experiment time (min)")
-    ax.set_ylabel("Dock utilisation  (mean ± 1σ)")
+    ax.set_ylabel("Dock utilisation  (mean across replicates)")
     ax.set_title("UGV Dock Utilisation — Merged Replicates")
     ax.set_ylim(-0.05, 1.05)
     deduplicate_legend(ax)
@@ -1252,12 +1233,6 @@ def _plot_03_dead_uav_cumulative_merged(runs, fig_dir, missing, bin_sec):
         std  = np.std(arr, axis=0)
 
         ax.plot(t_grid / 60, mean, color=colors[proto], linewidth=1.8, label=proto)
-        ax.fill_between(
-            t_grid / 60,
-            np.clip(mean - std, 0.0, None),
-            mean + std,
-            color=colors[proto], alpha=0.15,
-        )
         any_data = True
 
     if not any_data:
@@ -1266,7 +1241,7 @@ def _plot_03_dead_uav_cumulative_merged(runs, fig_dir, missing, bin_sec):
         return
 
     ax.set_xlabel("Experiment time (min)")
-    ax.set_ylabel("Cumulative dead UAVs  (mean ± 1σ)")
+    ax.set_ylabel("Cumulative dead UAVs  (mean across replicates)")
     ax.set_title("Cumulative UAV Deaths — Merged Replicates")
     deduplicate_legend(ax)
     savefig(fig, fig_dir, "03_dead_uav_cumulative_merged")
@@ -1407,7 +1382,6 @@ def _plot_05_pdr_vs_weather_regime_merged(runs, fig_dir, missing):
             stds  = [float(np.nan_to_num(np.nanstd(regime_data.get(r, [0.0])), nan=0.0))
                      for r in all_regimes]
         ax.bar(offsets, means, width=bar_w * 0.9, color=colors[proto], label=proto,
-               yerr=stds, capsize=3, error_kw={"elinewidth": 1.0},
                edgecolor="white", linewidth=0.3)
 
     ax.set_xticks(np.arange(n_regime))
