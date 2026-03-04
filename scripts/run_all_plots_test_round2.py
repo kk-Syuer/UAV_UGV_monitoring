@@ -584,9 +584,20 @@ def _plot_03_dock_utilization(runs, fig_dir, missing):
     print("  [OK] 03_dock_utilization")
 
 
+def _is_preemptive(protocol_name: str) -> bool:
+    """Return True when the protocol uses preemption (name contains '_p_')."""
+    return "_p_" in protocol_name.lower()
+
+
 def _plot_03_charge_outcome_breakdown(runs, fig_dir, missing):
-    """G3/P3 — Stacked bar of charge request outcomes per protocol."""
-    OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
+    """G3/P3 — Stacked bar of charge request outcomes per protocol.
+
+    PREEMPTED is silenced (forced to 0) for protocols whose name does not
+    contain ``_p_``, because preemption is only meaningful in preemptive
+    scheduling variants.  The PREEMPTED legend entry is shown only when at
+    least one protocol is preemptive.
+    """
+    ALL_OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
     PALETTE = {
         "STARTED":        "#2ca02c",
         "REJECTED":       "#d62728",
@@ -602,9 +613,11 @@ def _plot_03_charge_outcome_breakdown(runs, fig_dir, missing):
         if df is None or "outcome" not in df.columns:
             continue
         counts = df["outcome"].value_counts()
-        row = {"label": run["label"]}
-        for o in OUTCOMES:
-            row[o] = int(counts.get(o, 0))
+        row = {"label": run["label"], "_preemptive": _is_preemptive(run["protocol"])}
+        for o in ALL_OUTCOMES:
+            val = int(counts.get(o, 0))
+            # Suppress PREEMPTED counts for non-preemptive protocols
+            row[o] = val if (o != "PREEMPTED" or row["_preemptive"]) else 0
         rows.append(row)
 
     if not rows:
@@ -612,11 +625,15 @@ def _plot_03_charge_outcome_breakdown(runs, fig_dir, missing):
         return
 
     summary_df = pd.DataFrame(rows).set_index("label")
+    any_preemptive = summary_df["_preemptive"].any()
+    summary_df = summary_df.drop(columns=["_preemptive"])
+    # Only include PREEMPTED in the draw loop when at least one protocol uses it
+    outcomes_to_draw = [o for o in ALL_OUTCOMES if o != "PREEMPTED" or any_preemptive]
     labels = summary_df.index.tolist()
 
     fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
     bottom = np.zeros(len(labels))
-    for outcome in OUTCOMES:
+    for outcome in outcomes_to_draw:
         if outcome not in summary_df.columns:
             continue
         vals = summary_df[outcome].values
@@ -1155,8 +1172,13 @@ def _plot_03_dock_utilization_merged(runs, fig_dir, missing, bin_sec):
 
 
 def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
-    """G3/P3-M — Stacked bar of outcomes per protocol (counts summed across replicates)."""
-    OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
+    """G3/P3-M — Stacked bar of outcomes per protocol (counts summed across replicates).
+
+    PREEMPTED is suppressed for protocols without ``_p_`` in their name.
+    The PREEMPTED legend entry appears only when at least one protocol is
+    preemptive, keeping non-preemptive bars clean.
+    """
+    ALL_OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
     PALETTE = {
         "STARTED":         "#2ca02c",
         "REJECTED":        "#d62728",
@@ -1168,8 +1190,12 @@ def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
 
     groups = _group_by_protocol(runs)
     rows = []
+    any_preemptive = False
     for proto, run_list in groups.items():
-        row = {o: 0 for o in OUTCOMES}
+        is_pre = _is_preemptive(proto)
+        if is_pre:
+            any_preemptive = True
+        row = {o: 0 for o in ALL_OUTCOMES}
         row["label"] = proto
         has_data = False
         for run in run_list:
@@ -1177,8 +1203,9 @@ def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
             if df is None or "outcome" not in df.columns:
                 continue
             counts = df["outcome"].value_counts()
-            for o in OUTCOMES:
-                row[o] += int(counts.get(o, 0))
+            for o in ALL_OUTCOMES:
+                val = int(counts.get(o, 0))
+                row[o] += val if (o != "PREEMPTED" or is_pre) else 0
             has_data = True
         if has_data:
             rows.append(row)
@@ -1187,11 +1214,12 @@ def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
         missing.append("PLOT 03_charge_outcome_breakdown_merged: no outcome data")
         return
 
+    outcomes_to_draw = [o for o in ALL_OUTCOMES if o != "PREEMPTED" or any_preemptive]
     summary_df = pd.DataFrame(rows).set_index("label")
     labels = summary_df.index.tolist()
     fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
     bottom = np.zeros(len(labels))
-    for outcome in OUTCOMES:
+    for outcome in outcomes_to_draw:
         if outcome not in summary_df.columns:
             continue
         vals = summary_df[outcome].values
@@ -1413,6 +1441,339 @@ def _plot_05_pdr_vs_weather_regime_merged(runs, fig_dir, missing):
 
 
 # ===========================================================================
+# Group 06 — Network QoS & End-to-End Delay
+# ===========================================================================
+
+def _qos_category_label(flow_type, control_type) -> str:
+    """Human-readable category label for a (flow_type, control_type) pair."""
+    ft = str(flow_type).strip()
+    ct = str(control_type).strip()
+    if ft == "0" or ft.upper() == "DATA":
+        return "DATA"
+    if ct:
+        return ct
+    return "CONTROL"
+
+
+def _last_qos_per_category(df: "pd.DataFrame") -> "pd.DataFrame":
+    """Return the last cumulative snapshot row per (flow_type, control_type).
+
+    qos_metrics.csv is a snapshot timeseries; every flush appends one row per
+    known category.  The final row contains the most-complete cumulative stats.
+    """
+    key_cols = [c for c in ("flow_type", "control_type") if c in df.columns]
+    if not key_cols:
+        return df
+    return df.groupby(key_cols, as_index=False).last()
+
+
+def _plot_06_qos_heatmap(runs, fig_dir, missing):
+    """G6/P1 — Heatmap: PDR per message category × protocol (last snapshot row)."""
+    # proto → category → [pdr values from individual runs]
+    data: dict = {}
+    for run in runs:
+        df = _load(run, "qos_metrics", missing)
+        if df is None or "pdr" not in df.columns:
+            continue
+        df = _last_qos_per_category(df)
+        proto = run["protocol"]
+        data.setdefault(proto, {})
+        for _, row in df.iterrows():
+            cat = _qos_category_label(
+                row.get("flow_type", ""), row.get("control_type", "")
+            )
+            data[proto].setdefault(cat, []).append(float(row["pdr"]))
+
+    if not data:
+        missing.append("PLOT 06_qos_heatmap: no qos_metrics data")
+        return
+
+    protocols = list(data.keys())
+    all_cats = sorted({c for p in data.values() for c in p})
+    # Build matrix: rows = categories, cols = protocols
+    matrix = np.full((len(all_cats), len(protocols)), float("nan"))
+    for pi, proto in enumerate(protocols):
+        for ci, cat in enumerate(all_cats):
+            vals = data[proto].get(cat, [])
+            if vals:
+                matrix[ci, pi] = float(np.nanmean(vals))
+
+    fig, ax = plt.subplots(figsize=(max(6, len(protocols) * 1.2), max(4, len(all_cats) * 0.7)))
+    im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1,
+                   interpolation="nearest")
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("PDR", fontsize=9)
+
+    ax.set_xticks(range(len(protocols)))
+    ax.set_xticklabels(protocols, rotation=25, ha="right", fontsize=8)
+    ax.set_yticks(range(len(all_cats)))
+    ax.set_yticklabels(all_cats, fontsize=8)
+
+    # Annotate cells
+    for ci in range(len(all_cats)):
+        for pi in range(len(protocols)):
+            v = matrix[ci, pi]
+            if not np.isnan(v):
+                ax.text(pi, ci, f"{v:.2f}", ha="center", va="center",
+                        fontsize=7, color="black" if 0.25 < v < 0.85 else "white")
+
+    ax.set_title("Network PDR by Message Category × Protocol")
+    ax.set_xlabel("Protocol")
+    ax.set_ylabel("Message category")
+    fig.tight_layout()
+    savefig(fig, fig_dir, "06_qos_heatmap")
+    print("  [OK] 06_qos_heatmap")
+
+
+def _plot_06_qos_heatmap_merged(runs, fig_dir, missing):
+    """G6/P1-M — Heatmap: PDR per category × protocol, replicates averaged."""
+    groups = _group_by_protocol(runs)
+    # proto → category → [pdr values pooled across replicates]
+    data: dict = {}
+    for proto, run_list in groups.items():
+        for run in run_list:
+            df = _load(run, "qos_metrics", missing)
+            if df is None or "pdr" not in df.columns:
+                continue
+            df = _last_qos_per_category(df)
+            for _, row in df.iterrows():
+                cat = _qos_category_label(
+                    row.get("flow_type", ""), row.get("control_type", "")
+                )
+                data.setdefault(proto, {}).setdefault(cat, []).append(float(row["pdr"]))
+
+    if not data:
+        missing.append("PLOT 06_qos_heatmap_merged: no qos_metrics data")
+        return
+
+    protocols = list(data.keys())
+    all_cats = sorted({c for p in data.values() for c in p})
+    matrix = np.full((len(all_cats), len(protocols)), float("nan"))
+    for pi, proto in enumerate(protocols):
+        for ci, cat in enumerate(all_cats):
+            vals = data[proto].get(cat, [])
+            if vals:
+                matrix[ci, pi] = float(np.nanmean(vals))
+
+    fig, ax = plt.subplots(figsize=(max(6, len(protocols) * 1.2), max(4, len(all_cats) * 0.7)))
+    im = ax.imshow(matrix, aspect="auto", cmap="RdYlGn", vmin=0, vmax=1,
+                   interpolation="nearest")
+    cbar = fig.colorbar(im, ax=ax, fraction=0.046, pad=0.04)
+    cbar.set_label("PDR", fontsize=9)
+
+    ax.set_xticks(range(len(protocols)))
+    ax.set_xticklabels(protocols, rotation=25, ha="right", fontsize=8)
+    ax.set_yticks(range(len(all_cats)))
+    ax.set_yticklabels(all_cats, fontsize=8)
+
+    for ci in range(len(all_cats)):
+        for pi in range(len(protocols)):
+            v = matrix[ci, pi]
+            if not np.isnan(v):
+                ax.text(pi, ci, f"{v:.2f}", ha="center", va="center",
+                        fontsize=7, color="black" if 0.25 < v < 0.85 else "white")
+
+    ax.set_title("Network PDR by Message Category × Protocol — Merged Replicates")
+    ax.set_xlabel("Protocol")
+    ax.set_ylabel("Message category")
+    fig.tight_layout()
+    savefig(fig, fig_dir, "06_qos_heatmap_merged")
+    print("  [OK] 06_qos_heatmap_merged")
+
+
+def _plot_06_e2e_delay(runs, fig_dir, missing):
+    """G6/P2 — Boxplot: per-packet E2E delay distribution per protocol.
+
+    Source: messages.csv  ``e2e_delay_ms`` column, delivered packets only.
+    """
+    data: dict = {}
+    for run in runs:
+        df = _load(run, "messages", missing)
+        if df is None or "e2e_delay_ms" not in df.columns:
+            continue
+        delivered = df[
+            (df.get("delivered", pd.Series(dtype=str)) == "true")
+            & (df["e2e_delay_ms"] >= 0)
+        ]["e2e_delay_ms"]
+        # Fallback: filter by non-negative delay if 'delivered' column absent
+        if "delivered" not in df.columns:
+            delivered = df[df["e2e_delay_ms"] >= 0]["e2e_delay_ms"]
+        if not delivered.empty:
+            data[run["label"]] = delivered.tolist()
+
+    if not data:
+        missing.append("PLOT 06_e2e_delay: no e2e_delay_ms data in messages.csv")
+        return
+
+    boxplot_multi(
+        data,
+        "E2E delay (ms)",
+        "End-to-End Message Delay per Protocol",
+        fig_dir,
+        "06_e2e_delay",
+    )
+    print("  [OK] 06_e2e_delay")
+
+
+def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
+    """G6/P2-M — Boxplot: E2E delay, replicates pooled per protocol."""
+    groups = _group_by_protocol(runs)
+    data: dict = {}
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            df = _load(run, "messages", missing)
+            if df is None or "e2e_delay_ms" not in df.columns:
+                continue
+            if "delivered" in df.columns:
+                delivered = df[(df["delivered"] == "true") & (df["e2e_delay_ms"] >= 0)]
+            else:
+                delivered = df[df["e2e_delay_ms"] >= 0]
+            all_vals.extend(delivered["e2e_delay_ms"].tolist())
+        if all_vals:
+            data[proto] = all_vals
+
+    if not data:
+        missing.append("PLOT 06_e2e_delay_merged: no e2e_delay_ms data")
+        return
+
+    boxplot_multi(
+        data,
+        "E2E delay (ms)",
+        "End-to-End Message Delay — Merged Replicates",
+        fig_dir,
+        "06_e2e_delay_merged",
+    )
+    print("  [OK] 06_e2e_delay_merged")
+
+
+def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
+    """G5/P3 — Boxplot: per-packet E2E delay grouped by weather regime (all protocols)."""
+    regime_delay: dict = {}
+
+    for run in runs:
+        msg_df = _load(run, "messages", missing)
+        w_df   = _load(run, "weather_timeseries", missing)
+        if msg_df is None or w_df is None:
+            continue
+        if "e2e_delay_ms" not in msg_df.columns:
+            continue
+        if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
+            continue
+
+        # Use creation_time_s as the join key (ROS clock origin)
+        time_col = "creation_time_s" if "creation_time_s" in msg_df.columns else "t_rel_s"
+        if time_col not in msg_df.columns:
+            continue
+
+        if "delivered" in msg_df.columns:
+            msg_df = msg_df[(msg_df["delivered"] == "true") & (msg_df["e2e_delay_ms"] >= 0)].copy()
+        else:
+            msg_df = msg_df[msg_df["e2e_delay_ms"] >= 0].copy()
+
+        merged = merge_asof_weather(
+            msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"
+        )
+        if "regime" not in merged.columns:
+            continue
+        for regime, grp in merged.groupby("regime"):
+            regime_delay.setdefault(str(regime), []).extend(
+                grp["e2e_delay_ms"].dropna().tolist()
+            )
+
+    if not regime_delay:
+        missing.append("PLOT 05_delay_vs_weather_regime: no merged delay+weather data")
+        return
+
+    regimes = sorted(regime_delay.keys())
+    data = [regime_delay[r] for r in regimes]
+
+    fig, ax = plt.subplots(figsize=(max(6, len(regimes) * 1.5), 5))
+    bp = ax.boxplot(data, patch_artist=True, showfliers=False)
+    for patch in bp["boxes"]:
+        patch.set_facecolor("#e8812a")
+        patch.set_alpha(0.65)
+    ax.set_xticks(range(1, len(regimes) + 1))
+    ax.set_xticklabels(regimes)
+    ax.set_ylabel("E2E delay (ms)")
+    ax.set_title("Message E2E Delay vs Weather Regime (all protocols)")
+    savefig(fig, fig_dir, "05_delay_vs_weather_regime")
+    print("  [OK] 05_delay_vs_weather_regime")
+
+
+def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
+    """G5/P3-M — Grouped bar: mean E2E delay per (protocol, weather regime), replicates pooled."""
+    groups = _group_by_protocol(runs)
+    proto_regime_delay: dict = {}
+
+    for proto, run_list in groups.items():
+        for run in run_list:
+            msg_df = _load(run, "messages", missing)
+            w_df   = _load(run, "weather_timeseries", missing)
+            if msg_df is None or w_df is None:
+                continue
+            if "e2e_delay_ms" not in msg_df.columns:
+                continue
+            if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
+                continue
+
+            time_col = "creation_time_s" if "creation_time_s" in msg_df.columns else "t_rel_s"
+            if time_col not in msg_df.columns:
+                continue
+
+            if "delivered" in msg_df.columns:
+                msg_df = msg_df[
+                    (msg_df["delivered"] == "true") & (msg_df["e2e_delay_ms"] >= 0)
+                ].copy()
+            else:
+                msg_df = msg_df[msg_df["e2e_delay_ms"] >= 0].copy()
+
+            merged = merge_asof_weather(
+                msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"
+            )
+            if "regime" not in merged.columns:
+                continue
+            for regime, grp in merged.groupby("regime"):
+                (proto_regime_delay
+                 .setdefault(proto, {})
+                 .setdefault(str(regime), [])
+                 .extend(grp["e2e_delay_ms"].dropna().tolist()))
+
+    if not proto_regime_delay:
+        missing.append("PLOT 05_delay_vs_weather_regime_merged: no merged delay+weather data")
+        return
+
+    all_regimes = sorted({r for p in proto_regime_delay.values() for r in p})
+    protocols   = list(proto_regime_delay.keys())
+    colors      = protocol_color_map(protocols)
+
+    n_proto  = len(protocols)
+    n_regime = len(all_regimes)
+    bar_w    = 0.8 / n_proto
+
+    fig, ax = plt.subplots(figsize=(max(8, n_regime * n_proto * 0.8), 5))
+    for pi, proto in enumerate(protocols):
+        regime_data = proto_regime_delay.get(proto, {})
+        offsets = np.arange(n_regime) + (pi - (n_proto - 1) / 2.0) * bar_w
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            means = [
+                float(np.nanmean(regime_data.get(r, [float("nan")])))
+                for r in all_regimes
+            ]
+        ax.bar(offsets, means, width=bar_w * 0.9, color=colors[proto], label=proto,
+               edgecolor="white", linewidth=0.3)
+
+    ax.set_xticks(np.arange(n_regime))
+    ax.set_xticklabels(all_regimes, rotation=15, ha="right")
+    ax.set_ylabel("Mean E2E delay (ms)")
+    ax.set_title("Message E2E Delay vs Weather Regime — Merged Replicates")
+    ax.legend(fontsize=8, loc="upper right")
+    savefig(fig, fig_dir, "05_delay_vs_weather_regime_merged")
+    print("  [OK] 05_delay_vs_weather_regime_merged")
+
+
+# ===========================================================================
 # Derived tables
 # ===========================================================================
 
@@ -1596,6 +1957,7 @@ def main():
         "03": output_root / "figures" / "03_cross_protocol_charging",
         "04": output_root / "figures" / "04_policy_radar",
         "05": output_root / "figures" / "05_weather",
+        "06": output_root / "figures" / "06_network_qos_delay",
     }
     derived_dir = output_root / "derived"
     summary_dir = output_root / "summary_tables"
@@ -1682,6 +2044,24 @@ def main():
 
     print("\n[Group 05 Merged]")
     _plot_05_pdr_vs_weather_regime_merged(runs, fig_dirs["05"], missing)
+    _plot_05_delay_vs_weather_regime_merged(runs, fig_dirs["05"], missing)
+
+    # ------------------------------------------------------------------
+    # Group 05 additional (single-replicate)
+    # ------------------------------------------------------------------
+    print("\n[Group 05 additional]")
+    _plot_05_delay_vs_weather_regime(runs, fig_dirs["05"], missing)
+
+    # ------------------------------------------------------------------
+    # Group 06 — Network QoS & E2E Delay
+    # ------------------------------------------------------------------
+    print("\n[Group 06] Network QoS & E2E Delay")
+    _plot_06_qos_heatmap(runs, fig_dirs["06"], missing)
+    _plot_06_e2e_delay(runs, fig_dirs["06"], missing)
+
+    print("\n[Group 06 Merged]")
+    _plot_06_qos_heatmap_merged(runs, fig_dirs["06"], missing)
+    _plot_06_e2e_delay_merged(runs, fig_dirs["06"], missing)
 
     # ------------------------------------------------------------------
     # Derived tables
