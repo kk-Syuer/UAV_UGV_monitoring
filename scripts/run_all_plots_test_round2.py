@@ -197,20 +197,44 @@ def _mean_latency_from_csvs(run: dict, missing: list) -> float:
 
 
 def _energy_recovered_series(run: dict, missing: list) -> "np.ndarray | None":
-    """Return an array of energy-recovered (%) values for completed charge sessions.
+    """Return per-session energy-recovered values in **Wh** for completed charge sessions.
 
-    Tries schemas in order:
-    1. charge_events.csv  — column ``energy_recovered`` or ``energy_recovered_pct``,
-       filtered to outcome STARTED | ENERGY_DEPLETED.
-    2. charge_session_events.csv (new schema) — DOCK_END rows,
-       ``battery_after - battery_before`` (both already in % units).
-    Returns None only when neither file is present; returns an empty array
-    when files exist but no completed sessions are found.
+    Source priority (highest accuracy first):
+    1. charge_session_events.csv DOCK_END — ``energy_charged_wh`` column
+       (already computed as (end−start) × battery_capacity_wh / 100; accounts
+       for CH vs member capacity differences).
+    2. charge_session_events.csv DOCK_END — ``(battery_after − battery_before)
+       × battery_capacity_wh / 100`` when ``energy_charged_wh`` is all -1 but
+       capacity is known.
+    3. charge_events.csv — ``energy_recovered_pct`` (percentage points, last
+       resort when charge_session_events is absent).
+
+    Returns None only when no file is present; returns an empty array when
+    files exist but no completed sessions have valid data.
     """
-    # --- old schema (charge_events.csv) ---
-    # Use a probe list so that "file missing" is not reported when the new-schema
-    # file below covers the same information.
+    # --- preferred: charge_session_events DOCK_END (Wh, capacity-aware) ---
     _probe: list = []
+    df2 = _load(run, "charge_session_events", _probe)
+    if df2 is not None and "event_type" in df2.columns:
+        ended = df2[df2["event_type"] == "DOCK_END"].copy()
+
+        # Path 1: direct energy_charged_wh column
+        if "energy_charged_wh" in ended.columns:
+            vals = ended["energy_charged_wh"].replace(-1, float("nan")).dropna().values
+            if len(vals) > 0:
+                return vals
+
+        # Path 2: compute from battery delta × capacity
+        if ("battery_before" in ended.columns and "battery_after" in ended.columns
+                and "battery_capacity_wh" in ended.columns):
+            cap = ended["battery_capacity_wh"].replace(0, float("nan"))
+            delta = (ended["battery_after"] - ended["battery_before"]).replace(-1, float("nan"))
+            wh = (delta * cap / 100.0).dropna()
+            wh = wh[wh >= 0]
+            if len(wh) > 0:
+                return wh.values
+
+    # --- fallback: charge_events.csv percentage points (old schema) ---
     df = _load(run, "charge_events", _probe)
     if df is not None:
         col = next((c for c in ("energy_recovered_pct", "energy_recovered") if c in df.columns), None)
@@ -220,22 +244,8 @@ def _energy_recovered_series(run: dict, missing: list) -> "np.ndarray | None":
             vals = df[col].replace(-1, float("nan")).dropna().values
             if len(vals) > 0:
                 return vals
-            # All values were -1 sentinels (sessions not yet completed at writeOutputs
-            # time) — fall through to charge_session_events DOCK_END data below.
 
-    # --- new schema (charge_session_events.csv) ---
-    # DOCK_END rows capture battery_before/battery_after for every session that
-    # actually entered the charging state, including sessions cut short by preemption
-    # or experiment end, giving richer coverage than charge_events.csv alone.
-    df2 = _load(run, "charge_session_events", missing)
-    if df2 is not None and "event_type" in df2.columns:
-        ended = df2[df2["event_type"] == "DOCK_END"].copy()
-        if "battery_before" in ended.columns and "battery_after" in ended.columns:
-            vals = (ended["battery_after"] - ended["battery_before"]).replace(-1, float("nan")).dropna()
-            if len(vals) > 0:
-                return vals
-
-    # Both files absent or contained no valid data.
+    # No usable data found.
     missing.extend(_probe)
     return None
 
@@ -484,8 +494,8 @@ def _plot_02_energy_recovered(runs, fig_dir, missing):
 
     boxplot_multi(
         data,
-        "Energy recovered (%)",
-        "Energy Recovered per Charge Session (STARTED events)",
+        "Energy recovered (Wh)",
+        "Energy Recovered per Charge Session",
         fig_dir,
         "02_energy_recovered",
     )
@@ -1054,7 +1064,7 @@ def _plot_02_energy_recovered_merged(runs, fig_dir, missing):
         return
 
     boxplot_multi(
-        data, "Energy recovered (%)",
+        data, "Energy recovered (Wh)",
         "Energy Recovered per Charge Session — Merged Replicates",
         fig_dir, "02_energy_recovered_merged",
     )
