@@ -1445,14 +1445,101 @@ def _plot_05_pdr_vs_weather_regime_merged(runs, fig_dir, missing):
 # ===========================================================================
 
 def _qos_category_label(flow_type, control_type) -> str:
-    """Human-readable category label for a (flow_type, control_type) pair."""
-    ft = str(flow_type).strip()
+    """Human-readable category label for a (flow_type, control_type) pair.
+
+    control_type takes priority: if non-empty it is the label regardless of
+    flow_type.  This ensures e.g. TELEMETRY packets with flow_type=0 but
+    control_type='TELEMETRY' are not incorrectly collapsed into 'DATA'.
+    """
     ct = str(control_type).strip()
-    if ft == "0" or ft.upper() == "DATA":
-        return "DATA"
     if ct:
         return ct
+    ft = str(flow_type).strip()
+    if ft == "0" or ft.upper() == "DATA":
+        return "DATA"
     return "CONTROL"
+
+
+def _load_e2e_delays(run: dict, missing: list) -> "pd.DataFrame | None":
+    """Return a DataFrame with at least e2e_delay_ms (ms) and t_rel_s columns.
+
+    Priority:
+    1. Join packet_generated_events.csv + packet_delivered_events.csv on msg_id:
+       e2e_delay_ms = (delivered_time_s − creation_time_s) × 1000.
+       Also preserves flow_type, control_type for per-category analysis.
+    2. messages.csv  e2e_delay_ms  column (fallback for old-schema data).
+
+    Returns None when no source yields data.
+    """
+    # --- primary: packet event join (matches lineage doc §5.1/§5.2) ---
+    gen = _load(run, "packet_generated_events", [])
+    dlv = _load(run, "packet_delivered_events", [])
+    if (gen is not None and dlv is not None
+            and "msg_id" in gen.columns and "creation_time_s" in gen.columns
+            and "msg_id" in dlv.columns and "delivered_time_s" in dlv.columns):
+        keep_gen = [c for c in
+                    ["msg_id", "creation_time_s", "flow_type", "control_type", "t_rel_s"]
+                    if c in gen.columns]
+        merged = dlv[["msg_id", "delivered_time_s"]].merge(
+            gen[keep_gen], on="msg_id", how="inner"
+        )
+        merged["e2e_delay_ms"] = (
+            (merged["delivered_time_s"] - merged["creation_time_s"]) * 1000.0
+        )
+        merged = merged[merged["e2e_delay_ms"] >= 0].copy()
+        if not merged.empty:
+            return merged
+
+    # --- fallback: messages.csv ---
+    df = _load(run, "messages", missing)
+    if df is not None and "e2e_delay_ms" in df.columns:
+        if "delivered" in df.columns:
+            df = df[df["delivered"] == "true"].copy()
+        df = df[df["e2e_delay_ms"] >= 0].copy()
+        if not df.empty:
+            return df
+
+    return None
+
+
+def _pdr_by_category_from_events(run: dict) -> "dict | None":
+    """Compute PDR per message category from raw packet event files.
+
+    Joins packet_generated_events.csv (all packets) with
+    packet_delivered_events.csv (delivered subset) on msg_id to derive
+    per-(flow_type, control_type) delivery rates.  This is the only source
+    that includes telemetry packets, which are tracked internally by the ROS
+    node but never written to qos_metrics.csv (known issue §13 #7).
+
+    Returns dict mapping category_label → pdr, or None if data unavailable.
+    """
+    gen = _load(run, "packet_generated_events", [])
+    dlv = _load(run, "packet_delivered_events", [])
+    if gen is None or dlv is None or "msg_id" not in gen.columns:
+        return None
+
+    key_cols = [c for c in ("flow_type", "control_type") if c in gen.columns]
+    if not key_cols:
+        return None
+
+    gen_counts = gen.groupby(key_cols)["msg_id"].count().reset_index(name="generated")
+
+    if "msg_id" not in dlv.columns:
+        return None
+    dlv_typed = dlv[["msg_id"]].merge(gen[["msg_id"] + key_cols], on="msg_id", how="inner")
+    dlv_counts = dlv_typed.groupby(key_cols)["msg_id"].count().reset_index(name="delivered")
+
+    combined = gen_counts.merge(dlv_counts, on=key_cols, how="left")
+    combined["delivered"] = combined["delivered"].fillna(0)
+    combined["pdr"] = combined["delivered"] / combined["generated"].clip(lower=1)
+
+    result = {}
+    for _, row in combined.iterrows():
+        cat = _qos_category_label(
+            row.get("flow_type", ""), row.get("control_type", "")
+        )
+        result[cat] = float(row["pdr"])
+    return result or None
 
 
 def _last_qos_per_category(df: "pd.DataFrame") -> "pd.DataFrame":
@@ -1468,24 +1555,38 @@ def _last_qos_per_category(df: "pd.DataFrame") -> "pd.DataFrame":
 
 
 def _plot_06_qos_heatmap(runs, fig_dir, missing):
-    """G6/P1 — Heatmap: PDR per message category × protocol (last snapshot row)."""
+    """G6/P1 — Heatmap: PDR per message category × protocol.
+
+    Data source priority:
+    1. packet_generated_events.csv + packet_delivered_events.csv join — covers
+       ALL packet types including telemetry (qos_metrics.csv silently discards
+       telemetry, see lineage doc known issue §13 #7).
+    2. qos_metrics.csv last-snapshot fallback if packet events are absent.
+    """
     # proto → category → [pdr values from individual runs]
     data: dict = {}
     for run in runs:
-        df = _load(run, "qos_metrics", missing)
-        if df is None or "pdr" not in df.columns:
-            continue
-        df = _last_qos_per_category(df)
         proto = run["protocol"]
+        # Try packet events first (includes telemetry)
+        cat_pdr = _pdr_by_category_from_events(run)
+        if cat_pdr is None:
+            # Fallback: qos_metrics.csv (misses telemetry but better than nothing)
+            df = _load(run, "qos_metrics", missing)
+            if df is None or "pdr" not in df.columns:
+                continue
+            df = _last_qos_per_category(df)
+            cat_pdr = {}
+            for _, row in df.iterrows():
+                cat = _qos_category_label(
+                    row.get("flow_type", ""), row.get("control_type", "")
+                )
+                cat_pdr[cat] = float(row["pdr"])
         data.setdefault(proto, {})
-        for _, row in df.iterrows():
-            cat = _qos_category_label(
-                row.get("flow_type", ""), row.get("control_type", "")
-            )
-            data[proto].setdefault(cat, []).append(float(row["pdr"]))
+        for cat, pdr in cat_pdr.items():
+            data[proto].setdefault(cat, []).append(pdr)
 
     if not data:
-        missing.append("PLOT 06_qos_heatmap: no qos_metrics data")
+        missing.append("PLOT 06_qos_heatmap: no qos_metrics or packet event data")
         return
 
     protocols = list(data.keys())
@@ -1526,24 +1627,33 @@ def _plot_06_qos_heatmap(runs, fig_dir, missing):
 
 
 def _plot_06_qos_heatmap_merged(runs, fig_dir, missing):
-    """G6/P1-M — Heatmap: PDR per category × protocol, replicates averaged."""
+    """G6/P1-M — Heatmap: PDR per category × protocol, replicates averaged.
+
+    Same data priority as _plot_06_qos_heatmap: packet events first (includes
+    telemetry), qos_metrics.csv as fallback.
+    """
     groups = _group_by_protocol(runs)
     # proto → category → [pdr values pooled across replicates]
     data: dict = {}
     for proto, run_list in groups.items():
         for run in run_list:
-            df = _load(run, "qos_metrics", missing)
-            if df is None or "pdr" not in df.columns:
-                continue
-            df = _last_qos_per_category(df)
-            for _, row in df.iterrows():
-                cat = _qos_category_label(
-                    row.get("flow_type", ""), row.get("control_type", "")
-                )
-                data.setdefault(proto, {}).setdefault(cat, []).append(float(row["pdr"]))
+            cat_pdr = _pdr_by_category_from_events(run)
+            if cat_pdr is None:
+                df = _load(run, "qos_metrics", missing)
+                if df is None or "pdr" not in df.columns:
+                    continue
+                df = _last_qos_per_category(df)
+                cat_pdr = {}
+                for _, row in df.iterrows():
+                    cat = _qos_category_label(
+                        row.get("flow_type", ""), row.get("control_type", "")
+                    )
+                    cat_pdr[cat] = float(row["pdr"])
+            for cat, pdr in cat_pdr.items():
+                data.setdefault(proto, {}).setdefault(cat, []).append(pdr)
 
     if not data:
-        missing.append("PLOT 06_qos_heatmap_merged: no qos_metrics data")
+        missing.append("PLOT 06_qos_heatmap_merged: no qos_metrics or packet event data")
         return
 
     protocols = list(data.keys())
@@ -1584,25 +1694,17 @@ def _plot_06_qos_heatmap_merged(runs, fig_dir, missing):
 def _plot_06_e2e_delay(runs, fig_dir, missing):
     """G6/P2 — Boxplot: per-packet E2E delay distribution per protocol.
 
-    Source: messages.csv  ``e2e_delay_ms`` column, delivered packets only.
+    Source: packet_generated_events + packet_delivered_events join on msg_id
+    (primary), falling back to messages.csv e2e_delay_ms.
     """
     data: dict = {}
     for run in runs:
-        df = _load(run, "messages", missing)
-        if df is None or "e2e_delay_ms" not in df.columns:
-            continue
-        delivered = df[
-            (df.get("delivered", pd.Series(dtype=str)) == "true")
-            & (df["e2e_delay_ms"] >= 0)
-        ]["e2e_delay_ms"]
-        # Fallback: filter by non-negative delay if 'delivered' column absent
-        if "delivered" not in df.columns:
-            delivered = df[df["e2e_delay_ms"] >= 0]["e2e_delay_ms"]
-        if not delivered.empty:
-            data[run["label"]] = delivered.tolist()
+        df = _load_e2e_delays(run, missing)
+        if df is not None and not df.empty:
+            data[run["label"]] = df["e2e_delay_ms"].tolist()
 
     if not data:
-        missing.append("PLOT 06_e2e_delay: no e2e_delay_ms data in messages.csv")
+        missing.append("PLOT 06_e2e_delay: no e2e_delay_ms data")
         return
 
     boxplot_multi(
@@ -1622,14 +1724,9 @@ def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
     for proto, run_list in groups.items():
         all_vals = []
         for run in run_list:
-            df = _load(run, "messages", missing)
-            if df is None or "e2e_delay_ms" not in df.columns:
-                continue
-            if "delivered" in df.columns:
-                delivered = df[(df["delivered"] == "true") & (df["e2e_delay_ms"] >= 0)]
-            else:
-                delivered = df[df["e2e_delay_ms"] >= 0]
-            all_vals.extend(delivered["e2e_delay_ms"].tolist())
+            df = _load_e2e_delays(run, missing)
+            if df is not None:
+                all_vals.extend(df["e2e_delay_ms"].tolist())
         if all_vals:
             data[proto] = all_vals
 
@@ -1648,28 +1745,27 @@ def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
 
 
 def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
-    """G5/P3 — Boxplot: per-packet E2E delay grouped by weather regime (all protocols)."""
+    """G5/P3 — Boxplot: per-packet E2E delay grouped by weather regime (all protocols).
+
+    E2E delay from packet_generated_events + packet_delivered_events join.
+    t_rel_s (from the generation event) is used to match the weather regime.
+    """
     regime_delay: dict = {}
 
     for run in runs:
-        msg_df = _load(run, "messages", missing)
+        msg_df = _load_e2e_delays(run, [])
         w_df   = _load(run, "weather_timeseries", missing)
         if msg_df is None or w_df is None:
-            continue
-        if "e2e_delay_ms" not in msg_df.columns:
             continue
         if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
             continue
 
-        # Use creation_time_s as the join key (ROS clock origin)
-        time_col = "creation_time_s" if "creation_time_s" in msg_df.columns else "t_rel_s"
-        if time_col not in msg_df.columns:
+        # Use t_rel_s (from packet_generated_events) or creation_time_s as join key
+        time_col = next(
+            (c for c in ("t_rel_s", "creation_time_s") if c in msg_df.columns), None
+        )
+        if time_col is None:
             continue
-
-        if "delivered" in msg_df.columns:
-            msg_df = msg_df[(msg_df["delivered"] == "true") & (msg_df["e2e_delay_ms"] >= 0)].copy()
-        else:
-            msg_df = msg_df[msg_df["e2e_delay_ms"] >= 0].copy()
 
         merged = merge_asof_weather(
             msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"
@@ -1708,25 +1804,18 @@ def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
 
     for proto, run_list in groups.items():
         for run in run_list:
-            msg_df = _load(run, "messages", missing)
+            msg_df = _load_e2e_delays(run, [])
             w_df   = _load(run, "weather_timeseries", missing)
             if msg_df is None or w_df is None:
-                continue
-            if "e2e_delay_ms" not in msg_df.columns:
                 continue
             if "regime" not in w_df.columns or "t_rel_s" not in w_df.columns:
                 continue
 
-            time_col = "creation_time_s" if "creation_time_s" in msg_df.columns else "t_rel_s"
-            if time_col not in msg_df.columns:
+            time_col = next(
+                (c for c in ("t_rel_s", "creation_time_s") if c in msg_df.columns), None
+            )
+            if time_col is None:
                 continue
-
-            if "delivered" in msg_df.columns:
-                msg_df = msg_df[
-                    (msg_df["delivered"] == "true") & (msg_df["e2e_delay_ms"] >= 0)
-                ].copy()
-            else:
-                msg_df = msg_df[msg_df["e2e_delay_ms"] >= 0].copy()
 
             merged = merge_asof_weather(
                 msg_df, w_df, time_col=time_col, weather_time_col="t_rel_s"

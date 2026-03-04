@@ -220,9 +220,9 @@ Merged variant interpolates replicates to a common grid and plots the mean.
 **X-axis:** Weather regime label.
 **Y-axis:** E2E message delay (ms).
 
-**Join logic:** Each message in `messages.csv` is matched to the weather regime active at its `creation_time_s` using a forward-fill asof merge on `weather_timeseries.csv` `t_rel_s`.
+**Join logic:** Each delivered packet's `t_rel_s` (from its generation event) is matched to the nearest preceding `weather_timeseries.csv` row using a forward-fill asof merge.
 
-**Data sources:** `messages.csv` → `e2e_delay_ms` (delivered packets, sentinel -1 excluded); `weather_timeseries.csv` → `regime`.
+**Data sources:** `packet_generated_events.csv` + `packet_delivered_events.csv` (primary) or `messages.csv` (fallback) for E2E delay; `weather_timeseries.csv` → `regime` column.
 
 ---
 
@@ -255,10 +255,14 @@ Merged variant interpolates replicates to a common grid and plots the mean.
 | `RECOVERY_START` | 1 | `"RECOVERY_START"` |
 | *(others as present)* | 1 | any non-empty string |
 
-**Calculation:** For each run, take the **last** cumulative snapshot row per `(flow_type, control_type)` in `qos_metrics.csv` (the file is a growing timeseries — earlier rows are partial counts). Read `pdr = delivered / generated`.
+**Calculation (primary):** count `generated` and `delivered` packets per `(flow_type, control_type)` group directly from the atomic packet event files; `PDR = delivered / generated`. This is the only source that includes **telemetry packets** — `qos_metrics.csv` silently discards them (known limitation, lineage doc §13 #7).
+
+**Fallback:** if packet event files are absent, use the last cumulative snapshot row per `(flow_type, control_type)` from `qos_metrics.csv`.
+
 In the merged variant, PDR values from all replicates of a protocol are averaged.
 
-**Data source:** `qos_metrics.csv` → columns `flow_type`, `control_type`, `pdr`.
+**Data source (primary):** `packet_generated_events.csv` + `packet_delivered_events.csv` joined on `msg_id`.
+**Data source (fallback):** `qos_metrics.csv` → columns `flow_type`, `control_type`, `pdr`.
 
 ---
 
@@ -271,9 +275,11 @@ In the merged variant, PDR values from all replicates of a protocol are averaged
 **X-axis:** Protocol / run label.
 **Y-axis:** E2E delay (ms).
 
-**Calculation:** `(delivered_time − creation_time) × 1000` ms per delivered packet. Only packets with `delivered == "true"` and `e2e_delay_ms ≥ 0` are included.
+**Calculation:** `(delivered_time_s − creation_time_s) × 1000` ms, one row per delivered packet.
 
-**Data source:** `messages.csv` → column `e2e_delay_ms`.
+**Data source (primary):** join `packet_generated_events.csv` (`msg_id`, `creation_time_s`, `flow_type`, `control_type`, `t_rel_s`) with `packet_delivered_events.csv` (`msg_id`, `delivered_time_s`) on `msg_id`. Only rows where the computed delay ≥ 0 are kept.
+**Data source (fallback):** `messages.csv` → `e2e_delay_ms` column (old-schema data without packet event files).
+
 In the merged variant all replicates of a protocol are pooled before plotting.
 
 **Why this matters:** Unlike `decision_latency_ms` (which measures how fast the UGV makes a scheduling decision), `e2e_delay_ms` measures the full network propagation latency of every message type, showing how network conditions and protocol overhead translate into real communication lag.
