@@ -1898,6 +1898,599 @@ def _plot_05_delay_vs_weather_regime_merged(runs, fig_dir, missing):
 
 
 # ===========================================================================
+# GROUP 07 — Causal Analysis  (event overlays + lagged correlation)
+# ===========================================================================
+
+# ---------------------------------------------------------------------------
+# 07 helpers
+# ---------------------------------------------------------------------------
+
+def _load_event_times_s(run: dict, missing: list) -> dict:
+    """Return a dict with lists of t_rel_s values for key event types.
+
+    Keys returned:
+        all_deaths  – all UAV death events
+        ch_deaths   – CH-only deaths (role == 1)
+        timeouts    – charge requests with outcome == 'TIMEOUT'
+        started     – charge requests with outcome == 'STARTED'
+    """
+    result = {
+        "all_deaths": [],
+        "ch_deaths":  [],
+        "timeouts":   [],
+        "started":    [],
+    }
+
+    # Deaths
+    de = _load(run, "death_events", missing)
+    if de is not None and "t_rel_s" in de.columns:
+        result["all_deaths"] = de["t_rel_s"].dropna().tolist()
+        if "role" in de.columns:
+            ch_mask = de["role"].astype(str).isin(["1", "CH"])
+            result["ch_deaths"] = de.loc[ch_mask, "t_rel_s"].dropna().tolist()
+        else:
+            result["ch_deaths"] = []
+
+    # Charge outcomes
+    ce = _load(run, "charge_events", missing)
+    if ce is not None and "outcome" in ce.columns and "t_rel_s" in ce.columns:
+        result["timeouts"] = (
+            ce.loc[ce["outcome"] == "TIMEOUT", "t_rel_s"].dropna().tolist()
+        )
+        result["started"] = (
+            ce.loc[ce["outcome"] == "STARTED", "t_rel_s"].dropna().tolist()
+        )
+
+    return result
+
+
+def _pdr_dip_intervals(t_arr, pdr_arr, threshold=None):
+    """Detect contiguous intervals where PDR falls below *threshold*.
+
+    Parameters
+    ----------
+    t_arr, pdr_arr : 1-D array-like
+        Time (seconds) and PDR values.
+    threshold : float or None
+        If None, use p10 of non-negative PDR values (adaptive).
+
+    Returns
+    -------
+    intervals : list of (t_start, t_end) tuples
+    threshold : float  (the value actually used)
+    """
+    t   = np.asarray(t_arr,   dtype=float)
+    pdr = np.asarray(pdr_arr, dtype=float)
+
+    valid = pdr[pdr >= 0]
+    if len(valid) == 0:
+        return [], float("nan")
+
+    if threshold is None:
+        threshold = float(np.nanpercentile(valid, 10))
+
+    # Boolean mask of dip samples
+    dip_mask = (pdr >= 0) & (pdr < threshold)
+
+    intervals = []
+    in_dip = False
+    t_start = 0.0
+    for i, flag in enumerate(dip_mask):
+        if flag and not in_dip:
+            t_start = float(t[i])
+            in_dip = True
+        elif not flag and in_dip:
+            intervals.append((t_start, float(t[i - 1])))
+            in_dip = False
+    if in_dip:
+        intervals.append((t_start, float(t[-1])))
+
+    return intervals, threshold
+
+
+def _bin_events_to_grid(event_times_s, t_grid_edges):
+    """Count events per bin defined by *t_grid_edges* using np.histogram.
+
+    Returns an array of length ``len(t_grid_edges) - 1``.
+    """
+    if not event_times_s:
+        return np.zeros(len(t_grid_edges) - 1, dtype=float)
+    counts, _ = np.histogram(event_times_s, bins=t_grid_edges)
+    return counts.astype(float)
+
+
+def _lagged_pearson(x, y, max_lag_bins: int):
+    """Compute Pearson r between x and y at integer lags [-max_lag, +max_lag].
+
+    Positive lag means y lags behind x (x leads).  Returns (lags, corrs)
+    where lags is a 1-D integer array and corrs is float (nan when
+    insufficient data).
+    """
+    x = np.asarray(x, dtype=float)
+    y = np.asarray(y, dtype=float)
+    lags = np.arange(-max_lag_bins, max_lag_bins + 1)
+    corrs = np.full(len(lags), float("nan"))
+    n = len(x)
+    for idx, lag in enumerate(lags):
+        if lag == 0:
+            xi, yi = x, y
+        elif lag > 0:
+            xi = x[: n - lag]
+            yi = y[lag:]
+        else:
+            xi = x[-lag:]
+            yi = y[: n + lag]
+        if len(xi) < 3:
+            continue
+        valid = ~(np.isnan(xi) | np.isnan(yi))
+        if valid.sum() < 3:
+            continue
+        xi, yi = xi[valid], yi[valid]
+        mx, my = xi.mean(), yi.mean()
+        num = ((xi - mx) * (yi - my)).sum()
+        den = np.sqrt(((xi - mx) ** 2).sum() * ((yi - my) ** 2).sum())
+        corrs[idx] = float(num / den) if den > 0 else float("nan")
+    return lags, corrs
+
+
+def _rolling_slope(y, window: int = 5):
+    """Estimate local slope of *y* via np.gradient, smoothed with a rolling mean."""
+    y = np.asarray(y, dtype=float)
+    grad = np.gradient(y)
+    kernel = np.ones(window) / window
+    return np.convolve(grad, kernel, mode="same")
+
+
+def _add_event_vlines(ax, events_s, color, label, lw=0.8, alpha=0.7,
+                      linestyle="-", max_lines=200):
+    """Add vertical line markers to *ax* for each event time (seconds → minutes).
+
+    The first line carries the legend *label*; subsequent ones are unlabelled.
+    Capped at *max_lines* to avoid over-cluttering.
+    """
+    times = [t / 60.0 for t in events_s[:max_lines]]
+    for i, t_min in enumerate(times):
+        ax.axvline(
+            t_min,
+            color=color,
+            linewidth=lw,
+            alpha=alpha,
+            linestyle=linestyle,
+            label=label if i == 0 else "_nolegend_",
+        )
+
+
+# ---------------------------------------------------------------------------
+# 07-A1  PDR + event markers — per-protocol single figure
+# ---------------------------------------------------------------------------
+
+def _plot_07_pdr_with_events_per_protocol(runs, fig_dir, missing):
+    """G7/A1 — Per-protocol: PDR timeseries + vertical event markers + dip shading."""
+    groups = _group_by_protocol(runs)
+
+    for proto, run_list in groups.items():
+        fig, ax = plt.subplots(figsize=(14, 5))
+        any_pdr = False
+        dip_threshold = None
+
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+
+            t_s   = net_df["t_rel_s"].values
+            pdr   = net_df["window_pdr"].values
+
+            ax.plot(t_s / 60.0, pdr, linewidth=1.3, alpha=0.8, label=run["label"])
+            any_pdr = True
+
+            intervals, thr = _pdr_dip_intervals(t_s, pdr)
+            if dip_threshold is None and not np.isnan(thr):
+                dip_threshold = thr
+            for (ts, te) in intervals:
+                ax.axvspan(ts / 60.0, te / 60.0,
+                           color="gold", alpha=0.25, linewidth=0)
+
+        if not any_pdr:
+            plt.close(fig)
+            continue
+
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "timeouts", "started")}
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            for k in all_events:
+                all_events[k].extend(ev[k])
+
+        _add_event_vlines(ax, all_events["ch_deaths"],
+                          "darkred",  "CH death",  lw=1.2, linestyle="-")
+        _add_event_vlines(ax, all_events["all_deaths"],
+                          "red",      "UAV death", lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["timeouts"],
+                          "orange",   "TIMEOUT",   lw=0.7, linestyle=":", alpha=0.6)
+        _add_event_vlines(ax, all_events["started"],
+                          "green",    "STARTED",   lw=0.5, linestyle="-", alpha=0.3)
+
+        ax.set_xlabel("Experiment time (min)")
+        ax.set_ylabel("Window PDR")
+        proto_safe = proto.replace("/", "_")
+        ax.set_title(f"PDR + Events — {proto}")
+        ax.set_ylim(-0.05, 1.05)
+        if dip_threshold is not None:
+            ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
+                       linewidth=0.8, label=f"Dip threshold ({dip_threshold:.2f})")
+        deduplicate_legend(ax, fontsize=7)
+        savefig(fig, fig_dir, f"07_pdr_events_{proto_safe}")
+        print(f"  [OK] 07_pdr_events_{proto_safe}")
+
+
+# ---------------------------------------------------------------------------
+# 07-A1  PDR + event markers — all-protocols panel (shared x-axis)
+# ---------------------------------------------------------------------------
+
+def _plot_07_pdr_with_events_panel(runs, fig_dir, missing):
+    """G7/A1-panel — All protocols in sub-panels, shared x-axis, event markers."""
+    groups = _group_by_protocol(runs)
+    protos = list(groups.keys())
+    n = len(protos)
+    if n == 0:
+        return
+
+    fig, axes = plt.subplots(n, 1, figsize=(14, 3 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+
+    colors = protocol_color_map(protos)
+    any_plot = False
+
+    for ax, proto in zip(axes, protos):
+        run_list = groups[proto]
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+            t_s, pdr = net_df["t_rel_s"].values, net_df["window_pdr"].values
+            ax.plot(t_s / 60.0, pdr, linewidth=1.2, alpha=0.8,
+                    color=colors[proto], label=run["label"])
+            intervals, _ = _pdr_dip_intervals(t_s, pdr)
+            for (ts, te) in intervals:
+                ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
+            any_plot = True
+
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "timeouts", "started")}
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            for k in all_events:
+                all_events[k].extend(ev[k])
+
+        _add_event_vlines(ax, all_events["ch_deaths"],
+                          "darkred", "CH death",  lw=1.2, linestyle="-")
+        _add_event_vlines(ax, all_events["all_deaths"],
+                          "red",     "UAV death", lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["timeouts"],
+                          "orange",  "TIMEOUT",   lw=0.7, linestyle=":", alpha=0.6)
+
+        ax.set_ylabel("PDR", fontsize=8)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_title(proto, fontsize=9, pad=2)
+        deduplicate_legend(ax, fontsize=6)
+
+    if not any_plot:
+        plt.close(fig)
+        missing.append("PLOT 07_pdr_events_all_protocols: no window_pdr data")
+        return
+
+    axes[-1].set_xlabel("Experiment time (min)")
+    fig.suptitle("PDR + Event Markers — All Protocols", fontsize=11, y=1.01)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_pdr_events_all_protocols")
+    print("  [OK] 07_pdr_events_all_protocols")
+
+
+# ---------------------------------------------------------------------------
+# 07-A2  Dock utilisation + TIMEOUT markers — all protocols panel
+# ---------------------------------------------------------------------------
+
+def _plot_07_dock_util_with_timeouts(runs, fig_dir, missing):
+    """G7/A2 — Dock utilisation timeseries + TIMEOUT event markers, per protocol."""
+    groups = _group_by_protocol(runs)
+    protos = list(groups.keys())
+    n = len(protos)
+    if n == 0:
+        return
+
+    fig, axes = plt.subplots(n, 1, figsize=(14, 3 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+
+    colors = protocol_color_map(protos)
+    any_plot = False
+
+    for ax, proto in zip(axes, protos):
+        run_list = groups[proto]
+        for run in run_list:
+            st_df = _load(run, "status_timeseries", missing)
+            if st_df is None:
+                continue
+            if "docks_occupied" not in st_df.columns or "total_docks" not in st_df.columns:
+                continue
+            if "t_rel_s" not in st_df.columns:
+                continue
+            st_df = st_df.dropna(subset=["docks_occupied", "total_docks", "t_rel_s"])
+            total = st_df["total_docks"].replace(0, np.nan)
+            util  = st_df["docks_occupied"] / total
+            ax.plot(st_df["t_rel_s"] / 60.0, util,
+                    linewidth=1.2, alpha=0.8, color=colors[proto],
+                    label=run["label"])
+            any_plot = True
+
+        timeout_times: list = []
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            timeout_times.extend(ev["timeouts"])
+        _add_event_vlines(ax, timeout_times,
+                          "orange", "TIMEOUT", lw=0.9, linestyle=":", alpha=0.7)
+
+        ax.set_ylabel("Dock util.", fontsize=8)
+        ax.set_ylim(-0.05, 1.15)
+        ax.set_title(proto, fontsize=9, pad=2)
+        deduplicate_legend(ax, fontsize=6)
+
+    if not any_plot:
+        plt.close(fig)
+        missing.append("PLOT 07_dock_util_with_timeouts: no dock utilisation data")
+        return
+
+    axes[-1].set_xlabel("Experiment time (min)")
+    fig.suptitle("Dock Utilisation + TIMEOUT Markers — All Protocols", fontsize=11, y=1.01)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_dock_util_with_timeouts")
+    print("  [OK] 07_dock_util_with_timeouts")
+
+
+# ---------------------------------------------------------------------------
+# 07-B  Lagged Pearson correlation
+# ---------------------------------------------------------------------------
+
+def _plot_07_lagged_correlation(runs, fig_dir, missing, bin_sec: float = 60.0):
+    """G7/B — Per-protocol 2x2 lag-correlation subplots.
+
+    Pairs analysed (x leads to y):
+        PDR <-> TIMEOUT count
+        PDR <-> death count
+        dock utilisation <-> TIMEOUT count
+        E2E delay <-> TIMEOUT count
+
+    Lags span [-10 bins, +10 bins] at *bin_sec* seconds/bin (default +-10 min).
+    """
+    groups = _group_by_protocol(runs)
+    max_lag_bins = 10
+
+    summary_rows = []
+
+    for proto, run_list in groups.items():
+        pdr_series:   list = []
+        util_series:  list = []
+        delay_series: list = []
+        to_series:    list = []
+        death_series: list = []
+
+        t_max_s = 0.0
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is not None and "t_rel_s" in net_df.columns:
+                t_max_s = max(t_max_s, float(net_df["t_rel_s"].max()))
+
+        if t_max_s == 0.0:
+            continue
+
+        n_bins = max(1, int(np.ceil(t_max_s / bin_sec)))
+        edges  = np.arange(0, (n_bins + 1) * bin_sec, bin_sec)
+
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            st_df  = _load(run, "status_timeseries",  missing)
+            ev     = _load_event_times_s(run, missing)
+
+            if net_df is not None and "window_pdr" in net_df.columns and "t_rel_s" in net_df.columns:
+                pdr_vals = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+                if not pdr_vals.empty:
+                    bin_idx = np.clip(np.digitize(pdr_vals["t_rel_s"].values, edges) - 1, 0, n_bins - 1)
+                    pdr_bin = np.full(n_bins, float("nan"))
+                    for b in range(n_bins):
+                        sel = pdr_vals["window_pdr"].values[bin_idx == b]
+                        if len(sel) > 0:
+                            pdr_bin[b] = float(np.nanmean(sel))
+                    pdr_series.append(pdr_bin)
+
+            if (st_df is not None
+                    and "docks_occupied" in st_df.columns
+                    and "total_docks" in st_df.columns
+                    and "t_rel_s" in st_df.columns):
+                st_clean = st_df.dropna(subset=["docks_occupied", "total_docks", "t_rel_s"]).copy()
+                total = st_clean["total_docks"].replace(0, np.nan)
+                util_vals = (st_clean["docks_occupied"] / total).values
+                t_vals    = st_clean["t_rel_s"].values
+                if len(t_vals) > 0:
+                    bin_idx = np.clip(np.digitize(t_vals, edges) - 1, 0, n_bins - 1)
+                    util_bin = np.full(n_bins, float("nan"))
+                    for b in range(n_bins):
+                        sel = util_vals[bin_idx == b]
+                        if len(sel) > 0:
+                            util_bin[b] = float(np.nanmean(sel))
+                    util_series.append(util_bin)
+
+            if (net_df is not None
+                    and "window_delay_mean_ms" in net_df.columns
+                    and "t_rel_s" in net_df.columns):
+                delay_vals = net_df[net_df["window_delay_mean_ms"] >= 0].sort_values("t_rel_s")
+                if not delay_vals.empty:
+                    bin_idx = np.clip(np.digitize(delay_vals["t_rel_s"].values, edges) - 1, 0, n_bins - 1)
+                    delay_bin = np.full(n_bins, float("nan"))
+                    for b in range(n_bins):
+                        sel = delay_vals["window_delay_mean_ms"].values[bin_idx == b]
+                        if len(sel) > 0:
+                            delay_bin[b] = float(np.nanmean(sel))
+                    delay_series.append(delay_bin)
+
+            to_series.append(_bin_events_to_grid(ev["timeouts"],    edges))
+            death_series.append(_bin_events_to_grid(ev["all_deaths"], edges))
+
+        def _avg(series_list):
+            if not series_list:
+                return np.full(n_bins, float("nan"))
+            arr = np.vstack(series_list)
+            with warnings.catch_warnings():
+                warnings.simplefilter("ignore", RuntimeWarning)
+                return np.nanmean(arr, axis=0)
+
+        pdr_avg   = _avg(pdr_series)
+        util_avg  = _avg(util_series)
+        delay_avg = _avg(delay_series)
+        to_avg    = _avg(to_series)
+        death_avg = _avg(death_series)
+
+        pairs = [
+            ("PDR",            pdr_avg,   "TIMEOUT count", to_avg),
+            ("PDR",            pdr_avg,   "Death count",   death_avg),
+            ("Dock util.",     util_avg,  "TIMEOUT count", to_avg),
+            ("E2E delay (ms)", delay_avg, "TIMEOUT count", to_avg),
+        ]
+
+        fig, axes = plt.subplots(2, 2, figsize=(12, 8), constrained_layout=True)
+        proto_safe = proto.replace("/", "_")
+        fig.suptitle(f"Lagged Pearson Correlation — {proto}", fontsize=11)
+
+        for ax, (x_label, x_arr, y_label, y_arr) in zip(axes.flat, pairs):
+            lags, corrs = _lagged_pearson(x_arr, y_arr, max_lag_bins)
+            lag_m = lags * (bin_sec / 60.0)
+            ax.plot(lag_m, corrs, linewidth=1.5, color="steelblue",
+                    marker="o", markersize=3)
+            ax.axvline(0, color="gray", linestyle="--", linewidth=0.8)
+            ax.axhline(0, color="gray", linestyle="-",  linewidth=0.5)
+            ax.set_xlabel("Lag (min)  [positive = y lags x]", fontsize=8)
+            ax.set_ylabel("Pearson r", fontsize=8)
+            ax.set_title(f"{x_label}  ->  {y_label}", fontsize=9)
+            ax.set_ylim(-1.05, 1.05)
+
+            valid = ~np.isnan(corrs)
+            if valid.any():
+                peak_idx = int(np.argmax(np.abs(corrs[valid])))
+                peak_r   = float(corrs[valid][peak_idx])
+                peak_lag = float(lag_m[valid][peak_idx])
+                ax.scatter([peak_lag], [peak_r], color="red", zorder=5, s=40,
+                           label=f"peak r={peak_r:.2f} @{peak_lag:.0f}min")
+                ax.legend(fontsize=7)
+                summary_rows.append({
+                    "protocol":     proto,
+                    "x_series":     x_label,
+                    "y_series":     y_label,
+                    "peak_r":       round(peak_r, 4),
+                    "peak_lag_min": round(peak_lag, 1),
+                })
+
+        savefig(fig, fig_dir, f"07_lagged_corr_{proto_safe}")
+        print(f"  [OK] 07_lagged_corr_{proto_safe}")
+
+    if summary_rows:
+        summary_path = fig_dir.parent / "summary_tables" / "07_lagged_corr_summary.csv"
+        summary_path.parent.mkdir(parents=True, exist_ok=True)
+        pd.DataFrame(summary_rows).to_csv(summary_path, index=False)
+        print("  [OK] summary_tables/07_lagged_corr_summary.csv")
+
+
+# ---------------------------------------------------------------------------
+# 07-C  Death-slope vs PDR-dip boxplot
+# ---------------------------------------------------------------------------
+
+def _plot_07_death_slope_pdr_dips(runs, fig_dir, missing, bin_sec: float = 60.0):
+    """G7/C — Rolling death rate slope during PDR dip intervals vs normal periods.
+
+    For each protocol:
+    - Bin deaths into *bin_sec* bins -> death_rate_per_bin.
+    - Compute rolling slope of death rate via _rolling_slope().
+    - Label each bin as 'dip' or 'normal' based on _pdr_dip_intervals().
+    - Boxplot slope values by dip/normal.
+    """
+    groups = _group_by_protocol(runs)
+
+    dip_slopes:    dict = {}
+    normal_slopes: dict = {}
+
+    for proto, run_list in groups.items():
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            ev     = _load_event_times_s(run, missing)
+
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+
+            t_max_s = float(net_df["t_rel_s"].max())
+            n_bins  = max(1, int(np.ceil(t_max_s / bin_sec)))
+            edges   = np.arange(0, (n_bins + 1) * bin_sec, bin_sec)
+            bin_ctr = (edges[:-1] + edges[1:]) / 2.0
+
+            death_counts = _bin_events_to_grid(ev["all_deaths"], edges)
+            slope = _rolling_slope(death_counts, window=3)
+
+            t_s   = net_df["t_rel_s"].values
+            pdr   = net_df["window_pdr"].values
+            intervals, _ = _pdr_dip_intervals(t_s, pdr)
+
+            in_dip_mask = np.zeros(n_bins, dtype=bool)
+            for (ts, te) in intervals:
+                in_dip_mask |= (bin_ctr >= ts) & (bin_ctr <= te)
+
+            dip_slopes.setdefault(proto, []).extend(slope[in_dip_mask].tolist())
+            normal_slopes.setdefault(proto, []).extend(slope[~in_dip_mask].tolist())
+
+    if not dip_slopes:
+        missing.append("PLOT 07_death_slope_vs_pdr_dip: insufficient PDR / death data")
+        return
+
+    protos = sorted(set(list(dip_slopes.keys()) + list(normal_slopes.keys())))
+    n = len(protos)
+    fig, axes = plt.subplots(1, n, figsize=(max(6, 3 * n), 5), sharey=True)
+    if n == 1:
+        axes = [axes]
+
+    for ax, proto in zip(axes, protos):
+        data_dip    = [v for v in dip_slopes.get(proto, [])    if not np.isnan(v)]
+        data_normal = [v for v in normal_slopes.get(proto, []) if not np.isnan(v)]
+        boxes  = []
+        labels = []
+        if data_normal:
+            boxes.append(data_normal)
+            labels.append("Normal")
+        if data_dip:
+            boxes.append(data_dip)
+            labels.append("PDR dip")
+        if boxes:
+            bp = ax.boxplot(boxes, patch_artist=True, notch=False)
+            box_colors = ["#6baed6", "#fc8d59"][:len(boxes)]
+            for patch, c in zip(bp["boxes"], box_colors):
+                patch.set_facecolor(c)
+            ax.set_xticklabels(labels, fontsize=8)
+        ax.set_title(proto, fontsize=8)
+        ax.axhline(0, color="gray", linestyle="--", linewidth=0.8)
+
+    axes[0].set_ylabel("Rolling death rate slope (deaths/bin/bin)")
+    fig.suptitle("Death Rate Slope: PDR Dip Intervals vs Normal Periods", fontsize=10)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_death_slope_vs_pdr_dip")
+    print("  [OK] 07_death_slope_vs_pdr_dip")
+
+
+# ===========================================================================
 # Derived tables
 # ===========================================================================
 
@@ -2082,6 +2675,7 @@ def main():
         "04": output_root / "figures" / "04_policy_radar",
         "05": output_root / "figures" / "05_weather",
         "06": output_root / "figures" / "06_network_qos_delay",
+        "07": output_root / "figures" / "07_causal_analysis",
     }
     derived_dir = output_root / "derived"
     summary_dir = output_root / "summary_tables"
@@ -2186,6 +2780,16 @@ def main():
     print("\n[Group 06 Merged]")
     _plot_06_qos_heatmap_merged(runs, fig_dirs["06"], missing)
     _plot_06_e2e_delay_merged(runs, fig_dirs["06"], missing)
+
+    # ------------------------------------------------------------------
+    # Group 07 — Causal Analysis
+    # ------------------------------------------------------------------
+    print("\n[Group 07] Causal Analysis")
+    _plot_07_pdr_with_events_per_protocol(runs, fig_dirs["07"], missing)
+    _plot_07_pdr_with_events_panel(runs, fig_dirs["07"], missing)
+    _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
+    _plot_07_lagged_correlation(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
 
     # ------------------------------------------------------------------
     # Derived tables

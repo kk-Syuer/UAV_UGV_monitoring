@@ -286,6 +286,92 @@ In the merged variant all replicates of a protocol are pooled before plotting.
 
 ---
 
+## Group 07 — Causal Analysis (`07_causal_analysis/`)
+
+This group contains time-aligned analyses that test causal links between FANET
+instability (low PDR, high E2E delay) and charging failures / UAV deaths.
+
+### 07-A1 — PDR + Event Markers, per protocol (`07_pdr_events_<proto>.png`)
+
+**Question:** Do PDR dips precede or coincide with TIMEOUT events and UAV deaths?
+
+**Chart type:** Line plot (PDR timeseries) with vertical event markers and shaded dip intervals.
+
+**X-axis:** Experiment time (min).
+**Y-axis:** Window PDR.
+
+**Overlaid markers (vertical lines):**
+- Dark red solid — CH death (`role == 1` in `death_events.csv`)
+- Red dashed — any UAV death (`death_events.csv`)
+- Orange dotted — charge TIMEOUT (`charge_events.csv`, `outcome == "TIMEOUT"`)
+- Green solid (faint) — charge STARTED (`charge_events.csv`, `outcome == "STARTED"`)
+
+**Shaded bands:** Gold regions where PDR falls below the adaptive dip threshold (p10 of all non-negative PDR values in that run).  A horizontal dashed line marks the threshold value.
+
+**Data sources:** `network_timeseries.csv` (`window_pdr`, `t_rel_s`), `death_events.csv` (`t_rel_s`, `role`), `charge_events.csv` (`outcome`, `t_rel_s`).
+
+One figure is produced per protocol (all replicates overlaid).  A companion panel figure (`07_pdr_events_all_protocols.png`) stacks all protocols in sub-panels with a shared x-axis.
+
+---
+
+### 07-A2 — Dock Utilisation + TIMEOUT Markers (`07_dock_util_with_timeouts.png`)
+
+**Question:** Are TIMEOUT events clustered when the charging dock is fully occupied?
+
+**Chart type:** Multi-panel line plot (one panel per protocol) with orange dotted vertical markers for each TIMEOUT event.
+
+**X-axis:** Experiment time (min).
+**Y-axis:** Dock utilisation = `docks_occupied / total_docks` (0–1).
+
+**Data sources:** `status_timeseries.csv` (`t_rel_s`, `docks_occupied`, `total_docks`), `charge_events.csv` (`outcome`, `t_rel_s`).
+
+---
+
+### 07-B — Lagged Pearson Correlation (`07_lagged_corr_<proto>.png`)
+
+**Question:** At what time-lag does FANET instability most strongly predict charging failures and UAV deaths?
+
+**Chart type:** 2×2 sub-plot grid — one panel per variable pair.
+
+**X-axis of each panel:** Lag in minutes (negative = x leads y by |lag| min, positive = y leads x).
+**Y-axis of each panel:** Pearson r.
+
+**Variable pairs analysed:**
+1. PDR → TIMEOUT count
+2. PDR → Death count
+3. Dock utilisation → TIMEOUT count
+4. E2E delay (ms) → TIMEOUT count
+
+**Calculation:**
+- Each variable is binned into 60-second intervals (configurable via `--bin-seconds`).
+- For lags spanning ±10 bins, `corr(lag) = pearson(x[0:N-lag], y[lag:N])` for lag > 0 (y lags x).
+- Averages across replicates before computing correlation.
+- The peak |r| is highlighted in red with its lag value.
+
+A summary CSV is saved to `summary_tables/07_lagged_corr_summary.csv` with columns `protocol`, `x_series`, `y_series`, `peak_r`, `peak_lag_min`.
+
+**Data sources:** `network_timeseries.csv`, `status_timeseries.csv`, `death_events.csv`, `charge_events.csv`.
+
+---
+
+### 07-C — Death Rate Slope vs PDR Dips (`07_death_slope_vs_pdr_dip.png`)
+
+**Question:** Is the death rate *accelerating* during PDR dip intervals compared to normal periods?
+
+**Chart type:** Side-by-side boxplot (Normal vs PDR dip) per protocol.
+
+**Y-axis:** Rolling death rate slope (deaths per bin per bin) — a positive value means the death rate is increasing, negative means decreasing.
+
+**Calculation:**
+1. Bin UAV deaths into 60-second intervals.
+2. Compute a rolling local slope (`np.gradient` smoothed with a 3-bin window).
+3. Classify each bin as "dip" if its centre falls within a PDR dip interval, otherwise "normal".
+4. Box-plot the slope distributions side by side.
+
+**Data sources:** `network_timeseries.csv` (`window_pdr`, `t_rel_s`), `death_events.csv` (`t_rel_s`).
+
+---
+
 ## Data file reference
 
 | File | Primary columns used | Section in lineage doc |
@@ -298,7 +384,9 @@ In the merged variant all replicates of a protocol are pooled before plotting.
 | `charge_session_events.csv` | `event_type`, `energy_charged_wh`, `battery_before`, `battery_after`, `battery_capacity_wh` | §5.7 |
 | `messages.csv` | `e2e_delay_ms`, `delivered`, `creation_time_s`, `flow_type`, `control_type` | §5.8 |
 | `qos_metrics.csv` | `flow_type`, `control_type`, `pdr`, `delay_mean_ms` | §5.9 |
-| `death_events.csv` | `t_rel_s` | §5.x |
+| `death_events.csv` | `t_rel_s`, `role` (1=CH), `cause`, `battery_at_death` | §5.x |
+| `packet_generated_events.csv` | `msg_id`, `creation_time_s`, `flow_type`, `control_type`, `t_rel_s` | §5.x |
+| `packet_delivered_events.csv` | `msg_id`, `delivered_time_s`, `t_rel_s` | §5.x |
 | `experiment_summary.json` | `network.by_category`, `charging.*`, `fleet.survival_rate` | §6 |
 
 ---
