@@ -295,15 +295,18 @@ def label_bars(ax, bars, fmt: str = "{:.2f}", fontsize: int = 8) -> None:
             )
 
 
-def deduplicate_legend(ax) -> None:
-    """Remove duplicate labels from the axes legend."""
+def deduplicate_legend(ax, **kwargs) -> None:
+    """Remove duplicate labels from the axes legend.
+
+    Extra keyword arguments (e.g. fontsize, loc) are forwarded to ax.legend().
+    """
     handles, labels = ax.get_legend_handles_labels()
     seen: dict = {}
     for h, lbl in zip(handles, labels):
         if lbl not in seen:
             seen[lbl] = h
     if seen:
-        ax.legend(list(seen.values()), list(seen.keys()))
+        ax.legend(list(seen.values()), list(seen.keys()), **kwargs)
 
 
 def boxplot_multi(
