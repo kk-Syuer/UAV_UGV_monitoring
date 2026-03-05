@@ -1043,6 +1043,44 @@ def _plot_01_battery_ecdf_merged(runs, fig_dir, missing):
     print("  [OK] 01_battery_ecdf_merged")
 
 
+def _plot_01_pdr_cdf_merged(runs, fig_dir, missing, pdr_min: float = 0.5):
+    """G1/P3-M — CDF of window PDR (≥ pdr_min) per protocol, all replicates pooled."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(9, 6))
+    any_data = False
+
+    for proto, run_list in groups.items():
+        all_vals = []
+        for run in run_list:
+            df = _load(run, "network_timeseries", missing)
+            if df is None or "window_pdr" not in df.columns:
+                continue
+            vals = df["window_pdr"].dropna()
+            vals = vals[vals >= pdr_min]
+            all_vals.extend(vals.tolist())
+        if not all_vals:
+            continue
+        xs, ys = ecdf(np.array(all_vals))
+        ax.plot(xs, ys, linewidth=1.8, color=colors[proto], label=proto)
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 01_pdr_cdf_merged: no window_pdr data")
+        plt.close(fig)
+        return
+
+    ax.axvline(0.95, color="red", linestyle="--", linewidth=1, label="PDR target 0.95")
+    ax.set_xlabel(f"Window PDR  (samples ≥ {pdr_min})")
+    ax.set_ylabel("Cumulative probability")
+    ax.set_title(f"Network PDR CDF — Merged Replicates (PDR ≥ {pdr_min})")
+    ax.set_xlim(pdr_min - 0.02, 1.02)
+    ax.set_ylim(-0.02, 1.05)
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "01_pdr_cdf_merged")
+    print("  [OK] 01_pdr_cdf_merged")
+
+
 # --- Group 02 merged --------------------------------------------------------
 
 def _plot_02_charge_success_rate_merged(runs, fig_dir, missing):
@@ -3046,6 +3084,7 @@ def main():
     print("\n[Group 01 Merged]")
     _plot_01_network_pdr_over_time_merged(runs, fig_dirs["01"], missing, bin_sec)
     _plot_01_battery_ecdf_merged(runs, fig_dirs["01"], missing)
+    _plot_01_pdr_cdf_merged(runs, fig_dirs["01"], missing)
 
     print("\n[Group 02 Merged]")
     _plot_02_charge_success_rate_merged(runs, fig_dirs["02"], missing)
