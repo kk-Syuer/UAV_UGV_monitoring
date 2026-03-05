@@ -2324,6 +2324,96 @@ def _plot_07_pdr_with_events_panel(runs, fig_dir, missing):
 
 
 # ---------------------------------------------------------------------------
+# 07-A1-MP  PDR + event markers — merged replicates, ALL protocols panel
+# ---------------------------------------------------------------------------
+
+def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float = 60.0):
+    """G7/A1-MP — All protocols stacked in sub-panels; each panel shows the mean
+    PDR averaged across replicates (same grid approach as the merged variant)
+    plus pooled event markers.
+    """
+    groups = _group_by_protocol(runs)
+    protos = list(groups.keys())
+    n = len(protos)
+    if n == 0:
+        return
+
+    fig, axes = plt.subplots(n, 1, figsize=(14, 3 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+
+    colors = protocol_color_map(protos)
+    any_plot = False
+
+    for ax, proto in zip(axes, protos):
+        run_list = groups[proto]
+
+        # Build mean PDR on a common grid
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+            t_max = max(t_max, float(net_df["t_rel_s"].iloc[-1]))
+            series.append((net_df["t_rel_s"].values, net_df["window_pdr"].values))
+
+        if not series:
+            continue
+
+        t_grid = np.arange(0, t_max + bin_sec, bin_sec)
+        interped = [_ts_to_grid(t, y, t_grid) for t, y in series]
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            pdr_mean = np.nanmean(np.vstack(interped), axis=0)
+
+        ax.plot(t_grid / 60.0, pdr_mean,
+                color=colors[proto], linewidth=1.8, label=f"{proto} (mean)")
+
+        intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
+        for (ts, te) in intervals:
+            ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
+
+        # Pooled event markers across replicates
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            for k in all_events:
+                all_events[k].extend(ev[k])
+
+        _add_event_vlines(ax, all_events["ch_deaths"],
+                          "darkred",   "CH death",            lw=1.2, linestyle="-")
+        _add_event_vlines(ax, all_events["all_deaths"],
+                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["ch_started"],
+                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
+
+        if not np.isnan(dip_threshold):
+            ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
+                       linewidth=0.7, label=f"Dip thr. ({dip_threshold:.2f})")
+
+        ax.set_ylabel("PDR (mean)", fontsize=8)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_title(proto, fontsize=9, pad=2)
+        deduplicate_legend(ax, fontsize=6)
+        any_plot = True
+
+    if not any_plot:
+        plt.close(fig)
+        missing.append("PLOT 07_pdr_events_merged_all_protocols: no window_pdr data")
+        return
+
+    axes[-1].set_xlabel("Experiment time (min)")
+    fig.suptitle("PDR + Event Markers — Merged Replicates — All Protocols", fontsize=11, y=1.01)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_pdr_events_merged_all_protocols")
+    print("  [OK] 07_pdr_events_merged_all_protocols")
+
+
+# ---------------------------------------------------------------------------
 # 07-A1-M  PDR + event markers — merged replicates, one figure per protocol
 # ---------------------------------------------------------------------------
 
@@ -2999,6 +3089,7 @@ def main():
     _plot_07_pdr_with_events_per_protocol(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_panel(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
     _plot_07_lagged_correlation(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
