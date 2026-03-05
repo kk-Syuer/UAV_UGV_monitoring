@@ -2043,13 +2043,13 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
     Keys returned:
         all_deaths  – all UAV death events
         ch_deaths   – CH-only deaths (role == 1)
-        timeouts    – charge requests with outcome == 'TIMEOUT'
-        started     – charge requests with outcome == 'STARTED'
+        ch_started  – charge STARTED events for CH UAVs only (role == 1)
+        started     – charge STARTED events for all UAVs (kept for other uses)
     """
     result = {
         "all_deaths": [],
         "ch_deaths":  [],
-        "timeouts":   [],
+        "ch_started": [],
         "started":    [],
     }
 
@@ -2063,15 +2063,16 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
         else:
             result["ch_deaths"] = []
 
-    # Charge outcomes
+    # Charge outcomes — use role column to isolate CH requests
     ce = _load(run, "charge_events", missing)
     if ce is not None and "outcome" in ce.columns and "t_rel_s" in ce.columns:
-        result["timeouts"] = (
-            ce.loc[ce["outcome"] == "TIMEOUT", "t_rel_s"].dropna().tolist()
-        )
-        result["started"] = (
-            ce.loc[ce["outcome"] == "STARTED", "t_rel_s"].dropna().tolist()
-        )
+        started_mask = ce["outcome"] == "STARTED"
+        result["started"] = ce.loc[started_mask, "t_rel_s"].dropna().tolist()
+        if "role" in ce.columns:
+            ch_mask = ce["role"].astype(str).isin(["1", "CH"])
+            result["ch_started"] = ce.loc[started_mask & ch_mask, "t_rel_s"].dropna().tolist()
+        else:
+            result["ch_started"] = result["started"]
 
     return result
 
@@ -2230,20 +2231,18 @@ def _plot_07_pdr_with_events_per_protocol(runs, fig_dir, missing):
             plt.close(fig)
             continue
 
-        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "timeouts", "started")}
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
                 all_events[k].extend(ev[k])
 
         _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred",  "CH death",  lw=1.2, linestyle="-")
+                          "darkred",  "CH death",    lw=1.2, linestyle="-")
         _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",      "UAV death", lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["timeouts"],
-                          "orange",   "TIMEOUT",   lw=0.7, linestyle=":", alpha=0.6)
-        _add_event_vlines(ax, all_events["started"],
-                          "green",    "STARTED",   lw=0.5, linestyle="-", alpha=0.3)
+                          "red",      "UAV death",   lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["ch_started"],
+                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         ax.set_xlabel("Experiment time (min)")
         ax.set_ylabel("Window PDR")
@@ -2294,18 +2293,18 @@ def _plot_07_pdr_with_events_panel(runs, fig_dir, missing):
                 ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
             any_plot = True
 
-        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "timeouts", "started")}
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
                 all_events[k].extend(ev[k])
 
         _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred", "CH death",  lw=1.2, linestyle="-")
+                          "darkred",   "CH death",            lw=1.2, linestyle="-")
         _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",     "UAV death", lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["timeouts"],
-                          "orange",  "TIMEOUT",   lw=0.7, linestyle=":", alpha=0.6)
+                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["ch_started"],
+                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         ax.set_ylabel("PDR", fontsize=8)
         ax.set_ylim(-0.05, 1.05)
@@ -2365,7 +2364,7 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
 
         # --- pooled event times -------------------------------------------------
-        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "timeouts", "started")}
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
@@ -2380,13 +2379,11 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
 
         _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred",  "CH death",  lw=1.2, linestyle="-")
+                          "darkred",   "CH death",            lw=1.2, linestyle="-")
         _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",      "UAV death", lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["timeouts"],
-                          "orange",   "TIMEOUT",   lw=0.7, linestyle=":", alpha=0.6)
-        _add_event_vlines(ax, all_events["started"],
-                          "green",    "STARTED",   lw=0.5, linestyle="-",  alpha=0.3)
+                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["ch_started"],
+                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
