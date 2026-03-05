@@ -708,6 +708,90 @@ def _plot_03_dead_uav_cumulative(runs, fig_dir, missing):
     print("  [OK] 03_dead_uav_cumulative")
 
 
+def _cumulative_energy_series(run: dict, missing: list):
+    """Return *(t_min_array, cumulative_wh_array, unit_str)* for *run*, or *(None, None, None)*.
+
+    Source priority:
+    1. charge_session_events.csv  DOCK_END  ->  energy_charged_wh
+    2. charge_session_events.csv  DOCK_END  ->  (battery_after - battery_before)
+                                               x battery_capacity_wh / 100
+    3. charge_events.csv  STARTED/ENERGY_DEPLETED  ->  energy_recovered_pct
+       (units become %-pts, not Wh, only used as last resort)
+    """
+    _probe: list = []
+    df2 = _load(run, "charge_session_events", _probe)
+    if df2 is not None and "event_type" in df2.columns and "t_rel_s" in df2.columns:
+        ended = df2[df2["event_type"] == "DOCK_END"].sort_values("t_rel_s")
+
+        if "energy_charged_wh" in ended.columns:
+            wh   = ended["energy_charged_wh"].replace(-1, float("nan"))
+            mask = wh.notna() & (wh >= 0)
+            if mask.sum() > 0:
+                t = ended.loc[mask, "t_rel_s"].values / 60.0
+                y = np.cumsum(wh[mask].values)
+                return t, y, "Wh"
+
+        if ("battery_before" in ended.columns and "battery_after" in ended.columns
+                and "battery_capacity_wh" in ended.columns):
+            cap   = ended["battery_capacity_wh"].replace(0, float("nan"))
+            delta = (ended["battery_after"] - ended["battery_before"]).replace(-1, float("nan"))
+            wh    = (delta * cap / 100.0)
+            mask  = wh.notna() & (wh >= 0)
+            if mask.sum() > 0:
+                t = ended.loc[mask, "t_rel_s"].values / 60.0
+                y = np.cumsum(wh[mask].values)
+                return t, y, "Wh"
+
+    # Fallback: charge_events.csv energy_recovered_pct (%-pts)
+    df = _load(run, "charge_events", _probe)
+    if df is not None and "t_rel_s" in df.columns:
+        col = next((c for c in ("energy_recovered_pct", "energy_recovered") if c in df.columns), None)
+        if col is not None:
+            if "outcome" in df.columns:
+                df = df[df["outcome"].isin(["STARTED", "ENERGY_DEPLETED"])].copy()
+            df = df.sort_values("t_rel_s")
+            vals = df[col].replace(-1, float("nan"))
+            mask = vals.notna() & (vals >= 0)
+            if mask.sum() > 0:
+                t = df.loc[mask, "t_rel_s"].values / 60.0
+                y = np.cumsum(vals[mask].values)
+                return t, y, "%-pts"
+
+    missing.extend(_probe)
+    return None, None, None
+
+
+def _plot_03_cumulative_energy_charged(runs, fig_dir, missing):
+    """G3/P5 — Cumulative energy charged per run over time (step plot)."""
+    fig, ax = plt.subplots(figsize=(12, 5))
+    colors = protocol_color_map([r["protocol"] for r in runs])
+    any_data = False
+    unit_label = "Wh"
+
+    for run in runs:
+        t, y, unit = _cumulative_energy_series(run, missing)
+        if t is None or len(t) == 0:
+            continue
+        unit_label = unit
+        ax.step(t, y, where="post",
+                color=colors[run["protocol"]],
+                linewidth=1.5, alpha=0.85,
+                label=run["label"])
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 03_cumulative_energy_charged: no energy data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel(f"Cumulative energy charged ({unit_label})")
+    ax.set_title("Cumulative Energy Charged Over Time — All Protocols")
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "03_cumulative_energy_charged")
+    print("  [OK] 03_cumulative_energy_charged")
+
+
 # ===========================================================================
 # GROUP 04 — Policy Radar
 # ===========================================================================
@@ -1292,6 +1376,54 @@ def _plot_03_dead_uav_cumulative_merged(runs, fig_dir, missing, bin_sec):
     deduplicate_legend(ax)
     savefig(fig, fig_dir, "03_dead_uav_cumulative_merged")
     print("  [OK] 03_dead_uav_cumulative_merged")
+
+
+def _plot_03_cumulative_energy_charged_merged(runs, fig_dir, missing, bin_sec):
+    """G3/P5-M — Cumulative energy charged: mean per protocol (replicates merged)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+    fig, ax = plt.subplots(figsize=(12, 5))
+    any_data = False
+    unit_label = "Wh"
+
+    for proto, run_list in groups.items():
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            t, y, unit = _cumulative_energy_series(run, missing)
+            if t is None or len(t) == 0:
+                continue
+            unit_label = unit
+            t_max = max(t_max, float(t[-1]))
+            series.append((t, y))
+
+        if not series:
+            continue
+
+        t_grid = np.arange(0, t_max + bin_sec / 60.0, bin_sec / 60.0)
+        interped = []
+        for t, y in series:
+            idx = np.searchsorted(t, t_grid, side="right")
+            # forward-fill: value is last cumulative before or at grid point
+            y_ff = np.where(idx == 0, 0.0, y[np.minimum(idx - 1, len(y) - 1)])
+            interped.append(y_ff)
+        arr = np.array(interped, dtype=float)
+        mean = np.mean(arr, axis=0)
+
+        ax.plot(t_grid, mean, color=colors[proto], linewidth=1.8, label=proto)
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 03_cumulative_energy_charged_merged: no energy data")
+        plt.close(fig)
+        return
+
+    ax.set_xlabel("Experiment time (min)")
+    ax.set_ylabel(f"Cumulative energy charged ({unit_label})  [mean across replicates]")
+    ax.set_title("Cumulative Energy Charged — Merged Replicates")
+    deduplicate_legend(ax)
+    savefig(fig, fig_dir, "03_cumulative_energy_charged_merged")
+    print("  [OK] 03_cumulative_energy_charged_merged")
 
 
 # --- Group 04 merged --------------------------------------------------------
@@ -2724,6 +2856,7 @@ def main():
     _plot_03_dock_utilization(runs, fig_dirs["03"], missing)
     _plot_03_charge_outcome_breakdown(runs, fig_dirs["03"], missing)
     _plot_03_dead_uav_cumulative(runs, fig_dirs["03"], missing)
+    _plot_03_cumulative_energy_charged(runs, fig_dirs["03"], missing)
 
     # ------------------------------------------------------------------
     # Group 04 — Policy Radar  (1 plot)
@@ -2756,6 +2889,7 @@ def main():
     _plot_03_dock_utilization_merged(runs, fig_dirs["03"], missing, bin_sec)
     _plot_03_charge_outcome_breakdown_merged(runs, fig_dirs["03"], missing)
     _plot_03_dead_uav_cumulative_merged(runs, fig_dirs["03"], missing, bin_sec)
+    _plot_03_cumulative_energy_charged_merged(runs, fig_dirs["03"], missing, bin_sec)
 
     print("\n[Group 04 Merged]")
     _plot_04_policy_radar_merged(runs, fig_dirs["04"], missing)

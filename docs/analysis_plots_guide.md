@@ -169,6 +169,28 @@ Merged variant interpolates replicates to a common grid and plots the mean.
 
 ---
 
+### `03_cumulative_energy_charged` / `_merged`
+
+**Question:** How much total energy (Wh) has each protocol delivered to UAVs over the experiment, and at what rate?
+
+**Chart type:** Step/line plot — one curve per run (or per protocol in the merged variant). Each step up represents one completed charge session.
+
+**X-axis:** Experiment time (minutes).
+**Y-axis:** Cumulative energy charged.  Units are **Wh** when capacity-aware data is available; falls back to %-pts (battery percentage points summed) when only `charge_events.csv` is present.
+
+**Calculation:**
+1. Load `charge_session_events.csv`, filter `event_type == "DOCK_END"`.
+2. Use `energy_charged_wh` directly if present and non-sentinel.
+3. Otherwise compute `(battery_after − battery_before) × battery_capacity_wh / 100`.
+4. Sort by `t_rel_s`, compute `cumsum` of Wh values → plot as a step curve.
+5. Fallback to `charge_events.csv` `energy_recovered_pct` (%-pts, not Wh) when `charge_session_events.csv` is absent.
+
+In the merged variant, each replicate's cumulative curve is forward-filled onto a common time grid, then averaged across replicates.
+
+**Why this matters:** Cumulative energy shows the charging throughput of each protocol over time — a steeper slope means more energy is being returned to the fleet per minute, which directly correlates with UAV survival rates and mission continuity.
+
+---
+
 ## Group 04 — Policy Radar
 
 ### `04_policy_radar` / `_merged`
