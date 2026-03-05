@@ -2051,6 +2051,7 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
         "ch_deaths":  [],
         "ch_started": [],
         "started":    [],
+        "timeouts":   [],
     }
 
     # Deaths
@@ -2067,7 +2068,8 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
     ce = _load(run, "charge_events", missing)
     if ce is not None and "outcome" in ce.columns and "t_rel_s" in ce.columns:
         started_mask = ce["outcome"] == "STARTED"
-        result["started"] = ce.loc[started_mask, "t_rel_s"].dropna().tolist()
+        result["started"]  = ce.loc[started_mask, "t_rel_s"].dropna().tolist()
+        result["timeouts"] = ce.loc[ce["outcome"] == "TIMEOUT", "t_rel_s"].dropna().tolist()
         if "role" in ce.columns:
             ch_mask = ce["role"].astype(str).isin(["1", "CH"])
             result["ch_started"] = ce.loc[started_mask & ch_mask, "t_rel_s"].dropna().tolist()
