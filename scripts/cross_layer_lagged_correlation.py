@@ -33,11 +33,32 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 import numpy as np
 import pandas as pd
-from scipy.stats import pearsonr, spearmanr
 
-# Silence pandas future / scipy runtime warnings
+# Silence pandas future warnings
 warnings.filterwarnings("ignore", category=FutureWarning)
 warnings.filterwarnings("ignore", category=RuntimeWarning)
+
+
+# ---------------------------------------------------------------------------
+# Pure-numpy correlation helpers (no scipy required)
+# ---------------------------------------------------------------------------
+
+def _pearson_r(x: np.ndarray, y: np.ndarray) -> float:
+    """Pearson correlation coefficient via numpy."""
+    if len(x) < 3 or x.std() == 0 or y.std() == 0:
+        return np.nan
+    return float(np.corrcoef(x, y)[0, 1])
+
+
+def _spearman_r(x: np.ndarray, y: np.ndarray) -> float:
+    """Spearman rank correlation via numpy (rank ties broken by first occurrence)."""
+    if len(x) < 3:
+        return np.nan
+    xr = x.argsort().argsort().astype(float)
+    yr = y.argsort().argsort().astype(float)
+    if xr.std() == 0 or yr.std() == 0:
+        return np.nan
+    return float(np.corrcoef(xr, yr)[0, 1])
 
 # ---------------------------------------------------------------------------
 # Constants
@@ -72,16 +93,14 @@ METRIC_LABELS = {
 # ---------------------------------------------------------------------------
 
 def _safe_corr(x: np.ndarray, y: np.ndarray):
-    """Return (pearson_r, pearson_p, spearman_r, spearman_p) or NaNs."""
+    """Return (pearson_r, nan, spearman_r, nan) — p-values omitted (no scipy)."""
     mask = ~(np.isnan(x) | np.isnan(y))
     if mask.sum() < 5:
         return np.nan, np.nan, np.nan, np.nan
     xm, ym = x[mask], y[mask]
-    if xm.std() == 0 or ym.std() == 0:
-        return np.nan, np.nan, np.nan, np.nan
-    pr, pp = pearsonr(xm, ym)
-    sr, sp = spearmanr(xm, ym)
-    return float(pr), float(pp), float(sr), float(sp)
+    pr = _pearson_r(xm, ym)
+    sr = _spearman_r(xm, ym)
+    return pr, np.nan, sr, np.nan
 
 
 def _lagged_corr(x: np.ndarray, y: np.ndarray, max_lag_bins: int):

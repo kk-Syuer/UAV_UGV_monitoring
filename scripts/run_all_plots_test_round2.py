@@ -34,6 +34,7 @@ Old-schema compatibility
 """
 
 import argparse
+import gc
 import json
 import sys
 import warnings
@@ -3081,6 +3082,7 @@ def _run_cross_layer_pipeline(
         out_path = tables_dir / f"{run['protocol']}_{run['replicate']}.csv"
         df.to_csv(out_path, index=False)
         groups.setdefault(run["protocol"], []).append(df)
+        gc.collect()  # free DataFrames loaded inside build_run_windows
 
     merged_tables: dict[str, "pd.DataFrame"] = {}
     for proto, frames in sorted(groups.items()):
