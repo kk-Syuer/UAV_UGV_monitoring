@@ -26,12 +26,11 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-# Allow imports from the same scripts/ directory when run from repo root.
 sys.path.insert(0, str(Path(__file__).parent))
 from plotting_utils import discover_runs, load_csv_if_exists, ensure_t_rel  # noqa: E402
 
 # ---------------------------------------------------------------------------
-# Helpers
+# Constants
 # ---------------------------------------------------------------------------
 
 _FILE_MAP = {
@@ -42,49 +41,179 @@ _FILE_MAP = {
     "status_timeseries":       "status_timeseries.csv",
 }
 
+_CHUNK = 50_000   # rows per chunk for streaming reads
 
-def _load(folder: Path, key: str) -> pd.DataFrame | None:
+
+# ---------------------------------------------------------------------------
+# Streaming aggregation helper
+# ---------------------------------------------------------------------------
+
+def _stream_agg(
+    path: Path,
+    mean_cols:    dict[str, str]             | None = None,
+    derived_cols: dict[str, list[str]]       | None = None,
+    frac_cols:    dict[str, tuple[str, float]]| None = None,
+    bin_sec: float = 60.0,
+    filter_col:  str | None = None,
+    filter_excl: str | None = None,
+) -> tuple[dict[int, dict[str, float]], float]:
+    """Read *path* in chunks; accumulate per-bin statistics.  Never holds
+    more than ``_CHUNK`` rows in memory at once.
+
+    Parameters
+    ----------
+    mean_cols    : {csv_col: output_key}  — compute mean per bin
+    derived_cols : {output_key: [csv_col, …]} — row-wise sum, then mean per bin
+    frac_cols    : {csv_col: (output_key, threshold)} — fraction of rows < threshold
+    filter_col   : column name used for row filtering
+    filter_excl  : value to exclude (rows where filter_col == filter_excl are dropped)
+
+    Returns
+    -------
+    bins : {bin_idx: {output_key: value}}
+    t_max : max relative time in seconds
+    """
+    if not path.exists() or path.stat().st_size == 0:
+        return {}, 0.0
+
+    mean_cols    = mean_cols    or {}
+    derived_cols = derived_cols or {}
+    frac_cols    = frac_cols    or {}
+
+    # ── Detect time column (old schema: 'time'; new schema: 'time_s') ──────
+    try:
+        header_cols = pd.read_csv(path, nrows=0).columns.tolist()
+    except Exception as exc:
+        warnings.warn(f"Cannot read header of {path}: {exc}")
+        return {}, 0.0
+
+    t_raw = "time_s" if "time_s" in header_cols else ("time" if "time" in header_cols else None)
+    if t_raw is None:
+        warnings.warn(f"No time column found in {path}")
+        return {}, 0.0
+
+    # Only request columns that actually exist in the file
+    needed = set([t_raw])
+    for c in mean_cols:
+        if c in header_cols:
+            needed.add(c)
+    for cols_list in derived_cols.values():
+        needed.update(c for c in cols_list if c in header_cols)
+    for c in frac_cols:
+        if c in header_cols:
+            needed.add(c)
+    if filter_col and filter_col in header_cols:
+        needed.add(filter_col)
+    read_cols = list(needed)
+
+    # ── First pass: find global min_time using only the time column ─────────
+    try:
+        t_series = pd.read_csv(path, usecols=[t_raw])[t_raw].dropna()
+        if t_series.empty:
+            return {}, 0.0
+        min_time = float(t_series.min())
+        t_max    = float(t_series.max()) - min_time
+        del t_series
+        gc.collect()
+    except Exception as exc:
+        warnings.warn(f"Cannot read time column from {path}: {exc}")
+        return {}, 0.0
+
+    # ── Accumulators ────────────────────────────────────────────────────────
+    b_sum: dict[int, dict[str, float]] = {}  # {bin: {key: running_sum}}
+    b_cnt: dict[int, dict[str, int]]   = {}  # {bin: {key: running_count}}
+    b_blw: dict[int, dict[str, int]]   = {}  # {bin: {key: running_count_below}}
+
+    # ── Second pass: stream chunks ──────────────────────────────────────────
+    try:
+        for chunk in pd.read_csv(path, usecols=read_cols, chunksize=_CHUNK,
+                                 low_memory=True):
+            if filter_col and filter_col in chunk.columns and filter_excl is not None:
+                chunk = chunk[chunk[filter_col] != filter_excl]
+            if chunk.empty:
+                continue
+
+            t_rel = chunk[t_raw].values.astype(np.float64) - min_time
+            valid = t_rel >= 0
+            if not valid.any():
+                continue
+            chunk  = chunk[valid]
+            t_rel  = t_rel[valid]
+            bins_v = (t_rel // bin_sec).astype(np.int32)
+
+            chunk = chunk.copy()
+            chunk["_bin"] = bins_v
+
+            for bi_val, grp in chunk.groupby("_bin", sort=False):
+                bi = int(bi_val)
+                if bi not in b_sum:
+                    b_sum[bi] = {}
+                    b_cnt[bi] = {}
+                    b_blw[bi] = {}
+
+                # mean_cols
+                for csv_col, out_key in mean_cols.items():
+                    if csv_col not in grp.columns:
+                        continue
+                    vals = grp[csv_col].dropna().values
+                    if len(vals) == 0:
+                        continue
+                    b_sum[bi][out_key] = b_sum[bi].get(out_key, 0.0) + float(vals.sum())
+                    b_cnt[bi][out_key] = b_cnt[bi].get(out_key, 0)   + len(vals)
+
+                # derived_cols (row-wise sum → mean)
+                for out_key, col_list in derived_cols.items():
+                    avail = [c for c in col_list if c in grp.columns]
+                    if not avail:
+                        continue
+                    row_totals = grp[avail].sum(axis=1).dropna().values
+                    if len(row_totals) == 0:
+                        continue
+                    b_sum[bi][out_key] = b_sum[bi].get(out_key, 0.0) + float(row_totals.sum())
+                    b_cnt[bi][out_key] = b_cnt[bi].get(out_key, 0)   + len(row_totals)
+
+                # frac_cols
+                for csv_col, (out_key, threshold) in frac_cols.items():
+                    if csv_col not in grp.columns:
+                        continue
+                    vals = grp[csv_col].dropna().values
+                    if len(vals) == 0:
+                        continue
+                    # Reuse count from mean_cols if same column was also in mean_cols
+                    mean_key = mean_cols.get(csv_col, "_frac_" + csv_col)
+                    b_cnt[bi][out_key + "_n"] = b_cnt[bi].get(out_key + "_n", 0) + len(vals)
+                    b_blw[bi][out_key]        = b_blw[bi].get(out_key, 0) + int((vals < threshold).sum())
+
+    except Exception as exc:
+        warnings.warn(f"Error streaming {path}: {exc}")
+
+    # ── Compute final per-bin values ────────────────────────────────────────
+    result: dict[int, dict[str, float]] = {}
+    for bi in set(b_sum) | set(b_blw):
+        result[bi] = {}
+        for out_key in b_sum.get(bi, {}):
+            n = b_cnt.get(bi, {}).get(out_key, 0)
+            if n > 0:
+                result[bi][out_key] = b_sum[bi][out_key] / n
+        for out_key, below in b_blw.get(bi, {}).items():
+            n = b_cnt.get(bi, {}).get(out_key + "_n", 0)
+            if n > 0:
+                result[bi][out_key] = below / n
+
+    return result, t_max
+
+
+# ---------------------------------------------------------------------------
+# Small-file loader (charge_events, death_events)
+# ---------------------------------------------------------------------------
+
+def _load_small(folder: Path, key: str) -> pd.DataFrame | None:
+    """Full load for small event tables (charge_events, death_events)."""
     path = folder / _FILE_MAP[key]
     df = load_csv_if_exists(path)
     if df is not None:
         ensure_t_rel(df)
     return df
-
-
-def _load_slim(folder: Path, key: str, wanted: list[str]) -> pd.DataFrame | None:
-    """Load only *wanted* columns from a CSV, applying time rename and t_rel_s.
-
-    Falls back to full load if the requested columns cannot be detected.
-    This avoids reading every column from large timeseries files.
-    """
-    path = folder / _FILE_MAP[key]
-    if not path.exists() or path.stat().st_size == 0:
-        return None
-    try:
-        header = pd.read_csv(path, nrows=0)
-        available = set(header.columns)
-        # Translate 'time_s' request → 'time' when old schema
-        actual = []
-        for c in wanted:
-            if c in available:
-                actual.append(c)
-            elif c == "time_s" and "time" in available:
-                actual.append("time")
-        if not actual:
-            return None
-        df = pd.read_csv(path, usecols=actual)
-        if "time" in df.columns and "time_s" not in df.columns:
-            df.rename(columns={"time": "time_s"}, inplace=True)
-        ensure_t_rel(df)
-        return df if not df.empty else None
-    except Exception as exc:
-        warnings.warn(f"_load_slim failed for {path}: {exc}")
-        return None
-
-
-def _bin_idx(t_rel_s: pd.Series, bin_sec: float) -> pd.Series:
-    """Return zero-based bin index for each timestamp."""
-    return (t_rel_s // bin_sec).astype(int)
 
 
 def _build_bins(t_max_s: float, bin_sec: float) -> np.ndarray:
@@ -96,172 +225,142 @@ def _build_bins(t_max_s: float, bin_sec: float) -> np.ndarray:
 # ---------------------------------------------------------------------------
 
 def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
-    folder = run["folder"]
-    protocol = run["protocol"]
+    folder    = run["folder"]
+    protocol  = run["protocol"]
     replicate = run["replicate"]
-    warnings_issued = []
+    tag       = f"{protocol} r{replicate}"
+    warn: list[str] = []
 
     # ------------------------------------------------------------------ #
-    # 1. network_timeseries  → dpr_mean, e2e_delay_mean_ms, e2e_delay_p95
+    # 1. network_timeseries — streaming
     # ------------------------------------------------------------------ #
-    _net_cols = ["time_s", "window_pdr", "window_delay_mean_ms", "window_delay_p95_ms"]
-    net = _load_slim(folder, "network_timeseries", _net_cols)
-    net_bins: dict[int, dict] = {}
-    t_max = 0.0
-
-    if net is not None and "t_rel_s" in net.columns:
-        if "window_pdr" not in net.columns:
-            warnings_issued.append("  [WARN] network_timeseries: missing window_pdr")
-        net = net[net["t_rel_s"] >= 0].copy()
-        t_max = max(t_max, net["t_rel_s"].max() if not net.empty else 0.0)
-        net["_bin"] = _bin_idx(net["t_rel_s"], bin_sec)
-        for b, grp in net.groupby("_bin"):
-            row: dict = {}
-            if "window_pdr" in grp.columns:
-                row["dpr_mean"] = grp["window_pdr"].mean()
-            if "window_delay_mean_ms" in grp.columns:
-                row["e2e_delay_mean_ms"] = grp["window_delay_mean_ms"].mean()
-            if "window_delay_p95_ms" in grp.columns:
-                row["e2e_delay_p95_ms"] = grp["window_delay_p95_ms"].mean()
-            net_bins[b] = row
-    else:
-        warnings_issued.append(f"  [WARN] {protocol} r{replicate}: network_timeseries missing or no t_rel_s")
-    del net
+    print(f"  [{tag}] network_timeseries …", flush=True)
+    net_bins, t_max = _stream_agg(
+        folder / _FILE_MAP["network_timeseries"],
+        mean_cols={
+            "window_pdr":            "dpr_mean",
+            "window_delay_mean_ms":  "e2e_delay_mean_ms",
+            "window_delay_p95_ms":   "e2e_delay_p95_ms",
+        },
+        bin_sec=bin_sec,
+    )
+    if not net_bins:
+        warn.append(f"  [WARN] {tag}: network_timeseries empty or missing")
+    gc.collect()
 
     # ------------------------------------------------------------------ #
-    # 2. charge_events  → outcome counts, rates, wait / latency
+    # 2. charge_events — full load (small file)
     # ------------------------------------------------------------------ #
-    _ce_cols = ["request_time_s", "request_time", "outcome",
-                "waiting_time_ms", "effective_wait_ms", "decision_latency_ms"]
-    ce = _load_slim(folder, "charge_events", _ce_cols)
+    print(f"  [{tag}] charge_events …", flush=True)
+    ce = _load_small(folder, "charge_events")
     ce_bins: dict[int, dict] = {}
-
     if ce is not None:
-        # Determine the event time column (request_time_s preferred)
-        time_col = None
-        for cand in ("request_time_s", "request_time", "t_rel_s"):
-            if cand in ce.columns:
-                time_col = cand
-                break
+        time_col = next((c for c in ("request_time_s", "request_time", "t_rel_s")
+                         if c in ce.columns), None)
         if time_col is None:
-            warnings_issued.append(f"  [WARN] {protocol} r{replicate}: charge_events no usable time column")
+            warn.append(f"  [WARN] {tag}: charge_events no usable time column")
         else:
-            if time_col != "t_rel_s":
-                ce = ce.copy()
-                ce["_t_rel_s"] = ce[time_col] - ce[time_col].min()
-            else:
-                ce["_t_rel_s"] = ce["t_rel_s"]
-
-            t_max = max(t_max, ce["_t_rel_s"].max() if not ce.empty else 0.0)
-            ce["_bin"] = _bin_idx(ce["_t_rel_s"], bin_sec)
-
+            t0 = ce[time_col].min()
+            ce["_t_rel_s"] = ce[time_col] - t0
+            t_max = max(t_max, float(ce["_t_rel_s"].max()))
+            ce["_bin"] = (ce["_t_rel_s"] // bin_sec).astype(int)
             for b, grp in ce.groupby("_bin"):
                 row: dict = {}
                 if "outcome" in grp.columns:
                     vc = grp["outcome"].value_counts()
-                    row["started_count"]  = int(vc.get("STARTED", 0))
-                    row["timeout_count"]  = int(vc.get("TIMEOUT", 0))
-                    row["success_count"]  = int(vc.get("STARTED", 0))  # alias
+                    row["started_count"]  = int(vc.get("STARTED",  0))
+                    row["timeout_count"]  = int(vc.get("TIMEOUT",  0))
+                    row["success_count"]  = int(vc.get("STARTED",  0))
                     row["rejected_count"] = int(vc.get("REJECTED", 0))
-                    row["dropped_count"]  = int(vc.get("DROPPED", 0))
-                    total = len(grp)
-                    row["timeout_rate"]  = row["timeout_count"]  / total if total else np.nan
-                    row["success_rate"]  = row["success_count"]  / total if total else np.nan
-                if "waiting_time_ms" in grp.columns:
-                    row["mean_wait_ms"]   = grp["waiting_time_ms"].mean()
-                    row["median_wait_ms"] = grp["waiting_time_ms"].median()
-                if "effective_wait_ms" in grp.columns:
-                    row["mean_effective_wait_ms"] = grp["effective_wait_ms"].mean()
-                if "decision_latency_ms" in grp.columns:
-                    row["decision_latency_mean_ms"]   = grp["decision_latency_ms"].mean()
-                    row["decision_latency_median_ms"] = grp["decision_latency_ms"].median()
-                ce_bins[b] = row
+                    row["dropped_count"]  = int(vc.get("DROPPED",  0))
+                    n = len(grp)
+                    row["timeout_rate"] = row["timeout_count"] / n if n else np.nan
+                    row["success_rate"] = row["success_count"] / n if n else np.nan
+                if "waiting_time_ms"      in grp.columns:
+                    row["mean_wait_ms"]           = float(grp["waiting_time_ms"].mean())
+                    row["median_wait_ms"]         = float(grp["waiting_time_ms"].median())
+                if "effective_wait_ms"    in grp.columns:
+                    row["mean_effective_wait_ms"] = float(grp["effective_wait_ms"].mean())
+                if "decision_latency_ms"  in grp.columns:
+                    row["decision_latency_mean_ms"]   = float(grp["decision_latency_ms"].mean())
+                    row["decision_latency_median_ms"] = float(grp["decision_latency_ms"].median())
+                ce_bins[int(b)] = row
     else:
-        warnings_issued.append(f"  [WARN] {protocol} r{replicate}: charge_events.csv not found")
+        warn.append(f"  [WARN] {tag}: charge_events.csv not found")
     del ce
+    gc.collect()
 
     # ------------------------------------------------------------------ #
-    # 3. death_events  → death_count, cum_deaths
+    # 3. death_events — full load (small file)
     # ------------------------------------------------------------------ #
-    de = _load(folder, "death_events")  # small file, full load is fine
+    print(f"  [{tag}] death_events …", flush=True)
+    de = _load_small(folder, "death_events")
     de_bins: dict[int, int] = {}
-
     if de is not None and "t_rel_s" in de.columns and not de.empty:
-        t_max = max(t_max, de["t_rel_s"].max())
-        de["_bin"] = _bin_idx(de["t_rel_s"], bin_sec)
+        t_max = max(t_max, float(de["t_rel_s"].max()))
+        de["_bin"] = (de["t_rel_s"] // bin_sec).astype(int)
         for b, grp in de.groupby("_bin"):
-            de_bins[b] = len(grp)
+            de_bins[int(b)] = len(grp)
     else:
-        warnings_issued.append(f"  [WARN] {protocol} r{replicate}: death_events missing or empty")
+        warn.append(f"  [WARN] {tag}: death_events missing or empty")
     del de
+    gc.collect()
 
     # ------------------------------------------------------------------ #
-    # 4. charge_queue_timeseries  → dock_util_mean, queue_len_mean
+    # 4. charge_queue_timeseries — streaming
     # ------------------------------------------------------------------ #
-    _cq_cols = ["time_s", "ugv_dock_utilization",
-                "queue_length_ugv", "queue_length_ch", "queue_length_member"]
-    cq = _load_slim(folder, "charge_queue_timeseries", _cq_cols)
-    cq_bins: dict[int, dict] = {}
-
-    if cq is not None and "t_rel_s" in cq.columns and not cq.empty:
-        t_max = max(t_max, cq["t_rel_s"].max())
-        cq["_bin"] = _bin_idx(cq["t_rel_s"], bin_sec)
-        # queue length: sum of all role-specific columns if present
-        q_cols = [c for c in ("queue_length_ugv", "queue_length_ch", "queue_length_member")
-                  if c in cq.columns]
-        for b, grp in cq.groupby("_bin"):
-            row: dict = {}
-            if "ugv_dock_utilization" in grp.columns:
-                row["dock_util_mean"] = grp["ugv_dock_utilization"].mean()
-            if q_cols:
-                row["queue_len_mean"] = grp[q_cols].sum(axis=1).mean()
-            cq_bins[b] = row
-    else:
-        warnings_issued.append(f"  [WARN] {protocol} r{replicate}: charge_queue_timeseries missing")
-    del cq
+    print(f"  [{tag}] charge_queue_timeseries …", flush=True)
+    cq_bins, cq_tmax = _stream_agg(
+        folder / _FILE_MAP["charge_queue_timeseries"],
+        mean_cols={
+            "ugv_dock_utilization": "dock_util_mean",
+        },
+        derived_cols={
+            "queue_len_mean": ["queue_length_ugv", "queue_length_ch", "queue_length_member"],
+        },
+        bin_sec=bin_sec,
+    )
+    t_max = max(t_max, cq_tmax)
+    if not cq_bins:
+        warn.append(f"  [WARN] {tag}: charge_queue_timeseries empty or missing")
+    gc.collect()
 
     # ------------------------------------------------------------------ #
-    # 5. status_timeseries  → mean_battery, frac_low_battery
-    # Slim load: only the 3 columns we use (largest file in the dataset).
+    # 5. status_timeseries — streaming (largest file; filter sink_gateway)
     # ------------------------------------------------------------------ #
-    _st_cols = ["time_s", "uav_id", "battery_level"]
-    st = _load_slim(folder, "status_timeseries", _st_cols)
-    st_bins: dict[int, dict] = {}
-
-    if st is not None and "t_rel_s" in st.columns and not st.empty:
-        if "uav_id" in st.columns:
-            st = st[st["uav_id"] != "sink_gateway"].copy()
-        t_max = max(t_max, st["t_rel_s"].max())
-        if "battery_level" in st.columns:
-            st["_bin"] = _bin_idx(st["t_rel_s"], bin_sec)
-            for b, grp in st.groupby("_bin"):
-                batt = grp["battery_level"].dropna()
-                st_bins[b] = {
-                    "mean_battery":      float(batt.mean()) if len(batt) > 0 else np.nan,
-                    "frac_low_battery":  float((batt < 20).mean()) if len(batt) > 0 else np.nan,
-                }
-        else:
-            warnings_issued.append(f"  [WARN] {protocol} r{replicate}: status_timeseries no battery_level")
-    else:
-        warnings_issued.append(f"  [WARN] {protocol} r{replicate}: status_timeseries missing")
-    del st
+    print(f"  [{tag}] status_timeseries …", flush=True)
+    st_bins, st_tmax = _stream_agg(
+        folder / _FILE_MAP["status_timeseries"],
+        mean_cols={
+            "battery_level": "mean_battery",
+        },
+        frac_cols={
+            "battery_level": ("frac_low_battery", 20.0),
+        },
+        bin_sec=bin_sec,
+        filter_col="uav_id",
+        filter_excl="sink_gateway",
+    )
+    t_max = max(t_max, st_tmax)
+    if not st_bins:
+        warn.append(f"  [WARN] {tag}: status_timeseries empty or missing")
     gc.collect()
 
     # ------------------------------------------------------------------ #
     # 6. Assemble final table
     # ------------------------------------------------------------------ #
+    for w in warn:
+        print(w, flush=True)
+
     if t_max == 0.0:
-        for w in warnings_issued:
-            print(w)
-        print(f"  [SKIP] {protocol} r{replicate}: no usable time data")
+        print(f"  [SKIP] {tag}: no usable time data", flush=True)
         return None
 
     bins = _build_bins(t_max, bin_sec)
-    n_bins = len(bins)
     records = []
-
     cum_deaths = 0
-    for i, t_start in enumerate(bins):
+
+    for t_start in bins:
         b = int(t_start // bin_sec)
         row: dict = {
             "bin_start_s":   float(t_start),
@@ -271,31 +370,27 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
         }
         row.update(net_bins.get(b, {}))
         row.update(ce_bins.get(b, {}))
-
         deaths = de_bins.get(b, 0)
         cum_deaths += deaths
         row["death_count"] = deaths
         row["cum_deaths"]  = cum_deaths
-
         row.update(cq_bins.get(b, {}))
         row.update(st_bins.get(b, {}))
         records.append(row)
 
-    for w in warnings_issued:
-        print(w)
-
     df_out = pd.DataFrame(records)
-    # Ensure consistent column order
-    front = ["bin_start_s", "bin_start_min", "protocol", "replicate",
-             "dpr_mean", "e2e_delay_mean_ms", "e2e_delay_p95_ms",
-             "timeout_count", "success_count", "started_count",
-             "rejected_count", "dropped_count",
-             "timeout_rate", "success_rate",
-             "mean_wait_ms", "median_wait_ms", "mean_effective_wait_ms",
-             "decision_latency_mean_ms", "decision_latency_median_ms",
-             "dock_util_mean", "queue_len_mean",
-             "death_count", "cum_deaths",
-             "mean_battery", "frac_low_battery"]
+    front = [
+        "bin_start_s", "bin_start_min", "protocol", "replicate",
+        "dpr_mean", "e2e_delay_mean_ms", "e2e_delay_p95_ms",
+        "timeout_count", "success_count", "started_count",
+        "rejected_count", "dropped_count",
+        "timeout_rate", "success_rate",
+        "mean_wait_ms", "median_wait_ms", "mean_effective_wait_ms",
+        "decision_latency_mean_ms", "decision_latency_median_ms",
+        "dock_util_mean", "queue_len_mean",
+        "death_count", "cum_deaths",
+        "mean_battery", "frac_low_battery",
+    ]
     cols = [c for c in front if c in df_out.columns] + \
            [c for c in df_out.columns if c not in front]
     return df_out[cols]
@@ -313,15 +408,12 @@ def merge_protocol(frames: list[pd.DataFrame]) -> pd.DataFrame:
     group_cols = ["bin_start_s", "bin_start_min", "protocol"]
     agg_num = {c: "mean" for c in combined.select_dtypes(include=np.number).columns
                if c not in ("bin_start_s", "bin_start_min", "replicate")}
-    # For count columns we want the sum across replicates (not mean)
     for cnt_col in ("timeout_count", "success_count", "started_count",
                     "rejected_count", "dropped_count", "death_count"):
         if cnt_col in agg_num:
             agg_num[cnt_col] = "sum"
-    # cum_deaths: take max across replicates (already cumulative per replicate)
     if "cum_deaths" in agg_num:
         agg_num["cum_deaths"] = "mean"
-
     agg_df = combined.groupby(group_cols, as_index=False).agg(agg_num)
     return agg_df.sort_values("bin_start_s").reset_index(drop=True)
 
@@ -348,57 +440,53 @@ def main():
 
     runs = discover_runs(input_root)
     if not runs:
-        print(f"[ERROR] No runs found under {input_root}")
+        print(f"[ERROR] No runs found under {input_root}", flush=True)
         sys.exit(1)
 
-    # ------------------------------------------------------------------ #
-    # Data coverage report
-    # ------------------------------------------------------------------ #
-    print("\n=== Data Coverage Report ===")
+    # ── Data coverage report ─────────────────────────────────────────────
+    print("\n=== Data Coverage Report ===", flush=True)
     protocols_seen: dict[str, list] = {}
     for run in runs:
         protocols_seen.setdefault(run["protocol"], []).append(run["replicate"])
     for proto, reps in sorted(protocols_seen.items()):
-        file_presence = []
         sample_run = next(r for r in runs if r["protocol"] == proto)
-        for key, fname in _FILE_MAP.items():
-            exists = (sample_run["folder"] / fname).exists()
-            file_presence.append(f"{'✓' if exists else '✗'} {fname}")
+        file_presence = [
+            f"{'✓' if (sample_run['folder'] / fname).exists() else '✗'} {fname}"
+            for fname in _FILE_MAP.values()
+        ]
         print(f"\n  Protocol: {proto}  (replicates: {sorted(reps)})")
         for fp in file_presence:
             print(f"    {fp}")
-    print()
+    print(flush=True)
 
-    # ------------------------------------------------------------------ #
-    # Build per-run tables
-    # ------------------------------------------------------------------ #
+    # ── Build per-run tables ─────────────────────────────────────────────
     groups: dict[str, list[pd.DataFrame]] = {}
     for run in sorted(runs, key=lambda r: (r["protocol"], r["replicate"])):
         tag = f"{run['protocol']}_r{run['replicate']}"
-        print(f"[build] {tag}")
+        print(f"[build] {tag}", flush=True)
         df = build_run_windows(run, bin_sec)
         if df is None or df.empty:
-            print(f"  [SKIP] {tag}: empty result")
+            print(f"  [SKIP] {tag}: empty result", flush=True)
             continue
         out_path = tables_dir / f"{run['protocol']}_{run['replicate']}.csv"
         df.to_csv(out_path, index=False)
-        print(f"  → {out_path.relative_to(output_root.parent.parent)}")
+        print(f"  [OK] {tag} → {out_path.name}", flush=True)
         groups.setdefault(run["protocol"], []).append(df)
+        del df
+        gc.collect()
 
-    # ------------------------------------------------------------------ #
-    # Build per-protocol merged tables
-    # ------------------------------------------------------------------ #
-    print()
+    # ── Merge replicates per protocol ────────────────────────────────────
+    print(flush=True)
     for proto, frames in sorted(groups.items()):
         merged = merge_protocol(frames)
         if merged.empty:
-            print(f"[SKIP] merged {proto}: empty")
+            print(f"[SKIP] merged {proto}: empty", flush=True)
             continue
         out_path = tables_dir / f"{proto}_merged.csv"
         merged.to_csv(out_path, index=False)
-        print(f"[merged] {proto}  ({len(frames)} replicates)  → {out_path.relative_to(output_root.parent.parent)}")
+        print(f"[merged] {proto}  ({len(frames)} replicates)  → {out_path.name}", flush=True)
 
-    print(f"\nDone. Tables written to: {tables_dir}")
+    print(f"\nDone. Tables written to: {tables_dir}", flush=True)
 
 
 if __name__ == "__main__":
