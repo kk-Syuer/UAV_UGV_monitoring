@@ -4,8 +4,14 @@ run_all_plots_test_round2.py
 -----------------------------
 End-to-end plotting pipeline for UAV/UGV experiment results.
 
-Produces 13 figures across 5 thematic groups, derived CSV tables, a
+Produces figures across 8 thematic groups, derived CSV tables, a
 protocol KPI summary table, and a missing-data report.
+
+Group 08 (cross-layer analysis) is run automatically unless
+``--skip-cross-layer`` is passed.  It requires the four add-on scripts:
+  build_cross_layer_windows.py, cross_layer_lagged_correlation.py,
+  plot_cross_layer_overlays.py, compute_charging_fairness.py.
+Use ``--max-lag-min`` (default 10) to control the lag window.
 
 Usage
 -----
@@ -55,6 +61,17 @@ from plotting_utils import (
     boxplot_multi,
 )
 
+# Cross-layer add-on modules (scripts/build_cross_layer_windows.py etc.)
+try:
+    import build_cross_layer_windows      as _bcl
+    import cross_layer_lagged_correlation as _clc
+    import plot_cross_layer_overlays      as _pco
+    import compute_charging_fairness      as _ccf
+    _CROSS_LAYER_AVAILABLE = True
+except ImportError as _e:
+    _CROSS_LAYER_AVAILABLE = False
+    warnings.warn(f"Cross-layer modules not importable ({_e}); Group 08 will be skipped.")
+
 # ---------------------------------------------------------------------------
 # CLI
 # ---------------------------------------------------------------------------
@@ -81,6 +98,20 @@ def _parse_args():
         default=60.0,
         help="Time-bin width in seconds used for resampled timeseries plots "
              "(default: 60)",
+    )
+    p.add_argument(
+        "--skip-cross-layer",
+        action="store_true",
+        default=False,
+        help="Skip Group 08 cross-layer analysis (window tables, lagged "
+             "correlation, event overlays, charging fairness).",
+    )
+    p.add_argument(
+        "--max-lag-min",
+        type=float,
+        default=10.0,
+        help="Maximum lag in minutes for cross-layer lagged correlation "
+             "(default: 10)",
     )
     return p.parse_args()
 
@@ -2998,6 +3029,188 @@ def _write_missing_report(missing: list, output_root: Path):
 
 
 # ===========================================================================
+# Group 08 — Cross-layer analysis pipeline
+# ===========================================================================
+
+def _run_cross_layer_pipeline(
+    runs: list,
+    output_root: Path,
+    bin_sec: float,
+    max_lag_min: float,
+    missing: list,
+) -> None:
+    """Run all four cross-layer add-on scripts as an integrated Group 08.
+
+    Steps
+    -----
+    1. Build per-run and per-protocol window tables
+       (``build_cross_layer_windows``)
+    2. Compute lagged Pearson/Spearman correlations between network and
+       scheduling metrics (``cross_layer_lagged_correlation``)
+    3. Plot DPR / E2E-delay timeseries with timeout + death markers
+       (``plot_cross_layer_overlays``)
+    4. Compute Jain's fairness index for charging outcomes per UAV
+       (``compute_charging_fairness``)
+
+    All outputs land under ``<output_root>/cross_layer/``.
+    """
+    if not _CROSS_LAYER_AVAILABLE:
+        missing.append("Group 08 skipped: cross-layer modules not importable")
+        return
+
+    cross_root = output_root / "cross_layer"
+    tables_dir = cross_root / "tables"
+    tables_dir.mkdir(parents=True, exist_ok=True)
+
+    # ------------------------------------------------------------------
+    # Step 1 — Window tables
+    # ------------------------------------------------------------------
+    print("\n  [08] Building cross-layer window tables …")
+    groups: dict[str, list] = {}
+    for run in sorted(runs, key=lambda r: (r["protocol"], r["replicate"])):
+        try:
+            df = _bcl.build_run_windows(run, bin_sec)
+        except Exception as exc:
+            msg = f"  [WARN] build_run_windows failed for {run['label']}: {exc}"
+            print(msg)
+            missing.append(msg)
+            continue
+        if df is None or df.empty:
+            missing.append(f"  [WARN] empty window table for {run['label']}")
+            continue
+        out_path = tables_dir / f"{run['protocol']}_{run['replicate']}.csv"
+        df.to_csv(out_path, index=False)
+        groups.setdefault(run["protocol"], []).append(df)
+
+    merged_tables: dict[str, "pd.DataFrame"] = {}
+    for proto, frames in sorted(groups.items()):
+        merged = _bcl.merge_protocol(frames)
+        if merged.empty:
+            continue
+        out_path = tables_dir / f"{proto}_merged.csv"
+        merged.to_csv(out_path, index=False)
+        merged_tables[proto] = merged
+
+    n_per_run  = sum(len(v) for v in groups.values())
+    n_merged   = len(merged_tables)
+    print(f"  [OK] window tables: {n_per_run} per-run, {n_merged} merged")
+
+    if not merged_tables:
+        missing.append("Group 08: no merged window tables produced — skipping remaining steps")
+        return
+
+    # ------------------------------------------------------------------
+    # Step 2 — Lagged correlation
+    # ------------------------------------------------------------------
+    print("  [08] Computing lagged correlations …")
+    corr_dir  = cross_root / "correlation"
+    corr_figs = corr_dir / "figures"
+    corr_dir.mkdir(parents=True, exist_ok=True)
+    corr_figs.mkdir(parents=True, exist_ok=True)
+
+    max_lag_bins = max(1, int(max_lag_min * 60 / bin_sec))
+    all_corr_rows: list[dict] = []
+    for proto, df in merged_tables.items():
+        try:
+            rows = _clc.analyse_protocol(proto, df, max_lag_bins, corr_dir, corr_figs)
+            all_corr_rows.extend(rows)
+        except Exception as exc:
+            msg = f"  [WARN] lagged correlation failed for {proto}: {exc}"
+            print(msg)
+            missing.append(msg)
+
+    if all_corr_rows:
+        import pandas as pd
+        corr_summary = pd.DataFrame(all_corr_rows)
+        corr_summary.to_csv(corr_dir / "summary_best_lag.csv", index=False)
+        _clc.build_heatmaps(corr_summary, corr_dir, "pearson")
+        _clc.build_heatmaps(corr_summary, corr_dir, "spearman")
+        print(f"  [OK] lagged correlation: {len(all_corr_rows)} pairs, heatmaps written")
+    else:
+        missing.append("Group 08: lagged correlation produced no results")
+
+    # ------------------------------------------------------------------
+    # Step 3 — Event overlay plots
+    # ------------------------------------------------------------------
+    print("  [08] Plotting cross-layer event overlays …")
+    overlay_dir = cross_root / "figures"
+    overlay_dir.mkdir(parents=True, exist_ok=True)
+
+    for proto, df in merged_tables.items():
+        try:
+            _pco.plot_protocol_overlays(proto, df, overlay_dir, dpr_threshold=0.2)
+        except Exception as exc:
+            msg = f"  [WARN] overlay plots failed for {proto}: {exc}"
+            print(msg)
+            missing.append(msg)
+
+    try:
+        _pco.plot_combined_dpr(merged_tables, overlay_dir)
+        _pco.plot_combined_delay(merged_tables, overlay_dir)
+    except Exception as exc:
+        msg = f"  [WARN] combined overlay plots failed: {exc}"
+        print(msg)
+        missing.append(msg)
+
+    print("  [OK] event overlay figures written")
+
+    # ------------------------------------------------------------------
+    # Step 4 — Charging fairness (Jain's index)
+    # ------------------------------------------------------------------
+    print("  [08] Computing charging fairness …")
+    fairness_rows: list[dict] = []
+    for run in sorted(runs, key=lambda r: (r["protocol"], r["replicate"])):
+        try:
+            result = _ccf.compute_run_fairness(run)
+            if result is not None:
+                fairness_rows.append(result)
+        except Exception as exc:
+            msg = f"  [WARN] fairness computation failed for {run['label']}: {exc}"
+            print(msg)
+            missing.append(msg)
+
+    if fairness_rows:
+        import pandas as pd
+        import numpy as np
+        fairness_df = pd.DataFrame(fairness_rows)
+        fairness_df.to_csv(cross_root / "fairness_summary.csv", index=False)
+
+        merged_rows = []
+        for proto, grp in fairness_df.groupby("protocol"):
+            row = {"protocol": proto}
+            for col in fairness_df.select_dtypes(include=np.number).columns:
+                if col == "replicate":
+                    continue
+                row[f"{col}_mean"] = float(grp[col].mean())
+                row[f"{col}_std"]  = float(grp[col].std())
+            merged_rows.append(row)
+        pd.DataFrame(merged_rows).to_csv(cross_root / "fairness_summary_merged.csv", index=False)
+
+        if "energy_fairness" in fairness_df.columns:
+            _ccf._bar_plot(
+                fairness_df, "energy_fairness",
+                "Jain's fairness index (energy recovered)",
+                "Charging Energy Fairness per Protocol",
+                overlay_dir / "fairness_energy_barplot.png",
+            )
+        if "charge_fairness" in fairness_df.columns:
+            _ccf._bar_plot(
+                fairness_df, "charge_fairness",
+                "Jain's fairness index (successful charges)",
+                "Charge-Count Fairness per Protocol",
+                overlay_dir / "fairness_charges_barplot.png",
+            )
+        if "energy_fairness" in fairness_df.columns and "charge_fairness" in fairness_df.columns:
+            _ccf._box_plot(fairness_df, overlay_dir / "fairness_boxplot.png")
+
+        print(f"  [OK] fairness: {len(fairness_rows)} runs processed")
+    else:
+        missing.append("Group 08: no fairness data could be computed")
+
+    print(f"  Group 08 complete. Outputs → {cross_root}/")
+
+
+# ===========================================================================
 # Main
 # ===========================================================================
 
@@ -3134,6 +3347,23 @@ def main():
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
     _plot_07_lagged_correlation(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
+
+    # ------------------------------------------------------------------
+    # Group 08 — Cross-layer analysis (window tables, lagged correlation,
+    #             event overlays, charging fairness)
+    # ------------------------------------------------------------------
+    print("\n[Group 08] Cross-layer Analysis")
+    if args.skip_cross_layer:
+        print("  skipped (--skip-cross-layer flag set)")
+        missing.append("Group 08 skipped by --skip-cross-layer flag")
+    else:
+        _run_cross_layer_pipeline(
+            runs=runs,
+            output_root=output_root,
+            bin_sec=bin_sec,
+            max_lag_min=args.max_lag_min,
+            missing=missing,
+        )
 
     # ------------------------------------------------------------------
     # Derived tables
