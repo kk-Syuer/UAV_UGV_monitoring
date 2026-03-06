@@ -18,6 +18,7 @@ Output
 """
 
 import argparse
+import gc
 import sys
 import warnings
 from pathlib import Path
@@ -50,6 +51,37 @@ def _load(folder: Path, key: str) -> pd.DataFrame | None:
     return df
 
 
+def _load_slim(folder: Path, key: str, wanted: list[str]) -> pd.DataFrame | None:
+    """Load only *wanted* columns from a CSV, applying time rename and t_rel_s.
+
+    Falls back to full load if the requested columns cannot be detected.
+    This avoids reading every column from large timeseries files.
+    """
+    path = folder / _FILE_MAP[key]
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        header = pd.read_csv(path, nrows=0)
+        available = set(header.columns)
+        # Translate 'time_s' request → 'time' when old schema
+        actual = []
+        for c in wanted:
+            if c in available:
+                actual.append(c)
+            elif c == "time_s" and "time" in available:
+                actual.append("time")
+        if not actual:
+            return None
+        df = pd.read_csv(path, usecols=actual)
+        if "time" in df.columns and "time_s" not in df.columns:
+            df.rename(columns={"time": "time_s"}, inplace=True)
+        ensure_t_rel(df)
+        return df if not df.empty else None
+    except Exception as exc:
+        warnings.warn(f"_load_slim failed for {path}: {exc}")
+        return None
+
+
 def _bin_idx(t_rel_s: pd.Series, bin_sec: float) -> pd.Series:
     """Return zero-based bin index for each timestamp."""
     return (t_rel_s // bin_sec).astype(int)
@@ -72,7 +104,8 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
     # ------------------------------------------------------------------ #
     # 1. network_timeseries  → dpr_mean, e2e_delay_mean_ms, e2e_delay_p95
     # ------------------------------------------------------------------ #
-    net = _load(folder, "network_timeseries")
+    _net_cols = ["time_s", "window_pdr", "window_delay_mean_ms", "window_delay_p95_ms"]
+    net = _load_slim(folder, "network_timeseries", _net_cols)
     net_bins: dict[int, dict] = {}
     t_max = 0.0
 
@@ -93,11 +126,14 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
             net_bins[b] = row
     else:
         warnings_issued.append(f"  [WARN] {protocol} r{replicate}: network_timeseries missing or no t_rel_s")
+    del net
 
     # ------------------------------------------------------------------ #
     # 2. charge_events  → outcome counts, rates, wait / latency
     # ------------------------------------------------------------------ #
-    ce = _load(folder, "charge_events")
+    _ce_cols = ["request_time_s", "request_time", "outcome",
+                "waiting_time_ms", "effective_wait_ms", "decision_latency_ms"]
+    ce = _load_slim(folder, "charge_events", _ce_cols)
     ce_bins: dict[int, dict] = {}
 
     if ce is not None:
@@ -142,11 +178,12 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
                 ce_bins[b] = row
     else:
         warnings_issued.append(f"  [WARN] {protocol} r{replicate}: charge_events.csv not found")
+    del ce
 
     # ------------------------------------------------------------------ #
     # 3. death_events  → death_count, cum_deaths
     # ------------------------------------------------------------------ #
-    de = _load(folder, "death_events")
+    de = _load(folder, "death_events")  # small file, full load is fine
     de_bins: dict[int, int] = {}
 
     if de is not None and "t_rel_s" in de.columns and not de.empty:
@@ -156,11 +193,14 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
             de_bins[b] = len(grp)
     else:
         warnings_issued.append(f"  [WARN] {protocol} r{replicate}: death_events missing or empty")
+    del de
 
     # ------------------------------------------------------------------ #
     # 4. charge_queue_timeseries  → dock_util_mean, queue_len_mean
     # ------------------------------------------------------------------ #
-    cq = _load(folder, "charge_queue_timeseries")
+    _cq_cols = ["time_s", "ugv_dock_utilization",
+                "queue_length_ugv", "queue_length_ch", "queue_length_member"]
+    cq = _load_slim(folder, "charge_queue_timeseries", _cq_cols)
     cq_bins: dict[int, dict] = {}
 
     if cq is not None and "t_rel_s" in cq.columns and not cq.empty:
@@ -178,16 +218,19 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
             cq_bins[b] = row
     else:
         warnings_issued.append(f"  [WARN] {protocol} r{replicate}: charge_queue_timeseries missing")
+    del cq
 
     # ------------------------------------------------------------------ #
     # 5. status_timeseries  → mean_battery, frac_low_battery
+    # Slim load: only the 3 columns we use (largest file in the dataset).
     # ------------------------------------------------------------------ #
-    st = _load(folder, "status_timeseries")
+    _st_cols = ["time_s", "uav_id", "battery_level"]
+    st = _load_slim(folder, "status_timeseries", _st_cols)
     st_bins: dict[int, dict] = {}
 
     if st is not None and "t_rel_s" in st.columns and not st.empty:
         if "uav_id" in st.columns:
-            st = st[st["uav_id"] != "sink_gateway"]
+            st = st[st["uav_id"] != "sink_gateway"].copy()
         t_max = max(t_max, st["t_rel_s"].max())
         if "battery_level" in st.columns:
             st["_bin"] = _bin_idx(st["t_rel_s"], bin_sec)
@@ -201,6 +244,8 @@ def build_run_windows(run: dict, bin_sec: float) -> pd.DataFrame | None:
             warnings_issued.append(f"  [WARN] {protocol} r{replicate}: status_timeseries no battery_level")
     else:
         warnings_issued.append(f"  [WARN] {protocol} r{replicate}: status_timeseries missing")
+    del st
+    gc.collect()
 
     # ------------------------------------------------------------------ #
     # 6. Assemble final table
