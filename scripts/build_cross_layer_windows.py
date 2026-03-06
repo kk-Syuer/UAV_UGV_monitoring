@@ -19,6 +19,7 @@ Output
 
 import argparse
 import gc
+import re
 import sys
 import warnings
 from pathlib import Path
@@ -26,8 +27,62 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).parent))
-from plotting_utils import discover_runs, load_csv_if_exists, ensure_t_rel  # noqa: E402
+# ---------------------------------------------------------------------------
+# Minimal helpers (inlined to avoid importing plotting_utils which pulls in
+# matplotlib and inflates subprocess RSS by 100–300 MB)
+# ---------------------------------------------------------------------------
+
+def _parse_protocol_and_replicate(folder_name: str) -> tuple[str, int]:
+    m = re.match(r"^(.+?)_(\d+)$", folder_name)
+    if m:
+        return m.group(1), int(m.group(2))
+    return folder_name, 1
+
+
+def discover_runs(root) -> list:
+    root = Path(root)
+    runs: list = []
+    if not root.exists():
+        warnings.warn(f"Input root does not exist: {root}")
+        return runs
+    for item in sorted(root.iterdir()):
+        if not item.is_dir():
+            continue
+        if not (any(item.glob("*.csv")) or (item / "summary.json").exists()):
+            continue
+        protocol, replicate = _parse_protocol_and_replicate(item.name)
+        runs.append({"folder": item, "protocol": protocol,
+                     "replicate": replicate, "label": f"{protocol} r{replicate}"})
+    return runs
+
+
+_COMPAT_RENAMES = [
+    ("time", "time_s"), ("request_time", "request_time_s"),
+    ("decision_time", "decision_time_s"), ("terminal_time", "terminal_time_s"),
+]
+
+
+def load_csv_if_exists(path) -> pd.DataFrame | None:
+    path = Path(path)
+    if not path.exists() or path.stat().st_size == 0:
+        return None
+    try:
+        df = pd.read_csv(path)
+    except Exception as exc:
+        warnings.warn(f"Failed to read {path}: {exc}")
+        return None
+    if df.empty:
+        return None
+    for old, new in _COMPAT_RENAMES:
+        if old in df.columns and new not in df.columns:
+            df.rename(columns={old: new}, inplace=True)
+    return df
+
+
+def ensure_t_rel(df: pd.DataFrame, time_col: str = "time_s") -> pd.DataFrame:
+    if "t_rel_s" not in df.columns and time_col in df.columns:
+        df["t_rel_s"] = df[time_col] - df[time_col].min()
+    return df
 
 # ---------------------------------------------------------------------------
 # Constants
