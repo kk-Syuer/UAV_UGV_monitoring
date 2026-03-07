@@ -1,6 +1,6 @@
 global:
-  run_id: ugv_edf
-  output_dir: /tmp/fanet_logs
+  run_id: ugv_edf_1
+  output_dir: /home/vboxuser/UAV_UGV_netmonitoring/experiment_data_collection/test_round2
 
 executables:
   monitor_pkg: network_monitor
