@@ -5,7 +5,7 @@ Input root: `analysis/experiment_data_collection/test_round2`
 
 ## Missing files / columns
 
-- Group 08 skipped by --skip-cross-layer flag
+- Group 08 skipped: cross-layer scripts cause system crashes
 
 ## New-schema event tables (test_round2+)
 

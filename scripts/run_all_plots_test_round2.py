@@ -2190,6 +2190,220 @@ def _plot_06_e2e_delay_merged(runs, fig_dir, missing):
     print("  [OK] 06_e2e_delay_merged")
 
 
+def _plot_06_mean_e2e_delay_merged(runs, fig_dir, missing):
+    """G6/P3-M — Bar chart: mean E2E delay per protocol (mean ± std across replicates)."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    proto_labels, means, errs = [], [], []
+
+    for proto, run_list in groups.items():
+        rep_means = []
+        for run in run_list:
+            vals = _e2e_delay_vals_for_run(run, missing)
+            if vals:
+                rep_means.append(float(np.mean(vals)))
+        if not rep_means:
+            continue
+        proto_labels.append(proto)
+        means.append(float(np.mean(rep_means)))
+        errs.append(float(np.std(rep_means)) if len(rep_means) > 1 else 0.0)
+
+    if not proto_labels:
+        missing.append("PLOT 06_mean_e2e_delay_merged: no e2e delay data")
+        return
+
+    bar_colors = [colors[p] for p in proto_labels]
+    fig, ax = plt.subplots(figsize=(max(6, len(proto_labels) * 1.5), 5))
+    x = np.arange(len(proto_labels))
+    bars = ax.bar(x, means, yerr=errs, capsize=5,
+                  color=bar_colors, edgecolor="white", linewidth=0.5,
+                  error_kw={"elinewidth": 1.4, "ecolor": "black"})
+    label_bars(ax, bars, fmt="{:.1f}")
+    ax.set_ylabel("Mean E2E delay (ms)  (mean across replicates ± std)")
+    ax.set_title("Mean End-to-End Delay — Merged Replicates")
+    ax.set_xticks(x)
+    ax.set_xticklabels(proto_labels, rotation=25, ha="right")
+    fig.tight_layout()
+    savefig(fig, fig_dir, "06_mean_e2e_delay_merged")
+    print("  [OK] 06_mean_e2e_delay_merged")
+
+
+# ---------------------------------------------------------------------------
+# Cross-metric KPI builder (used by correlation heatmaps)
+# ---------------------------------------------------------------------------
+
+def _build_kpi_df(runs: list, missing: list) -> "pd.DataFrame | None":
+    """Return a DataFrame with one row per run and the following columns:
+
+    protocol, mean_pdr, mean_e2e_delay_ms, total_deaths,
+    mean_queue_length, mean_decision_latency_ms, charge_success_rate,
+    mean_effective_wait_ms, mean_energy_recovered_wh
+    """
+    rows = []
+    for run in runs:
+        row: dict = {"protocol": run["protocol"], "label": run["label"]}
+
+        # mean PDR
+        df_qos = _load(run, "qos_metrics", [])
+        if df_qos is not None and "generated" in df_qos.columns and "delivered" in df_qos.columns:
+            valid = df_qos[(df_qos["pdr"] >= 0) & (df_qos["generated"] > 0)]
+            g = valid["generated"].sum()
+            row["mean_pdr"] = (valid["delivered"].sum() / g) if g > 0 else float("nan")
+        else:
+            row["mean_pdr"] = float("nan")
+
+        # mean E2E delay
+        delay_vals = _e2e_delay_vals_for_run(run, [])
+        row["mean_e2e_delay_ms"] = float(np.mean(delay_vals)) if delay_vals else float("nan")
+
+        # total deaths
+        df_death = _load(run, "death_events", [])
+        row["total_deaths"] = len(df_death) if df_death is not None else float("nan")
+
+        # mean waiting queue length
+        df_q = _load(run, "charge_queue_timeseries", [])
+        if df_q is not None and "queue_length_total" in df_q.columns:
+            vals = df_q["queue_length_total"].replace(-1, float("nan")).dropna()
+            row["mean_queue_length"] = float(vals.mean()) if len(vals) > 0 else float("nan")
+        else:
+            row["mean_queue_length"] = float("nan")
+
+        # charging metrics from charge_events
+        df_ce = _load(run, "charge_events", [])
+        if df_ce is not None:
+            # success rate
+            if "outcome" in df_ce.columns:
+                total = len(df_ce)
+                row["charge_success_rate"] = (
+                    int((df_ce["outcome"] == "STARTED").sum()) / total
+                    if total > 0 else float("nan")
+                )
+            else:
+                row["charge_success_rate"] = float("nan")
+
+            # decision latency
+            if "decision_latency_ms" in df_ce.columns:
+                vals = df_ce["decision_latency_ms"].replace(-1, float("nan")).dropna()
+                row["mean_decision_latency_ms"] = float(vals.mean()) if len(vals) > 0 else float("nan")
+            else:
+                row["mean_decision_latency_ms"] = float("nan")
+
+            # effective wait
+            if "effective_wait_ms" in df_ce.columns:
+                vals = df_ce["effective_wait_ms"].replace(-1, float("nan")).dropna()
+                row["mean_effective_wait_ms"] = float(vals.mean()) if len(vals) > 0 else float("nan")
+            else:
+                row["mean_effective_wait_ms"] = float("nan")
+        else:
+            row["charge_success_rate"] = float("nan")
+            row["mean_decision_latency_ms"] = float("nan")
+            row["mean_effective_wait_ms"] = float("nan")
+
+        # total energy recovered (Wh)
+        energy_vals = _energy_recovered_series(run, [])
+        row["mean_energy_recovered_wh"] = (
+            float(np.nansum(energy_vals)) if energy_vals is not None and len(energy_vals) > 0
+            else float("nan")
+        )
+
+        rows.append(row)
+
+    if not rows:
+        return None
+    return pd.DataFrame(rows)
+
+
+def _draw_corr_heatmap(corr: "np.ndarray", labels: list, title: str,
+                       fig_dir: Path, fname: str) -> None:
+    """Draw a symmetric correlation heatmap with annotated cells."""
+    n = len(labels)
+    fig, ax = plt.subplots(figsize=(max(7, n * 0.9), max(6, n * 0.8)))
+    im = ax.imshow(corr, vmin=-1, vmax=1, cmap="RdYlGn", aspect="auto")
+    plt.colorbar(im, ax=ax, fraction=0.046, pad=0.04, label="Pearson r")
+
+    ax.set_xticks(range(n))
+    ax.set_yticks(range(n))
+    ax.set_xticklabels(labels, rotation=40, ha="right", fontsize=8)
+    ax.set_yticklabels(labels, fontsize=8)
+
+    for i in range(n):
+        for j in range(n):
+            val = corr[i, j]
+            if not np.isnan(val):
+                txt_color = "black" if abs(val) < 0.6 else "white"
+                ax.text(j, i, f"{val:.2f}", ha="center", va="center",
+                        fontsize=7, color=txt_color)
+
+    ax.set_title(title, pad=12)
+    fig.tight_layout()
+    savefig(fig, fig_dir, fname)
+
+
+def _plot_correlation_heatmap_pdr(runs, fig_dir, missing):
+    """Correlation heatmap: mean PDR × charging KPIs (per-run scalars, all protocols)."""
+    df = _build_kpi_df(runs, missing)
+    if df is None:
+        missing.append("PLOT corr_heatmap_pdr: could not build KPI dataframe")
+        return
+
+    metric_cols = [
+        "mean_pdr", "total_deaths", "mean_queue_length",
+        "mean_decision_latency_ms", "charge_success_rate",
+        "mean_effective_wait_ms", "mean_energy_recovered_wh",
+    ]
+    col_labels = [
+        "Mean PDR", "Total Deaths", "Mean Queue Length",
+        "Decision Latency (ms)", "Success Rate",
+        "Effective Wait (ms)", "Energy Recovered (Wh)",
+    ]
+
+    sub = df[metric_cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if len(sub) < 3:
+        missing.append("PLOT corr_heatmap_pdr: too few complete rows for correlation")
+        return
+
+    corr = np.corrcoef(sub.values.T)
+    _draw_corr_heatmap(
+        corr, col_labels,
+        "Pearson Correlation — Mean PDR & Charging KPIs (per run)",
+        fig_dir, "06_corr_heatmap_pdr",
+    )
+    print("  [OK] 06_corr_heatmap_pdr")
+
+
+def _plot_correlation_heatmap_e2e(runs, fig_dir, missing):
+    """Correlation heatmap: mean E2E delay × charging KPIs (per-run scalars)."""
+    df = _build_kpi_df(runs, missing)
+    if df is None:
+        missing.append("PLOT corr_heatmap_e2e: could not build KPI dataframe")
+        return
+
+    metric_cols = [
+        "mean_e2e_delay_ms", "total_deaths", "mean_queue_length",
+        "mean_decision_latency_ms", "charge_success_rate",
+        "mean_effective_wait_ms", "mean_energy_recovered_wh",
+    ]
+    col_labels = [
+        "Mean E2E Delay (ms)", "Total Deaths", "Mean Queue Length",
+        "Decision Latency (ms)", "Success Rate",
+        "Effective Wait (ms)", "Energy Recovered (Wh)",
+    ]
+
+    sub = df[metric_cols].apply(pd.to_numeric, errors="coerce").dropna()
+    if len(sub) < 3:
+        missing.append("PLOT corr_heatmap_e2e: too few complete rows for correlation")
+        return
+
+    corr = np.corrcoef(sub.values.T)
+    _draw_corr_heatmap(
+        corr, col_labels,
+        "Pearson Correlation — Mean E2E Delay & Charging KPIs (per run)",
+        fig_dir, "06_corr_heatmap_e2e",
+    )
+    print("  [OK] 06_corr_heatmap_e2e")
+
+
 def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
     """G5/P3 — Boxplot: window mean E2E delay grouped by weather regime (all protocols).
 
@@ -3461,6 +3675,9 @@ def main():
     print("\n[Group 06 Merged]")
     _plot_06_qos_heatmap_merged(runs, fig_dirs["06"], missing)
     _plot_06_e2e_delay_merged(runs, fig_dirs["06"], missing)
+    _plot_06_mean_e2e_delay_merged(runs, fig_dirs["06"], missing)
+    _plot_correlation_heatmap_pdr(runs, fig_dirs["06"], missing)
+    _plot_correlation_heatmap_e2e(runs, fig_dirs["06"], missing)
 
     # ------------------------------------------------------------------
     # Group 07 — Causal Analysis
@@ -3475,21 +3692,11 @@ def main():
     _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
 
     # ------------------------------------------------------------------
-    # Group 08 — Cross-layer analysis (window tables, lagged correlation,
-    #             event overlays, charging fairness)
+    # Group 08 — Cross-layer analysis (disabled: scripts have known bugs
+    #             that cause system crashes; unwired until fixed)
     # ------------------------------------------------------------------
-    print("\n[Group 08] Cross-layer Analysis")
-    if args.skip_cross_layer:
-        print("  skipped (--skip-cross-layer flag set)")
-        missing.append("Group 08 skipped by --skip-cross-layer flag")
-    else:
-        _run_cross_layer_pipeline(
-            input_root=input_root,
-            output_root=output_root,
-            bin_sec=bin_sec,
-            max_lag_min=args.max_lag_min,
-            missing=missing,
-        )
+    print("\n[Group 08] Cross-layer Analysis — SKIPPED (bugged scripts)")
+    missing.append("Group 08 skipped: cross-layer scripts cause system crashes")
 
     # ------------------------------------------------------------------
     # Derived tables
