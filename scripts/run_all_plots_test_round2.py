@@ -2421,7 +2421,7 @@ def _plot_06_pdr_vs_e2e_scatter(runs, fig_dir, missing):
         return
 
     sub = df[["protocol", "label", "mean_pdr", "mean_e2e_delay_ms"]].copy()
-    sub = sub.apply(lambda c: pd.to_numeric(c, errors="ignore") if c.name not in ("protocol", "label") else c)
+    sub = sub.apply(lambda c: pd.to_numeric(c, errors="coerce") if c.name not in ("protocol", "label") else c)
     sub = sub.dropna(subset=["mean_pdr", "mean_e2e_delay_ms"])
 
     if len(sub) < 3:
@@ -4222,6 +4222,9 @@ def main():
                 plot_cl_e_correlation_bar_chart,
                 plot_cl_f_pdr_vs_depletions_timeseries,
                 plot_cl_g_routing_drop_timeseries,
+                plot_cl_h_lagged_corr_summary,
+                plot_cl_i_epoch_aligned_pdr,
+                plot_cl_j_ugv_edf3_cascade,
             )
             cl_out = output_root / "figures" / "cross_layer"
             cl_out.mkdir(parents=True, exist_ok=True)
@@ -4233,6 +4236,9 @@ def main():
             plot_cl_e_correlation_bar_chart(kpi_df, cl_out)
             plot_cl_f_pdr_vs_depletions_timeseries(input_root, cl_out, int(bin_sec))
             plot_cl_g_routing_drop_timeseries(input_root, cl_out, int(bin_sec))
+            plot_cl_h_lagged_corr_summary(input_root, cl_out)
+            plot_cl_i_epoch_aligned_pdr(input_root, cl_out)
+            plot_cl_j_ugv_edf3_cascade(input_root, cl_out)
         except Exception as exc:  # noqa: BLE001
             msg = f"Group 09 cross-layer analysis failed: {exc}"
             print(f"  WARNING: {msg}")
