@@ -5,7 +5,7 @@ Input root: `analysis/experiment_data_collection/test_round2`
 
 ## Missing files / columns
 
-**No missing data detected — all expected files were present.**
+- Group 08 skipped by --skip-cross-layer flag
 
 ## New-schema event tables (test_round2+)
 
