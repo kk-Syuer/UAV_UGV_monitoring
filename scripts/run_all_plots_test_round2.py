@@ -4,13 +4,13 @@ run_all_plots_test_round2.py
 -----------------------------
 End-to-end plotting pipeline for UAV/UGV experiment results.
 
-Produces figures across 8 thematic groups, derived CSV tables, a
+Produces figures across 9 thematic groups, derived CSV tables, a
 protocol KPI summary table, and a missing-data report.
 
-Group 08 (cross-layer analysis) is run automatically unless
-``--skip-cross-layer`` is passed.  It requires the four add-on scripts:
-  build_cross_layer_windows.py, cross_layer_lagged_correlation.py,
-  plot_cross_layer_overlays.py, compute_charging_fairness.py.
+Group 09 (cross-layer analysis) is run automatically unless
+``--skip-cross-layer`` is passed.  It requires plot_cross_layer_analysis.py
+(located in the same scripts/ directory) which produces 7 figures (CL_A–CL_G)
+linking charging scheduling KPIs to network PDR, E2E delay, and fleet survival.
 Use ``--max-lag-min`` (default 10) to control the lag window.
 
 Usage
@@ -4208,11 +4208,37 @@ def main():
     _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
 
     # ------------------------------------------------------------------
-    # Group 08 — Cross-layer analysis (disabled: scripts have known bugs
-    #             that cause system crashes; unwired until fixed)
+    # Group 09 — Cross-layer analysis (charging KPIs ↔ network quality)
     # ------------------------------------------------------------------
-    print("\n[Group 08] Cross-layer Analysis — SKIPPED (bugged scripts)")
-    missing.append("Group 08 skipped: cross-layer scripts cause system crashes")
+    if not args.skip_cross_layer:
+        print("\n[Group 09] Cross-layer Analysis")
+        try:
+            from plot_cross_layer_analysis import (
+                collect_per_run_kpis,
+                plot_cl_a_kpi_overview,
+                plot_cl_b_charging_vs_pdr_scatter,
+                plot_cl_c_conditioning_analysis,
+                plot_cl_d_mechanism_chain,
+                plot_cl_e_correlation_bar_chart,
+                plot_cl_f_pdr_vs_depletions_timeseries,
+                plot_cl_g_routing_drop_timeseries,
+            )
+            cl_out = output_root / "figures" / "cross_layer"
+            cl_out.mkdir(parents=True, exist_ok=True)
+            kpi_df = collect_per_run_kpis(input_root)
+            plot_cl_a_kpi_overview(kpi_df, cl_out)
+            plot_cl_b_charging_vs_pdr_scatter(kpi_df, cl_out)
+            plot_cl_c_conditioning_analysis(kpi_df, cl_out)
+            plot_cl_d_mechanism_chain(kpi_df, cl_out)
+            plot_cl_e_correlation_bar_chart(kpi_df, cl_out)
+            plot_cl_f_pdr_vs_depletions_timeseries(input_root, cl_out, int(bin_sec))
+            plot_cl_g_routing_drop_timeseries(input_root, cl_out, int(bin_sec))
+        except Exception as exc:  # noqa: BLE001
+            msg = f"Group 09 cross-layer analysis failed: {exc}"
+            print(f"  WARNING: {msg}")
+            missing.append(msg)
+    else:
+        print("\n[Group 09] Cross-layer Analysis — SKIPPED (--skip-cross-layer)")
 
     # ------------------------------------------------------------------
     # Derived tables
