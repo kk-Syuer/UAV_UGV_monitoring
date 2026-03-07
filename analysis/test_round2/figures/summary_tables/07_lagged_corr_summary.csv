@@ -1,0 +1,22 @@
+protocol,x_series,y_series,peak_r,peak_lag_min
+ugv_dynamic,PDR,TIMEOUT count,-0.2122,-2.0
+ugv_dynamic,PDR,Death count,-0.2957,-9.0
+ugv_dynamic,E2E delay (ms),TIMEOUT count,0.2103,-3.0
+ugv_edf,PDR,TIMEOUT count,0.2068,9.0
+ugv_edf,PDR,Death count,0.2246,-3.0
+ugv_edf,E2E delay (ms),TIMEOUT count,0.288,-6.0
+ugv_fcfs,PDR,TIMEOUT count,-0.1259,-10.0
+ugv_fcfs,PDR,Death count,-0.2487,-8.0
+ugv_fcfs,E2E delay (ms),TIMEOUT count,0.2051,-3.0
+ugv_p_dynamic_score,PDR,TIMEOUT count,0.1367,-5.0
+ugv_p_dynamic_score,PDR,Death count,0.2042,-3.0
+ugv_p_dynamic_score,E2E delay (ms),TIMEOUT count,0.2071,-1.0
+ugv_p_edf,PDR,TIMEOUT count,0.1884,2.0
+ugv_p_edf,PDR,Death count,-0.2289,-9.0
+ugv_p_edf,E2E delay (ms),TIMEOUT count,0.1119,4.0
+ugv_p_role_priority,PDR,TIMEOUT count,0.1801,-2.0
+ugv_p_role_priority,PDR,Death count,0.2499,-4.0
+ugv_p_role_priority,E2E delay (ms),TIMEOUT count,-0.104,7.0
+ugv_role_priority,PDR,TIMEOUT count,-0.1361,-2.0
+ugv_role_priority,PDR,Death count,-0.3052,-9.0
+ugv_role_priority,E2E delay (ms),TIMEOUT count,-0.1315,-7.0
