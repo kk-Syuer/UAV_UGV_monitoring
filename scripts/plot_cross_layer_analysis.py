@@ -601,12 +601,25 @@ def _lagged_pearson(x: np.ndarray, y: np.ndarray, max_lag: int):
 
 
 def _bin_mean(t: np.ndarray, v: np.ndarray, bins: np.ndarray) -> np.ndarray:
-    """Return per-bin mean of v; np.nan when a bin is empty."""
-    out = np.full(len(bins) - 1, np.nan)
-    for i, (b0, b1) in enumerate(zip(bins[:-1], bins[1:])):
-        sel = v[(t >= b0) & (t < b1)]
-        if len(sel) > 0:
-            out[i] = float(np.nanmean(sel))
+    """Return per-bin mean of v; np.nan when a bin is empty.
+
+    Vectorised via np.searchsorted + np.bincount — avoids a per-bin Python
+    loop that becomes very slow for large timeseries (>10 000 rows).
+    """
+    t = np.asarray(t, dtype=float)
+    v = np.asarray(v, dtype=float)
+    n_bins = len(bins) - 1
+    out = np.full(n_bins, np.nan)
+    bin_idx = np.searchsorted(bins, t, side="right") - 1  # 0-indexed
+    valid = (bin_idx >= 0) & (bin_idx < n_bins) & ~np.isnan(v)
+    if not valid.any():
+        return out
+    b = bin_idx[valid]
+    w = v[valid]
+    total = np.bincount(b, weights=w, minlength=n_bins)
+    count = np.bincount(b, minlength=n_bins).astype(float)
+    has_data = count > 0
+    out[has_data] = total[has_data] / count[has_data]
     return out
 
 
@@ -651,23 +664,29 @@ def plot_cl_h_lagged_corr_summary(data_root: Path, out_dir: Path) -> None:
         ax_main.plot(lags, rs, color=PROTO_COLORS[proto],
                      label=PROTO_LABELS[proto], linewidth=2, alpha=0.85)
 
-        # Peak negative r (preferred) or absolute peak if all positive
+        # Peak negative r (preferred) or absolute peak if none are negative.
+        # Guard against all-NaN rs (np.nanargmax raises ValueError on all-NaN).
+        finite_mask = ~np.isnan(rs)
+        if not finite_mask.any():
+            continue  # no valid correlations for this protocol — skip
         neg_mask = rs < 0
         if neg_mask.any():
-            pk = int(np.nanargmin(rs[neg_mask]))
+            neg_rs, neg_lags = rs[neg_mask], lags[neg_mask]
+            pk = int(np.argmin(neg_rs))
             peak_rows.append({
                 "label": PROTO_LABELS[proto],
                 "color": PROTO_COLORS[proto],
-                "peak_r": float(rs[neg_mask][pk]),
-                "peak_lag": int(lags[neg_mask][pk]),
+                "peak_r": float(neg_rs[pk]),
+                "peak_lag": int(neg_lags[pk]),
             })
         else:
-            pk = int(np.nanargmax(np.abs(rs)))
+            finite_rs = rs[finite_mask]
+            pk = int(np.argmax(np.abs(finite_rs)))
             peak_rows.append({
                 "label": PROTO_LABELS[proto],
                 "color": PROTO_COLORS[proto],
-                "peak_r": float(rs[pk]),
-                "peak_lag": int(lags[pk]),
+                "peak_r": float(finite_rs[pk]),
+                "peak_lag": int(lags[finite_mask][pk]),
             })
 
     ax_main.axhline(0, color="black", linewidth=0.8)
@@ -759,14 +778,14 @@ def plot_cl_i_epoch_aligned_pdr(data_root: Path, out_dir: Path) -> None:
             ]
 
             for tc in burst_centers:
-                epoch_pdr = np.full(n_epoch, np.nan)
-                for i, (b0, b1) in enumerate(zip(epoch_bins[:-1], epoch_bins[1:])):
-                    ta, tb = tc + b0, tc + b1
-                    if ta < 0 or tb > MAX_T_S:
-                        continue
-                    sel = pdr_v[(t_pdr >= ta) & (t_pdr < tb)]
-                    if len(sel) > 0:
-                        epoch_pdr[i] = float(np.nanmean(sel))
+                # Vectorised: shift t_pdr by -tc so epoch_bins can be used directly
+                t_rel = t_pdr - tc
+                in_window = (t_rel >= epoch_bins[0]) & (t_rel < epoch_bins[-1])
+                if not in_window.any():
+                    continue
+                epoch_pdr = _bin_mean(
+                    t_rel[in_window], pdr_v[in_window], epoch_bins
+                )
                 proto_epochs.append(epoch_pdr)
                 all_epochs.append(epoch_pdr)
 
@@ -977,13 +996,22 @@ def main() -> None:
     plot_cl_g_routing_drop_timeseries(data_root, out_dir, bin_sec)
 
     print("[CL-H] Lagged correlation summary (§4.4) …")
-    plot_cl_h_lagged_corr_summary(data_root, out_dir)
+    try:
+        plot_cl_h_lagged_corr_summary(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
 
     print("[CL-I] Epoch-aligned PDR around depletion bursts (§4.4) …")
-    plot_cl_i_epoch_aligned_pdr(data_root, out_dir)
+    try:
+        plot_cl_i_epoch_aligned_pdr(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
 
     print("[CL-J] ugv_edf_3 cascade annotated timeseries (§4.4 / Anomaly A) …")
-    plot_cl_j_ugv_edf3_cascade(data_root, out_dir)
+    try:
+        plot_cl_j_ugv_edf3_cascade(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
 
     print(f"\nDone. All cross-layer figures saved to: {out_dir}/")
 
