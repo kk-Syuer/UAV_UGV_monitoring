@@ -2404,6 +2404,70 @@ def _plot_correlation_heatmap_e2e(runs, fig_dir, missing):
     print("  [OK] 06_corr_heatmap_e2e")
 
 
+def _plot_06_pdr_vs_e2e_scatter(runs, fig_dir, missing):
+    """Scatter: mean PDR vs mean E2E delay, one point per run coloured by protocol.
+
+    Pearson r and p-value are annotated.  A least-squares regression line is
+    drawn across all points regardless of protocol.
+
+    Data source: same scalars as _build_kpi_df (qos_metrics.csv for PDR,
+    packet_events.csv / messages.csv for E2E delay).
+    """
+    from scipy import stats as _stats
+
+    df = _build_kpi_df(runs, missing)
+    if df is None:
+        missing.append("PLOT 06_pdr_vs_e2e_scatter: could not build KPI dataframe")
+        return
+
+    sub = df[["protocol", "label", "mean_pdr", "mean_e2e_delay_ms"]].copy()
+    sub = sub.apply(lambda c: pd.to_numeric(c, errors="ignore") if c.name not in ("protocol", "label") else c)
+    sub = sub.dropna(subset=["mean_pdr", "mean_e2e_delay_ms"])
+
+    if len(sub) < 3:
+        missing.append("PLOT 06_pdr_vs_e2e_scatter: too few complete rows")
+        return
+
+    protocols = sorted(sub["protocol"].unique())
+    cmap = plt.get_cmap("tab10")
+    colors = {p: cmap(i % 10) for i, p in enumerate(protocols)}
+
+    fig, ax = plt.subplots(figsize=(7, 5))
+
+    for proto in protocols:
+        mask = sub["protocol"] == proto
+        ax.scatter(
+            sub.loc[mask, "mean_e2e_delay_ms"],
+            sub.loc[mask, "mean_pdr"],
+            label=proto, color=colors[proto], s=60, zorder=3,
+        )
+
+    # regression line across all points
+    x_all = sub["mean_e2e_delay_ms"].values.astype(float)
+    y_all = sub["mean_pdr"].values.astype(float)
+    slope, intercept, r_val, p_val, _ = _stats.linregress(x_all, y_all)
+    x_line = np.array([x_all.min(), x_all.max()])
+    ax.plot(x_line, slope * x_line + intercept, color="black",
+            linewidth=1.2, linestyle="--", zorder=2)
+
+    p_str = f"p = {p_val:.3f}" if p_val >= 0.001 else "p < 0.001"
+    ax.annotate(
+        f"Pearson r = {r_val:.3f}\n{p_str}",
+        xy=(0.97, 0.97), xycoords="axes fraction",
+        ha="right", va="top", fontsize=9,
+        bbox=dict(boxstyle="round,pad=0.3", facecolor="white", edgecolor="grey", alpha=0.8),
+    )
+
+    ax.set_xlabel("Mean E2E Delay (ms)")
+    ax.set_ylabel("Mean PDR")
+    ax.set_title("PDR vs E2E Delay — per run, all protocols")
+    ax.legend(title="Protocol", fontsize=7, title_fontsize=8,
+               bbox_to_anchor=(1.01, 1), loc="upper left")
+    fig.tight_layout()
+    savefig(fig, fig_dir, "06_pdr_vs_e2e_scatter")
+    print("  [OK] 06_pdr_vs_e2e_scatter")
+
+
 def _plot_05_delay_vs_weather_regime(runs, fig_dir, missing):
     """G5/P3 — Boxplot: window mean E2E delay grouped by weather regime (all protocols).
 
@@ -3678,6 +3742,7 @@ def main():
     _plot_06_mean_e2e_delay_merged(runs, fig_dirs["06"], missing)
     _plot_correlation_heatmap_pdr(runs, fig_dirs["06"], missing)
     _plot_correlation_heatmap_e2e(runs, fig_dirs["06"], missing)
+    _plot_06_pdr_vs_e2e_scatter(runs, fig_dirs["06"], missing)
 
     # ------------------------------------------------------------------
     # Group 07 — Causal Analysis
