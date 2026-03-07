@@ -1054,6 +1054,139 @@ def _plot_05_weather_timeseries(runs, fig_dir, missing):
         break
 
 
+def _plot_05_weather_timeseries_all(runs, fig_dir, missing, bin_sec=60):
+    """G5/P3 — Rain intensity, wind speed, and temperature over time.
+
+    Shows mean ± 1σ across ALL 21 runs (7 protocols × 3 replicates) binned
+    into *bin_sec*-second intervals, plus one faint line per protocol (mean
+    across its 3 replicates) so within-protocol consistency can be assessed.
+
+    Data: weather_timeseries.csv — columns t_rel_s, rain_intensity,
+          wind_speed, temperature_c.
+    Output: 05_weather_timeseries.png
+    """
+    VARS = [
+        ("rain_intensity",  "Rain intensity (mm/h)",  "#1f77b4"),
+        ("wind_speed",      "Wind speed (m/s)",        "#ff7f0e"),
+        ("temperature_c",   "Temperature (°C)",        "#2ca02c"),
+    ]
+    MAX_T = 180 * 60  # 180-minute runs
+    bins = np.arange(0, MAX_T + bin_sec, bin_sec)
+    t_mid_min = (bins[:-1] + bins[1:]) / 2 / 60
+
+    # Collect per-run binned arrays: {varname: {(protocol, rep): array}}
+    from collections import defaultdict
+    run_arrays: dict = {v[0]: {} for v in VARS}
+
+    for run in runs:
+        df = _load(run, "weather_timeseries", missing)
+        if df is None or "t_rel_s" not in df.columns:
+            continue
+        df = df.sort_values("t_rel_s")
+        key = (run["protocol"], run["replicate"])
+        for varname, _, _ in VARS:
+            if varname not in df.columns:
+                continue
+            valid = df[["t_rel_s", varname]].dropna()
+            if valid.empty:
+                continue
+            # bin mean via searchsorted
+            t = valid["t_rel_s"].values
+            v = valid[varname].values
+            n_bins = len(bins) - 1
+            out = np.full(n_bins, np.nan)
+            idx = np.searchsorted(bins, t, side="right") - 1
+            mask = (idx >= 0) & (idx < n_bins)
+            if mask.any():
+                b, w = idx[mask], v[mask]
+                tot = np.bincount(b, weights=w, minlength=n_bins)
+                cnt = np.bincount(b, minlength=n_bins).astype(float)
+                has = cnt > 0
+                out[has] = tot[has] / cnt[has]
+            run_arrays[varname][key] = out
+
+    # Check we got anything
+    if all(len(run_arrays[v[0]]) == 0 for v in VARS):
+        missing.append("PLOT 05_weather_timeseries: no weather data available")
+        return
+
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    n_panels = sum(1 for v in VARS if run_arrays[v[0]])
+    if n_panels == 0:
+        return
+
+    fig, axes = plt.subplots(n_panels, 1, figsize=(13, 3.2 * n_panels), sharex=True)
+    if n_panels == 1:
+        axes = [axes]
+
+    panel = 0
+    for varname, ylabel, base_color in VARS:
+        arrs = run_arrays[varname]
+        if not arrs:
+            continue
+        ax = axes[panel]
+
+        # Overall mean ± 1σ (all 21 runs)
+        all_mat = np.array(list(arrs.values()))
+        overall_mean = np.nanmean(all_mat, axis=0)
+        overall_std  = np.nanstd(all_mat, axis=0)
+        ax.fill_between(
+            t_mid_min,
+            overall_mean - overall_std,
+            overall_mean + overall_std,
+            alpha=0.18, color=base_color, label="All-run ±1σ",
+        )
+        ax.plot(t_mid_min, overall_mean, color=base_color,
+                linewidth=2.2, label="All-run mean", zorder=4)
+
+        # Per-protocol mean (3 replicates averaged)
+        for proto, run_list in groups.items():
+            proto_keys = [(proto, r["replicate"]) for r in run_list]
+            proto_arrs = [arrs[k] for k in proto_keys if k in arrs]
+            if not proto_arrs:
+                continue
+            proto_mean = np.nanmean(np.array(proto_arrs), axis=0)
+            ax.plot(t_mid_min, proto_mean,
+                    color=colors[proto], linewidth=0.9,
+                    alpha=0.55, linestyle="--", label=proto)
+
+        ax.set_ylabel(ylabel, fontsize=10)
+        ax.grid(alpha=0.3)
+        # Shade regime transitions by background colour if regime column exists
+        panel += 1
+
+    axes[-1].set_xlabel("Experiment time (min)", fontsize=10)
+
+    # Legend: show overall band + per-protocol lines once (on first panel)
+    handles, labels = axes[0].get_legend_handles_labels()
+    # Keep only "All-run ±1σ", "All-run mean", and one entry per protocol
+    seen = set()
+    h_out, l_out = [], []
+    for h, l in zip(handles, labels):
+        if l not in seen:
+            seen.add(l)
+            h_out.append(h)
+            l_out.append(l)
+    axes[0].legend(
+        h_out, l_out,
+        fontsize=7, ncol=3, loc="upper right",
+        title="— — per-protocol mean   ▬ all-run mean ± 1σ",
+        title_fontsize=7,
+    )
+
+    fig.suptitle(
+        "Weather Variables Over Time — All 21 Runs (7 Protocols × 3 Replicates)\n"
+        f"Thick line = cross-run mean; band = ±1σ; dashed = per-protocol mean  "
+        f"[{bin_sec//60}-min bins]",
+        fontsize=11, fontweight="bold",
+    )
+    fig.tight_layout()
+    savefig(fig, fig_dir, "05_weather_timeseries")
+    print("  [OK] 05_weather_timeseries")
+
+
 # ===========================================================================
 # MERGED PLOTS — one entry per protocol, replicates pooled
 # ===========================================================================
@@ -4135,6 +4268,7 @@ def main():
     print("\n[Group 05] Weather")
     _plot_05_pdr_vs_weather_regime(runs, fig_dirs["05"], missing)
     _plot_05_weather_timeseries(runs, fig_dirs["05"], missing)
+    _plot_05_weather_timeseries_all(runs, fig_dirs["05"], missing, bin_sec)
 
     # ------------------------------------------------------------------
     # Merged plots — one entry per protocol, replicates pooled  (12 plots)
