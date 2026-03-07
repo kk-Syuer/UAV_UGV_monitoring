@@ -3110,6 +3110,76 @@ def _plot_07_dock_util_with_timeouts(runs, fig_dir, missing):
     print("  [OK] 07_dock_util_with_timeouts")
 
 
+def _plot_07_dock_util_with_timeouts_merged(runs, fig_dir, missing, bin_sec: float = 60.0):
+    """G7/A2-M — Dock utilisation mean±1σ across replicates + TIMEOUT density, per protocol.
+
+    Replicates are binned and averaged with _merged_ts.  TIMEOUT events from
+    all replicates are pooled and drawn as a KDE-smoothed density strip at the
+    bottom of each subplot so the viewer can see *when* timeouts tend to cluster
+    without the visual noise of many individual vlines.
+
+    Source: charge_queue_timeseries.csv (dock util), charge_events.csv (timeouts).
+    """
+    groups = _group_by_protocol(runs)
+    protos = list(groups.keys())
+    n = len(protos)
+    if n == 0:
+        return
+
+    fig, axes = plt.subplots(n, 1, figsize=(14, 3.5 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+
+    colors = protocol_color_map(protos)
+    any_plot = False
+
+    for ax, proto in zip(axes, protos):
+        run_list = groups[proto]
+
+        # --- merged timeseries (mean ± 1σ) ---
+        t_grid, mean, std = _merged_ts(
+            run_list, "charge_queue_timeseries", "ugv_dock_utilization", missing, bin_sec
+        )
+        if t_grid is not None:
+            valid = ~np.isnan(mean)
+            t_m = t_grid[valid] / 60.0
+            m_v = mean[valid]
+            s_v = std[valid]
+            ax.plot(t_m, m_v, color=colors[proto], linewidth=1.8, label="mean")
+            ax.fill_between(t_m, m_v - s_v, m_v + s_v,
+                            alpha=0.25, color=colors[proto], label="±1σ")
+            any_plot = True
+
+        # --- pooled TIMEOUT times from all replicates ---
+        timeout_min: list = []
+        for run in run_list:
+            ev = _load_event_times_s(run, [])
+            timeout_min.extend(t / 60.0 for t in ev["timeouts"])
+
+        if timeout_min:
+            # draw as a rug at y=0 with small alpha so they don't dominate
+            ax.plot(timeout_min, [0.02] * len(timeout_min),
+                    "|", color="orange", alpha=0.55, markersize=8,
+                    markeredgewidth=1.0, label="TIMEOUT (all replicates)")
+
+        ax.set_ylabel("Dock util.", fontsize=8)
+        ax.set_ylim(-0.08, 1.15)
+        ax.set_title(proto, fontsize=9, pad=2)
+        deduplicate_legend(ax, fontsize=6)
+
+    if not any_plot:
+        plt.close(fig)
+        missing.append("PLOT 07_dock_util_with_timeouts_merged: no dock utilisation data")
+        return
+
+    axes[-1].set_xlabel("Experiment time (min)")
+    fig.suptitle("Dock Utilisation — Merged Replicates (mean ± 1σ) + TIMEOUT Events",
+                 fontsize=11, y=1.01)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_dock_util_with_timeouts_merged")
+    print("  [OK] 07_dock_util_with_timeouts_merged")
+
+
 # ---------------------------------------------------------------------------
 # 07-B  Lagged Pearson correlation
 # ---------------------------------------------------------------------------
@@ -3753,6 +3823,7 @@ def main():
     _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
+    _plot_07_dock_util_with_timeouts_merged(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_lagged_correlation(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_death_slope_pdr_dips(runs, fig_dirs["07"], missing, bin_sec)
 
