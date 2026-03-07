@@ -2613,10 +2613,11 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
     # Deaths
     de = _load(run, "death_events", missing)
     if de is not None and "t_rel_s" in de.columns:
-        result["all_deaths"] = de["t_rel_s"].dropna().tolist()
+        result["all_deaths"] = _clean_event_times(de["t_rel_s"].dropna().tolist())
         if "role" in de.columns:
             ch_mask = de["role"].astype(str).isin(["1", "CH"])
-            result["ch_deaths"] = de.loc[ch_mask, "t_rel_s"].dropna().tolist()
+            result["ch_deaths"] = _clean_event_times(
+                de.loc[ch_mask, "t_rel_s"].dropna().tolist())
         else:
             result["ch_deaths"] = []
 
@@ -2624,11 +2625,14 @@ def _load_event_times_s(run: dict, missing: list) -> dict:
     ce = _load(run, "charge_events", missing)
     if ce is not None and "outcome" in ce.columns and "t_rel_s" in ce.columns:
         started_mask = ce["outcome"] == "STARTED"
-        result["started"]  = ce.loc[started_mask, "t_rel_s"].dropna().tolist()
-        result["timeouts"] = ce.loc[ce["outcome"] == "TIMEOUT", "t_rel_s"].dropna().tolist()
+        result["started"]  = _clean_event_times(
+            ce.loc[started_mask, "t_rel_s"].dropna().tolist())
+        result["timeouts"] = _clean_event_times(
+            ce.loc[ce["outcome"] == "TIMEOUT", "t_rel_s"].dropna().tolist())
         if "role" in ce.columns:
             ch_mask = ce["role"].astype(str).isin(["1", "CH"])
-            result["ch_started"] = ce.loc[started_mask & ch_mask, "t_rel_s"].dropna().tolist()
+            result["ch_started"] = _clean_event_times(
+                ce.loc[started_mask & ch_mask, "t_rel_s"].dropna().tolist())
         else:
             result["ch_started"] = result["started"]
 
@@ -2730,6 +2734,61 @@ def _rolling_slope(y, window: int = 5):
     grad = np.gradient(y)
     kernel = np.ones(window) / window
     return np.convolve(grad, kernel, mode="same")
+
+
+def _clean_event_times(times_s, t_max_s=None):
+    """Return a sorted list of valid event times (seconds).
+
+    Removes: NaN, negative values, and values beyond *t_max_s* (if given).
+    Duplicate times are kept intentionally (same-second events on different
+    UAVs are real) but callers that merge across replicates should use
+    _add_binned_event_rug instead of _add_event_vlines.
+    """
+    out = [float(t) for t in times_s
+           if t == t and not (t != t) and float(t) >= 0.0]   # NaN-safe
+    if t_max_s is not None:
+        out = [t for t in out if t <= float(t_max_s)]
+    return sorted(out)
+
+
+def _add_binned_event_rug(ax, times_s, t_grid_edges, n_replicates,
+                          color, label, y_base=0.01, bar_scale=0.07):
+    """Draw a density rug at the bottom of *ax* for merged-replicate event plots.
+
+    Instead of one vline per raw event (which stacks N near-identical lines
+    for N replicates), this bins events into *t_grid_edges* and draws a tick
+    at each bin centre whose height is proportional to the mean number of
+    events per replicate per bin.  Bins with zero events are silent.
+
+    Parameters
+    ----------
+    times_s       : iterable of float – event times in seconds (already cleaned)
+    t_grid_edges  : 1-D array         – bin edges in seconds
+    n_replicates  : int               – number of replicates (used to normalise)
+    y_base        : float             – baseline y position (axes fraction of 0-1)
+    bar_scale     : float             – max bar height in data units
+    """
+    if not len(times_s) or n_replicates < 1:
+        return
+
+    counts, _ = np.histogram(times_s, bins=t_grid_edges)
+    mean_per_rep = counts / float(n_replicates)
+    max_val = mean_per_rep.max()
+    if max_val == 0:
+        return
+
+    bin_centers_min = ((t_grid_edges[:-1] + t_grid_edges[1:]) / 2.0) / 60.0
+    heights = mean_per_rep / max_val * bar_scale     # normalised to bar_scale
+
+    first = True
+    for x, h in zip(bin_centers_min, heights):
+        if h <= 0:
+            continue
+        ax.plot([x, x], [y_base, y_base + h],
+                color=color, linewidth=1.4, alpha=0.75,
+                solid_capstyle="butt",
+                label=label if first else "_nolegend_")
+        first = False
 
 
 def _add_event_vlines(ax, events_s, color, label, lw=0.8, alpha=0.7,
@@ -2935,19 +2994,22 @@ def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
 
-        # Pooled event markers across replicates
+        # Pooled + cleaned event markers — binned across replicates
+        n_rep = len(run_list)
         all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
-                all_events[k].extend(ev[k])
+                all_events[k].extend(_clean_event_times(ev[k], t_max_s=t_max))
 
-        _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred",   "CH death",            lw=1.2, linestyle="-")
-        _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["ch_started"],
-                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
+        t_edges = np.arange(0, t_max + bin_sec, bin_sec)
+
+        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                              "darkred",   "CH death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                              "red",       "UAV death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                              "steelblue", "CH charging started (binned, mean/rep)")
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
@@ -3011,12 +3073,15 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         # --- dip intervals on the averaged curve --------------------------------
         intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
 
-        # --- pooled event times -------------------------------------------------
+        # --- pooled + cleaned event times ---------------------------------------
+        n_rep = len(run_list)
         all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
-                all_events[k].extend(ev[k])
+                all_events[k].extend(_clean_event_times(ev[k], t_max_s=t_max))
+
+        t_edges = np.arange(0, t_max + bin_sec, bin_sec)
 
         # --- plot ---------------------------------------------------------------
         fig, ax = plt.subplots(figsize=(14, 5))
@@ -3026,16 +3091,16 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
 
-        _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred",   "CH death",            lw=1.2, linestyle="-")
-        _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["ch_started"],
-                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
+        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                              "darkred",   "CH death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                              "red",       "UAV death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                              "steelblue", "CH charging started (binned, mean/rep)")
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
-                       linewidth=0.8, label=f"Dip threshold ({dip_threshold:.2f})")
+                       linewidth=0.8, label=f"Dip threshold p10 = {dip_threshold:.2f}")
 
         ax.set_xlabel("Experiment time (min)")
         ax.set_ylabel("Window PDR (mean across replicates)")
@@ -3086,30 +3151,33 @@ def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: fl
 
         intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
 
+        n_rep = len(run_list)
         all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
         for run in run_list:
             ev = _load_event_times_s(run, missing)
             for k in all_events:
-                all_events[k].extend(ev[k])
+                all_events[k].extend(_clean_event_times(ev[k], t_max_s=t_max))
+
+        t_edges = np.arange(0, t_max + bin_sec, bin_sec)
 
         fig, ax = plt.subplots(figsize=(14, 5))
-        t_min = t_grid / 60.0
+        t_min_arr = t_grid / 60.0
         color  = colors[proto]
 
-        ax.plot(t_min, pdr_mean, color=color, linewidth=1.8,
+        ax.plot(t_min_arr, pdr_mean, color=color, linewidth=1.8,
                 label=f"{proto} (mean)")
-        ax.fill_between(t_min, pdr_mean - pdr_std, pdr_mean + pdr_std,
+        ax.fill_between(t_min_arr, pdr_mean - pdr_std, pdr_mean + pdr_std,
                         alpha=0.25, color=color, label="±1σ variance")
 
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
 
-        _add_event_vlines(ax, all_events["ch_deaths"],
-                          "darkred",   "CH death",            lw=1.2, linestyle="-")
-        _add_event_vlines(ax, all_events["all_deaths"],
-                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
-        _add_event_vlines(ax, all_events["ch_started"],
-                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
+        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                              "darkred",   "CH death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                              "red",       "UAV death (binned, mean/rep)")
+        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                              "steelblue", "CH charging started (binned, mean/rep)")
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--", linewidth=0.8,
@@ -3216,6 +3284,106 @@ def _plot_07_window_pdr_distribution(runs, fig_dir, missing):
         proto_safe = proto.replace("/", "_")
         savefig(fig, fig_dir, f"07_window_pdr_dist_{proto_safe}")
         print(f"  [OK] 07_window_pdr_dist_{proto_safe}")
+
+
+def _plot_07_pdr_with_events_merged_variance_all(runs, fig_dir, missing,
+                                                  bin_sec: float = 60.0):
+    """G7/A1-MVA — All protocols stacked; each panel shows mean PDR ±1σ across
+    replicates with binned event rugs (no raw per-replicate vlines).
+
+    Combines the all-protocols panel layout of _plot_07_pdr_with_events_merged_panel
+    with the variance band of _plot_07_pdr_with_events_merged_variance.
+    Event markers are binned (mean events per replicate per bin) so N replicates
+    do not produce N overlapping lines.
+    """
+    groups = _group_by_protocol(runs)
+    protos = list(groups.keys())
+    n = len(protos)
+    if n == 0:
+        return
+
+    fig, axes = plt.subplots(n, 1, figsize=(14, 3.5 * n), sharex=True)
+    if n == 1:
+        axes = [axes]
+
+    colors = protocol_color_map(protos)
+    any_plot = False
+
+    for ax, proto in zip(axes, protos):
+        run_list = groups[proto]
+
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+            t_max = max(t_max, float(net_df["t_rel_s"].iloc[-1]))
+            series.append((net_df["t_rel_s"].values, net_df["window_pdr"].values))
+
+        if not series:
+            continue
+
+        t_grid  = np.arange(0, t_max + bin_sec, bin_sec)
+        interped = [_ts_to_grid(t, y, t_grid) for t, y in series]
+        stack    = np.vstack(interped)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            pdr_mean = np.nanmean(stack, axis=0)
+            pdr_std  = np.nanstd(stack,  axis=0)
+
+        intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
+
+        n_rep = len(run_list)
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            for k in all_events:
+                all_events[k].extend(_clean_event_times(ev[k], t_max_s=t_max))
+
+        t_edges = np.arange(0, t_max + bin_sec, bin_sec)
+        color   = colors[proto]
+        t_min_arr = t_grid / 60.0
+
+        ax.plot(t_min_arr, pdr_mean, color=color, linewidth=1.8,
+                label=f"{proto} (mean)")
+        ax.fill_between(t_min_arr, pdr_mean - pdr_std, pdr_mean + pdr_std,
+                        alpha=0.22, color=color, label="±1σ")
+
+        for (ts, te) in intervals:
+            ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
+
+        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                              "darkred",   "CH death (mean/rep)")
+        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                              "red",       "UAV death (mean/rep)")
+        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                              "steelblue", "CH charging started (mean/rep)")
+
+        if not np.isnan(dip_threshold):
+            ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
+                       linewidth=0.7, label=f"p10 = {dip_threshold:.2f}")
+
+        ax.set_ylabel("PDR (mean ± 1σ)", fontsize=8)
+        ax.set_ylim(-0.05, 1.05)
+        ax.set_title(proto, fontsize=9, pad=2)
+        deduplicate_legend(ax, fontsize=6)
+        any_plot = True
+
+    if not any_plot:
+        plt.close(fig)
+        missing.append("PLOT 07_pdr_events_merged_variance_all: no window_pdr data")
+        return
+
+    axes[-1].set_xlabel("Experiment time (min)")
+    fig.suptitle("PDR ± 1σ + Binned Events — Merged Replicates — All Protocols",
+                 fontsize=11, y=1.01)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "07_pdr_events_merged_variance_all")
+    print("  [OK] 07_pdr_events_merged_variance_all")
 
 
 # ---------------------------------------------------------------------------
@@ -3994,6 +4162,7 @@ def main():
     _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_pdr_with_events_merged_variance(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_variance_all(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_window_pdr_distribution(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts_merged(runs, fig_dirs["07"], missing, bin_sec)
