@@ -193,8 +193,9 @@ def collect_per_run_kpis(data_root: Path) -> pd.DataFrame:
 def plot_cl_a_kpi_overview(df: pd.DataFrame, out_dir: Path) -> None:
     """Bar chart: PDR, depletions, and charge success rate per protocol."""
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
-    mean_df = df.groupby("protocol").mean(numeric_only=True)
-    std_df = df.groupby("protocol").std(numeric_only=True)
+    numeric_cols = df.select_dtypes(include="number").columns
+    mean_df = df.groupby("protocol")[numeric_cols].mean()
+    std_df = df.groupby("protocol")[numeric_cols].std()
     x = np.arange(len(PROTOCOLS))
     short_labels = [PROTO_LABELS[p] for p in PROTOCOLS]
     bar_colors = [PROTO_COLORS[p] for p in PROTOCOLS]
