@@ -2944,10 +2944,11 @@ def _plot_07_pdr_with_events_panel(runs, fig_dir, missing):
 # 07-A1-MP  PDR + event markers — merged replicates, ALL protocols panel
 # ---------------------------------------------------------------------------
 
-def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float = 60.0):
+def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float = 60.0,
+                                          binned: bool = True):
     """G7/A1-MP — All protocols stacked in sub-panels; each panel shows the mean
-    PDR averaged across replicates (same grid approach as the merged variant)
-    plus pooled event markers.
+    PDR averaged across replicates plus pooled event markers.
+    When binned=False, raw per-event vlines are drawn instead of density bars.
     """
     groups = _group_by_protocol(runs)
     protos = list(groups.keys())
@@ -3004,12 +3005,20 @@ def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float
 
         t_edges = np.arange(0, t_max + bin_sec, bin_sec)
 
-        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
-                              "darkred",   "CH death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
-                              "red",       "UAV death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
-                              "steelblue", "CH charging started (binned, mean/rep)")
+        if binned:
+            _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                                  "darkred",   "CH death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                                  "red",       "UAV death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                                  "steelblue", "CH charging started (binned, mean/rep)")
+        else:
+            _add_event_vlines(ax, all_events["ch_deaths"],
+                              "darkred",   "CH death",            lw=1.2, linestyle="-")
+            _add_event_vlines(ax, all_events["all_deaths"],
+                              "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+            _add_event_vlines(ax, all_events["ch_started"],
+                              "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
@@ -3026,23 +3035,26 @@ def _plot_07_pdr_with_events_merged_panel(runs, fig_dir, missing, bin_sec: float
         missing.append("PLOT 07_pdr_events_merged_all_protocols: no window_pdr data")
         return
 
+    suffix = "" if binned else "_rawevents"
     axes[-1].set_xlabel("Experiment time (min)")
     fig.suptitle("PDR + Event Markers — Merged Replicates — All Protocols", fontsize=11, y=1.01)
     fig.tight_layout()
-    savefig(fig, fig_dir, "07_pdr_events_merged_all_protocols")
-    print("  [OK] 07_pdr_events_merged_all_protocols")
+    savefig(fig, fig_dir, f"07_pdr_events_merged{suffix}_all_protocols")
+    print(f"  [OK] 07_pdr_events_merged{suffix}_all_protocols")
 
 
 # ---------------------------------------------------------------------------
 # 07-A1-M  PDR + event markers — merged replicates, one figure per protocol
 # ---------------------------------------------------------------------------
 
-def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.0):
+def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.0,
+                                    binned: bool = True):
     """G7/A1-M — Per-protocol merged PDR (mean across replicates) + event markers.
 
     PDR timeseries: replicates are interpolated onto a common time grid and
     averaged (same approach as _plot_01_network_pdr_over_time_merged).
     Event markers and dip shading are derived from all replicates pooled.
+    When binned=False, raw per-event vlines are drawn instead of density bars.
     """
     groups = _group_by_protocol(runs)
     colors = protocol_color_map(list(groups.keys()))
@@ -3091,12 +3103,20 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
 
-        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
-                              "darkred",   "CH death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
-                              "red",       "UAV death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
-                              "steelblue", "CH charging started (binned, mean/rep)")
+        if binned:
+            _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                                  "darkred",   "CH death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                                  "red",       "UAV death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                                  "steelblue", "CH charging started (binned, mean/rep)")
+        else:
+            _add_event_vlines(ax, all_events["ch_deaths"],
+                              "darkred",   "CH death",            lw=1.2, linestyle="-")
+            _add_event_vlines(ax, all_events["all_deaths"],
+                              "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+            _add_event_vlines(ax, all_events["ch_started"],
+                              "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
@@ -3105,22 +3125,20 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         ax.set_xlabel("Experiment time (min)")
         ax.set_ylabel("Window PDR (mean across replicates)")
         proto_safe = proto.replace("/", "_")
+        suffix = "" if binned else "_rawevents"
         ax.set_title(f"PDR + Events — {proto} — Merged Replicates")
         ax.set_ylim(-0.05, 1.05)
         deduplicate_legend(ax, fontsize=7)
-        savefig(fig, fig_dir, f"07_pdr_events_merged_{proto_safe}")
-        print(f"  [OK] 07_pdr_events_merged_{proto_safe}")
+        savefig(fig, fig_dir, f"07_pdr_events_merged{suffix}_{proto_safe}")
+        print(f"  [OK] 07_pdr_events_merged{suffix}_{proto_safe}")
 
 
-def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: float = 60.0):
+def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: float = 60.0,
+                                             binned: bool = True):
     """G7/A1-MV — Same as _plot_07_pdr_with_events_merged but with ±1σ variance band.
 
-    The shaded band shows the across-replicate standard deviation at every
-    time bin so the reader can judge how consistent the PDR trajectory is.
-    The dip threshold (p10 of the mean curve) and all event markers are kept.
-
-    Dip threshold: 10th percentile of all non-negative window_pdr values on
-    the mean curve.  A point is flagged as a "dip" when mean PDR < p10.
+    When binned=False, raw per-event vlines are drawn instead of density bars.
+    Dip threshold: p10 of the mean curve.
     """
     groups = _group_by_protocol(runs)
     colors = protocol_color_map(list(groups.keys()))
@@ -3172,12 +3190,20 @@ def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: fl
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
 
-        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
-                              "darkred",   "CH death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
-                              "red",       "UAV death (binned, mean/rep)")
-        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
-                              "steelblue", "CH charging started (binned, mean/rep)")
+        if binned:
+            _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                                  "darkred",   "CH death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                                  "red",       "UAV death (binned, mean/rep)")
+            _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                                  "steelblue", "CH charging started (binned, mean/rep)")
+        else:
+            _add_event_vlines(ax, all_events["ch_deaths"],
+                              "darkred",   "CH death",            lw=1.2, linestyle="-")
+            _add_event_vlines(ax, all_events["all_deaths"],
+                              "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+            _add_event_vlines(ax, all_events["ch_started"],
+                              "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--", linewidth=0.8,
@@ -3186,11 +3212,12 @@ def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: fl
         ax.set_xlabel("Experiment time (min)")
         ax.set_ylabel("Window PDR (mean ± 1σ across replicates)")
         proto_safe = proto.replace("/", "_")
+        suffix = "" if binned else "_rawevents"
         ax.set_title(f"PDR + Events + Variance — {proto} — Merged Replicates")
         ax.set_ylim(-0.05, 1.05)
         deduplicate_legend(ax, fontsize=7)
-        savefig(fig, fig_dir, f"07_pdr_events_merged_variance_{proto_safe}")
-        print(f"  [OK] 07_pdr_events_merged_variance_{proto_safe}")
+        savefig(fig, fig_dir, f"07_pdr_events_merged_variance{suffix}_{proto_safe}")
+        print(f"  [OK] 07_pdr_events_merged_variance{suffix}_{proto_safe}")
 
 
 def _plot_07_window_pdr_distribution(runs, fig_dir, missing):
@@ -3287,14 +3314,11 @@ def _plot_07_window_pdr_distribution(runs, fig_dir, missing):
 
 
 def _plot_07_pdr_with_events_merged_variance_all(runs, fig_dir, missing,
-                                                  bin_sec: float = 60.0):
+                                                  bin_sec: float = 60.0,
+                                                  binned: bool = True):
     """G7/A1-MVA — All protocols stacked; each panel shows mean PDR ±1σ across
-    replicates with binned event rugs (no raw per-replicate vlines).
-
-    Combines the all-protocols panel layout of _plot_07_pdr_with_events_merged_panel
-    with the variance band of _plot_07_pdr_with_events_merged_variance.
-    Event markers are binned (mean events per replicate per bin) so N replicates
-    do not produce N overlapping lines.
+    replicates with event markers.  When binned=False, raw per-event vlines are
+    used instead of density bars.
     """
     groups = _group_by_protocol(runs)
     protos = list(groups.keys())
@@ -3356,12 +3380,20 @@ def _plot_07_pdr_with_events_merged_variance_all(runs, fig_dir, missing,
         for (ts, te) in intervals:
             ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.2, linewidth=0)
 
-        _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
-                              "darkred",   "CH death (mean/rep)")
-        _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
-                              "red",       "UAV death (mean/rep)")
-        _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
-                              "steelblue", "CH charging started (mean/rep)")
+        if binned:
+            _add_binned_event_rug(ax, all_events["ch_deaths"],  t_edges, n_rep,
+                                  "darkred",   "CH death (mean/rep)")
+            _add_binned_event_rug(ax, all_events["all_deaths"], t_edges, n_rep,
+                                  "red",       "UAV death (mean/rep)")
+            _add_binned_event_rug(ax, all_events["ch_started"], t_edges, n_rep,
+                                  "steelblue", "CH charging started (mean/rep)")
+        else:
+            _add_event_vlines(ax, all_events["ch_deaths"],
+                              "darkred",   "CH death",            lw=1.2, linestyle="-")
+            _add_event_vlines(ax, all_events["all_deaths"],
+                              "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+            _add_event_vlines(ax, all_events["ch_started"],
+                              "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
 
         if not np.isnan(dip_threshold):
             ax.axhline(dip_threshold, color="goldenrod", linestyle="--",
@@ -3378,12 +3410,14 @@ def _plot_07_pdr_with_events_merged_variance_all(runs, fig_dir, missing,
         missing.append("PLOT 07_pdr_events_merged_variance_all: no window_pdr data")
         return
 
+    suffix = "" if binned else "_rawevents"
     axes[-1].set_xlabel("Experiment time (min)")
-    fig.suptitle("PDR ± 1σ + Binned Events — Merged Replicates — All Protocols",
+    title_tag = "Binned Events" if binned else "Raw Events"
+    fig.suptitle(f"PDR ± 1σ + {title_tag} — Merged Replicates — All Protocols",
                  fontsize=11, y=1.01)
     fig.tight_layout()
-    savefig(fig, fig_dir, "07_pdr_events_merged_variance_all")
-    print("  [OK] 07_pdr_events_merged_variance_all")
+    savefig(fig, fig_dir, f"07_pdr_events_merged_variance{suffix}_all")
+    print(f"  [OK] 07_pdr_events_merged_variance{suffix}_all")
 
 
 # ---------------------------------------------------------------------------
@@ -4160,9 +4194,13 @@ def main():
     _plot_07_pdr_with_events_per_protocol(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_panel(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec, binned=False)
     _plot_07_pdr_with_events_merged_variance(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_variance(runs, fig_dirs["07"], missing, bin_sec, binned=False)
     _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec, binned=False)
     _plot_07_pdr_with_events_merged_variance_all(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_variance_all(runs, fig_dirs["07"], missing, bin_sec, binned=False)
     _plot_07_window_pdr_distribution(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts_merged(runs, fig_dirs["07"], missing, bin_sec)
