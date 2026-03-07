@@ -2752,21 +2752,21 @@ def _clean_event_times(times_s, t_max_s=None):
 
 
 def _add_binned_event_rug(ax, times_s, t_grid_edges, n_replicates,
-                          color, label, y_base=0.01, bar_scale=0.07):
-    """Draw a density rug at the bottom of *ax* for merged-replicate event plots.
+                          color, label, y_base=0.0, bar_scale=0.35):
+    """Draw a density bar chart at the bottom of *ax* for merged-replicate event plots.
 
-    Instead of one vline per raw event (which stacks N near-identical lines
-    for N replicates), this bins events into *t_grid_edges* and draws a tick
-    at each bin centre whose height is proportional to the mean number of
-    events per replicate per bin.  Bins with zero events are silent.
+    Bins events into *t_grid_edges*, normalises by n_replicates (mean events
+    per replicate per bin), then draws vertical bars from *y_base* upward.
+    Bar height is proportional to the bin count so the tallest bar reaches
+    y_base + bar_scale.  Bins with zero events are silent.
 
     Parameters
     ----------
     times_s       : iterable of float – event times in seconds (already cleaned)
     t_grid_edges  : 1-D array         – bin edges in seconds
     n_replicates  : int               – number of replicates (used to normalise)
-    y_base        : float             – baseline y position (axes fraction of 0-1)
-    bar_scale     : float             – max bar height in data units
+    y_base        : float             – baseline y (data units, default 0)
+    bar_scale     : float             – max bar height in data units (default 0.35)
     """
     if not len(times_s) or n_replicates < 1:
         return
