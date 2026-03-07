@@ -18,6 +18,8 @@ Outputs (saved to <output_root>/figures/cross_layer/):
     CL_H_lagged_correlation_summary.png      -- §4.4: cross-protocol lag-correlation curves
     CL_I_epoch_aligned_pdr.png               -- §4.4: epoch-aligned PDR around depletion bursts
     CL_J_ugv_edf3_cascade.png               -- §4.4/Anomaly A: ugv_edf_3 cascade timeseries
+    CL_K_delay_robustness_panel.png         -- Conditioning-aware delay: sample-size scatter + DPR-weighted ranking
+    CL_L_event_aligned_composite.png        -- Event-aligned 4-pane composite per protocol + merged
 
 Data sources (all per-run CSVs):
     qos_metrics.csv          -> PDR (generated, delivered)
@@ -934,6 +936,300 @@ def plot_cl_j_ugv_edf3_cascade(data_root: Path, out_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# CL_K — Conditioning-aware delay robustness panel
+# ---------------------------------------------------------------------------
+
+def plot_cl_k_delay_robustness_panel(data_root: Path, out_dir: Path) -> None:
+    """Conditioning-aware delay robustness analysis (CL_K).
+
+    Two panels:
+      Left  — Scatter: window_delivered (sample size) vs window_delay_mean_ms,
+              coloured by window_pdr.  Exposes the conditioning bias: windows
+              with few delivered packets (low-PDR regimes) appear to have lower
+              delay because only short-path survivors are measured.
+      Right — DPR-weighted delay ranking: horizontal bar chart comparing the
+              naïve mean delay to the PDR-weighted mean delay per protocol,
+              sorted by weighted delay.  Weighted mean = Σ(delay·PDR)/Σ(PDR)
+              so that high-PDR (healthy, full-path) windows dominate the average.
+
+    Data: network_timeseries.csv (window_pdr, window_delay_mean_ms, window_delivered).
+    Output: CL_K_delay_robustness_panel.png
+    """
+    records = []
+    for proto in PROTOCOLS:
+        for r in REPLICATES:
+            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
+            if net.empty:
+                continue
+            needed = {"window_delay_mean_ms", "window_pdr", "window_delivered"}
+            if not needed.issubset(net.columns):
+                continue
+            valid = net[
+                (net["window_delay_mean_ms"] >= 0) &
+                (net["window_pdr"] >= 0) &
+                (net["window_delivered"] > 0)
+            ].copy()
+            if valid.empty:
+                continue
+            valid = valid.assign(protocol=proto)
+            records.append(valid[["protocol", "window_pdr", "window_delay_mean_ms", "window_delivered"]])
+
+    if not records:
+        print("  WARNING: no valid window data for CL_K — skipping")
+        return
+
+    all_wins = pd.concat(records, ignore_index=True)
+
+    # Per-protocol weighted and unweighted delay
+    stats_rows = []
+    for proto in PROTOCOLS:
+        sub = all_wins[all_wins["protocol"] == proto]
+        if sub.empty:
+            continue
+        unweighted = float(sub["window_delay_mean_ms"].mean())
+        w = sub["window_pdr"].values
+        d = sub["window_delay_mean_ms"].values
+        weighted = float(np.dot(w, d) / w.sum()) if w.sum() > 0 else np.nan
+        stats_rows.append({
+            "protocol": proto,
+            "label": PROTO_LABELS[proto],
+            "color": PROTO_COLORS[proto],
+            "unweighted": unweighted,
+            "weighted": weighted,
+        })
+    stats_df = pd.DataFrame(stats_rows).sort_values("weighted").reset_index(drop=True)
+
+    fig, (ax_scatter, ax_bar) = plt.subplots(1, 2, figsize=(14, 5))
+
+    # --- Panel 1: scatter window_delivered vs delay, coloured by PDR ---
+    sc = ax_scatter.scatter(
+        all_wins["window_delivered"],
+        all_wins["window_delay_mean_ms"],
+        c=all_wins["window_pdr"],
+        cmap="RdYlGn", vmin=0, vmax=1,
+        s=6, alpha=0.35, rasterized=True,
+    )
+    plt.colorbar(sc, ax=ax_scatter, label="window PDR")
+
+    sub_reg = all_wins[["window_delivered", "window_delay_mean_ms"]].dropna()
+    if len(sub_reg) >= 10:
+        m, b, r_val, p_val, _ = stats.linregress(
+            sub_reg["window_delivered"], sub_reg["window_delay_mean_ms"]
+        )
+        xl = np.linspace(sub_reg["window_delivered"].min(), sub_reg["window_delivered"].max(), 200)
+        ax_scatter.plot(
+            xl, m * xl + b, "k--", linewidth=1.5, alpha=0.85,
+            label=f"OLS  r = {r_val:.2f},  p = {p_val:.3f}",
+        )
+        ax_scatter.legend(fontsize=8)
+
+    ax_scatter.set_xlabel("Delivered packets per window (sample size)", fontsize=10)
+    ax_scatter.set_ylabel("Window mean E2E delay (ms)", fontsize=10)
+    ax_scatter.set_title(
+        "Delay vs Delivered Sample Size\n"
+        "(colour = PDR;  low count → low delay conditioning bias)",
+        fontsize=10, fontweight="bold",
+    )
+    ax_scatter.grid(alpha=0.3)
+    ax_scatter.text(
+        0.02, 0.97,
+        "Survivorship bias: only packets that\n"
+        "complete transit are timed → short\n"
+        "paths dominate in low-PDR windows.",
+        transform=ax_scatter.transAxes, fontsize=7.5, va="top",
+        bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.85),
+    )
+
+    # --- Panel 2: DPR-weighted vs unweighted horizontal bar chart ---
+    y = np.arange(len(stats_df))
+    h = 0.32
+    ax_bar.barh(
+        y + h / 2, stats_df["weighted"], h,
+        color=stats_df["color"].values, alpha=0.88,
+        label="PDR-weighted mean delay",
+    )
+    ax_bar.barh(
+        y - h / 2, stats_df["unweighted"], h,
+        color=stats_df["color"].values, alpha=0.38, hatch="//",
+        label="Unweighted mean delay",
+    )
+    ax_bar.set_yticks(y)
+    ax_bar.set_yticklabels(stats_df["label"].values, fontsize=9)
+    ax_bar.set_xlabel("Mean E2E Delay (ms)", fontsize=10)
+    ax_bar.set_title(
+        "DPR-Weighted vs Unweighted Delay Ranking\n"
+        "(sorted by weighted delay; weighted = Σ(delay·PDR) / Σ(PDR))",
+        fontsize=10, fontweight="bold",
+    )
+    ax_bar.legend(fontsize=8, loc="lower right")
+    ax_bar.grid(axis="x", alpha=0.3)
+    ax_bar.text(
+        0.98, 0.98,
+        "Weighted delay upweights healthy\n"
+        "(high-PDR) windows, correcting\n"
+        "for survivorship bias.",
+        transform=ax_bar.transAxes, fontsize=7.5, va="top", ha="right",
+        bbox=dict(boxstyle="round", facecolor="lightyellow", alpha=0.85),
+    )
+
+    fig.suptitle(
+        "CL_K — Conditioning-Aware Delay Robustness Panel\n"
+        "(addresses survivorship bias in E2E delay measurement)",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out_dir / "CL_K_delay_robustness_panel.png")
+
+
+# ---------------------------------------------------------------------------
+# CL_L — Event-aligned composite (per protocol + merged)
+# ---------------------------------------------------------------------------
+
+def plot_cl_l_event_aligned_composite(
+    data_root: Path, out_dir: Path, bin_sec: int = 600
+) -> None:
+    """Event-aligned 4-pane composite timeseries per protocol + merged (CL_L).
+
+    Layout: 4 rows × 8 columns  (7 protocol columns + 1 merged column).
+      Row 0: PDR            — window_pdr from network_timeseries.csv
+      Row 1: Timeout count  — TIMEOUT events binned from charge_events.csv
+      Row 2: Deaths / bin   — depletion events binned from death_events.csv
+      Row 3: Dock util.     — ugv_dock_utilization from charge_queue_timeseries.csv
+
+    All panes share the same x-axis (time in minutes).  Each row shares its
+    y-axis across columns so magnitudes are directly comparable.  The rightmost
+    column shows the cross-protocol mean ± 1σ (all 7 protocols × 3 replicates).
+
+    Data: network_timeseries.csv, charge_events.csv, death_events.csv,
+          charge_queue_timeseries.csv.
+    Output: CL_L_event_aligned_composite.png
+    """
+    bins = np.arange(0, MAX_T_S + bin_sec, bin_sec)
+    t_min = (bins[:-1] + bins[1:]) / 2 / 60
+    n_bins = len(bins) - 1
+    n_proto = len(PROTOCOLS)
+    n_cols = n_proto + 1  # last column = merged
+
+    ROW_LABELS = ["PDR", "Timeouts / bin", "Deaths / bin", "Dock utilisation"]
+    ROW_COLORS = ["steelblue", "darkorange", "firebrick", "mediumseagreen"]
+    N_ROWS = 4
+
+    fig, axes = plt.subplots(
+        N_ROWS, n_cols,
+        figsize=(3.0 * n_cols, 2.3 * N_ROWS),
+        sharex=True, sharey="row",
+        gridspec_kw={"hspace": 0.10, "wspace": 0.05},
+    )
+
+    # store[row_idx][col_idx] = list of (n_bins,) arrays, one per replicate
+    store = {row: [[] for _ in range(n_cols)] for row in range(N_ROWS)}
+
+    for col_idx, proto in enumerate(PROTOCOLS):
+        for r_rep in REPLICATES:
+            folder = data_root / f"{proto}_{r_rep}"
+
+            # Row 0: PDR
+            net = _load_csv(folder, "network_timeseries.csv")
+            if not net.empty and "window_pdr" in net.columns:
+                valid = net[net["window_pdr"] >= 0]
+                store[0][col_idx].append(
+                    _bin_mean(valid["t_rel_s"].values, valid["window_pdr"].values, bins)
+                )
+
+            # Row 1: timeout count per bin
+            ce = _load_csv(folder, "charge_events.csv")
+            if not ce.empty and "outcome" in ce.columns:
+                tmout = ce[ce["outcome"] == "TIMEOUT"]
+                hist = (
+                    np.histogram(tmout["t_rel_s"].values, bins=bins)[0].astype(float)
+                    if len(tmout) > 0
+                    else np.zeros(n_bins)
+                )
+                store[1][col_idx].append(hist)
+
+            # Row 2: death count per bin
+            de = _load_csv(folder, "death_events.csv")
+            if not de.empty and "t_rel_s" in de.columns:
+                store[2][col_idx].append(
+                    np.histogram(de["t_rel_s"].values, bins=bins)[0].astype(float)
+                )
+
+            # Row 3: dock utilisation
+            cq = _load_csv(folder, "charge_queue_timeseries.csv")
+            if not cq.empty and "ugv_dock_utilization" in cq.columns:
+                valid_cq = cq[cq["ugv_dock_utilization"] >= 0]
+                store[3][col_idx].append(
+                    _bin_mean(
+                        valid_cq["t_rel_s"].values,
+                        valid_cq["ugv_dock_utilization"].values,
+                        bins,
+                    )
+                )
+
+    # Build merged column from all protocol replicates
+    for row_idx in range(N_ROWS):
+        merged = []
+        for col_idx in range(n_proto):
+            merged.extend(store[row_idx][col_idx])
+        store[row_idx][n_proto] = merged
+
+    # --- Render ---
+    for col_idx in range(n_cols):
+        is_merged = col_idx == n_proto
+        proto = None if is_merged else PROTOCOLS[col_idx]
+        col_color = "black" if is_merged else PROTO_COLORS[proto]
+        col_label = "All (merged)" if is_merged else PROTO_LABELS[proto]
+
+        for row_idx in range(N_ROWS):
+            ax = axes[row_idx, col_idx]
+            reps = store[row_idx][col_idx]
+
+            if reps:
+                arr = np.array(reps)
+                mean = np.nanmean(arr, axis=0)
+                std = np.nanstd(arr, axis=0)
+                ax.plot(t_min, mean, color=col_color, linewidth=1.5)
+                ax.fill_between(
+                    t_min, mean - std, mean + std,
+                    alpha=0.20, color=col_color,
+                )
+
+            ax.grid(alpha=0.22, linewidth=0.5)
+            ax.tick_params(labelsize=6)
+
+            # Column header on top row
+            if row_idx == 0:
+                title_kw = dict(fontsize=8, fontweight="bold", pad=3)
+                if is_merged:
+                    title_kw["color"] = "black"
+                    ax.set_title(col_label, **title_kw)
+                    for spine in ax.spines.values():
+                        spine.set_linewidth(1.5)
+                        spine.set_edgecolor("dimgray")
+                else:
+                    ax.set_title(col_label, color=col_color, **title_kw)
+
+            # Row label on leftmost column
+            if col_idx == 0:
+                ax.set_ylabel(ROW_LABELS[row_idx], fontsize=8,
+                              color=ROW_COLORS[row_idx])
+
+            # X-label on bottom row
+            if row_idx == N_ROWS - 1:
+                ax.set_xlabel("Time (min)", fontsize=7)
+
+    fig.suptitle(
+        "CL_L — Event-Aligned Composite (per Protocol + Merged)\n"
+        "Row 0: PDR  ·  Row 1: Charge timeouts  ·  "
+        "Row 2: Battery deaths  ·  Row 3: Dock utilisation\n"
+        "(mean ± 1σ across 3 replicates; rightmost column = all-protocol mean)",
+        fontsize=11, fontweight="bold", y=1.02,
+    )
+    plt.tight_layout()
+    _save(fig, out_dir / "CL_L_event_aligned_composite.png")
+
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
@@ -1010,6 +1306,18 @@ def main() -> None:
     print("[CL-J] ugv_edf_3 cascade annotated timeseries (§4.4 / Anomaly A) …")
     try:
         plot_cl_j_ugv_edf3_cascade(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
+
+    print("[CL-K] Conditioning-aware delay robustness panel …")
+    try:
+        plot_cl_k_delay_robustness_panel(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
+
+    print("[CL-L] Event-aligned composite (per protocol + merged) …")
+    try:
+        plot_cl_l_event_aligned_composite(data_root, out_dir, bin_sec)
     except Exception:
         import traceback; traceback.print_exc()
 
