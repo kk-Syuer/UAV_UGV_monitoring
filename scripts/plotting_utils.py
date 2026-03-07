@@ -205,13 +205,15 @@ def ensure_t_rel(df: pd.DataFrame, time_col: str = "time_s") -> pd.DataFrame:
 
 def savefig(fig: plt.Figure, output_dir, name: str) -> Path:
     """
-    Save *fig* as ``<output_dir>/<name>.png``, creating parent dirs as
-    needed.  The figure is closed after saving.
+    Save *fig* as ``<output_dir>/<name>.png`` and ``<output_dir>/<name>.pdf``,
+    creating parent dirs as needed.  The figure is closed after saving.
     """
     output_dir = Path(output_dir)
     output_dir.mkdir(parents=True, exist_ok=True)
-    out_path = output_dir / (name if name.endswith(".png") else name + ".png")
+    stem = name[:-4] if name.endswith(".png") else name
+    out_path = output_dir / (stem + ".png")
     fig.savefig(out_path, bbox_inches="tight")
+    fig.savefig(output_dir / (stem + ".pdf"), bbox_inches="tight")
     plt.close(fig)
     return out_path
 

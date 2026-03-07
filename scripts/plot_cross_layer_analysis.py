@@ -1236,8 +1236,10 @@ def plot_cl_l_event_aligned_composite(
 def _save(fig: plt.Figure, path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     fig.savefig(path, dpi=150, bbox_inches="tight")
+    pdf_path = path.with_suffix(".pdf")
+    fig.savefig(pdf_path, bbox_inches="tight")
     plt.close(fig)
-    print(f"  Saved: {path}")
+    print(f"  Saved: {path} + {pdf_path.name}")
 
 
 # ---------------------------------------------------------------------------
