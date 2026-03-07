@@ -3047,6 +3047,177 @@ def _plot_07_pdr_with_events_merged(runs, fig_dir, missing, bin_sec: float = 60.
         print(f"  [OK] 07_pdr_events_merged_{proto_safe}")
 
 
+def _plot_07_pdr_with_events_merged_variance(runs, fig_dir, missing, bin_sec: float = 60.0):
+    """G7/A1-MV — Same as _plot_07_pdr_with_events_merged but with ±1σ variance band.
+
+    The shaded band shows the across-replicate standard deviation at every
+    time bin so the reader can judge how consistent the PDR trajectory is.
+    The dip threshold (p10 of the mean curve) and all event markers are kept.
+
+    Dip threshold: 10th percentile of all non-negative window_pdr values on
+    the mean curve.  A point is flagged as a "dip" when mean PDR < p10.
+    """
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    for proto, run_list in groups.items():
+        series = []
+        t_max = 0.0
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns or "t_rel_s" not in net_df.columns:
+                continue
+            net_df = net_df[net_df["window_pdr"] >= 0].sort_values("t_rel_s")
+            if net_df.empty:
+                continue
+            t_max = max(t_max, float(net_df["t_rel_s"].iloc[-1]))
+            series.append((net_df["t_rel_s"].values, net_df["window_pdr"].values))
+
+        if not series:
+            continue
+
+        t_grid  = np.arange(0, t_max + bin_sec, bin_sec)
+        interped = [_ts_to_grid(t, y, t_grid) for t, y in series]
+        stack    = np.vstack(interped)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", RuntimeWarning)
+            pdr_mean = np.nanmean(stack, axis=0)
+            pdr_std  = np.nanstd(stack,  axis=0)
+
+        intervals, dip_threshold = _pdr_dip_intervals(t_grid, pdr_mean)
+
+        all_events: dict = {k: [] for k in ("all_deaths", "ch_deaths", "ch_started")}
+        for run in run_list:
+            ev = _load_event_times_s(run, missing)
+            for k in all_events:
+                all_events[k].extend(ev[k])
+
+        fig, ax = plt.subplots(figsize=(14, 5))
+        t_min = t_grid / 60.0
+        color  = colors[proto]
+
+        ax.plot(t_min, pdr_mean, color=color, linewidth=1.8,
+                label=f"{proto} (mean)")
+        ax.fill_between(t_min, pdr_mean - pdr_std, pdr_mean + pdr_std,
+                        alpha=0.25, color=color, label="±1σ variance")
+
+        for (ts, te) in intervals:
+            ax.axvspan(ts / 60.0, te / 60.0, color="gold", alpha=0.25, linewidth=0)
+
+        _add_event_vlines(ax, all_events["ch_deaths"],
+                          "darkred",   "CH death",            lw=1.2, linestyle="-")
+        _add_event_vlines(ax, all_events["all_deaths"],
+                          "red",       "UAV death",           lw=0.7, linestyle="--", alpha=0.5)
+        _add_event_vlines(ax, all_events["ch_started"],
+                          "steelblue", "CH charging started", lw=0.8, linestyle="-.", alpha=0.6)
+
+        if not np.isnan(dip_threshold):
+            ax.axhline(dip_threshold, color="goldenrod", linestyle="--", linewidth=0.8,
+                       label=f"Dip threshold p10 = {dip_threshold:.2f}")
+
+        ax.set_xlabel("Experiment time (min)")
+        ax.set_ylabel("Window PDR (mean ± 1σ across replicates)")
+        proto_safe = proto.replace("/", "_")
+        ax.set_title(f"PDR + Events + Variance — {proto} — Merged Replicates")
+        ax.set_ylim(-0.05, 1.05)
+        deduplicate_legend(ax, fontsize=7)
+        savefig(fig, fig_dir, f"07_pdr_events_merged_variance_{proto_safe}")
+        print(f"  [OK] 07_pdr_events_merged_variance_{proto_safe}")
+
+
+def _plot_07_window_pdr_distribution(runs, fig_dir, missing):
+    """G7/A3 — Window PDR distribution per protocol.
+
+    For each protocol a single figure is produced with two panels:
+      Left:  Histogram of all window_pdr observations pooled across replicates,
+             with a KDE overlay.
+      Right: Box-and-whisker per replicate so run-to-run variance is visible.
+
+    The vertical dashed line marks the dip threshold (p10 pooled across all
+    windows of that protocol) so the reader can relate the distribution to the
+    dip shading used in the PDR+events plots.
+
+    Source: network_timeseries.csv -> window_pdr.
+    """
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    for proto, run_list in groups.items():
+        all_vals: list = []          # every window_pdr value, all replicates
+        per_run_vals: list = []      # list of arrays, one per replicate
+        run_labels:   list = []
+
+        for run in run_list:
+            net_df = _load(run, "network_timeseries", missing)
+            if net_df is None or "window_pdr" not in net_df.columns:
+                continue
+            vals = net_df.loc[net_df["window_pdr"] >= 0, "window_pdr"].dropna().values
+            if len(vals) == 0:
+                continue
+            all_vals.extend(vals.tolist())
+            per_run_vals.append(vals)
+            run_labels.append(run["label"])
+
+        if not all_vals:
+            continue
+
+        arr = np.asarray(all_vals)
+        dip_thr = float(np.nanpercentile(arr, 10))
+        color   = colors[proto]
+
+        fig, (ax_hist, ax_box) = plt.subplots(1, 2, figsize=(13, 5),
+                                               gridspec_kw={"width_ratios": [2, 1]})
+
+        # --- Left: histogram + KDE ---
+        ax_hist.hist(arr, bins=40, density=True, color=color, alpha=0.45,
+                     edgecolor="white", linewidth=0.4, label="All replicates")
+
+        if len(arr) > 5:
+            from scipy.stats import gaussian_kde
+            kde = gaussian_kde(arr, bw_method="scott")
+            x_kde = np.linspace(max(0, arr.min() - 0.02), min(1, arr.max() + 0.02), 300)
+            ax_hist.plot(x_kde, kde(x_kde), color=color, linewidth=2.0, label="KDE")
+
+        ax_hist.axvline(dip_thr, color="goldenrod", linestyle="--", linewidth=1.2,
+                        label=f"Dip threshold p10 = {dip_thr:.3f}")
+        ax_hist.set_xlabel("Window PDR")
+        ax_hist.set_ylabel("Density")
+        ax_hist.set_title(f"Distribution — {proto}")
+        ax_hist.set_xlim(-0.02, 1.02)
+        ax_hist.legend(fontsize=8)
+
+        # annotate mean ± std
+        ax_hist.annotate(
+            f"mean = {arr.mean():.3f}\nstd  = {arr.std():.3f}\nn = {len(arr):,}",
+            xy=(0.03, 0.97), xycoords="axes fraction",
+            ha="left", va="top", fontsize=8,
+            bbox=dict(boxstyle="round,pad=0.3", facecolor="white",
+                      edgecolor="grey", alpha=0.8),
+        )
+
+        # --- Right: box per replicate ---
+        if per_run_vals:
+            bp = ax_box.boxplot(per_run_vals, vert=True, patch_artist=True,
+                                labels=run_labels, showfliers=True,
+                                flierprops=dict(marker=".", markersize=3, alpha=0.4))
+            for patch in bp["boxes"]:
+                patch.set_facecolor(color)
+                patch.set_alpha(0.55)
+            ax_box.axhline(dip_thr, color="goldenrod", linestyle="--",
+                           linewidth=1.0, label=f"p10 = {dip_thr:.3f}")
+            ax_box.set_ylabel("Window PDR")
+            ax_box.set_title("Per-replicate boxplot")
+            ax_box.set_ylim(-0.05, 1.05)
+            ax_box.tick_params(axis="x", rotation=30, labelsize=7)
+            ax_box.legend(fontsize=7)
+
+        fig.suptitle(f"Window PDR Distribution — {proto}", fontsize=11)
+        fig.tight_layout()
+        proto_safe = proto.replace("/", "_")
+        savefig(fig, fig_dir, f"07_window_pdr_dist_{proto_safe}")
+        print(f"  [OK] 07_window_pdr_dist_{proto_safe}")
+
+
 # ---------------------------------------------------------------------------
 # 07-A2  Dock utilisation + TIMEOUT markers — all protocols panel
 # ---------------------------------------------------------------------------
@@ -3821,7 +3992,9 @@ def main():
     _plot_07_pdr_with_events_per_protocol(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_panel(runs, fig_dirs["07"], missing)
     _plot_07_pdr_with_events_merged(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_pdr_with_events_merged_variance(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_pdr_with_events_merged_panel(runs, fig_dirs["07"], missing, bin_sec)
+    _plot_07_window_pdr_distribution(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts(runs, fig_dirs["07"], missing)
     _plot_07_dock_util_with_timeouts_merged(runs, fig_dirs["07"], missing, bin_sec)
     _plot_07_lagged_correlation(runs, fig_dirs["07"], missing, bin_sec)
