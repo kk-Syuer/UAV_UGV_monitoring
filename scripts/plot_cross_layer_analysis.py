@@ -8,13 +8,16 @@ to network quality metrics (PDR, E2E delay) and fleet survivability.
 This script is part of the Group 09 (cross-layer) analysis for Test Round 2.
 
 Outputs (saved to <output_root>/figures/cross_layer/):
-    CL_A_protocol_kpi_overview.png        -- Bar chart: PDR, depletions, success rate
-    CL_B_charging_vs_pdr_scatter.png      -- Scatter matrix: charging KPIs vs PDR
+    CL_A_protocol_kpi_overview.png           -- Bar chart: PDR, depletions, success rate
+    CL_B_charging_vs_pdr_scatter.png         -- Scatter matrix: charging KPIs vs PDR
     CL_C_e2e_delay_conditioning_analysis.png -- Conditioning bias analysis
-    CL_D_mechanism_chain.png              -- Three-step mechanism chain scatter
-    CL_E_correlation_bar_chart.png        -- Pearson + Spearman bar chart
-    CL_F_pdr_vs_depletions_timeseries.png -- PDR timeseries + depletion rate overlay
-    CL_G_routing_drop_timeseries.png      -- Routing drop rate over time per protocol
+    CL_D_mechanism_chain.png                 -- Three-step mechanism chain scatter
+    CL_E_correlation_bar_chart.png           -- Pearson + Spearman bar chart
+    CL_F_pdr_vs_depletions_timeseries.png    -- PDR timeseries + depletion rate overlay
+    CL_G_routing_drop_timeseries.png         -- Routing drop rate over time per protocol
+    CL_H_lagged_correlation_summary.png      -- §4.4: cross-protocol lag-correlation curves
+    CL_I_epoch_aligned_pdr.png               -- §4.4: epoch-aligned PDR around depletion bursts
+    CL_J_ugv_edf3_cascade.png               -- §4.4/Anomaly A: ugv_edf_3 cascade timeseries
 
 Data sources (all per-run CSVs):
     qos_metrics.csv          -> PDR (generated, delivered)
@@ -568,6 +571,350 @@ def plot_cl_g_routing_drop_timeseries(
 
 
 # ---------------------------------------------------------------------------
+# §4.4 Lagged-correlation illustration plots (CL_H, CL_I, CL_J)
+# ---------------------------------------------------------------------------
+
+def _lagged_pearson(x: np.ndarray, y: np.ndarray, max_lag: int):
+    """Pearson r between x and y at integer lags [-max_lag, +max_lag].
+
+    Positive lag = y lags behind x (x leads).
+    Returns (lags_array, corrs_array).
+    """
+    x, y = np.asarray(x, float), np.asarray(y, float)
+    n = len(x)
+    lags = np.arange(-max_lag, max_lag + 1)
+    rs = np.full(len(lags), np.nan)
+    for i, lag in enumerate(lags):
+        if lag > 0:
+            xi, yi = x[: n - lag], y[lag:]
+        elif lag < 0:
+            xi, yi = x[-lag:], y[: n + lag]
+        else:
+            xi, yi = x, y
+        valid = ~(np.isnan(xi) | np.isnan(yi))
+        if valid.sum() < 5:
+            continue
+        xi, yi = xi[valid], yi[valid]
+        denom = np.sqrt(np.var(xi) * np.var(yi))
+        rs[i] = float(np.cov(xi, yi)[0, 1] / denom) if denom > 0 else np.nan
+    return lags, rs
+
+
+def _bin_mean(t: np.ndarray, v: np.ndarray, bins: np.ndarray) -> np.ndarray:
+    """Return per-bin mean of v; np.nan when a bin is empty."""
+    out = np.full(len(bins) - 1, np.nan)
+    for i, (b0, b1) in enumerate(zip(bins[:-1], bins[1:])):
+        sel = v[(t >= b0) & (t < b1)]
+        if len(sel) > 0:
+            out[i] = float(np.nanmean(sel))
+    return out
+
+
+def plot_cl_h_lagged_corr_summary(data_root: Path, out_dir: Path) -> None:
+    """Cross-protocol lagged-correlation curves + peak-lag bar chart (§4.4).
+
+    Left panel: Pearson r(PDR(t), depletions(t+lag)) vs lag (minutes) for every
+    protocol, derived from all 3 replicates concatenated end-to-end.
+    Right panel: horizontal bar chart of each protocol's peak negative r and the
+    lag at which it occurs.
+
+    Data: network_timeseries.csv (window_pdr), death_events.csv (t_rel_s).
+    Output: CL_H_lagged_correlation_summary.png
+    """
+    bin_s = 60
+    bins = np.arange(0, MAX_T_S + bin_s, bin_s)
+    max_lag = 15  # ±15 bins = ±15 min
+
+    fig, (ax_main, ax_peak) = plt.subplots(1, 2, figsize=(14, 5))
+
+    peak_rows = []
+    for proto in PROTOCOLS:
+        pdr_chunks, death_chunks = [], []
+        for r in REPLICATES:
+            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
+            de = _load_csv(data_root / f"{proto}_{r}", "death_events.csv")
+            if net.empty or de.empty:
+                continue
+            valid = net[net["window_pdr"] >= 0]
+            pdr_b = _bin_mean(valid["t_rel_s"].values, valid["window_pdr"].values, bins)
+            d_hist, _ = np.histogram(de["t_rel_s"].values, bins=bins)
+            pdr_chunks.append(pdr_b)
+            death_chunks.append(d_hist.astype(float))
+
+        if not pdr_chunks:
+            continue
+
+        pdr_cat = np.concatenate(pdr_chunks)
+        death_cat = np.concatenate(death_chunks)
+        lags, rs = _lagged_pearson(pdr_cat, death_cat, max_lag)
+
+        ax_main.plot(lags, rs, color=PROTO_COLORS[proto],
+                     label=PROTO_LABELS[proto], linewidth=2, alpha=0.85)
+
+        # Peak negative r (preferred) or absolute peak if all positive
+        neg_mask = rs < 0
+        if neg_mask.any():
+            pk = int(np.nanargmin(rs[neg_mask]))
+            peak_rows.append({
+                "label": PROTO_LABELS[proto],
+                "color": PROTO_COLORS[proto],
+                "peak_r": float(rs[neg_mask][pk]),
+                "peak_lag": int(lags[neg_mask][pk]),
+            })
+        else:
+            pk = int(np.nanargmax(np.abs(rs)))
+            peak_rows.append({
+                "label": PROTO_LABELS[proto],
+                "color": PROTO_COLORS[proto],
+                "peak_r": float(rs[pk]),
+                "peak_lag": int(lags[pk]),
+            })
+
+    ax_main.axhline(0, color="black", linewidth=0.8)
+    ax_main.axvline(0, color="gray", linewidth=0.6, linestyle="--", alpha=0.5)
+    ax_main.axvspan(-10, -7, alpha=0.08, color="red", label="Expected lead window\n(−10 to −7 min)")
+    ax_main.set_xlabel("Lag (minutes)\n[positive = depletions lag behind PDR]", fontsize=10)
+    ax_main.set_ylabel("Pearson r  (PDR vs depletion rate)", fontsize=10)
+    ax_main.set_title(
+        "Lagged Cross-Correlation: PDR → Depletion Rate\n"
+        "(3 replicates concatenated per protocol; 1-min bins)",
+        fontsize=10, fontweight="bold",
+    )
+    ax_main.legend(fontsize=8, title="Protocol", loc="lower right")
+    ax_main.grid(alpha=0.3)
+    ax_main.set_xlim(-15, 15)
+
+    # Right: peak-lag horizontal bar chart
+    x = np.arange(len(peak_rows))
+    bar_colors = [row["color"] for row in peak_rows]
+    bars = ax_peak.barh(x, [row["peak_r"] for row in peak_rows],
+                        color=bar_colors, alpha=0.85)
+    ax_peak.set_yticks(x)
+    ax_peak.set_yticklabels([row["label"] for row in peak_rows], fontsize=9)
+    ax_peak.set_xlabel("Peak negative Pearson r", fontsize=10)
+    ax_peak.set_title(
+        "Peak Negative r & Lag\n(PDR drop leads depletions)",
+        fontsize=10, fontweight="bold",
+    )
+    for bar, row in zip(bars, peak_rows):
+        ax_peak.text(
+            bar.get_width() - 0.005, bar.get_y() + bar.get_height() / 2,
+            f"lag = {row['peak_lag']:+d} min",
+            va="center", ha="right", fontsize=8, color="white", fontweight="bold",
+        )
+    ax_peak.axvline(0, color="black", linewidth=0.8)
+    ax_peak.grid(axis="x", alpha=0.3)
+
+    fig.suptitle(
+        "§4.4 — PDR Drop Precedes Battery Depletion: Lagged Correlation Evidence",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out_dir / "CL_H_lagged_correlation_summary.png")
+
+
+def plot_cl_i_epoch_aligned_pdr(data_root: Path, out_dir: Path) -> None:
+    """Epoch-aligned mean PDR in a ±15 min window around depletion bursts (§4.4).
+
+    For each 5-minute bin that contains ≥1 depletion event the PDR time series
+    is extracted in a ±15 min window centred on that bin.  The mean trajectory
+    (± 1σ across all bursts and replicates) is plotted per protocol, plus one
+    combined panel.  The characteristic PDR dip *before* the depletion confirms
+    the ~8–9 min lead time.
+
+    Data: network_timeseries.csv (window_pdr), death_events.csv (t_rel_s).
+    Output: CL_I_epoch_aligned_pdr.png
+    """
+    bin_s = 60
+    epoch_half_s = 15 * 60  # ±15 min
+    epoch_bins = np.arange(-epoch_half_s, epoch_half_s + bin_s, bin_s)
+    n_epoch = len(epoch_bins) - 1
+    burst_window_s = 300  # 5-min burst-detection window
+
+    fig, axes = plt.subplots(2, 4, figsize=(16, 8), sharey=True, sharex=True)
+    axes_flat = axes.flatten()
+
+    all_epochs: list = []
+
+    for ax_idx, proto in enumerate(PROTOCOLS):
+        ax = axes_flat[ax_idx]
+        proto_epochs: list = []
+
+        for r in REPLICATES:
+            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
+            de = _load_csv(data_root / f"{proto}_{r}", "death_events.csv")
+            if net.empty or de.empty:
+                continue
+            valid = net[net["window_pdr"] >= 0].sort_values("t_rel_s")
+            t_pdr = valid["t_rel_s"].values
+            pdr_v = valid["window_pdr"].values
+
+            # Identify burst bin centres
+            burst_edges = np.arange(0, MAX_T_S + burst_window_s, burst_window_s)
+            d_hist, _ = np.histogram(de["t_rel_s"].values, bins=burst_edges)
+            burst_centers = [
+                (b0 + b1) / 2
+                for b0, b1, cnt in zip(burst_edges[:-1], burst_edges[1:], d_hist)
+                if cnt >= 1
+            ]
+
+            for tc in burst_centers:
+                epoch_pdr = np.full(n_epoch, np.nan)
+                for i, (b0, b1) in enumerate(zip(epoch_bins[:-1], epoch_bins[1:])):
+                    ta, tb = tc + b0, tc + b1
+                    if ta < 0 or tb > MAX_T_S:
+                        continue
+                    sel = pdr_v[(t_pdr >= ta) & (t_pdr < tb)]
+                    if len(sel) > 0:
+                        epoch_pdr[i] = float(np.nanmean(sel))
+                proto_epochs.append(epoch_pdr)
+                all_epochs.append(epoch_pdr)
+
+        if not proto_epochs:
+            ax.set_visible(False)
+            continue
+
+        epoch_arr = np.array(proto_epochs)
+        mean_ep = np.nanmean(epoch_arr, axis=0)
+        std_ep = np.nanstd(epoch_arr, axis=0)
+        t_min = (epoch_bins[:-1] + epoch_bins[1:]) / 2 / 60
+
+        ax.axvline(0, color="red", linewidth=1.2, linestyle="--", alpha=0.8)
+        ax.fill_between(t_min, mean_ep - std_ep, mean_ep + std_ep,
+                        alpha=0.2, color=PROTO_COLORS[proto])
+        ax.plot(t_min, mean_ep, color=PROTO_COLORS[proto], linewidth=2)
+        ax.set_title(
+            f"{PROTO_LABELS[proto]}\n(n = {len(proto_epochs)} bursts)",
+            fontsize=9, fontweight="bold",
+        )
+        ax.set_ylim(0, 1)
+        ax.axhspan(0, 0.5, alpha=0.04, color="red")
+        ax.grid(alpha=0.3)
+        if ax_idx >= 4:
+            ax.set_xlabel("Time relative to depletion (min)", fontsize=8)
+        if ax_idx % 4 == 0:
+            ax.set_ylabel("Mean PDR", fontsize=8)
+
+    # Last panel: cross-protocol average
+    ax_all = axes_flat[7]
+    if all_epochs:
+        all_arr = np.array(all_epochs)
+        mean_all = np.nanmean(all_arr, axis=0)
+        std_all = np.nanstd(all_arr, axis=0)
+        t_min = (epoch_bins[:-1] + epoch_bins[1:]) / 2 / 60
+        ax_all.axvline(0, color="red", linewidth=1.5, linestyle="--", label="Depletion burst")
+        ax_all.fill_between(t_min, mean_all - std_all, mean_all + std_all,
+                            alpha=0.2, color="black")
+        ax_all.plot(t_min, mean_all, color="black", linewidth=2.5, label="All-protocol mean")
+        ax_all.set_title(
+            f"All protocols\n(n = {len(all_epochs)} bursts total)",
+            fontsize=9, fontweight="bold",
+        )
+        ax_all.set_ylim(0, 1)
+        ax_all.legend(fontsize=7)
+        ax_all.grid(alpha=0.3)
+        ax_all.set_xlabel("Time relative to depletion (min)", fontsize=8)
+
+    fig.suptitle(
+        "§4.4 — Epoch-Aligned PDR Around Battery Depletion Bursts\n"
+        "(mean ± 1σ; red dashed = depletion event; window = ±15 min; 5-min burst bins)",
+        fontsize=12, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out_dir / "CL_I_epoch_aligned_pdr.png")
+
+
+def plot_cl_j_ugv_edf3_cascade(data_root: Path, out_dir: Path) -> None:
+    """Annotated cascade timeseries for ugv_edf run 3 (§4.4 / §5 Anomaly A).
+
+    Three overlaid series on dual Y-axes:
+      - PDR (2-min bins, blue)          — left axis
+      - Charge request ROUTING_DROP rate (2-min bins, red dashed) — left axis
+      - Cumulative depletion events (step, black)                 — right axis
+
+    Key events annotated:
+      - t ≈ 6.6 min: simultaneous dual-CH depletion (cascade trigger)
+      - Shaded region after fleet alive_count drops to 0 (≈ 33 min)
+
+    Data: network_timeseries.csv, charge_events.csv, death_events.csv (ugv_edf_3).
+    Output: CL_J_ugv_edf3_cascade.png
+    """
+    folder = data_root / "ugv_edf_3"
+    net = _load_csv(folder, "network_timeseries.csv")
+    ce = _load_csv(folder, "charge_events.csv")
+    de = _load_csv(folder, "death_events.csv")
+
+    if net.empty or ce.empty or de.empty:
+        print("  WARNING: ugv_edf_3 data missing — skipping CL_J")
+        return
+
+    bin2 = np.arange(0, MAX_T_S + 120, 120)  # 2-min bins
+    t_2min = (bin2[:-1] + bin2[1:]) / 2 / 60
+
+    net_v = net[net["window_pdr"] >= 0].sort_values("t_rel_s")
+    pdr_b = _bin_mean(net_v["t_rel_s"].values, net_v["window_pdr"].values, bin2)
+
+    rd_b = np.full(len(bin2) - 1, np.nan)
+    for i, (b0, b1) in enumerate(zip(bin2[:-1], bin2[1:])):
+        seg = ce[(ce["t_rel_s"] >= b0) & (ce["t_rel_s"] < b1)]
+        if len(seg) > 0:
+            rd_b[i] = float((seg["outcome"] == "ROUTING_DROP").mean())
+
+    death_t_min = np.sort(de["t_rel_s"].values) / 60
+    cum_t = np.concatenate([[0], death_t_min, [180]])
+    cum_v = np.concatenate([[0], np.arange(1, len(death_t_min) + 1), [len(death_t_min)]])
+
+    fig, ax1 = plt.subplots(figsize=(14, 5))
+    ax2 = ax1.twinx()
+    ax3 = ax1.twinx()
+    ax3.spines["right"].set_position(("axes", 1.10))
+
+    l1, = ax1.plot(t_2min, pdr_b, "b-", linewidth=2, label="PDR (2-min bins)")
+    l2, = ax1.plot(t_2min, rd_b, "r--", linewidth=1.5, alpha=0.85,
+                   label="Charge-req. ROUTING_DROP rate")
+    l3, = ax3.step(cum_t, cum_v, "k-", linewidth=1.5, alpha=0.7,
+                   where="post", label="Cumulative depletions")
+
+    # Annotate cascade trigger (first two CH deaths)
+    trigger_t = float(de.sort_values("t_rel_s")["t_rel_s"].iloc[0]) / 60
+    ax1.axvline(trigger_t, color="darkred", linewidth=1.5, linestyle=":", alpha=0.9)
+    ax1.annotate(
+        "2× CH depletions\n(cascade trigger)\nt ≈ 6.6 min",
+        xy=(trigger_t, 0.65), xytext=(18, 0.77),
+        fontsize=8, color="darkred",
+        arrowprops=dict(arrowstyle="->", color="darkred", lw=1.3),
+    )
+
+    # Shade region where alive_count = 0
+    zero_alive = de[de["alive_count"] == 0]
+    if not zero_alive.empty:
+        t_zero = float(zero_alive["t_rel_s"].min()) / 60
+        ax1.axvspan(t_zero, 180, alpha=0.06, color="red",
+                    label=f"Fleet alive = 0  (> {t_zero:.0f} min)")
+
+    ax1.set_xlabel("Time (minutes)", fontsize=10)
+    ax1.set_ylabel("PDR / ROUTING_DROP rate", fontsize=10, color="navy")
+    ax3.set_ylabel("Cumulative depletion events", fontsize=10, color="gray")
+    ax1.tick_params(axis="y", colors="navy")
+    ax3.tick_params(axis="y", colors="gray")
+    ax2.set_yticks([])       # hide middle axis ticks (merged with ax1)
+    ax1.set_ylim(0, 1)
+    ax1.grid(alpha=0.3)
+
+    lines = [l1, l2, l3]
+    ax1.legend(lines, [l.get_label() for l in lines], loc="upper right", fontsize=9)
+
+    ax1.set_title(
+        "§4.4 / §5 Anomaly A — ugv_edf run 3: Cascade Failure Timeseries\n"
+        "PDR collapses (blue) → ROUTING_DROP surges (red dashed) "
+        "→ depletion spiral accelerates (black steps)",
+        fontsize=11, fontweight="bold",
+    )
+    plt.tight_layout()
+    _save(fig, out_dir / "CL_J_ugv_edf3_cascade.png")
+
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
@@ -628,6 +975,15 @@ def main() -> None:
 
     print("[CL-G] Routing drop rate timeseries …")
     plot_cl_g_routing_drop_timeseries(data_root, out_dir, bin_sec)
+
+    print("[CL-H] Lagged correlation summary (§4.4) …")
+    plot_cl_h_lagged_corr_summary(data_root, out_dir)
+
+    print("[CL-I] Epoch-aligned PDR around depletion bursts (§4.4) …")
+    plot_cl_i_epoch_aligned_pdr(data_root, out_dir)
+
+    print("[CL-J] ugv_edf_3 cascade annotated timeseries (§4.4 / Anomaly A) …")
+    plot_cl_j_ugv_edf3_cascade(data_root, out_dir)
 
     print(f"\nDone. All cross-layer figures saved to: {out_dir}/")
 

@@ -248,7 +248,7 @@ The positive peak r for `ugv_edf` at lag −3 reflects the outlier distortion fr
 
 **Dock Utilization → TIMEOUT lagged correlations** (from `07_lagged_corr_summary.csv`) are weak (|r| < 0.29), suggesting that TIMEOUT events do not primarily occur because docks are full — rather, timeouts result from scheduling priority decisions or network delivery failures unrelated to dock occupancy. This is consistent with the relatively stable dock utilization across protocols (0.59–0.74) compared to the large variation in timeout rates (23–32%).
 
-**Supporting figures:** `07_lagged_corr_ugv_dynamic.png` through `07_lagged_corr_ugv_role_priority.png`; `07_dock_util_with_timeouts_merged.png`.
+**Supporting figures:** `07_lagged_corr_ugv_dynamic.png` through `07_lagged_corr_ugv_role_priority.png`; `07_dock_util_with_timeouts_merged.png`; `CL_H_lagged_correlation_summary.png`; `CL_I_epoch_aligned_pdr.png`; `CL_J_ugv_edf3_cascade.png`.
 
 ---
 
@@ -342,6 +342,21 @@ The following new scripts and plots were created to support the cross-layer argu
 **Reads:** `network_timeseries.csv`, `death_events.csv`
 **Output:** `CL_F_pdr_vs_depletions_timeseries.png`
 **Why needed:** The existing `07_pdr_events_merged_variance_all.png` shows events as individual vlines or binned bars but does not show the depletion *rate* (events per time bin) as a separate quantitative axis. CL_F adds a secondary Y-axis with depletion bars, enabling visual inspection of the lag structure (§4.4) across all 7 protocols simultaneously.
+
+### CL_H — Lagged Correlation Summary (§4.4)
+**Reads:** `network_timeseries.csv` (window_pdr), `death_events.csv` (t_rel_s)
+**Output:** `CL_H_lagged_correlation_summary.png`
+**Why needed:** Synthesises the per-protocol lag plots (`07_lagged_corr_*.png`) into a single two-panel figure: (left) all 7 protocol lag-correlation curves overlaid, with the predicted −7 to −10 min window shaded; (right) horizontal bar chart of each protocol's peak negative r and the lag at which it occurs. This is the primary illustration for the "PDR drops precede depletions by ~8–9 min" claim in §4.4.
+
+### CL_I — Epoch-Aligned PDR Around Depletion Bursts (§4.4)
+**Reads:** `network_timeseries.csv` (window_pdr), `death_events.csv` (t_rel_s)
+**Output:** `CL_I_epoch_aligned_pdr.png`
+**Why needed:** Provides the event-centred (epoch) view of the PDR–death relationship. Each 5-min bin containing ≥1 depletion defines an epoch; the PDR timeseries is extracted in a ±15 min window around it and averaged across all bursts and replicates. The resulting mean trajectory (mean ± 1σ, 8 panels — one per protocol plus a combined panel) shows whether PDR dips *before* or *after* the depletion marker, directly supporting the causal direction discussed in §4.4.
+
+### CL_J — ugv_edf_3 Cascade Annotated Timeseries (§4.4 / Anomaly A)
+**Reads:** `network_timeseries.csv`, `charge_events.csv`, `death_events.csv` (ugv_edf_3 only)
+**Output:** `CL_J_ugv_edf3_cascade.png`
+**Why needed:** Provides a concrete single-run illustration of the feedback loop described in §4.4 and §5 Anomaly A. Three series are shown on dual axes: PDR (blue), charge-request ROUTING_DROP rate (red dashed), and cumulative depletion count (black step). The dual CH depletion trigger at t ≈ 6.6 min is annotated with an arrow, and the post-cascade "fleet alive = 0" period is shaded. This makes the cascade narrative visually unambiguous.
 
 ### CL_G — Charge Request Routing Drop Rate Over Time
 **Script:** Inline Python (embedded in analysis)
