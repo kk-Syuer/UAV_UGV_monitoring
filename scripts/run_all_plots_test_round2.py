@@ -404,6 +404,70 @@ def _plot_01_battery_ecdf(runs, fig_dir, missing):
     print("  [OK] 01_battery_ecdf")
 
 
+# Packet types kept as individual slices; everything else → "Other"
+_PKT_MAJOR_TYPES = [
+    "HEARTBEAT", "SEARCH_TELEMETRY", "STATUS_CH",
+    "CHARGE_REQUEST", "CHARGE_DECISION",
+    "EMERGENCY_RETURN_TRIGGERED", "EMERGENCY_RECOVERY_COMPLETE",
+]
+
+
+def _packet_type_counts(df: pd.DataFrame) -> dict:
+    """Return {type: count} with minor types collapsed into 'Other'."""
+    counts = df["control_type"].value_counts().to_dict()
+    result = {t: counts.pop(t, 0) for t in _PKT_MAJOR_TYPES}
+    result["Other"] = sum(counts.values())
+    # Drop zero-count types
+    return {k: v for k, v in result.items() if v > 0}
+
+
+def _plot_01_packet_generated_per_run(runs, fig_dir, missing):
+    """G1/P3 — Stacked bar: total packets generated per run, broken down by type."""
+    run_labels = []
+    type_data: dict = {}   # type → list of counts (one per run)
+    any_data = False
+
+    for run in runs:
+        df = _load(run, "packet_generated_events", missing)
+        if df is None or "control_type" not in df.columns:
+            continue
+        counts = _packet_type_counts(df)
+        run_labels.append(run["label"])
+        for t in list(_PKT_MAJOR_TYPES) + ["Other"]:
+            type_data.setdefault(t, []).append(counts.get(t, 0))
+        any_data = True
+
+    if not any_data:
+        missing.append("PLOT 01_packet_generated_per_run: no packet_generated_events data")
+        return
+
+    # Only keep types that appear at all
+    active_types = [t for t in list(_PKT_MAJOR_TYPES) + ["Other"]
+                    if t in type_data and sum(type_data[t]) > 0]
+
+    cmap = plt.get_cmap("tab10")
+    type_colors = {t: cmap(i % 10) for i, t in enumerate(active_types)}
+
+    fig, ax = plt.subplots(figsize=(max(10, len(run_labels) * 1.1), 6))
+    x = np.arange(len(run_labels))
+    bottom = np.zeros(len(run_labels))
+
+    for t in active_types:
+        vals = np.array(type_data[t])
+        ax.bar(x, vals, bottom=bottom, label=t, color=type_colors[t],
+               edgecolor="white", linewidth=0.4)
+        bottom += vals
+
+    ax.set_xticks(x)
+    ax.set_xticklabels(run_labels, rotation=30, ha="right", fontsize=8)
+    ax.set_ylabel("Packet count")
+    ax.set_title("Total Packets Generated per Run — by Type")
+    ax.legend(loc="upper right", fontsize=8, ncol=2)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "01_packet_generated_per_run")
+    print("  [OK] 01_packet_generated_per_run")
+
+
 # ===========================================================================
 # GROUP 02 — Per-Protocol Stats
 # ===========================================================================
@@ -1100,6 +1164,161 @@ def _plot_01_pdr_cdf_merged(runs, fig_dir, missing, pdr_min: float = 0.5):
     deduplicate_legend(ax)
     savefig(fig, fig_dir, "01_pdr_cdf_merged")
     print("  [OK] 01_pdr_cdf_merged")
+
+
+def _plot_01_packet_generated_merged(runs, fig_dir, missing):
+    """G1/P4-M — Stacked bar: mean total packets generated per protocol (replicates
+    merged), with packet-type ratio breakdown.  Error bars show std across replicates
+    on the total count."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    active_types = list(_PKT_MAJOR_TYPES) + ["Other"]
+    # proto → {type: [count_per_replicate]}
+    proto_type_counts: dict = {}
+    any_data = False
+
+    for proto, run_list in groups.items():
+        per_type: dict = {t: [] for t in active_types}
+        for run in run_list:
+            df = _load(run, "packet_generated_events", missing)
+            if df is None or "control_type" not in df.columns:
+                continue
+            counts = _packet_type_counts(df)
+            for t in active_types:
+                per_type[t].append(counts.get(t, 0))
+            any_data = True
+        if any(per_type[t] for t in active_types):
+            proto_type_counts[proto] = per_type
+
+    if not any_data:
+        missing.append("PLOT 01_packet_generated_merged: no packet_generated_events data")
+        return
+
+    proto_labels = list(proto_type_counts.keys())
+    used_types = [t for t in active_types
+                  if any(sum(proto_type_counts[p].get(t, [])) > 0
+                         for p in proto_labels)]
+
+    cmap = plt.get_cmap("tab10")
+    type_colors = {t: cmap(i % 10) for i, t in enumerate(used_types)}
+
+    fig, (ax_bar, ax_ratio) = plt.subplots(
+        1, 2, figsize=(max(12, len(proto_labels) * 2.2), 6),
+        gridspec_kw={"width_ratios": [3, 2]}
+    )
+
+    x = np.arange(len(proto_labels))
+    # --- left: stacked bar of mean counts with std error on total ---
+    totals_mean = np.zeros(len(proto_labels))
+    totals_std  = np.zeros(len(proto_labels))
+    bottom = np.zeros(len(proto_labels))
+
+    for t in used_types:
+        vals = np.array([
+            np.mean(proto_type_counts[p].get(t, [0])) for p in proto_labels
+        ])
+        ax_bar.bar(x, vals, bottom=bottom, label=t, color=type_colors[t],
+                   edgecolor="white", linewidth=0.4)
+        bottom += vals
+
+    for i, p in enumerate(proto_labels):
+        rep_totals = [
+            sum(proto_type_counts[p][t][j] if j < len(proto_type_counts[p][t]) else 0
+                for t in used_types)
+            for j in range(max(len(proto_type_counts[p].get(t, [])) for t in used_types))
+        ]
+        totals_mean[i] = np.mean(rep_totals) if rep_totals else bottom[i]
+        totals_std[i]  = np.std(rep_totals) if len(rep_totals) > 1 else 0
+
+    ax_bar.errorbar(x, totals_mean, yerr=totals_std, fmt="none",
+                    ecolor="black", capsize=4, linewidth=1.2)
+    ax_bar.set_xticks(x)
+    ax_bar.set_xticklabels(proto_labels, rotation=25, ha="right", fontsize=8)
+    ax_bar.set_ylabel("Mean packet count  (replicates averaged)")
+    ax_bar.set_title("Packets Generated — Mean per Protocol")
+    ax_bar.legend(loc="upper right", fontsize=7, ncol=2)
+
+    # --- right: 100 % stacked ratio bar ---
+    bottoms_r = np.zeros(len(proto_labels))
+    for t in used_types:
+        means = np.array([
+            np.mean(proto_type_counts[p].get(t, [0])) for p in proto_labels
+        ])
+        totals = np.array([
+            np.mean([sum(proto_type_counts[p][tt][j]
+                         for tt in used_types
+                         if j < len(proto_type_counts[p].get(tt, [])))
+                     for j in range(max(1, max(
+                         len(proto_type_counts[p].get(tt, [])) for tt in used_types
+                     )))])
+            for p in proto_labels
+        ])
+        ratios = np.where(totals > 0, means / totals, 0.0)
+        ax_ratio.bar(x, ratios, bottom=bottoms_r, label=t, color=type_colors[t],
+                     edgecolor="white", linewidth=0.4)
+        bottoms_r += ratios
+
+    ax_ratio.set_xticks(x)
+    ax_ratio.set_xticklabels(proto_labels, rotation=25, ha="right", fontsize=8)
+    ax_ratio.set_ylabel("Fraction of total packets")
+    ax_ratio.set_ylim(0, 1.05)
+    ax_ratio.set_title("Packet Type Ratio — Merged Protocols")
+
+    fig.tight_layout()
+    savefig(fig, fig_dir, "01_packet_generated_merged")
+    print("  [OK] 01_packet_generated_merged")
+
+
+def _plot_01_mean_pdr_merged(runs, fig_dir, missing):
+    """G1/P5-M — Bar chart: overall mean PDR per protocol (replicates merged),
+    error bars = std across replicates.  PDR is computed from qos_metrics.csv as
+    sum(delivered) / sum(generated) per replicate."""
+    groups = _group_by_protocol(runs)
+    colors = protocol_color_map(list(groups.keys()))
+
+    proto_labels, means, errs = [], [], []
+
+    for proto, run_list in groups.items():
+        pdrs = []
+        for run in run_list:
+            df = _load(run, "qos_metrics", missing)
+            if df is None or "generated" not in df.columns or "delivered" not in df.columns:
+                continue
+            valid = df[(df["pdr"] >= 0) & (df["generated"] > 0)]
+            if valid.empty:
+                continue
+            total_gen = valid["generated"].sum()
+            total_del = valid["delivered"].sum()
+            if total_gen > 0:
+                pdrs.append(total_del / total_gen)
+        if not pdrs:
+            continue
+        proto_labels.append(proto)
+        means.append(float(np.mean(pdrs)))
+        errs.append(float(np.std(pdrs)) if len(pdrs) > 1 else 0.0)
+
+    if not proto_labels:
+        missing.append("PLOT 01_mean_pdr_merged: no valid PDR data in qos_metrics")
+        return
+
+    bar_colors = [colors[p] for p in proto_labels]
+    fig, ax = plt.subplots(figsize=(max(6, len(proto_labels) * 1.5), 5))
+    x = np.arange(len(proto_labels))
+    bars = ax.bar(x, means, yerr=errs, capsize=5,
+                  color=bar_colors, edgecolor="white", linewidth=0.5,
+                  error_kw={"elinewidth": 1.4, "ecolor": "black"})
+    label_bars(ax, bars, fmt="{:.3f}")
+    ax.axhline(0.95, color="red", linestyle="--", linewidth=1, label="PDR target 0.95")
+    ax.set_ylabel("Mean overall PDR  (mean across replicates ± std)")
+    ax.set_title("Mean PDR Comparison — Merged Replicates")
+    ax.set_ylim(0, 1.1)
+    ax.set_xticks(x)
+    ax.set_xticklabels(proto_labels, rotation=25, ha="right")
+    ax.legend(fontsize=8)
+    fig.tight_layout()
+    savefig(fig, fig_dir, "01_mean_pdr_merged")
+    print("  [OK] 01_mean_pdr_merged")
 
 
 # --- Group 02 merged --------------------------------------------------------
@@ -3162,6 +3381,7 @@ def main():
     print("\n[Group 01] Validation")
     _plot_01_network_pdr_over_time(runs, fig_dirs["01"], missing)
     _plot_01_battery_ecdf(runs, fig_dirs["01"], missing)
+    _plot_01_packet_generated_per_run(runs, fig_dirs["01"], missing)
 
     # ------------------------------------------------------------------
     # Group 02 — Per-Protocol Stats  (4 plots)
@@ -3202,6 +3422,8 @@ def main():
     _plot_01_network_pdr_over_time_merged(runs, fig_dirs["01"], missing, bin_sec)
     _plot_01_battery_ecdf_merged(runs, fig_dirs["01"], missing)
     _plot_01_pdr_cdf_merged(runs, fig_dirs["01"], missing)
+    _plot_01_packet_generated_merged(runs, fig_dirs["01"], missing)
+    _plot_01_mean_pdr_merged(runs, fig_dirs["01"], missing)
 
     print("\n[Group 02 Merged]")
     _plot_02_charge_success_rate_merged(runs, fig_dirs["02"], missing)

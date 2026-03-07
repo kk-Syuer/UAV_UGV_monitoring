@@ -1,0 +1,13 @@
+run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,victim_uav_id,winner_uav_id,victim_role,winner_role,victim_priority,winner_priority,delta_priority,victim_charge_time_s,policy
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,269.968,1.77253e+09,uav1,uav2,0,0,52.4696,63.6482,11.1786,60.0333,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,300.434,1.77253e+09,uav3,ch0,0,1,54.9277,76.9524,22.0247,67.9999,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,332.435,1.77253e+09,uav2,ch1,0,1,52.0741,86.5157,34.4416,93.4763,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,878.439,1.77253e+09,uav3,ch0,0,1,31.0333,77.2831,46.2499,193.502,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,880.939,1.77253e+09,uav1,ch0,0,1,42.4116,77.4863,35.0748,117.502,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,1453.45,1.77253e+09,uav2,ch0,0,1,25.3162,74.5037,49.1875,232.502,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,1978.95,1.77253e+09,uav1,uav2,0,0,31.2872,68.1857,36.8985,167,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,1981.45,1.77253e+09,ch1,uav2,1,0,39.8494,68.3746,28.5251,335,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,2026.45,1.77253e+09,uav3,ch0,0,1,33.2186,77.3711,44.1524,189.5,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,2145.95,1.77253e+09,uav2,uav1,0,0,37.2472,61.8643,24.6171,167,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,7089.49,1.77253e+09,ch1,ch0,1,1,41.0251,75.4219,34.3967,324.998,p_dynamic_score
+ugv_p_dynamic_score_3,unknown,0,1772525900204550690,8238.99,1.77253e+09,ch1,ch0,1,1,63.9008,75.1158,11.215,165.498,p_dynamic_score
