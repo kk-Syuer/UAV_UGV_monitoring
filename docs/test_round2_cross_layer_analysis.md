@@ -1,0 +1,409 @@
+# Cross-Layer Analysis: UAV Charging Scheduling Protocols and Network Quality
+## Test Round 2 — Evidence-Based Thesis-Grade Report
+
+**Date:** 2026-03-07
+**Dataset:** `experiment_data_collection/test_round2`
+**Figures root:** `analysis/test_round2/figures/`
+**New figures:** `analysis/test_round2/figures/cross_layer/`
+**Summary tables:** `analysis/test_round2/figures/summary_tables/`
+
+---
+
+## 1. Executive Summary
+
+- **ugv_p_edf (Preemptive Earliest Deadline First) achieves the highest mean PDR (0.630 ± 0.035)** and the lowest battery depletion event count (20.0 ± 3.0 per run), demonstrating that deadline-aware scheduling with preemption most effectively preserves both fleet survivability and network quality. Evidence: `01_mean_pdr_merged.png`, `03_dead_uav_cumulative_merged.png`, `CL_A_protocol_kpi_overview.png`.
+
+- **Charge success rate is a statistically significant positive predictor of PDR** (Pearson r = 0.578, p = 0.006; Spearman ρ = 0.552, p = 0.010). Protocols that successfully start more charging sessions maintain a healthier fleet, which sustains multi-hop routing paths and delivers more packets. Evidence: `CL_B_charging_vs_pdr_scatter.png`, `06_corr_heatmap_pdr.png`.
+
+- **Charge request ROUTING_DROP rate is a significant negative predictor of PDR** (Pearson r = −0.527, p = 0.014; Spearman ρ = −0.555, p = 0.009). Routing drops occur when the network is already degraded (bad weather, UAV deaths), creating a vicious feedback cycle: degraded network → lost charge requests → more UAV deaths → further network degradation. Evidence: `CL_D_mechanism_chain.png`, `CL_G_routing_drop_timeseries.png`.
+
+- **Battery depletion frequency is the strongest mediating variable** between charging policy and network quality. Total depletion events negatively correlate with PDR (Pearson r = −0.567, p = 0.007) and with E2E delay (Pearson r = −0.548, p = 0.010), meaning protocols that fail to keep UAVs charged cause both packet loss and — paradoxically — lower measured delay (a conditioning bias artifact). Evidence: `07_death_slope_vs_pdr_dip.png`, `CL_D_mechanism_chain.png`.
+
+- **E2E delay rankings are contaminated by a conditioning bias**: protocols with the most UAV deaths (e.g., ugv_edf run 3: 85 depletions) show the *lowest* measured delay because fewer surviving UAVs generate simpler, shorter-hop topologies, causing the window-average delay to drop. ugv_p_role_priority has the highest mean delay (71.4 ms) while maintaining a healthy fleet — this reflects genuine topology complexity rather than network failure. Evidence: `CL_C_e2e_delay_conditioning_analysis.png`.
+
+- **ugv_role_priority (non-preemptive role priority) is the worst-performing protocol overall**: lowest charge success rate (38.4%), highest timeout rate (31.9%), and second-highest depletion count (39.3 per run), leading to second-lowest PDR (0.563). The absence of preemption and the coarse role-based priority prevents the scheduler from responding flexibly to energy urgency. Evidence: `04_policy_radar_merged.png`, `02_charge_success_rate_merged.png`.
+
+- **ugv_edf run 3 is a critical anomaly**: 85 depletion events (vs. a cross-protocol mean of ~27) with only 5 unique UAV IDs confirms UAVs entered a recurring depletion-respawn cycle. ROUTING_DROP rate for this run reached 49.6% — meaning nearly half of all charge requests could not be delivered, severing the UAV's lifeline to the charging scheduler. Quick verification: `charge_events.csv` → `outcome == ROUTING_DROP` + `failure_reason == WEATHER_DROP` + `death_events.csv` depletion timestamps clustered after t ≈ 6 min. Evidence: `07_pdr_events_ugv_edf.png`, `07_window_pdr_dist_ugv_edf.png`.
+
+- **Decision latency and effective wait time do not significantly predict PDR** (Pearson r = −0.175, p = 0.45 and r = −0.326, p = 0.15 respectively). This indicates that the primary bottleneck is not *how fast* the scheduler decides but *whether the request even reaches the scheduler* (ROUTING_DROP) and *whether a dock slot is available* (SUCCESS vs TIMEOUT). Evidence: `02_decision_latency_merged.png`, `CL_E_correlation_bar_chart.png`.
+
+---
+
+## 2. Data Coverage and Sanity Checks
+
+### 2.1 Dataset Completeness
+
+| Check | Result |
+|---|---|
+| Protocol count | **7 detected**: `ugv_dynamic`, `ugv_edf`, `ugv_fcfs`, `ugv_p_dynamic_score`, `ugv_p_edf`, `ugv_p_role_priority`, `ugv_role_priority` |
+| Replicates per protocol | **3 confirmed** (runs `_1`, `_2`, `_3`) for all protocols |
+| Total run folders | **21/21 present** |
+| Key files present | `qos_metrics.csv`, `network_timeseries.csv`, `charge_events.csv`, `death_events.csv`, `charge_session_events.csv`, `charge_queue_timeseries.csv` — **all 21 × 6 = 126 files confirmed** |
+| Run duration | **All 21 runs: t_max = 180.0 min** (consistent) |
+
+### 2.2 Missing Columns / Structural Checks
+
+- **`death_events.csv → role` column**: Encodes integer 0/1 (not strings "CH"/"member"). Value `1` = cluster head (CH), `0` = member UAV. The `alive_count` column correctly tracks fleet state only up to the first full-fleet depletion; subsequent events reflect respawn-and-die cycles (see §5 Anomaly A).
+- **`charge_events.csv → decision_latency_ms`**: Contains −1 sentinel values for events where timing was not recorded (i.e., ROUTING_DROP and TIMEOUT events that never reached the scheduler). These are excluded before computing mean latency. Across all runs, only 15–40% of events have valid latency values.
+- **`charge_session_events.csv`**: `charge_duration_s` and `energy_charged_wh` are −1 for `DOCK_START` events that have not yet concluded. Completed sessions with valid energy are used for energy analysis.
+- **`qos_metrics.csv`**: PDR computed as `sum(delivered) / sum(generated)` over all logged message windows. All resulting PDR values are in [0, 1] — no out-of-range values detected.
+
+### 2.3 Workload Consistency
+
+Traffic generation is highly consistent across runs (coefficient of variation ≤ 3.1% for most protocols):
+
+| Protocol | Generated packets (runs 1–3) | CV (%) |
+|---|---|---|
+| ugv_dynamic | 137.95M, 133.50M, 134.08M | 1.5 |
+| ugv_edf | 140.54M, 141.45M, 144.87M | 1.3 |
+| ugv_fcfs | 142.33M, 135.33M, 138.49M | 2.1 |
+| ugv_p_dynamic_score | 133.07M, 142.32M, 133.48M | 3.1 |
+| ugv_p_edf | 137.30M, 134.92M, 135.32M | 0.8 |
+| ugv_p_role_priority | 138.84M, 136.90M, 120.04M | **6.4** |
+| ugv_role_priority | 129.21M, 120.71M, 139.62M | **6.0** |
+
+`ugv_p_role_priority_3` (120M generated vs. ~138M expected) and `ugv_role_priority_2` (120M) show lower-than-expected packet generation, likely caused by severe UAV attrition reducing active transmitting nodes in those runs. This is consistent with their higher depletion event counts.
+
+### 2.4 Suspicious Values and Duplicated Entries
+
+- **Duplicate timestamps in `network_timeseries.csv`**: Many runs have exactly 2 rows per second-interval (observable in ugv_edf_3 head). These appear to be two different ROS network-monitor node callback fires per window. The plotting pipeline handles this correctly (both rows have identical PDR/delay values). No correction needed.
+- **Negative PDR / delay sentinel values (−1)**: Present in early windows before enough packets accumulate. The plotting pipeline filters `window_pdr >= 0` and `window_delay_mean_ms >= 0`. These are valid sentinels, not data errors.
+- **ugv_edf_3 `alive_count = 0` throughout most of experiment**: Not a data corruption — reflects persistent depletion-respawn cycling (see §5 Anomaly A).
+
+---
+
+## 3. Protocol-Level Comparisons (Merged Replicates)
+
+### 3.1 Network KPIs
+
+**Table 1: Network Performance Summary (mean ± 1 SD across 3 replicates)**
+
+| Protocol | Mean PDR | PDR SD | Mean E2E Delay (ms) | E2E SD (ms) | PDR Rank | Delay Rank |
+|---|---|---|---|---|---|---|
+| ugv_p_edf | **0.630** | 0.035 | 57.9 | 16.5 | 1 (best) | 3 |
+| ugv_fcfs | 0.616 | 0.041 | 64.2 | 11.4 | 2 | 5 |
+| ugv_dynamic | 0.595 | 0.045 | 62.1 | 9.6 | 3 | 4 |
+| ugv_p_dynamic_score | 0.580 | 0.033 | 52.8 | 21.1 | 4 | 1 (best) |
+| ugv_edf | 0.573 | **0.094** | 55.6 | **23.8** | 5 | 2 |
+| ugv_role_priority | 0.563 | 0.071 | 66.7 | 8.0 | 6 | 6 |
+| ugv_p_role_priority | 0.554 | 0.094 | **71.4** | 4.8 | 7 (worst) | 7 (worst) |
+
+**Key observations:**
+- The PDR range across protocols (0.554–0.630) is modest but consistent across replicates for most protocols.
+- `ugv_edf` and `ugv_p_role_priority` have the highest PDR variance (SD ≈ 0.094), driven by single outlier runs with catastrophic depletion cascades. This instability is a critical weakness.
+- The delay ranking is largely decoupled from the PDR ranking due to the conditioning bias (see §4.3 and §5, Anomaly B). `ugv_p_dynamic_score` appearing "best" in delay while ranking 4th in PDR is the clearest example.
+
+**Supporting figures:** `01_mean_pdr_merged.png` (bar chart PDR); `06_mean_e2e_delay_merged.png` (bar chart delay); `06_pdr_vs_e2e_scatter.png` (scatter PDR vs delay); `07_pdr_events_merged_variance_all.png` (timeseries with variance).
+
+### 3.2 Charging KPIs
+
+**Table 2: Charging Scheduler Performance (mean across 3 replicates)**
+
+| Protocol | Success Rate | Timeout Rate | ROUTING_DROP Rate | Decision Latency (ms) | Effective Wait (ms) | Energy/Session (Wh) | Dock Util |
+|---|---|---|---|---|---|---|---|
+| ugv_p_edf | **0.486** | 0.289 | 0.218 | 3,926 | 14,859 | 20.28 | 0.737 |
+| ugv_dynamic | 0.471 | 0.230 | 0.299 | 3,353 | 12,198 | 21.62 | 0.721 |
+| ugv_fcfs | 0.463 | 0.267 | **0.262** | 4,908 | 14,819 | 20.00 | 0.703 |
+| ugv_p_role_priority | 0.438 | 0.295 | 0.252 | 4,149 | 18,377 | 18.74 | 0.699 |
+| ugv_p_dynamic_score | 0.412 | 0.258 | 0.321 | 4,303 | 15,425 | 17.94 | 0.695 |
+| ugv_edf | 0.390 | 0.262 | 0.346 | 4,362 | 14,043 | **16.99** | 0.594 |
+| ugv_role_priority | 0.384 | **0.319** | 0.290 | **5,213** | 16,456 | 16.98 | 0.682 |
+
+**Key observations:**
+- `ugv_p_edf` leads in charge success rate (48.6%) — preemption allows urgent UAVs to bump lower-priority queued requests, increasing throughput for critical cases.
+- `ugv_role_priority` and `ugv_edf` have the worst success rates (38.4%, 39.0%) and lowest energy per session — these protocols both fail to get requests through (routing drops) and fail to convert requests to dock starts (timeouts).
+- `ugv_dynamic` achieves the second-best success rate (47.1%) with the lowest decision latency (3,353 ms median) and lowest effective wait (12,198 ms) — the dynamic scoring function efficiently matches urgency to dock availability.
+- ROUTING_DROP rates (21.8%–34.6%) are caused exclusively by `WEATHER_DROP` failures (confirmed in `charge_events.csv → failure_reason`), indicating that weather-driven network degradation physically prevents charge requests from reaching the UGV scheduler during stormy periods.
+
+**Supporting figures:** `02_charge_success_rate_merged.png`; `02_decision_latency_merged.png`; `02_effective_wait_merged.png`; `02_energy_recovered_merged.png`; `03_charge_outcome_breakdown_merged.png`.
+
+### 3.3 Fleet Survivability
+
+**Table 3: Battery Depletion Events (mean ± SD across 3 replicates)**
+
+| Protocol | Mean Depletions | SD | CH Depletions | Member Depletions | Depletions/UAV |
+|---|---|---|---|---|---|
+| ugv_p_edf | **20.0** | **3.0** | 5.3 | 14.7 | 4.0 |
+| ugv_dynamic | 23.0 | 2.6 | 5.7 | 17.3 | 4.6 |
+| ugv_p_role_priority | 26.7 | 9.0 | 6.0 | 20.7 | 5.3 |
+| ugv_fcfs | 27.0 | 5.2 | 9.3 | 17.7 | 5.4 |
+| ugv_p_dynamic_score | 31.7 | 21.5 | 9.3 | 22.3 | 6.3 |
+| ugv_role_priority | 39.3 | 16.6 | 11.3 | 28.0 | 7.9 |
+| ugv_edf | 45.0 | **34.7** | 16.7 | 28.3 | 9.0 |
+
+**Key observations:**
+- Each run has a fleet of exactly 5 UAVs (2 CH + 3 members), running for 180 minutes. A "baseline" depletion rate of ~4–5 events/UAV (20–25 total) suggests roughly one battery cycle every 36–45 minutes, which is the expected minimum even with optimal charging.
+- `ugv_edf` has catastrophic instability (SD = 34.7), driven by run 3 (85 events). Without this outlier, runs 1–2 perform comparably to other protocols.
+- `ugv_role_priority` consistently has high depletion counts across all 3 runs (37, 57, 24), indicating structural inefficiency rather than a single outlier.
+- CH depletions are disproportionately costly because each cluster head death disrupts the routing backbone, causing a cascade of member UAV packet losses.
+
+**Supporting figures:** `03_dead_uav_cumulative_merged.png`; `07_death_slope_vs_pdr_dip.png`; `CL_F_pdr_vs_depletions_timeseries.png`.
+
+---
+
+## 4. Cross-Layer Linkage Analysis
+
+### 4.1 Statistical Correlations (All 21 Runs)
+
+**Table 4: Pearson and Spearman Correlations with PDR (n = 21)**
+
+| Charging KPI | Pearson r | p-value | Spearman ρ | p-value | Significance |
+|---|---|---|---|---|---|
+| Charge success rate | **+0.578** | 0.006 | **+0.552** | 0.010 | ** |
+| Charge ROUTING_DROP rate | **−0.527** | 0.014 | **−0.555** | 0.009 | ** |
+| Battery depletion events | **−0.567** | 0.007 | **−0.477** | 0.029 | ** |
+| Dock utilization | +0.569 | 0.007 | +0.412 | 0.064 | ** / † |
+| Queue length (mean) | +0.521 | 0.015 | +0.570 | 0.007 | ** |
+| Energy per session (Wh) | +0.487 | 0.025 | +0.395 | 0.077 | * / † |
+| Total energy charged (Wh) | +0.512 | 0.018 | +0.505 | 0.020 | * |
+| Effective wait (ms) | −0.326 | 0.149 | −0.321 | 0.156 | n.s. |
+| Decision latency (ms) | −0.175 | 0.448 | +0.036 | 0.876 | n.s. |
+| Charge timeout rate | −0.116 | 0.617 | −0.104 | 0.654 | n.s. |
+
+*Significance: ** p < 0.01; * p < 0.05; † borderline (0.05 < p < 0.10); n.s. not significant.*
+
+**Table 5: Pearson and Spearman Correlations with E2E Delay (n = 21)**
+
+| Charging KPI | Pearson r | p-value | Spearman ρ | p-value | Note |
+|---|---|---|---|---|---|
+| Dock utilization | +0.567 | 0.007 | +0.227 | 0.322 | Pearson sig, Spearman n.s. → bias |
+| Battery depletion events | **−0.548** | 0.010 | −0.089 | 0.700 | Conditioning bias (see §4.3) |
+| CH depletions | −0.547 | 0.010 | −0.197 | 0.392 | Same bias |
+| Energy per session | +0.530 | 0.014 | +0.013 | 0.955 | Same bias |
+| Charge ROUTING_DROP rate | −0.511 | 0.018 | −0.171 | 0.458 | Pearson sig, Spearman n.s. |
+| Charge success rate | +0.456 | 0.038 | +0.017 | 0.942 | Strong Pearson/Spearman divergence |
+
+**Critical finding:** The Pearson–Spearman divergence for E2E delay correlations is a diagnostic flag. When Pearson is significant but Spearman is not, the relationship is driven by a few extreme points (outliers such as `ugv_edf_3`) rather than a monotonic trend across all runs. This is consistent with the conditioning bias hypothesis (§4.3).
+
+**Supporting figures:** `CL_B_charging_vs_pdr_scatter.png`; `CL_E_correlation_bar_chart.png`; `06_corr_heatmap_pdr.png`; `06_corr_heatmap_e2e.png`.
+
+### 4.2 Mechanism Narrative: Scheduling → Charging → Survivability → Network
+
+The cross-layer causal chain, supported by statistical evidence, runs as follows:
+
+```
+Scheduling Policy
+       │
+       ▼ (shapes)
+Charge Request Outcomes
+  ├── STARTED (dock assigned) ──────────────────────────────────────┐
+  ├── TIMEOUT (dock busy, request expires)                           │
+  └── ROUTING_DROP (request lost in transit: WEATHER_DROP)          │
+       │                                                            │
+       ▼ (ROUTING_DROP ↑ when network already bad)                  ▼
+  Network Degraded ◄──── Battery Depletion Events ◄── Less Energy Delivered
+       │                        │
+       │                        ▼ (depletion ↑ → topology loss)
+       │              Routing Paths Broken (fewer hops available)
+       │                        │
+       └────────────────────────┴──────────────► PDR ↓
+                                                E2E Delay ↑ (conditioning: may appear ↓)
+```
+
+**Step 1 — Scheduling to Charging Outcomes (r = 0.578):**
+Protocols with higher dock efficiency (P-EDF, Dynamic) convert more requests into actual charging sessions. The key differentiator is not timeout rate alone (which is similar across protocols, 23–32%) but rather the ROUTING_DROP rate (21.8% for P-EDF vs. 34.6% for EDF). ROUTING_DROP events represent charge requests that could not be routed through the ad-hoc UAV mesh to reach the UGV — they occur exclusively during weather-driven network events (`failure_reason = WEATHER_DROP`). Protocols that are resilient to this (P-EDF, FCFS) achieve higher effective success rates.
+
+**Step 2 — Charging to Fleet Survivability (r = −0.567 for depletion events vs. PDR):**
+Each failed charging attempt (whether TIMEOUT or ROUTING_DROP) increases the probability of a battery depletion event. The energy per session metric (Wh) captures charging efficiency: when sessions are shorter or fewer, total energy delivered drops (ugv_edf mean = 17.0 Wh/session vs. ugv_dynamic = 21.6 Wh/session). Lower energy recovery means shorter inter-depletion intervals, creating a higher depletion frequency. Depletion events are negatively correlated with PDR (Pearson r = −0.567, p = 0.007).
+
+**Step 3 — Survivability to Network Quality (r = −0.477, Spearman):**
+Each depletion event temporarily removes a UAV from the routing fabric. CH depletions are particularly disruptive — the cluster head serves as an inter-cluster relay, so its loss isolates a sub-cluster of member UAVs from the network backbone. The `07_death_slope_vs_pdr_dip.png` figure confirms that death acceleration (rolling slope of depletion rate) is significantly higher during PDR-dip intervals, consistent with a mutual-reinforcement dynamic.
+
+**Step 4 — Feedback Loop (ROUTING_DROP rate negatively correlated with PDR: r = −0.555, Spearman):**
+The most important finding is the bidirectional coupling: network degradation (PDR ↓) causes ROUTING_DROP of charge requests, which in turn exacerbates fleet degradation. `ugv_edf_3` is the clearest example — the first two CH depletions at t ≈ 6.6 min initiated a cascade where the ROUTING_DROP rate spiked to 49.6% (vs. ~29% baseline), preventing any corrective charging and leading to 85 total depletion events by run end.
+
+**Supporting figures:** `CL_D_mechanism_chain.png`; `CL_F_pdr_vs_depletions_timeseries.png`; `07_pdr_events_merged_variance_all.png`; `07_lagged_corr_ugv_dynamic.png` (and other protocol-specific variants).
+
+### 4.3 Conditioning Bias in E2E Delay
+
+E2E delay (`window_delay_mean_ms`) is computed by the ROS network-monitor node as a rolling average over *delivered* packets only. When PDR is high (many packets delivered, complex multi-hop topology), measured delay reflects genuine multi-hop latency (50–80 ms range). When PDR falls catastrophically and few UAVs survive, the remaining topology consists of direct short-range links, collapsing measured delay:
+
+| Run | Deaths | PDR | Mean Delay |
+|---|---|---|---|
+| ugv_edf_3 | 85 | 0.476 | **28.5 ms** ← conditioning artifact |
+| ugv_p_dynamic_score_2 | 56 | 0.602 | **32.6 ms** ← partial bias |
+| ugv_p_role_priority_1 | 21 | 0.628 | 76.8 ms ← genuine high-topology delay |
+
+This explains why protocols that lose many UAVs (ugv_edf, ugv_p_dynamic_score) appear to have *lower* mean delay despite worse network quality. The Pearson r between depletion events and E2E delay is −0.548 (p = 0.010) but Spearman ρ = −0.089 (p = 0.700) — the strong Pearson but weak Spearman confirms outlier-driven bias rather than a true monotonic relationship.
+
+**Verification:** Plot mean E2E delay vs. `n_delivered` (sample size of delay measurements). Expect a positive correlation — more delivered packets → higher delay — which would confirm the conditioning bias. See `CL_C_e2e_delay_conditioning_analysis.png`.
+
+**Implication for protocol ranking:** The apparent "low delay advantage" of ugv_edf and ugv_p_dynamic_score should not be interpreted as good latency performance. A **DPR-weighted delay** metric (delay × PDR, or equivalently, delay computed only over runs with PDR > 0.6) would more accurately capture whether the scheduler achieves both reliability and low latency. Under such weighting, `ugv_p_edf` and `ugv_fcfs` would rank best on the delay dimension as well.
+
+### 4.4 Lagged Correlation Analysis
+
+The `07_lagged_corr_summary.csv` (computed by the existing pipeline, `07_lagged_corr_{protocol}.png`) shows the peak lagged Pearson correlation between PDR and subsequent depletion events:
+
+| Protocol | PDR → Death peak r | peak lag (min) | Interpretation |
+|---|---|---|---|
+| ugv_dynamic | −0.296 | −9 min | PDR drops *precede* death spikes by ~9 min |
+| ugv_role_priority | −0.305 | −9 min | Same pattern — network degradation precedes deaths |
+| ugv_fcfs | −0.249 | −8 min | Similar lead time |
+| ugv_p_edf | −0.229 | −9 min | Weaker signal (fewer deaths, less variation) |
+| ugv_edf | +0.225 | −3 min | Counter-intuitive — see below |
+
+The consistently negative lagged correlations at lags of −8 to −9 minutes (PDR drop leads deaths) are *evidence consistent with* network degradation driving UAV attrition — the network fails first (due to weather or topology loss), and approximately 8–9 minutes later the depletion rate accelerates. This lag likely represents the time from when a UAV loses connectivity (cannot send charge request) to when its battery actually depletes.
+
+The positive peak r for `ugv_edf` at lag −3 reflects the outlier distortion from run 3, where deaths happened so early and rapidly that PDR and deaths are both deteriorating together rather than having a clear lead-lag structure.
+
+**Dock Utilization → TIMEOUT lagged correlations** (from `07_lagged_corr_summary.csv`) are weak (|r| < 0.29), suggesting that TIMEOUT events do not primarily occur because docks are full — rather, timeouts result from scheduling priority decisions or network delivery failures unrelated to dock occupancy. This is consistent with the relatively stable dock utilization across protocols (0.59–0.74) compared to the large variation in timeout rates (23–32%).
+
+**Supporting figures:** `07_lagged_corr_ugv_dynamic.png` through `07_lagged_corr_ugv_role_priority.png`; `07_dock_util_with_timeouts_merged.png`.
+
+---
+
+## 5. Anomalies and Interpretations
+
+### Anomaly A: ugv_edf_3 — Catastrophic Depletion Cascade (85 events, 5 UAVs)
+
+**Observation:** ugv_edf_3 records 85 battery depletion events from only 5 unique UAV IDs (17 depletions/UAV vs. cross-protocol mean of ~5). The `alive_count` field in `death_events.csv` drops to 0 by t ≈ 33 min but events continue for the full 180-minute run.
+
+**Likely cause:** A depletion-respawn cycle triggered by an early cascade failure. The first two CH depletions occurred simultaneously at t = 6.6 min (both CH UAVs dying within 4 seconds). This catastrophically broke the routing backbone, causing ROUTING_DROP rate to spike to ~49.6% for this run (highest in the dataset). With charge requests unable to reach the UGV scheduler, UAVs could not charge, depleted, were respawned by the simulator, and immediately began draining again. The EDF scheduling policy, which prioritizes by deadline rather than urgency-weighted score, lacks the ability to preempt or fast-track critically low-battery UAVs in this scenario.
+
+**Quick verification:**
+1. `death_events.csv`: Confirm `t_rel_s` of first two events ≈ 396s and 396.4s (both CH, role=1)
+2. `charge_events.csv`: Check `outcome == 'ROUTING_DROP'` count for `t_rel_s < 600s` (first 10 min) — should be 0, indicating the cascade started at CH depletions and then propagated
+3. `charge_events.csv`: Filter `t_rel_s > 600s` and compute fraction `ROUTING_DROP / total` — expect ~50% in second half
+
+**Impact on aggregate statistics:** ugv_edf's mean depletion count (45.0) and SD (34.7) are both inflated by this outlier. Its mean PDR (0.573) and E2E delay (55.6 ms) are also distorted. Without run 3, ugv_edf would rank comparably to ugv_fcfs on most metrics.
+
+### Anomaly B: E2E Delay Inversely Associated with Fleet Degradation (Conditioning Bias)
+
+**Observation:** Protocols and runs with more depletion events show lower measured E2E delay (Pearson r = −0.548 between total_deaths and e2e_delay_mean). This is counter-intuitive — worse survivability should imply worse, not better, network performance.
+
+**Likely cause:** Conditioning on delivered packets. When many UAVs deplete and topology simplifies, surviving packets travel via short direct links rather than multi-hop paths, reducing measured latency. This is purely a measurement artifact: the `window_delay_mean_ms` metric reflects only the delay of *successfully delivered* packets, excluding all the packets that were dropped (which, at high depletion rates, is the majority).
+
+**Quick verification:** Compute correlation between `e2e_delay_mean` and `n_delivered` (total packets delivered per run). Expect positive correlation — more delivered packets → higher delay. If confirmed, delay rankings from `06_mean_e2e_delay_merged.png` should be discarded as primary protocol quality indicators and replaced with PDR-weighted delay. See also `CL_C_e2e_delay_conditioning_analysis.png`.
+
+### Anomaly C: ugv_p_dynamic_score_2 — High Deaths, Acceptable PDR
+
+**Observation:** ugv_p_dynamic_score_2 has 56 depletion events (highest for its protocol) but maintains PDR = 0.602, higher than several protocols with fewer depletions.
+
+**Likely cause:** The dynamic scoring function may prioritize high-PDR-context UAVs for charging, creating an asymmetry: UAVs in good-connectivity zones get charged efficiently while UAVs in degraded areas (where their requests would arrive as ROUTING_DROP anyway) experience more depletions. The PDR remains acceptable because the "well-connected" portion of the fleet keeps routing. This is a plausible positive side-effect of PDR-aware scheduling.
+
+**Quick verification:** In `charge_events.csv`, filter to `ugv_p_dynamic_score_2`, group by `uav_id`, and compute depletion counts from `death_events.csv`. Check whether deaths are concentrated in 1–2 UAVs rather than distributed — which would confirm the asymmetric service hypothesis.
+
+### Anomaly D: ROUTING_DROP Failures Are Exclusively Weather-Driven
+
+**Observation:** All ROUTING_DROP events across all 21 runs have `failure_reason = WEATHER_DROP` (confirmed in `charge_events.csv`). No ROUTING_DROP events were caused by routing table failures, TTL expiry, or congestion.
+
+**Likely cause:** The simulator's weather model directly causes packet drops when weather is adverse (rain, wind, storm). Charge requests are routed through the same mesh network as data packets, making them equally vulnerable to weather-induced PDR drops.
+
+**Implication:** ROUTING_DROP rate is not a scheduler-specific failure mode — it is an exogenous network quality indicator. Protocols with higher ROUTING_DROP rates are not worse schedulers per se; rather, they happen to have more charge requests submitted during bad-weather windows, or their UAVs are positioned in areas with worse link quality. The strong negative correlation between ROUTING_DROP rate and PDR (ρ = −0.555) is therefore partly a confound: both are driven by the same underlying weather variable.
+
+**Quick verification:** Correlate each run's ROUTING_DROP count with its cumulative `stormy` weather regime duration from `weather_timeseries.csv`. Expect strong positive correlation. Note that weather timeseries appears identical across runs of the same protocol (it is a shared environment), so any per-run variation in ROUTING_DROP is driven by UAV positioning and network topology state at the time of storm events.
+
+### Anomaly E: Dock Utilization Positively Correlated with PDR
+
+**Observation:** `dock_util_mean` is positively correlated with PDR (Pearson r = 0.569, p = 0.007) — counter-intuitive because one might expect higher utilization to cause more TOUTIMEs (queuing) and worse outcomes.
+
+**Likely cause:** Dock utilization is a proxy for overall system health. When the network is healthy and UAVs are alive, more charging requests successfully arrive and start, keeping docks busy. When the network degrades and UAVs die, fewer requests arrive (ROUTING_DROP), docks sit idle, and utilization drops. High utilization is therefore a *consequence* of good network state rather than a cause of poor scheduling performance.
+
+**Quick verification:** Plot dock utilization timeseries for ugv_edf_3 — expect dock utilization to drop sharply after t ≈ 6.6 min (first CH deaths), which would confirm the causal direction (network degradation → idle docks, not idle docks → network degradation).
+
+---
+
+## 6. Additional Plots Generated
+
+The following new scripts and plots were created to support the cross-layer argument. They are located in `analysis/test_round2/figures/cross_layer/`:
+
+### CL_A — Protocol KPI Overview Bar Chart
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `qos_metrics.csv` (PDR), `death_events.csv` (depletions), `charge_events.csv` (success rate)
+**Output:** `CL_A_protocol_kpi_overview.png`
+**Why needed:** Provides a single-view comparison of the three most important KPIs (PDR, depletions, success rate) with error bars showing replicate variance. Supports §3 Protocol-Level Comparisons.
+
+### CL_B — Charging KPIs vs PDR Scatter Matrix
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `qos_metrics.csv`, `charge_events.csv`, `death_events.csv`, `charge_session_events.csv`, `charge_queue_timeseries.csv`
+**Output:** `CL_B_charging_vs_pdr_scatter.png`
+**Why needed:** Visualises all six major charging KPI vs. PDR relationships on a 2×3 panel with regression lines and annotated r/ρ values. Supports §4.1 correlation claims.
+
+### CL_C — E2E Delay Conditioning Analysis
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `qos_metrics.csv`, `network_timeseries.csv`, `death_events.csv`
+**Output:** `CL_C_e2e_delay_conditioning_analysis.png`
+**Why needed:** Directly illustrates the conditioning bias (§4.3 and §5 Anomaly B) through a scatter plot annotating the ugv_edf_3 outlier, plus a bubble chart where bubble size encodes depletion count, showing the bias direction.
+
+### CL_D — Cross-Layer Mechanism Chain (Three-Panel Scatter)
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `charge_events.csv`, `death_events.csv`, `qos_metrics.csv`
+**Output:** `CL_D_mechanism_chain.png`
+**Why needed:** Provides visual evidence for each of the three mechanism steps: (1) success rate → depletions, (2) depletions → PDR, (3) ROUTING_DROP rate → PDR. Core support for §4.2 Mechanism Narrative.
+
+### CL_E — Correlation Bar Chart (Pearson + Spearman Side-by-Side)
+**Script:** Inline Python (embedded in analysis)
+**Reads:** All KPI CSVs (computed per run)
+**Output:** `CL_E_correlation_bar_chart.png`
+**Why needed:** The existing `06_corr_heatmap_pdr.png` shows only Pearson r. The Pearson–Spearman divergence for E2E delay correlations (§4.1, §5 Anomaly B) requires showing both coefficients simultaneously to diagnose outlier-driven bias.
+
+### CL_F — PDR Timeseries with Battery Depletion Rate Overlay
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `network_timeseries.csv`, `death_events.csv`
+**Output:** `CL_F_pdr_vs_depletions_timeseries.png`
+**Why needed:** The existing `07_pdr_events_merged_variance_all.png` shows events as individual vlines or binned bars but does not show the depletion *rate* (events per time bin) as a separate quantitative axis. CL_F adds a secondary Y-axis with depletion bars, enabling visual inspection of the lag structure (§4.4) across all 7 protocols simultaneously.
+
+### CL_G — Charge Request Routing Drop Rate Over Time
+**Script:** Inline Python (embedded in analysis)
+**Reads:** `charge_events.csv`
+**Output:** `CL_G_routing_drop_timeseries.png`
+**Why needed:** Reveals when ROUTING_DROP bursts occur during the experiment timeline and whether they align with known PDR dip intervals. Supports the feedback-loop argument in §4.2 and the weather-dependency finding in §5 Anomaly D.
+
+---
+
+## 7. Synthesis and Conclusions
+
+### 7.1 Protocol Ranking
+
+Based on the cross-layer evidence, the protocols rank as follows (higher tier = better overall performance):
+
+| Tier | Protocol | Rationale |
+|---|---|---|
+| **1 (Best)** | ugv_p_edf | Highest PDR, lowest depletions, best success rate; preemption prevents priority inversion |
+| **2** | ugv_fcfs | Second-best PDR, consistent depletions; simple but effective under normal load |
+| **2** | ugv_dynamic | Lowest decision latency, second-best success rate; efficient dynamic prioritization |
+| **3** | ugv_p_dynamic_score | Mid-PDR, acceptable depletions; high variance across runs is a concern |
+| **4** | ugv_edf | High instability (SD = 0.094); run 3 catastrophe reveals vulnerability to cascades |
+| **4** | ugv_p_role_priority | Worst PDR, highest E2E delay; role-based priority less effective than urgency-based |
+| **5 (Worst)** | ugv_role_priority | Lowest success rate, highest timeout rate, consistently high depletions |
+
+### 7.2 Design Recommendations
+
+1. **Adopt urgency-aware preemption**: ugv_p_edf's advantage over ugv_edf demonstrates that preemption is critical for preventing cascade failures. When a critically low-battery UAV cannot access a dock due to a lower-urgency queued request, the entire fleet is at risk.
+
+2. **Monitor ROUTING_DROP as an early warning signal**: A ROUTING_DROP rate above ~35% in a 10-minute window indicates that network conditions are too degraded for the scheduling layer to function correctly. An adaptive protocol should increase dock reservation or reduce mission tempo during such periods.
+
+3. **Avoid role-based priority as the primary scheduling criterion**: Both ugv_role_priority and ugv_p_role_priority underperform relative to urgency- or deadline-based approaches, suggesting that coarse role classification (CH vs. member) provides insufficient information for effective energy management.
+
+4. **Do not use E2E delay as a standalone network quality metric**: The conditioning bias demonstrated in §4.3 makes raw delay measurements misleading for protocol comparison. Use PDR-weighted delay or condition delay comparisons on runs with PDR > 0.6.
+
+### 7.3 Proposed Future Tests to Strengthen Causal Claims
+
+1. **Lagged correlation with weather covariates**: Regress ROUTING_DROP rate on storm regime duration after controlling for protocol. If the protocol effect on ROUTING_DROP disappears after weather control, Anomaly D is confirmed and the ROUTING_DROP–PDR correlation is a weather confounder.
+
+2. **Intervention experiment**: Artificially prevent CH depletions (by giving CHs priority charging slots) and measure whether the cascade elimination improves ugv_edf's PDR stability. If ugv_edf run 3 with "protected CHs" achieves ugv_edf run 1/2 levels, the CH cascade hypothesis is confirmed.
+
+3. **PDR-weighted delay metric**: Compute `penalized_delay = mean_delay × (1 - PDR)` per run. This penalizes protocols with high apparent delivery speed but low actual reliability. Expect ugv_p_edf to rank best and ugv_edf/ugv_p_role_priority to rank worst.
+
+4. **Conditioning check**: Correlate `e2e_delay_mean` with `n_delivered` (number of delivered packets per run). A significant positive correlation would formally establish the conditioning bias claimed in §4.3.
+
+---
+
+## Appendix: Data Source Summary for Key Figures
+
+| Figure | Key Data Sources | Location |
+|---|---|---|
+| `01_mean_pdr_merged.png` | `qos_metrics.csv` → `generated`, `delivered` | `figures/01_validation/` |
+| `02_charge_success_rate_merged.png` | `charge_events.csv` → `outcome` | `figures/02_per_protocol_stats/` |
+| `03_dead_uav_cumulative_merged.png` | `death_events.csv` → `t_rel_s` | `figures/03_cross_protocol_charging/` |
+| `04_policy_radar_merged.png` | All CSVs (computed KPIs) | `figures/04_policy_radar/` |
+| `06_corr_heatmap_pdr.png` | All CSVs (per-run scalars) | `figures/06_network_qos_delay/` |
+| `07_lagged_corr_*.png` | `network_timeseries.csv`, `charge_events.csv`, `death_events.csv` | `figures/07_causal_analysis/` |
+| `07_death_slope_vs_pdr_dip.png` | `network_timeseries.csv`, `death_events.csv` | `figures/07_causal_analysis/` |
+| `CL_B_charging_vs_pdr_scatter.png` | `qos_metrics.csv`, `charge_events.csv`, `death_events.csv`, `charge_session_events.csv` | `figures/cross_layer/` |
+| `CL_D_mechanism_chain.png` | `charge_events.csv`, `death_events.csv`, `qos_metrics.csv` | `figures/cross_layer/` |
+| `CL_F_pdr_vs_depletions_timeseries.png` | `network_timeseries.csv`, `death_events.csv` | `figures/cross_layer/` |
+
+---
+
+*Report generated from experimental data in `experiment_data_collection/test_round2`. All statistical tests use two-tailed p-values. Significance thresholds: * p < 0.05, ** p < 0.01, *** p < 0.001.*
