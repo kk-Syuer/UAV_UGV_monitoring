@@ -22,6 +22,7 @@ Outputs (saved to <output_root>/figures/cross_layer/):
     CL_L_event_aligned_composite.png        -- Event-aligned 4-pane composite per protocol + merged
     CL_M_role_scheduling_audit.png          -- Role-stratified scheduling audit: the CH priority paradox
     CL_N_ch_sync_cascade.png                -- CH depletion synchronization → priority congestion → member cascade
+    CL_O_mechanism_narrative.png            -- §4.2 narrative: flow diagram + temporal evidence (best vs role-based)
 
 Data sources (all per-run CSVs):
     qos_metrics.csv          -> PDR (generated, delivered)
@@ -1231,10 +1232,6 @@ def plot_cl_l_event_aligned_composite(
     _save(fig, out_dir / "CL_L_event_aligned_composite.png")
 
 
-    plt.tight_layout()
-    _save(fig, out_dir / "CL_L_event_aligned_composite.png")
-
-
 # ---------------------------------------------------------------------------
 # CL_M — Role-stratified scheduling audit (the CH priority paradox)
 # ---------------------------------------------------------------------------
@@ -1536,6 +1533,269 @@ def plot_cl_n_ch_sync_cascade(data_root: Path, out_dir: Path) -> None:
 
 
 # ---------------------------------------------------------------------------
+# CL_O — §4.2 Mechanism narrative figure
+# ---------------------------------------------------------------------------
+
+def plot_cl_o_mechanism_narrative(df: pd.DataFrame, data_root: Path, out_dir: Path,
+                                   bin_sec: int = 600) -> None:
+    """§4.2 Cross-layer causal chain: narrative mechanism figure (CL_O).
+
+    Layout  (2 rows):
+    ──────────────────────────────────────────────────────────────────────────
+    Row 0  [full width]:  Flow-diagram rendered with matplotlib patches.
+           Four rounded boxes connected by annotated arrows:
+               [Scheduling Policy]  →  [Charge Outcomes]  →  [Fleet Survival]
+                                              ↑                      │
+                                      (ROUTING_DROP             deaths ↓)
+                                       feedback ↗)              [PDR / QoS ↓]
+           Arrows are annotated with Pearson r computed from the 21-run KPI
+           DataFrame.  A dashed feedback arrow from PDR → Charge Outcomes
+           closes the loop.
+
+    Row 1  [4 sub-panels, shared x-axis]:  Temporal evidence — per-protocol
+           mean timeseries (bin_sec bins).  Two protocol groups highlighted:
+               • Best performers  (ugv_p_edf, ugv_edf) in blue shades
+               • Role-based group (ugv_p_role_priority, ugv_role_priority) in red shades
+           Panels:
+               1 — Dock utilisation (scheduling load proxy)
+               2 — Charge timeout rate per bin   (charge outcomes)
+               3 — Battery depletions per bin    (fleet survivability)
+               4 — Window PDR                   (network quality)
+
+    Data:
+        df                    — per-run scalar KPIs (from collect_per_run_kpis)
+        charge_queue_timeseries.csv  → ugv_dock_utilization
+        charge_events.csv            → outcome (TIMEOUT per bin)
+        death_events.csv             → t_rel_s (deaths per bin)
+        network_timeseries.csv       → window_pdr, t_rel_s
+
+    Output: CL_O_mechanism_narrative.png + .pdf
+    """
+    import matplotlib.patches as mpatches
+    from matplotlib.patches import FancyArrowPatch, FancyBboxPatch
+    from matplotlib.lines import Line2D
+
+    # ── Compute correlations for arrow annotations ──────────────────────────
+    def _r(a: str, b: str) -> str:
+        sub = df[[a, b]].dropna()
+        if len(sub) < 4:
+            return "n/a"
+        r, _ = stats.pearsonr(sub[a], sub[b])
+        return f"r = {r:+.2f}"
+
+    r_sched_charge  = _r("charge_success_rate", "total_deaths")   # success ↑ → deaths ↓
+    r_charge_surv   = _r("total_deaths", "pdr")                    # deaths ↑ → PDR ↓
+    r_surv_net      = _r("charge_routing_drop_rate", "pdr")        # routing_drop ↑ → PDR ↓
+
+    # ── Load binned timeseries for bottom row ────────────────────────────────
+    bins = np.arange(0, MAX_T_S + bin_sec, bin_sec)
+    bin_mids = (bins[:-1] + bins[1:]) / 2 / 60  # minutes
+    n_bins = len(bin_mids)
+
+    HIGHLIGHT = {
+        "best":      ["ugv_p_edf", "ugv_edf"],
+        "role_based": ["ugv_p_role_priority", "ugv_role_priority"],
+    }
+    GROUP_COLORS = {
+        "ugv_p_edf":           "#1f77b4",
+        "ugv_edf":             "#aec7e8",
+        "ugv_p_role_priority": "#d62728",
+        "ugv_role_priority":   "#f5a5a5",
+    }
+    HIGHLIGHT_PROTOS = HIGHLIGHT["best"] + HIGHLIGHT["role_based"]
+
+    # Containers: proto → (n_bins,) mean across replicates
+    dock_ts:    dict = {}
+    timeout_ts: dict = {}
+    death_ts:   dict = {}
+    pdr_ts:     dict = {}
+
+    for proto in PROTOCOLS:
+        d_rep, t_rep, de_rep, p_rep = [], [], [], []
+        for r in REPLICATES:
+            folder = data_root / f"{proto}_{r}"
+
+            # Dock utilisation (mean per bin from timeseries)
+            cq = _load_csv(folder, "charge_queue_timeseries.csv")
+            if not cq.empty and "ugv_dock_utilization" in cq.columns and "t_rel_s" in cq.columns:
+                t = cq["t_rel_s"].values
+                v = cq["ugv_dock_utilization"].values
+                idx = np.searchsorted(bins[1:], t)
+                idx = np.clip(idx, 0, n_bins - 1)
+                sums = np.bincount(idx, weights=v, minlength=n_bins).astype(float)
+                cnts = np.bincount(idx, minlength=n_bins).astype(float)
+                cnts[cnts == 0] = np.nan
+                d_rep.append(sums / cnts)
+
+            # Charge timeout rate per bin (from charge_events)
+            ce = _load_csv(folder, "charge_events.csv")
+            if not ce.empty and "outcome" in ce.columns and "t_rel_s" in ce.columns:
+                t = ce["t_rel_s"].values
+                is_timeout = (ce["outcome"] == "TIMEOUT").values.astype(float)
+                idx = np.searchsorted(bins[1:], t)
+                idx = np.clip(idx, 0, n_bins - 1)
+                to_sum = np.bincount(idx, weights=is_timeout, minlength=n_bins).astype(float)
+                cnt = np.bincount(idx, minlength=n_bins).astype(float)
+                cnt[cnt == 0] = np.nan
+                t_rep.append(to_sum / cnt)
+
+            # Deaths per bin
+            de = _load_csv(folder, "death_events.csv")
+            if not de.empty and "t_rel_s" in de.columns:
+                t = de["t_rel_s"].values
+                idx = np.searchsorted(bins[1:], t)
+                idx = np.clip(idx, 0, n_bins - 1)
+                de_rep.append(np.bincount(idx, minlength=n_bins).astype(float))
+
+            # PDR per bin
+            net = _load_csv(folder, "network_timeseries.csv")
+            if not net.empty and "window_pdr" in net.columns and "t_rel_s" in net.columns:
+                t = net["t_rel_s"].values
+                v = net["window_pdr"].values
+                idx = np.searchsorted(bins[1:], t)
+                idx = np.clip(idx, 0, n_bins - 1)
+                sums = np.bincount(idx, weights=v, minlength=n_bins).astype(float)
+                cnts = np.bincount(idx, minlength=n_bins).astype(float)
+                cnts[cnts == 0] = np.nan
+                p_rep.append(sums / cnts)
+
+        dock_ts[proto]    = np.nanmean(d_rep,  axis=0) if d_rep  else np.full(n_bins, np.nan)
+        timeout_ts[proto] = np.nanmean(t_rep,  axis=0) if t_rep  else np.full(n_bins, np.nan)
+        death_ts[proto]   = np.nanmean(de_rep, axis=0) if de_rep else np.full(n_bins, np.nan)
+        pdr_ts[proto]     = np.nanmean(p_rep,  axis=0) if p_rep  else np.full(n_bins, np.nan)
+
+    # ── Figure layout ────────────────────────────────────────────────────────
+    fig = plt.figure(figsize=(16, 12))
+    gs = fig.add_gridspec(
+        2, 4,
+        height_ratios=[1.2, 1.8],
+        hspace=0.45, wspace=0.35,
+        top=0.93, bottom=0.07, left=0.07, right=0.97,
+    )
+
+    # ── Row 0: flow diagram spanning all 4 columns ───────────────────────────
+    ax_flow = fig.add_subplot(gs[0, :])
+    ax_flow.set_xlim(0, 10)
+    ax_flow.set_ylim(0, 4)
+    ax_flow.axis("off")
+
+    BOX_W, BOX_H = 1.7, 0.85
+    BOXES = [
+        (0.5,  1.575, "Scheduling\nPolicy",   "#4393c3"),
+        (2.85, 1.575, "Charge\nOutcomes",     "#74c476"),
+        (5.4,  1.575, "Fleet\nSurvivability", "#fd8d3c"),
+        (7.95, 1.575, "Network\nQuality",     "#9e9ac8"),
+    ]
+    box_centers = []
+    for (bx, by, label, facecolor) in BOXES:
+        patch = FancyBboxPatch(
+            (bx, by), BOX_W, BOX_H,
+            boxstyle="round,pad=0.08",
+            linewidth=1.8, edgecolor="white",
+            facecolor=facecolor, alpha=0.88,
+            transform=ax_flow.transData, zorder=3,
+        )
+        ax_flow.add_patch(patch)
+        ax_flow.text(
+            bx + BOX_W / 2, by + BOX_H / 2, label,
+            ha="center", va="center", fontsize=10, fontweight="bold",
+            color="white", zorder=4,
+        )
+        box_centers.append((bx + BOX_W / 2, by + BOX_H / 2))
+
+    # Forward arrows with correlation annotations
+    arrow_specs = [
+        (0, 1, f"Charge success ↑\n→ fewer deaths\n({r_sched_charge})", 2.8),
+        (1, 2, f"Depletions ↑\n→ PDR ↓\n({r_charge_surv})",            5.35),
+        (2, 3, f"Routing drops ↑\n→ PDR ↓\n({r_surv_net})",            7.9),
+    ]
+    for (src, dst, label, lx) in arrow_specs:
+        x0 = box_centers[src][0] + BOX_W / 2 - 0.05
+        x1 = box_centers[dst][0] - BOX_W / 2 + 0.05
+        y  = box_centers[src][1]
+        ax_flow.annotate(
+            "", xy=(x1, y), xytext=(x0, y),
+            arrowprops=dict(arrowstyle="-|>", lw=1.8, color="#333333"),
+            zorder=5,
+        )
+        ax_flow.text(lx, y + 0.62, label, ha="center", va="bottom",
+                     fontsize=7.5, color="#333333", style="italic")
+
+    # Feedback arrow: PDR ↓ → Charge Outcomes (ROUTING_DROP loop)
+    fb_x0 = box_centers[3][0]        # Network Quality centre-x
+    fb_x1 = box_centers[1][0]        # Charge Outcomes centre-x
+    fb_y  = box_centers[0][1] - 1.05
+    ax_flow.annotate(
+        "", xy=(fb_x1, box_centers[1][1] - BOX_H / 2),
+        xytext=(fb_x0, box_centers[3][1] - BOX_H / 2),
+        arrowprops=dict(
+            arrowstyle="-|>", lw=1.5, color="#b2182b",
+            connectionstyle=f"arc3,rad=-0.35",
+        ),
+        zorder=5,
+    )
+    ax_flow.text(
+        (fb_x0 + fb_x1) / 2, box_centers[0][1] - 1.4,
+        "Feedback: PDR ↓ → more ROUTING_DROPs → more deaths\n(reinforcing loop)",
+        ha="center", va="top", fontsize=8, color="#b2182b", style="italic",
+    )
+
+    ax_flow.set_title(
+        "§4.2 Cross-Layer Causal Chain  —  Scheduling Policy → Network Quality",
+        fontsize=12, fontweight="bold", pad=8,
+    )
+
+    # ── Row 1: 4 timeseries panels ───────────────────────────────────────────
+    panel_data = [
+        (dock_ts,    "Dock utilisation",         "A  Scheduling load proxy"),
+        (timeout_ts, "Charge timeout rate",       "B  Charge outcomes"),
+        (death_ts,   "Battery depletions / bin",  "C  Fleet survivability"),
+        (pdr_ts,     "Window PDR",                "D  Network quality"),
+    ]
+
+    axes_ts = [fig.add_subplot(gs[1, c]) for c in range(4)]
+
+    legend_handles = []
+    for ax, (ts_dict, ylabel, panel_title) in zip(axes_ts, panel_data):
+        # Background grey lines for non-highlighted protocols
+        for proto in PROTOCOLS:
+            if proto not in HIGHLIGHT_PROTOS:
+                y = ts_dict[proto]
+                ax.plot(bin_mids, y, color="lightgrey", lw=1, alpha=0.7)
+
+        # Highlighted protocols
+        for proto in HIGHLIGHT_PROTOS:
+            y = ts_dict[proto]
+            clr = GROUP_COLORS[proto]
+            lbl = PROTO_LABELS[proto]
+            ax.plot(bin_mids, y, color=clr, lw=2.0, label=lbl)
+            if panel_title == "A  Scheduling load proxy":
+                legend_handles.append(Line2D([0], [0], color=clr, lw=2, label=lbl))
+
+        ax.set_xlabel("Time (min)", fontsize=9)
+        ax.set_ylabel(ylabel, fontsize=8)
+        ax.set_title(panel_title, fontsize=9, fontweight="bold")
+        ax.grid(alpha=0.3)
+        ax.set_xlim(0, MAX_T_S / 60)
+
+    # Shared legend below timeseries panels
+    legend_handles += [
+        Line2D([0], [0], color="lightgrey", lw=1.5, label="Other protocols"),
+    ]
+    axes_ts[0].legend(handles=legend_handles, fontsize=7.5, loc="upper left",
+                      title="Protocol", title_fontsize=8)
+
+    fig.suptitle(
+        "CL_O — §4.2 Mechanism Narrative\n"
+        "Top: causal chain with Pearson r on each link  ·  "
+        "Bottom: temporal evidence (highlighted = best & role-based groups)",
+        fontsize=11, fontweight="bold",
+    )
+
+    _save(fig, out_dir / "CL_O_mechanism_narrative.png")
+
+
+# ---------------------------------------------------------------------------
 # Utilities
 # ---------------------------------------------------------------------------
 
@@ -1638,6 +1898,12 @@ def main() -> None:
     print("[CL-N] CH depletion synchronization → cascade analysis …")
     try:
         plot_cl_n_ch_sync_cascade(data_root, out_dir)
+    except Exception:
+        import traceback; traceback.print_exc()
+
+    print("[CL-O] §4.2 Mechanism narrative figure …")
+    try:
+        plot_cl_o_mechanism_narrative(df, data_root, out_dir, bin_sec)
     except Exception:
         import traceback; traceback.print_exc()
 

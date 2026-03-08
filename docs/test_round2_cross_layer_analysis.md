@@ -212,7 +212,7 @@ Each depletion event temporarily removes a UAV from the routing fabric. CH deple
 **Step 4 — Feedback Loop (ROUTING_DROP rate negatively correlated with PDR: r = −0.555, Spearman):**
 The most important finding is the bidirectional coupling: network degradation (PDR ↓) causes ROUTING_DROP of charge requests, which in turn exacerbates fleet degradation. `ugv_edf_3` is the clearest example — the first two CH depletions at t ≈ 6.6 min initiated a cascade where the ROUTING_DROP rate spiked to 49.6% (vs. ~29% baseline), preventing any corrective charging and leading to 85 total depletion events by run end.
 
-**Supporting figures:** `CL_D_mechanism_chain.png`; `CL_F_pdr_vs_depletions_timeseries.png`; **`CL_L_event_aligned_composite.png`** (synchronises all four signals — PDR, timeouts, deaths, dock utilisation — across all 7 protocols on a shared time axis, making the temporal co-variation pattern immediately visible); `07_pdr_events_merged_variance_all.png`; `07_lagged_corr_ugv_dynamic.png` (and other protocol-specific variants).
+**Supporting figures:** **`CL_O_mechanism_narrative.png`** *(primary narrative figure for this section — see §6)* — a two-row composite: the top row renders the four-box causal chain as a matplotlib flow diagram with Pearson r annotated on each forward arrow and a dashed red feedback arc from Network Quality back to Charge Outcomes; the bottom row shows four time-synchronised panels (dock utilisation → charge timeouts → battery depletions → window PDR) with best-performer protocols (P-EDF, EDF) in blue and role-based protocols in red, making the temporal ordering of the cascade directly visible; `CL_D_mechanism_chain.png` (three-panel scatter confirming each step); `CL_F_pdr_vs_depletions_timeseries.png`; **`CL_L_event_aligned_composite.png`** (synchronises all four signals — PDR, timeouts, deaths, dock utilisation — across all 7 protocols on a shared time axis); `07_pdr_events_merged_variance_all.png`; `07_lagged_corr_ugv_dynamic.png` (and other protocol-specific variants).
 
 ### 4.3 Conditioning Bias in E2E Delay
 
@@ -480,6 +480,24 @@ The following new scripts and plots were created to support the cross-layer argu
 
 ---
 
+### CL_O — §4.2 Mechanism Narrative *(new — dedicated §4.2 figure)*
+**Script:** `plot_cross_layer_analysis.py → plot_cl_o_mechanism_narrative()`
+**Reads:**
+- `df` — per-run scalar KPI DataFrame from `collect_per_run_kpis()`: `charge_success_rate`, `total_deaths`, `charge_routing_drop_rate`, `pdr` (used for computing Pearson r on each causal link).
+- `charge_queue_timeseries.csv` → `ugv_dock_utilization`, `t_rel_s` (scheduling load proxy)
+- `charge_events.csv` → `outcome` (`TIMEOUT` fraction per bin), `t_rel_s`
+- `death_events.csv` → `t_rel_s` (deaths per bin)
+- `network_timeseries.csv` → `window_pdr`, `t_rel_s`
+
+**Generation logic — Row 0 (Flow diagram):** Four rounded `FancyBboxPatch` boxes connected by annotated `FancyArrowPatch` arrows in a straight horizontal chain. Each forward arrow carries the Pearson r computed from the 21-run KPI DataFrame (e.g., success_rate → total_deaths, total_deaths → pdr, routing_drop_rate → pdr). A dashed red arc (`connectionstyle="arc3,rad=-0.35"`) connects the rightmost Network Quality box back down to the Charge Outcomes box, representing the reinforcing feedback loop. Computed at runtime so values are always consistent with the actual data.
+
+**Generation logic — Row 1 (Temporal evidence, 4 panels):** For each of the 7 protocols, three replicates are loaded and binned into `bin_sec`-second intervals (default 600 s). Vectorised binning uses `np.searchsorted` + `np.bincount` for dock utilisation and PDR (weighted mean per bin) and `np.bincount` for count-based metrics (timeouts/bin, deaths/bin). Per-replicate arrays are averaged with `np.nanmean`. Two protocol groups are drawn with coloured lines: best performers (P-EDF, EDF) in blue shades and role-based protocols (P-RolePrio, RolePrio) in red shades. Other protocols are shown as grey background lines. Each of the four panels corresponds to one mechanism step.
+
+**Output:** `CL_O_mechanism_narrative.png` + `.pdf`
+**Why needed:** §4.2 currently presents the causal chain as an ASCII diagram in text. CL_O converts this into a publication-quality figure: the top flow diagram makes the causal logic unambiguous to a reader who has not read the text, while the bottom time-series row provides direct temporal evidence that the four steps fire in the predicted sequence during actual experiment runs. CL_D (three-panel scatter) already confirms the cross-run correlations; CL_O adds the *narrative sequence* and highlights the protocol contrast (best vs role-based) that drives the §4.5 CH priority paradox.
+
+---
+
 ### CL_N — CH Depletion Synchronization → Cascade Analysis *(new)*
 **Script:** `plot_cross_layer_analysis.py → plot_cl_n_ch_sync_cascade()`
 **Reads:** `charge_events.csv` — columns `role`, `uav_id`, `t_rel_s`, `decision_latency_ms`, `outcome`. Two derived datasets are computed:
@@ -553,6 +571,7 @@ Based on the cross-layer evidence, the protocols rank as follows (higher tier = 
 | **`CL_L_event_aligned_composite.png`** | `network_timeseries.csv`, `charge_events.csv`, `death_events.csv`, `charge_queue_timeseries.csv` | §4.2, §4.4 — 4-metric × 8-protocol composite (the most comprehensive single figure) |
 | **`CL_M_role_scheduling_audit.png`** | `charge_events.csv` → `role`, `outcome`, `decision_latency_ms`, `effective_wait_ms` | §4.5 — CH priority paradox: role-stratified latency, success, starvation |
 | **`CL_N_ch_sync_cascade.png`** | `charge_events.csv` → `role`, `uav_id`, `t_rel_s`, `decision_latency_ms`, `outcome` | §4.5 — CH depletion synchronization KDE + CH latency vs member success scatter |
+| **`CL_O_mechanism_narrative.png`** | `collect_per_run_kpis()` scalars + `charge_queue_timeseries.csv`, `charge_events.csv`, `death_events.csv`, `network_timeseries.csv` | §4.2 — **primary narrative figure**: flow diagram (Pearson r on arrows) + 4-panel temporal evidence (best vs role-based groups) |
 
 ### A2. Supporting Figures (Other Groups — `figures/`)
 
