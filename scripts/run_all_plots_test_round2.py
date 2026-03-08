@@ -4363,6 +4363,7 @@ def main():
                 plot_cl_l_event_aligned_composite,
                 plot_cl_m_role_scheduling_audit,
                 plot_cl_n_ch_sync_cascade,
+                plot_cl_o_mechanism_narrative,
             )
             cl_out = output_root / "figures" / "cross_layer"
             cl_out.mkdir(parents=True, exist_ok=True)
@@ -4381,6 +4382,7 @@ def main():
             plot_cl_l_event_aligned_composite(input_root, cl_out, int(bin_sec))
             plot_cl_m_role_scheduling_audit(input_root, cl_out)
             plot_cl_n_ch_sync_cascade(input_root, cl_out)
+            plot_cl_o_mechanism_narrative(kpi_df, input_root, cl_out, int(bin_sec))
         except Exception as exc:  # noqa: BLE001
             msg = f"Group 09 cross-layer analysis failed: {exc}"
             print(f"  WARNING: {msg}")
