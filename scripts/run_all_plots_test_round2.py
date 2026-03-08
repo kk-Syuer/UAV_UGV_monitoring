@@ -882,14 +882,20 @@ def _plot_03_cumulative_energy_charged(runs, fig_dir, missing):
 # ===========================================================================
 
 def _plot_04_policy_radar(runs, fig_dir, missing):
-    """G4/P1 — Radar/spider chart comparing protocols on 5 normalised KPIs."""
+    """G4/P1 — Radar/spider chart comparing protocols on 4 normalised KPIs.
+
+    Axes (all outward = better):
+        PDR          — packet delivery ratio,     normalised by max=1.0
+        Success rate — charge success proportion, normalised by max=1.0
+        1/Latency    — decision latency inverted: norm = 1 − lat/100,000 ms
+        Energy recov.— mean Wh per session,       normalised by max=100 Wh
+    """
     # (label, display_name, max_value, higher_is_better)
     AXES = [
-        ("pdr",      "PDR",            1.0,    True),
-        ("success",  "Success rate",   1.0,    True),
-        ("latency",  "Low latency",    100_000, False),  # ms → invert
-        ("energy",   "Energy recov.",  100.0,  True),
-        ("survival", "Survival",       1.0,    True),
+        ("pdr",     "PDR",             1.0,     True),
+        ("success", "Success rate",    1.0,     True),
+        ("latency", "1 / Latency",     100_000, False),  # inverted: outward = faster
+        ("energy",  "Energy recov.",   100.0,   True),
     ]
 
     def _norm(val, max_val, higher_is_better):
@@ -910,20 +916,17 @@ def _plot_04_policy_radar(runs, fig_dir, missing):
             total_gen = sum(c.get("generated", 0) for c in by_cat)
             total_del = sum(c.get("delivered", 0) for c in by_cat)
             pdr = total_del / total_gen if total_gen > 0 else float("nan")
-
             ch = summary.get("charging", {})
             success = ch.get("success_rate", float("nan"))
             latency = ch.get("decision_latency_ms", {}).get("mean", float("nan"))
-            energy = ch.get("energy_recovered", {}).get("mean", float("nan"))
-            survival = summary.get("fleet", {}).get("survival_rate", float("nan"))
+            energy  = ch.get("energy_recovered", {}).get("mean", float("nan"))
         else:
-            pdr = _overall_pdr_from_csvs(run, missing)
+            pdr     = _overall_pdr_from_csvs(run, missing)
             success = _success_rate_from_csvs(run, missing)
             latency = _mean_latency_from_csvs(run, missing)
-            energy = _mean_energy_from_csvs(run, missing)
-            survival = float("nan")
+            energy  = _mean_energy_from_csvs(run, missing)
 
-        raw = [pdr, success, latency, energy, survival]
+        raw = [pdr, success, latency, energy]
         protocol_scores[run["label"]] = [
             _norm(v, AXES[i][2], AXES[i][3]) for i, v in enumerate(raw)
         ]
@@ -947,11 +950,17 @@ def _plot_04_policy_radar(runs, fig_dir, missing):
 
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(axis_labels, fontsize=9)
-    ax.set_ylim(0, 1)
+    ax.set_rlim(0, 1)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0.25", "0.5", "0.75", "1.0"], fontsize=7)
     ax.set_title("Policy Radar — Normalised KPIs", pad=20)
     ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
+    fig.text(
+        0.5, 0.01,
+        "Normalisation: each metric ÷ reference max, clipped to [0, 1]; "
+        "1/Latency = 1 − mean_latency / 100,000 ms (outward = faster).",
+        ha="center", fontsize=7, color="dimgray",
+    )
     savefig(fig, fig_dir, "04_policy_radar")
     print("  [OK] 04_policy_radar")
 
@@ -1667,13 +1676,26 @@ def _plot_03_dock_utilization_merged(runs, fig_dir, missing, bin_sec):
 
 
 def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
-    """G3/P3-M — Stacked bar of outcomes per protocol (counts summed across replicates).
+    """G3/P3-M — 100% proportional stacked bar of outcomes per protocol.
+
+    Each bar shows the fraction of total requests in each outcome category,
+    so bars of different total heights are directly comparable.
+    The absolute-count version is saved as
+    ``03_charge_outcome_breakdown_merged_absolute`` for reference.
 
     PREEMPTED is suppressed for protocols without ``_p_`` in their name.
     The PREEMPTED legend entry appears only when at least one protocol is
     preemptive, keeping non-preemptive bars clean.
     """
     ALL_OUTCOMES = ["STARTED", "REJECTED", "DROPPED", "TIMEOUT", "PREEMPTED", "ENERGY_DEPLETED"]
+    OUTCOME_LABELS = {
+        "STARTED":         "STARTED",
+        "REJECTED":        "REJECTED",
+        "DROPPED":         "ROUTING_DROP",
+        "TIMEOUT":         "TIMEOUT",
+        "PREEMPTED":       "PREEMPTED",
+        "ENERGY_DEPLETED": "ENERGY_DEPLETED",
+    }
     PALETTE = {
         "STARTED":         "#2ca02c",
         "REJECTED":        "#d62728",
@@ -1712,21 +1734,66 @@ def _plot_03_charge_outcome_breakdown_merged(runs, fig_dir, missing):
     outcomes_to_draw = [o for o in ALL_OUTCOMES if o != "PREEMPTED" or any_preemptive]
     summary_df = pd.DataFrame(rows).set_index("label")
     labels = summary_df.index.tolist()
-    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
-    bottom = np.zeros(len(labels))
+
+    # ── Absolute-count version (appendix reference) ──────────────────────────
+    fig_abs, ax_abs = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
+    bottom_abs = np.zeros(len(labels))
     for outcome in outcomes_to_draw:
         if outcome not in summary_df.columns:
             continue
-        vals = summary_df[outcome].values
-        ax.bar(labels, vals, bottom=bottom, color=PALETTE[outcome],
-               label=outcome, edgecolor="white", linewidth=0.3)
+        vals = summary_df[outcome].values.astype(float)
+        ax_abs.bar(labels, vals, bottom=bottom_abs, color=PALETTE[outcome],
+                   label=OUTCOME_LABELS[outcome], edgecolor="white", linewidth=0.3)
+        bottom_abs += vals
+    ax_abs.set_ylabel("Number of charge requests  (all replicates summed)")
+    ax_abs.set_title("Charge Request Outcomes — Merged Replicates (absolute counts)")
+    ax_abs.set_xticks(np.arange(len(labels)))
+    ax_abs.set_xticklabels(labels, rotation=20, ha="right")
+    ax_abs.legend(loc="upper right", fontsize=8)
+    savefig(fig_abs, fig_dir, "03_charge_outcome_breakdown_merged_absolute")
+    print("  [OK] 03_charge_outcome_breakdown_merged_absolute")
+
+    # ── 100 % proportional version (primary) ─────────────────────────────────
+    totals = summary_df[outcomes_to_draw].sum(axis=1).replace(0, np.nan)
+    prop_df = summary_df[outcomes_to_draw].div(totals, axis=0)  # fractions in [0, 1]
+
+    fig, ax = plt.subplots(figsize=(max(8, len(labels) * 1.5), 6))
+    bottom = np.zeros(len(labels))
+    for outcome in outcomes_to_draw:
+        if outcome not in prop_df.columns:
+            continue
+        vals = prop_df[outcome].fillna(0).values
+        bars = ax.bar(
+            labels, vals, bottom=bottom,
+            color=PALETTE[outcome], label=OUTCOME_LABELS[outcome],
+            edgecolor="white", linewidth=0.3,
+        )
+        # Annotate segments ≥ 5 % with their percentage
+        for bar, v, b in zip(bars, vals, bottom):
+            if v >= 0.05:
+                ax.text(
+                    bar.get_x() + bar.get_width() / 2,
+                    b + v / 2,
+                    f"{v:.0%}",
+                    ha="center", va="center",
+                    fontsize=7, color="white", fontweight="bold",
+                )
         bottom += vals
 
-    ax.set_ylabel("Number of charge requests  (all replicates summed)")
-    ax.set_title("Charge Request Outcomes — Merged Replicates")
+    ax.set_ylim(0, 1)
+    ax.yaxis.set_major_formatter(plt.FuncFormatter(lambda y, _: f"{y:.0%}"))
+    ax.set_ylabel("Fraction of total charge requests")
+    ax.set_title("Charge Request Outcomes — Merged Replicates  (proportional)")
     ax.set_xticks(np.arange(len(labels)))
     ax.set_xticklabels(labels, rotation=20, ha="right")
     ax.legend(loc="upper right", fontsize=8)
+    fig.text(
+        0.5, 0.01,
+        "Each bar = fraction of all requests (STARTED + TIMEOUT + ROUTING_DROP + …) "
+        "summed across 3 replicates.  Absolute counts in "
+        "03_charge_outcome_breakdown_merged_absolute.",
+        ha="center", fontsize=7, color="dimgray",
+    )
     savefig(fig, fig_dir, "03_charge_outcome_breakdown_merged")
     print("  [OK] 03_charge_outcome_breakdown_merged")
 
@@ -1840,13 +1907,19 @@ def _plot_03_cumulative_energy_charged_merged(runs, fig_dir, missing, bin_sec):
 # --- Group 04 merged --------------------------------------------------------
 
 def _plot_04_policy_radar_merged(runs, fig_dir, missing):
-    """G4/P1-M — Radar chart: KPIs averaged across replicates, one polygon per protocol."""
+    """G4/P1-M — Radar chart: KPIs averaged across replicates, one polygon per protocol.
+
+    Axes (all outward = better):
+        PDR          — packet delivery ratio,     normalised by max=1.0
+        Success rate — charge success proportion, normalised by max=1.0
+        1/Latency    — decision latency inverted: norm = 1 − lat/100,000 ms
+        Energy recov.— mean Wh per session,       normalised by max=100 Wh
+    """
     AXES = [
-        ("pdr",      "PDR",           1.0,     True),
-        ("success",  "Success rate",  1.0,     True),
-        ("latency",  "Low latency",   100_000, False),
-        ("energy",   "Energy recov.", 100.0,   True),
-        ("survival", "Survival",      1.0,     True),
+        ("pdr",     "PDR",            1.0,     True),
+        ("success", "Success rate",   1.0,     True),
+        ("latency", "1 / Latency",    100_000, False),  # inverted: outward = faster
+        ("energy",  "Energy recov.",  100.0,   True),
     ]
 
     def _norm(val, max_val, higher_is_better):
@@ -1871,18 +1944,16 @@ def _plot_04_policy_radar_merged(runs, fig_dir, missing):
                 total_del = sum(c.get("delivered", 0) for c in by_cat)
                 pdr = total_del / total_gen if total_gen > 0 else float("nan")
                 ch = summary.get("charging", {})
-                success  = ch.get("success_rate", float("nan"))
-                latency  = ch.get("decision_latency_ms", {}).get("mean", float("nan"))
-                energy   = ch.get("energy_recovered", {}).get("mean", float("nan"))
-                survival = summary.get("fleet", {}).get("survival_rate", float("nan"))
+                success = ch.get("success_rate", float("nan"))
+                latency = ch.get("decision_latency_ms", {}).get("mean", float("nan"))
+                energy  = ch.get("energy_recovered", {}).get("mean", float("nan"))
             else:
-                pdr      = _overall_pdr_from_csvs(run, missing)
-                success  = _success_rate_from_csvs(run, missing)
-                latency  = _mean_latency_from_csvs(run, missing)
-                energy   = _mean_energy_from_csvs(run, missing)
-                survival = float("nan")
+                pdr     = _overall_pdr_from_csvs(run, missing)
+                success = _success_rate_from_csvs(run, missing)
+                latency = _mean_latency_from_csvs(run, missing)
+                energy  = _mean_energy_from_csvs(run, missing)
 
-            raw = [pdr, success, latency, energy, survival]
+            raw = [pdr, success, latency, energy]
             replicate_scores.append(
                 [_norm(v, AXES[i][2], AXES[i][3]) for i, v in enumerate(raw)]
             )
@@ -1910,11 +1981,18 @@ def _plot_04_policy_radar_merged(runs, fig_dir, missing):
 
     ax.set_xticks(angles[:-1])
     ax.set_xticklabels(axis_labels, fontsize=9)
-    ax.set_ylim(0, 1)
+    ax.set_rlim(0, 1)
     ax.set_yticks([0.25, 0.5, 0.75, 1.0])
     ax.set_yticklabels(["0.25", "0.5", "0.75", "1.0"], fontsize=7)
     ax.set_title("Policy Radar — Merged Replicates", pad=20)
     ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
+    fig.text(
+        0.5, 0.01,
+        "Normalisation: each metric ÷ reference max, clipped to [0, 1]; "
+        "1/Latency = 1 − mean_latency / 100,000 ms (outward = faster). "
+        "Values are means across 3 replicates.",
+        ha="center", fontsize=7, color="dimgray",
+    )
     savefig(fig, fig_dir, "04_policy_radar_merged")
     print("  [OK] 04_policy_radar_merged")
 
