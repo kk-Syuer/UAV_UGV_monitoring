@@ -271,16 +271,16 @@ CHs share identical battery capacity
 CHs deplete in synchrony → paired charge requests arrive within seconds of each other
         │
         ▼  (role-based scheduler: both CH requests jump to front of queue)
-CH₁ gets immediate dock access → CH₂ queues behind CH₁ with high priority
+With 3 docking slots available, both CHs are served in parallel — no dock-level blocking
         │
-        ├── CH₂ waits the full docking duration of CH₁ (15–20 min) → very long decision latency
-        │   (confirmed: CH mean decision latency 11,186 ms in ugv_role_priority vs 2,146 ms in ugv_p_edf)
+        ├── CH requests are placed at front of priority queue in close succession
+        │   Any queued member request is repeatedly bumped back → member request TTL expires → TIMEOUT
+        │   (ugv_role_priority member timeout rate: 35.2% vs 28.8% for ugv_p_edf)
         │
-        └── While both CHs are occupied (one charging, one traveling/queuing):
+        └── Lower member success → more member deaths → worse PDR
                 │
-                ▼  no inter-cluster relay → PDR drops
-                Member UAVs cannot route charge requests to UGV → ROUTING_DROP
-                Members are also deprioritised in the queue → timeout
+                ▼  degraded network → ROUTING_DROP rate for members increases
+                Members cannot reach UGV scheduler → ROUTING_DROP (+6.7 pp vs p_edf)
                 Member depletion rate accelerates → more routing failures → feedback loop
 ```
 
@@ -292,14 +292,14 @@ Analysis of `charge_events.csv` cross-CH request proximity shows that in every p
 **Evidence 2 — The CH priority paradox (CL_M panel A):**
 Despite having scheduling priority, CHs in role-based protocols experience *longer* decision latency than CHs in urgency-based protocols:
 
-| Protocol | CH decision latency (mean) | Member decision latency (mean) | CH/Member ratio |
-|---|---|---|---|
-| ugv_role_priority | **11,186 ms** | 4,851 ms | **2.31×** |
-| ugv_p_role_priority | **~9,800 ms** | ~4,900 ms | **~2.0×** |
-| ugv_p_edf | **2,146 ms** | 4,061 ms | **0.53×** |
-| ugv_dynamic | **~3,353 ms** | ~4,400 ms | **~0.76×** |
+| Protocol | CH latency mean | CH latency p50 | CH latency p99 | Member latency mean | CH/Member ratio (mean) |
+|---|---|---|---|---|---|
+| ugv_role_priority | **5,365 ms** | 438 ms | 87,863 ms | 5,016 ms | 1.07× |
+| ugv_p_role_priority | 2,502 ms | 420 ms | 31,067 ms | 5,032 ms | 0.50× |
+| ugv_p_edf | 2,175 ms | 483 ms | 24,553 ms | 5,046 ms | 0.43× |
+| ugv_dynamic | 2,250 ms | 419 ms | 24,960 ms | 4,044 ms | 0.56× |
 
-In urgency-based protocols (EDF, Dynamic), CHs are decided *faster* than members (ratio < 1) — they receive genuinely effective priority. In role-based protocols, the CH:member latency ratio is **> 2×** — CHs are slower than members. The reason: when two CH requests arrive simultaneously, one CH queues behind the other in the role-priority queue and waits for a full dock cycle (15–20 min), while members — even though deprioritized — occasionally get served when the dock is momentarily free.
+The CH mean decision latency in `ugv_role_priority` (5,365 ms) is elevated, but the **median is only 438 ms** — indistinguishable from other protocols. The high mean is driven by rare tail events (p99 = 87,863 ms ≈ 87 s), not systematic queuing. These outliers occur when the UGV's STARTED response fails to reach the CH due to poor network conditions during fleet degradation episodes. The CH/Member ratio by mean (1.07×) is misleading; by median, CHs are served just as quickly as in other protocols. In urgency-based protocols the mean ratio is < 1 (CHs genuinely faster), but even this is driven by the member tail rather than CH systematic acceleration.
 
 **Evidence 3 — Member starvation (CL_M panel C):**
 Member charge success rates in role-based vs urgency-based protocols:
@@ -317,15 +317,31 @@ Member ROUTING_DROP rate is highest in role-based protocols because (a) member U
 **Evidence 5 — CH wait time predicts member starvation (CL_N right panel):**
 Across all 21 runs, mean CH decision latency and member charge success rate are negatively correlated (Pearson r ≈ −0.5 to −0.6, p < 0.05). The scatter plot (CL_N right panel) clusters role-based protocols in the upper-left quadrant (long CH wait, low member success) and urgency-based protocols in the lower-right (fast CH decisions, healthy member access). This confirms the mechanism at the cross-protocol level.
 
-#### 4.5.3 Why This Is Worse Than No Priority at All
+#### 4.5.3 The Actual Mechanism: Member Starvation, Not CH Congestion
 
-The irony of role-based scheduling is that it creates a "priority trap":
-1. Both CHs have identical urgency profiles (same battery, same role) → they always have the same priority score.
-2. When they arrive simultaneously, one must wait — but the scheduler has no way to break the tie efficiently because the tie-breaking rule is also role-based.
-3. The waiting CH consumes battery during the wait (it has flown to the UGV area or is still en route), so its energy situation deteriorates, but it still cannot jump the queue because the other CH is already at the dock.
-4. FCFS and EDF break ties by time (earlier request or closer deadline), which in practice staggers service and reduces the peak wait.
+*(Correction to the initial hypothesis: with 3 parallel docking slots, two simultaneous CH requests are both served immediately — there is no "CH blocks CH" scenario. The all-docks-full rate for `ugv_role_priority` is 32.8%, which is actually lower than for `ugv_p_edf` (40.6%). Dock capacity is not the bottleneck.)*
 
-**Implication:** A minimal fix would be to add a **battery urgency** tie-breaker within the same role class — when two CHs have equal priority, service the one with lower battery first. This would convert ugv_role_priority into a hybrid that avoids the synchronization trap without abandoning role-based hierarchy.
+The real mechanism has two components:
+
+**1 — Scheduling priority queue starvation (direct effect)**
+
+When a CH charge request arrives at the UGV scheduler, it is placed ahead of all queued member requests regardless of dock availability. With both CHs cycling through identical battery curves (same capacity → synchronized discharge → correlated request bursts), there are frequent short intervals where CH requests arrive in close succession (4–60 s apart). During each such burst window:
+
+- Both CH requests jump to the front of the priority queue.
+- Even if a dock is free, the scheduler evaluates CHs first; queued member requests are pushed back.
+- If a member request's TTL expires while waiting behind CHs, the outcome is recorded as TIMEOUT.
+
+This explains the elevated member timeout rate: **ugv_role_priority = 35.2%, vs 28.8% for ugv_p_edf** (+6.4 pp). The queue timeseries confirms this is not dock-level blocking — mean queue depth at member position is only 0.15 — but priority ordering still causes members to lose their request slot in the scheduling window.
+
+Note that preemption actually *helps* members in the role-based case: `ugv_p_role_priority` achieves 38.0% member success vs. 31.8% for non-preemptive `ugv_role_priority`, because preemptive CHs get served faster (CH latency 2502ms vs 5365ms), free dock slots sooner, and reduce the window during which member requests time out while CHs are accumulating in queue.
+
+**2 — Network degradation feedback (indirect, amplifying effect)**
+
+Lower member success → more member deaths → worse routing topology → more routing drops for all requests. Member routing drop rate is **32.0% in ugv_role_priority vs. 25.3% in ugv_p_edf** (+6.7 pp), driven by the degraded network that is itself a consequence of worse member survivability. This reinforcing loop (starvation → deaths → degraded network → more routing drops → more starvation) explains why both role-based protocols underperform so consistently across all three replicates.
+
+**On the high CH decision latency in ugv_role_priority:** the mean of 5365ms is misleading. The median is 438ms — CHs are routinely served fast. The high mean is driven by extreme tail events (p99 = 87,863ms). These outliers occur when the UGV's STARTED response fails to reach the CH due to poor network conditions (worse PDR during fleet degradation episodes). As a bimodal distribution, the mean is not representative of typical CH service — the protocol still delivers CHs promptly most of the time.
+
+**Revised implication:** A better fix than a "battery urgency tie-breaker" (which the 3-dock architecture makes moot) would be to **set a maximum priority-hold window**: if a CH request has been at the front of the queue for > T seconds and no new CH request has arrived, release the dock to the longest-waiting member. This prevents TTL expiry for members during extended CH-request bursts without abandoning the role hierarchy.
 
 **Supporting figures:** `CL_M_role_scheduling_audit.png`; `CL_N_ch_sync_cascade.png`; `CL_A_protocol_kpi_overview.png` (CH deaths paradox: role-based has ~11 CH deaths vs ~5 for p_edf despite CH priority).
 
