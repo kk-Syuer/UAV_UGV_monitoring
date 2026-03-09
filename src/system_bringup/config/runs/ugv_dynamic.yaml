@@ -1,6 +1,6 @@
 global:
-  run_id: ugv_dynamic_3
-  output_dir: /home/vboxuser/UAV_UGV_netmonitoring/experiment_data_collection
+  run_id: ugv_dynamic_sunny_3
+  output_dir: /home/vboxuser/UAV_UGV_netmonitoring/experiment_data_collection/test_round3
 
 executables:
   monitor_pkg: network_monitor
@@ -43,8 +43,8 @@ weather:
   rain_mean: 0.0
   temp_c: 18.0
 
-  mode: "markov"
-  start_state: "rainy"
+  mode: "fixed"
+  start_state: "sunny"
   transition_period_sec: 12.0
   transition_matrix:
     sunny:  {sunny: 0.60, cloudy: 0.25, windy: 0.10, rainy: 0.04, stormy: 0.01}
