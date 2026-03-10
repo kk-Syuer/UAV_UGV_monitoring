@@ -1,0 +1,17 @@
+run_id,protocol_name,replicate_id,run_instance_id,t_rel_s,time_s,uav_id,role,cause,battery_at_death,fleet_size,alive_count
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,493.291,1.77292e+09,uav1,0,BATTERY_DEAD,0.288435,7,6
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,555.38,1.77292e+09,uav3,0,BATTERY_DEAD,0.233292,7,5
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,1159.5,1.77292e+09,uav1,0,BATTERY_DEAD,0.270849,7,4
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,2740.72,1.77293e+09,uav1,0,BATTERY_DEAD,0.0995354,7,3
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,3359.6,1.77293e+09,uav3,0,BATTERY_DEAD,0.234556,7,2
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,3939.93,1.77293e+09,uav1,0,BATTERY_DEAD,0.241039,7,1
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,3987.59,1.77293e+09,uav2,0,BATTERY_DEAD,0.237317,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,4634.85,1.77293e+09,uav3,0,BATTERY_DEAD,0.245032,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,5441.06,1.77293e+09,uav3,0,BATTERY_DEAD,0.241152,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,5867.8,1.77293e+09,uav2,0,BATTERY_DEAD,0.238662,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,6213.01,1.77293e+09,uav2,0,BATTERY_DEAD,0.232125,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,6247.27,1.77293e+09,uav3,0,BATTERY_DEAD,0.227693,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,6812.15,1.77293e+09,uav1,0,BATTERY_DEAD,0.242229,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,7465.22,1.77293e+09,uav2,0,BATTERY_DEAD,0.238246,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,7522.63,1.77293e+09,uav3,0,BATTERY_DEAD,0.24147,7,0
+ugv_p_role_priority_sunny_2,unknown,0,1772922627089100130,10323.4,1.77293e+09,uav2,0,BATTERY_DEAD,0.232316,7,0
