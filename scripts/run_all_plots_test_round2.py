@@ -882,20 +882,22 @@ def _plot_03_cumulative_energy_charged(runs, fig_dir, missing):
 # ===========================================================================
 
 def _plot_04_policy_radar(runs, fig_dir, missing):
-    """G4/P1 — Radar/spider chart comparing protocols on 4 normalised KPIs.
+    """G4/P1 — Radar/spider chart comparing protocols on 5 normalised KPIs.
 
     Axes (all outward = better):
-        PDR          — packet delivery ratio,     normalised by max=1.0
-        Success rate — charge success proportion, normalised by max=1.0
-        1/Latency    — decision latency inverted: norm = 1 − lat/100,000 ms
-        Energy recov.— mean Wh per session,       normalised by max=100 Wh
+        PDR             — packet delivery ratio,     normalised by max=1.0
+        Success rate    — charge success proportion, normalised by max=1.0
+        1 / Latency     — decision latency inverted: norm = 1 − lat/100,000 ms
+        Energy recov.   — mean Wh per session,       normalised by max=100 Wh
+        1 / Depletions  — battery depletion count inverted: norm = 1 − n/100
     """
-    # (label, display_name, max_value, higher_is_better)
+    # (key, display_name, max_value, higher_is_better)
     AXES = [
-        ("pdr",     "PDR",             1.0,     True),
-        ("success", "Success rate",    1.0,     True),
-        ("latency", "1 / Latency",     100_000, False),  # inverted: outward = faster
-        ("energy",  "Energy recov.",   100.0,   True),
+        ("pdr",       "PDR",              1.0,     True),
+        ("success",   "Success rate",     1.0,     True),
+        ("latency",   "1 / Latency",      100_000, False),
+        ("energy",    "Energy recov.",    100.0,   True),
+        ("depletion", "1 / Depletions",   100,     False),
     ]
 
     def _norm(val, max_val, higher_is_better):
@@ -926,7 +928,10 @@ def _plot_04_policy_radar(runs, fig_dir, missing):
             latency = _mean_latency_from_csvs(run, missing)
             energy  = _mean_energy_from_csvs(run, missing)
 
-        raw = [pdr, success, latency, energy]
+        de_df = _load(run, "death_events", [])
+        depletion = float(len(de_df)) if de_df is not None else float("nan")
+
+        raw = [pdr, success, latency, energy, depletion]
         protocol_scores[run["label"]] = [
             _norm(v, AXES[i][2], AXES[i][3]) for i, v in enumerate(raw)
         ]
@@ -957,8 +962,8 @@ def _plot_04_policy_radar(runs, fig_dir, missing):
     ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
     fig.text(
         0.5, 0.01,
-        "Normalisation: each metric ÷ reference max, clipped to [0, 1]; "
-        "1/Latency = 1 − mean_latency / 100,000 ms (outward = faster).",
+        "Normalisation: each metric ÷ reference max, clipped to [0, 1].  "
+        "1/Latency = 1 − lat/100,000 ms;  1/Depletions = 1 − n/100  (outward = better).",
         ha="center", fontsize=7, color="dimgray",
     )
     savefig(fig, fig_dir, "04_policy_radar")
@@ -1504,7 +1509,7 @@ def _plot_02_charge_success_rate_merged(runs, fig_dir, missing):
     label_bars(ax, bars, fmt="{:.1%}")
     ax.set_ylabel("Success rate  (mean across replicates)")
     ax.set_title("Charge Success Rate — Merged Replicates")
-    ax.set_ylim(0, 1.2)
+    ax.set_ylim(0, 1.0)
     ax.set_xticks(x)
     ax.set_xticklabels(labels, rotation=20, ha="right")
     savefig(fig, fig_dir, "02_charge_success_rate_merged")
@@ -1910,16 +1915,19 @@ def _plot_04_policy_radar_merged(runs, fig_dir, missing):
     """G4/P1-M — Radar chart: KPIs averaged across replicates, one polygon per protocol.
 
     Axes (all outward = better):
-        PDR          — packet delivery ratio,     normalised by max=1.0
-        Success rate — charge success proportion, normalised by max=1.0
-        1/Latency    — decision latency inverted: norm = 1 − lat/100,000 ms
-        Energy recov.— mean Wh per session,       normalised by max=100 Wh
+        PDR             — packet delivery ratio,     normalised by max=1.0
+        Success rate    — charge success proportion, normalised by max=1.0
+        1 / Latency     — decision latency inverted: norm = 1 − lat/100,000 ms
+        Energy recov.   — mean Wh per session,       normalised by max=100 Wh
+        1 / Depletions  — battery depletion count inverted: norm = 1 − n/100
     """
+    # (key, display_name, max_value, higher_is_better)
     AXES = [
-        ("pdr",     "PDR",            1.0,     True),
-        ("success", "Success rate",   1.0,     True),
-        ("latency", "1 / Latency",    100_000, False),  # inverted: outward = faster
-        ("energy",  "Energy recov.",  100.0,   True),
+        ("pdr",       "PDR",             1.0,     True),
+        ("success",   "Success rate",    1.0,     True),
+        ("latency",   "1 / Latency",     100_000, False),
+        ("energy",    "Energy recov.",   100.0,   True),
+        ("depletion", "1 / Depletions",  100,     False),
     ]
 
     def _norm(val, max_val, higher_is_better):
@@ -1953,7 +1961,10 @@ def _plot_04_policy_radar_merged(runs, fig_dir, missing):
                 latency = _mean_latency_from_csvs(run, missing)
                 energy  = _mean_energy_from_csvs(run, missing)
 
-            raw = [pdr, success, latency, energy]
+            de_df = _load(run, "death_events", [])
+            depletion = float(len(de_df)) if de_df is not None else float("nan")
+
+            raw = [pdr, success, latency, energy, depletion]
             replicate_scores.append(
                 [_norm(v, AXES[i][2], AXES[i][3]) for i, v in enumerate(raw)]
             )
@@ -1988,8 +1999,8 @@ def _plot_04_policy_radar_merged(runs, fig_dir, missing):
     ax.legend(loc="upper right", bbox_to_anchor=(1.35, 1.1), fontsize=8)
     fig.text(
         0.5, 0.01,
-        "Normalisation: each metric ÷ reference max, clipped to [0, 1]; "
-        "1/Latency = 1 − mean_latency / 100,000 ms (outward = faster). "
+        "Normalisation: each metric ÷ reference max, clipped to [0, 1].  "
+        "1/Latency = 1 − lat/100,000 ms;  1/Depletions = 1 − n/100  (outward = better).  "
         "Values are means across 3 replicates.",
         ha="center", fontsize=7, color="dimgray",
     )
