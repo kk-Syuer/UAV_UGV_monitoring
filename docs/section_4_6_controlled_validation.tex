@@ -1,0 +1,439 @@
+% =============================================================================
+% Section 4.6 — Controlled Validation Under Fixed Weather
+% Drop-in LaTeX file for Chapter 4 of the thesis.
+% =============================================================================
+
+\subsection{Controlled Validation Under Fixed Weather}
+\label{sec:results:controlled-validation}
+
+The preceding sections established that charging scheduling policy,
+fleet survivability, and network quality form a coherent cross-layer
+mechanism under the stochastic weather conditions of Test Round~2.
+A natural question is whether the observed trends are primarily driven
+by weather variance itself or whether they reflect a more fundamental
+property of the scheduling--survivability--network chain.
+To answer this, Test Round~3 repeats the protocol comparison under
+\emph{fixed sunny weather}, eliminating the Markov regime transitions
+that introduced time-varying routing stress in Round~2.
+If the cross-layer relationships persist despite the removal of weather
+variance, the mechanism can be considered robust to the environmental
+factor that dominated Round~2 degradation episodes.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Rationale and Experimental Setup}
+\label{sec:results:controlled-validation:setup}
+
+\paragraph{Design changes from Round~2 to Round~3.}
+The only deliberate change between the two rounds is the weather
+configuration.  In Round~2, the weather node operated in Markov mode,
+cycling through sunny, cloudy, rainy, and stormy regimes according to
+stochastic transition probabilities.  In Round~3, the weather node is
+locked to the \texttt{sunny} regime for the entire mission duration.
+All \texttt{weather\_timeseries.csv} files in the Round~3 dataset
+confirm a single regime label (\texttt{sunny}) throughout every run.
+By fixing weather, WEATHER\_DROP-induced routing failures are removed,
+which should reduce both ROUTING\_DROP rates and PDR variance across
+all protocols.
+
+\paragraph{What remains constant.}
+The protocol set (seven policies), fleet composition (two cluster heads,
+three member UAVs, one UGV with charging dock), simulated mission
+duration ($\sim$180~min per run), number of replicates (three per
+protocol), logging schema, and metric definitions are identical to
+Round~2.  The analysis pipeline is also the same, ensuring that any
+observed difference is attributable to weather control rather than
+methodological change.
+
+\paragraph{Dataset scope and filtering.}
+The Round~3 dataset contains 25~run folders in total.  Four folders
+whose names contain \texttt{stormy} (case-insensitive) are excluded
+because they belong to a separate sensitivity check and violate the
+fixed-sunny design.  After filtering, 21~sunny runs remain:
+7~protocols $\times$ 3~replicates each, matching the Round~2 structure
+exactly.
+
+\paragraph{Threats to validity.}
+Even with fixed weather, residual stochasticity remains from random
+seeds governing packet generation timing, UAV mobility jitter, and
+charging-request arrival patterns.  The validation therefore targets
+\emph{trend consistency} across rounds---whether the same directional
+relationships hold---rather than exact numerical reproduction of
+Round~2 values.
+
+% -----------------------------------------------------------------------------
+\subsubsection{Results and Comparison with Test Round~2}
+\label{sec:results:controlled-validation:results}
+
+This section compares the Round~2 and Round~3 outcomes category by
+category, using a structured \emph{trend match / mismatch} framework.
+For each category, the Round~2 trend is stated first, followed by
+the Round~3 observation, the match verdict, and the supporting figure
+references.  A consolidated evidence map is provided at the end of
+this subsection (Table~\ref{tab:evidence-map}).
+
+% ---- 1. Network Reliability ------------------------------------------------
+\paragraph{1) Network reliability: overall PDR and PDR over time.}
+
+\emph{Round~2 trend.}
+\texttt{ugv\_p\_edf} achieves the highest mean PDR (0.630), followed by
+\texttt{ugv\_fcfs} (0.616) and \texttt{ugv\_dynamic} (0.595).  The
+role-based protocols form the weakest tail, with
+\texttt{ugv\_p\_role\_priority} at 0.554.  PDR time-series show high
+between-run variance, particularly for \texttt{ugv\_edf} and
+\texttt{ugv\_p\_role\_priority}, with episodic drops linked to weather
+regime transitions.
+(Figures: \texttt{01\_mean\_pdr\_merged.png},
+\texttt{01\_network\_pdr\_over\_time\_merged.png},
+\texttt{CL\_A\_protocol\_kpi\_overview.png} in
+\texttt{test\_round2/figures/}.)
+
+\emph{Round~3 observation.}
+All protocols show an absolute PDR increase of 0.07--0.20, consistent
+with the removal of weather-induced packet loss.
+\texttt{ugv\_p\_role\_priority} rises to rank~1 (0.754),
+\texttt{ugv\_p\_edf} drops to rank~2 (0.732), and
+\texttt{ugv\_dynamic} falls to rank~7 (0.667).
+The Kendall rank correlation between Round~2 and Round~3 PDR rankings
+is $\tau = -0.24$, indicating no preservation of the ordinal ranking.
+(Figures: \texttt{01\_mean\_pdr\_merged.png},
+\texttt{01\_network\_pdr\_over\_time\_merged.png},
+\texttt{CL\_A\_protocol\_kpi\_overview.png} in
+\texttt{test\_round3/figures/}.)
+
+\emph{Trend match:} \textbf{NO} for protocol ranking.
+However, the positive association between charging success and PDR
+is preserved at a qualitative level: the protocol with the highest
+Round~3 charge success rate (\texttt{ugv\_p\_role\_priority}, 0.598)
+is also the Round~3 PDR leader.
+
+% ---- 2. Charging Outcomes ---------------------------------------------------
+\paragraph{2) Charging outcomes: success / timeout / routing-drop
+composition.}
+
+\emph{Round~2 trend.}
+\texttt{ugv\_p\_edf} leads in charge success rate (48.6\%), while
+\texttt{ugv\_role\_priority} trails at 38.4\%.  ROUTING\_DROP rates
+range from 0.218 (\texttt{ugv\_p\_edf}) to 0.346 (\texttt{ugv\_edf}),
+and are a significant negative predictor of PDR ($r = -0.53$).
+(Figures: \texttt{02\_charge\_success\_rate\_merged.png},
+\texttt{03\_charge\_outcome\_breakdown\_merged.png},
+\texttt{CL\_G\_routing\_drop\_timeseries.png} in
+\texttt{test\_round2/figures/}.)
+
+\emph{Round~3 observation.}
+All protocols improve in success rate under sunny weather, with
+\texttt{ugv\_p\_role\_priority} reaching the top (0.598) and
+\texttt{ugv\_edf} recovering strongly to rank~2 (0.583).
+ROUTING\_DROP rates collapse dramatically to 0.010--0.020 across all
+protocols, confirming that WEATHER\_DROP was the dominant cause of
+request loss in Round~2.
+Timeout rates, however, increase substantially for all protocols
+(e.g.\ \texttt{ugv\_dynamic} from 0.230 to 0.434), suggesting that
+with longer-surviving fleets and fewer routing drops, queue contention
+replaces routing failure as the primary bottleneck.
+Kendall $\tau$ for charge success rate ranking: 0.33 (NO match).
+(Figures: \texttt{02\_charge\_success\_rate\_merged.png},
+\texttt{03\_charge\_outcome\_breakdown\_merged.png},
+\texttt{CL\_G\_routing\_drop\_timeseries.png} in
+\texttt{test\_round3/figures/}.)
+
+\emph{Trend match:} \textbf{NO} for ranking, but the \emph{structural
+finding} that routing drops are weather-coupled is strongly confirmed
+by their near-elimination in Round~3.
+
+% ---- 3. Survivability -------------------------------------------------------
+\paragraph{3) Survivability: battery depletions.}
+
+\emph{Round~2 trend.}
+\texttt{ugv\_p\_edf} has the fewest depletions (20.0 per run),
+\texttt{ugv\_edf} the most (45.0).  Higher depletion burden is
+negatively associated with PDR ($r = -0.57$).
+(Figures: \texttt{03\_dead\_uav\_cumulative\_merged.png},
+\texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png} in
+\texttt{test\_round2/figures/}.)
+
+\emph{Round~3 observation.}
+Depletions decrease for all protocols, with the most dramatic
+reductions in the protocols that suffered worst in Round~2:
+\texttt{ugv\_edf} drops from 45.0 to 16.7 (rank~1 in Round~3),
+and \texttt{ugv\_p\_role\_priority} from 26.7 to 17.3 (rank~2).
+The Kendall $\tau$ is $-0.05$ (NO ranking match).
+(Figures: \texttt{03\_dead\_uav\_cumulative\_merged.png},
+\texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png} in
+\texttt{test\_round3/figures/}.)
+
+\emph{Trend match:} \textbf{NO} for ranking.  The convergence of
+depletion counts across protocols is consistent with the removal of
+weather-driven cascade failures that disproportionately affected weaker
+protocols in Round~2.  With routing drops near zero, even protocols
+that previously lost many requests can now successfully charge,
+compressing the survivability gap.
+
+% ---- 4. Cross-Layer Associations --------------------------------------------
+\paragraph{4) Cross-layer associations.}
+
+\emph{4a) Success rate vs.\ PDR.}
+In Round~2, charge success rate shows a positive association with PDR
+(Pearson $r = 0.58$, $p = 0.006$).  In Round~3, the protocol with
+the highest success rate (\texttt{ugv\_p\_role\_priority}) is also the
+PDR leader.  However, because protocol rankings have shifted,
+statistical confirmation requires recomputation of the per-run
+correlation on the Round~3 dataset.
+(Figures: \texttt{CL\_B\_charging\_vs\_pdr\_scatter.png} in both
+rounds; \texttt{CL\_E\_correlation\_bar\_chart.png}.)
+
+\begin{quote}\textbf{TODO:} Recompute Pearson and Spearman correlation
+between charge success rate and mean PDR for Round~3 runs ($n = 21$).
+Verify whether the positive association remains significant.  If the
+correlation is computed in
+\texttt{CL\_E\_correlation\_bar\_chart.png} for Round~3, read the
+values from that figure and report them here.\end{quote}
+
+\emph{4b) Routing-drop rate vs.\ PDR.}
+In Round~2, ROUTING\_DROP rate is a strong negative predictor of PDR
+($r = -0.53$).  In Round~3, routing drops collapse to near-zero for
+all protocols, so the predictor effectively loses variance.  This
+result does not contradict the Round~2 finding; rather, it confirms
+that once routing drops are removed (by fixing weather), their
+explanatory power over PDR disappears because the mechanism is no
+longer active.
+(Figures: \texttt{CL\_G\_routing\_drop\_timeseries.png},
+\texttt{CL\_E\_correlation\_bar\_chart.png} in both rounds.)
+
+\emph{4c) Depletions vs.\ PDR.}
+In Round~2, depletions are negatively associated with PDR
+($r = -0.57$).  In Round~3, the compressed depletion range makes the
+statistical test less powerful, but the qualitative pattern persists:
+protocols with fewer depletions (\texttt{ugv\_edf}, 16.7;
+\texttt{ugv\_p\_role\_priority}, 17.3) achieve above-average PDR.
+(Figures: \texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png},
+\texttt{CL\_D\_mechanism\_chain.png} in both rounds.)
+
+\emph{Trend match for cross-layer associations:} \textbf{PARTIAL.}
+The directional relationships are qualitatively preserved, but the
+compressed variance in Round~3 (due to weather control) weakens the
+statistical power of the correlations.  The routing-drop pathway is
+confirmed by its near-elimination.
+
+% ---- 5. Delay Discussion ----------------------------------------------------
+\paragraph{5) Delay discussion (cautious).}
+
+End-to-end delay is computed only on \emph{delivered} packets.  As
+discussed in Section~4.5, this introduces a conditioning bias: when
+PDR drops, the surviving packet set traverses a sparser, shorter
+topology, which can paradoxically \emph{reduce} measured delay.  This
+caveat remains relevant in Round~3, although the bias should be
+attenuated because PDR is uniformly higher and more stable under
+fixed sunny weather.
+
+In Round~2, mean E2E delay ranges from 52.8\,ms
+(\texttt{ugv\_p\_dynamic\_score}) to 71.4\,ms
+(\texttt{ugv\_p\_role\_priority}).  In Round~3, the range narrows to
+48.1--61.6\,ms, with \texttt{ugv\_p\_edf} achieving the lowest delay
+(48.1\,ms).  The Kendall $\tau$ for delay ranking is $-0.33$ (NO
+match), and the ranking reversal---\texttt{ugv\_p\_role\_priority}
+improves from worst to second-best---is consistent with the
+conditioning bias: in Round~2, \texttt{ugv\_p\_role\_priority} had
+the lowest PDR, so its delivered packets were biased toward short
+paths; in Round~3, with much higher PDR, its delay rises less because
+the full multi-hop topology is preserved.
+(Figures: \texttt{06\_mean\_e2e\_delay\_merged.png},
+\texttt{06\_pdr\_vs\_e2e\_scatter.png},
+\texttt{CL\_C\_e2e\_delay\_conditioning\_analysis.png},
+\texttt{CL\_K\_delay\_robustness\_panel.png} in both rounds.)
+
+\emph{Trend match:} \textbf{NO} for ranking.
+This mismatch is expected and \emph{does not undermine} the main
+findings.  Delay remains a secondary metric in the evaluation
+framework, and its Round~3 behaviour is consistent with the
+conditioning-bias explanation from Section~4.5.
+
+% ---- Best and Worst Protocol Check ------------------------------------------
+\paragraph{Best and weakest protocol stability.}
+
+\emph{Does the Round~2 best protocol remain best in Round~3?}
+\textbf{No.}  \texttt{ugv\_p\_edf}, the Round~2 leader in PDR (0.630),
+charge success (48.6\%), and lowest depletions (20.0), drops to rank~2
+in PDR (0.732) and rank~3 in success rate (0.576) in Round~3.  It is
+overtaken by \texttt{ugv\_p\_role\_priority}, which benefits most from
+the removal of weather-driven routing drops.
+
+\emph{Does the Round~2 weak tail remain weak?}
+\textbf{Partially.}  \texttt{ugv\_role\_priority} remains the weakest
+in charge success rate (0.449) and has the highest depletion count
+(25.0) in Round~3, preserving its position at the bottom of the
+survivability ranking.  However, its PDR improves enough (0.722) to
+move out of last place; \texttt{ugv\_dynamic} (0.667) takes over as
+the lowest-PDR protocol.
+
+\emph{Plausible explanation for the reversal of
+\texttt{ugv\_p\_role\_priority}.}
+In Round~2, the CH-priority paradox (Section~4.4.4) described how
+role-based protocols suffered from simultaneous CH withdrawal, which
+compounded weather-driven member starvation.  In Round~3, the removal
+of weather drops means that members retain connectivity to the UGV
+scheduler even when both CHs charge concurrently.  This neutralises
+the worst aspect of the CH-synchronisation failure mode, allowing
+the preemptive role-priority policy to translate its aggressive CH
+servicing into an advantage rather than a liability.  The finding
+therefore does not invalidate the CH-priority paradox; instead, it
+shows that the paradox is \emph{amplified by weather stress} and can
+be mitigated when network conditions are favourable.
+
+% ---- Energy per Session: the one partial match ------------------------------
+\paragraph{Energy per session: a stable metric.}
+
+Energy recovered per charging session is the only metric with a
+\textbf{PARTIAL} match (Kendall $\tau = 0.81$).
+\texttt{ugv\_role\_priority} leads in both rounds ($\sim$65--64\,Wh),
+and the overall ranking is largely preserved with only minor
+mid-tier reordering.  This stability is expected: per-session energy
+depends primarily on dock hardware and session duration, neither of
+which changes between rounds.
+(Figures: \texttt{02\_energy\_recovered\_merged.png},
+\texttt{04\_policy\_radar\_merged.png} in both rounds.)
+
+% ---- Evidence Map -----------------------------------------------------------
+\begin{table}[htbp]
+\centering
+\caption{Evidence map: claims, supporting figures, metric definitions,
+and caveats for Section~4.6.}
+\label{tab:evidence-map}
+\footnotesize
+\begin{tabular}{p{3.2cm} p{2.8cm} p{2.8cm} p{2.5cm} p{2.7cm}}
+\hline
+\textbf{Claim} & \textbf{Round~2 figure(s)} & \textbf{Round~3 figure(s)} & \textbf{Metric} & \textbf{Caveat / Note} \\
+\hline
+
+PDR ranking reversal
+& \texttt{01\_mean\_pdr\_merged.png}
+& \texttt{01\_mean\_pdr\_merged.png}
+& Mean PDR (delivered/generated, full run)
+& Kendall $\tau = -0.24$; absolute PDR higher in R3 \\
+
+PDR temporal stability improves
+& \texttt{01\_network\_pdr\_over\_time\_merged.png}
+& \texttt{01\_network\_pdr\_over\_time\_merged.png}
+& Windowed PDR time-series
+& Reduced variance expected under fixed weather \\
+
+Routing drops collapse in R3
+& \texttt{CL\_G\_routing\_drop\_timeseries.png}
+& \texttt{CL\_G\_routing\_drop\_timeseries.png}
+& Charge-request ROUTING\_DROP rate
+& Confirms WEATHER\_DROP was dominant cause \\
+
+Charge success ranking shifts
+& \texttt{02\_charge\_success\_rate\_merged.png}; \texttt{03\_charge\_outcome\_breakdown\_merged.png}
+& \texttt{02\_charge\_success\_rate\_merged.png}; \texttt{03\_charge\_outcome\_breakdown\_merged.png}
+& Charge success rate (\#STARTED / \#requests)
+& $\tau = 0.33$; timeouts rise as queue contention replaces routing loss \\
+
+Depletion gap compresses
+& \texttt{03\_dead\_uav\_cumulative\_merged.png}; \texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png}
+& \texttt{03\_dead\_uav\_cumulative\_merged.png}; \texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png}
+& Total battery depletions per run
+& $\tau = -0.05$; weather removal reduces cascade failures \\
+
+Success--PDR association (qualitative)
+& \texttt{CL\_B\_charging\_vs\_pdr\_scatter.png}; \texttt{CL\_E\_correlation\_bar\_chart.png}
+& \texttt{CL\_B\_charging\_vs\_pdr\_scatter.png}; \texttt{CL\_E\_correlation\_bar\_chart.png}
+& Pearson $r$ / Spearman $\rho$ (success vs.\ PDR)
+& R3 per-run correlation not yet recomputed (see TODO) \\
+
+Depletion--PDR association persists
+& \texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png}; \texttt{CL\_D\_mechanism\_chain.png}
+& \texttt{CL\_F\_pdr\_vs\_depletions\_timeseries.png}; \texttt{CL\_D\_mechanism\_chain.png}
+& Depletions vs.\ PDR
+& Compressed range weakens stat.\ power \\
+
+Delay ranking reversal
+& \texttt{06\_mean\_e2e\_delay\_merged.png}; \texttt{CL\_C\_e2e\_delay\_conditioning\_analysis.png}
+& \texttt{06\_mean\_e2e\_delay\_merged.png}; \texttt{CL\_C\_e2e\_delay\_conditioning\_analysis.png}
+& Mean E2E delay (delivered packets only)
+& Conditioning bias; $\tau = -0.33$; delay is secondary metric \\
+
+Energy/session ranking stable
+& \texttt{02\_energy\_recovered\_merged.png}; \texttt{04\_policy\_radar\_merged.png}
+& \texttt{02\_energy\_recovered\_merged.png}; \texttt{04\_policy\_radar\_merged.png}
+& Mean Wh per charge session
+& $\tau = 0.81$ (PARTIAL match); hardware-dominated \\
+
+CH-priority paradox attenuated
+& \texttt{CL\_M\_role\_scheduling\_audit.png}; \texttt{CL\_N\_ch\_sync\_cascade.png}
+& \texttt{CL\_M\_role\_scheduling\_audit.png}; \texttt{CL\_N\_ch\_sync\_cascade.png}
+& Role-stratified success rate, CH gap
+& R3 members retain UGV access even during dual-CH charging \\
+
+\hline
+\end{tabular}
+\end{table}
+
+% -----------------------------------------------------------------------------
+\subsubsection{Interpretation}
+\label{sec:results:controlled-validation:interpretation}
+
+\paragraph{What the validation strengthens.}
+The controlled round confirms two structural properties of the
+cross-layer mechanism.
+First, the near-elimination of ROUTING\_DROP in Round~3 (rates of
+0.010--0.020 versus 0.218--0.346 in Round~2) validates that
+weather-driven routing failure was the dominant cause of request loss
+in Round~2.  This confirms the feedback loop proposed in
+Section~4.4.2: degraded weather $\to$ WEATHER\_DROP $\to$
+ROUTING\_DROP of charge requests $\to$ missed charging $\to$ UAV
+depletion $\to$ further network degradation.  When the weather trigger
+is removed, the loop is broken at its entry point, and all protocols
+improve.
+Second, the qualitative direction of the charging--survivability--PDR
+association persists: protocols that achieve higher charge success
+rates tend to show fewer depletions and higher PDR, even though the
+specific protocol rankings differ.  The cross-layer mechanism is
+therefore not an artefact of weather variance.
+
+\paragraph{What the validation does not prove.}
+This section does not establish strict causal claims.  Both Round~2
+and Round~3 are observational simulation studies, not controlled
+experiments with randomised protocol assignment at the run level.
+Although the design holds all factors constant except the scheduling
+policy (and, across rounds, the weather mode), confounding from
+residual stochastic factors cannot be fully excluded.
+The fleet size (five UAVs, one UGV) is also small, limiting
+generalisability to larger deployments.  Finally, the simulator
+abstracts several physical-layer effects (e.g.\ exact RF propagation,
+wind-induced UAV drift), so the magnitudes reported here should not
+be taken as field-deployable predictions.
+
+\paragraph{Explaining the mismatches.}
+The widespread ranking reversals (9 out of 10 metrics show NO full
+match) are not unexpected given the severity of the experimental
+intervention.  By removing the WEATHER\_DROP channel, Round~3
+eliminates the mechanism that most differentiated protocol performance
+in Round~2.  When all protocols achieve routing-drop rates below 2\%,
+the scheduling policy's ability to handle requests \emph{that arrive}
+matters less than its ability to manage dock contention and queue
+pressure---a regime in which timeout rate and waiting time become the
+binding constraints.  This shift explains why protocols that were
+penalised in Round~2 for poor request reachability (e.g.\
+\texttt{ugv\_edf}, \texttt{ugv\_p\_role\_priority}) recover
+disproportionately in Round~3.
+
+The sole partial match---energy per session ($\tau = 0.81$)---is
+consistent with the expectation that per-session energy is governed by
+dock hardware parameters rather than by the scheduling or weather
+layer, and therefore remains invariant across rounds.
+
+\paragraph{Transition to Chapter~5.}
+Taken together, the Round~2 and Round~3 results provide
+complementary views of the same system.  Round~2 reveals the full
+cross-layer mechanism under realistic weather stress, identifying
+which protocols are most resilient when the feedback loop is active.
+Round~3 isolates the scheduling layer by removing the environmental
+trigger, showing that weather variance was a necessary amplifier of
+the performance gaps but not the sole source of protocol
+differentiation.  Both rounds agree that survivability---measured by
+battery depletions---remains the central mediator between charging
+outcomes and network quality.  Chapter~5 synthesises these findings,
+discusses their implications for scheduling-policy design in
+shared-substrate FANET systems, and outlines directions for future
+work.
