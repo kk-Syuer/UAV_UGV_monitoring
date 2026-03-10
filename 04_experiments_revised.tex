@@ -224,7 +224,7 @@ reliable multi-hop communication.
   \centering
   \includegraphics[width=.8\textwidth]{experiment_plots/01_mean_pdr_merged.pdf}
   \caption{Mean packet delivery ratio by protocol in Test Round 2 under stochastic
-(Markov-mode) weather from \texttt{qos\_metrics.csv}}
+(Markov-mode) weather from \texttt{qos\_metrics.csv}. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:mean-pdr-merged}
 \end{figure}
 
@@ -264,14 +264,14 @@ decision latency.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.8\textwidth]{experiment_plots/02_charge_success_rate_merged.pdf}
-  \caption{Charging success rate by protocol.}
+  \caption{Charging success rate by protocol. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:charge-success-rate}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.8\textwidth]{experiment_plots/03_charge_outcome_breakdown_merged.pdf}
-  \caption{Breakdown of charging outcomes by protocol.}
+  \caption{Breakdown of charging outcomes by protocol. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:charge-outcome-breakdown}
 \end{figure}
 
@@ -307,7 +307,7 @@ reliability.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.8\textwidth]{experiment_plots/03_dead_uav_cumulative_merged.pdf}
-  \caption{Cumulative UAV battery depletion events by protocol.}
+  \caption{Cumulative UAV battery depletion events by protocol. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:dead-uav-cumulative}
 \end{figure}
 
@@ -336,7 +336,7 @@ pressure, dock utilisation, and depletion events.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.8\textwidth]{experiment_plots/04_policy_radar_merged.pdf}
-  \caption{Aggregate trade-off across major protocol KPIs.}
+  \caption{Aggregate trade-off across major protocol KPIs. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:policy-radar}
 \end{figure}
 
@@ -365,14 +365,14 @@ used in the event-aligned plots is defined in Appendix~\ref{app:stats:dip-thresh
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/01_network_pdr_over_time_merged.pdf}
-  \caption{Merged PDR over time across protocols.}
+  \caption{Merged PDR over time across protocols. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:network-pdr-time-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/07_pdr_events_merged_variance_all.pdf}
-  \caption{PDR evolution with replicate variance and event overlays. It reports the temporal mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} (windowed 10-second sliding values, sentinel values excluded). }
+  \caption{PDR evolution with replicate variance and event overlays. It reports the temporal mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} (windowed 10-second sliding values, sentinel values excluded). Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:pdr-events-variance-all}
 \end{figure}
 
@@ -404,21 +404,21 @@ Fig.~\ref{fig:dock-util-merged}, and Fig.~\ref{fig:cumulative-energy-merged}.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/03_charge_queue_length_merged.pdf}
-  \caption{Queue length over time across protocols.}
+  \caption{Queue length over time across protocols. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:queue-length-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/03_dock_utilization_merged.pdf}
-  \caption{Dock utilisation over time across protocols.}
+  \caption{Dock utilisation over time across protocols. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:dock-util-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/03_cumulative_energy_charged_merged.pdf}
-  \caption{Cumulative charged energy over time across protocols.}
+  \caption{Cumulative charged energy over time across protocols. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cumulative-energy-merged}
 \end{figure}
 
@@ -448,21 +448,21 @@ acting together.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/05_pdr_vs_weather_regime_merged.pdf}
-  \caption{Mean PDR by protocol and weather regime.}
+  \caption{Mean PDR by protocol and weather regime. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:pdr-weather-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/05_delay_vs_weather_regime_merged.pdf}
-  \caption{Mean delay by protocol and weather regime.}
+  \caption{Mean delay by protocol and weather regime. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:delay-weather-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.88\textwidth]{experiment_plots/05_weather_timeseries.pdf}
-  \caption{Weather regime evolution over time.}
+  \caption{Weather regime evolution over time. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:weather-timeseries}
 \end{figure}
 
@@ -499,14 +499,14 @@ that helps explain why charging policy differences reappear at network level.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/CL_B_charging_vs_pdr_scatter.pdf}
-  \caption{Association between charging success and mean PDR.}
+  \caption{Association between charging success and mean PDR. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-charge-success-vs-pdr}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/06_corr_heatmap_pdr.pdf}
-  \caption{Correlation structure of PDR and selected charging indicators.}
+  \caption{Correlation structure of PDR and selected charging indicators. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:corr-heatmap-pdr}
 \end{figure}
 
@@ -532,14 +532,14 @@ to form between charging failure, UAV loss, and network deterioration.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.85\textwidth]{experiment_plots/CL_D_mechanism_chain.pdf}
-  \caption{Cross-layer mechanism linking charging outcomes, depletion, and PDR.}
+  \caption{Cross-layer mechanism linking charging outcomes, depletion, and PDR. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-mechanism-chain}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.85\textwidth]{experiment_plots/CL_F_pdr_vs_depletions_timeseries.pdf}
-      \caption{Temporal co-evolution of mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} and depletion burden.}
+      \caption{Temporal co-evolution of mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} and depletion burden. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-pdr-vs-depletions}
 \end{figure}
 
@@ -571,14 +571,14 @@ Fig.~\ref{fig:cl-routing-drop-time}.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/CL_E_correlation_bar_chart.pdf}
-  \caption{Correlation strength of selected charging indicators with PDR.}
+  \caption{Correlation strength of selected charging indicators with PDR. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-correlation-bar}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/CL_G_routing_drop_timeseries.pdf}
-  \caption{Routing-drop burden over time.}
+  \caption{Routing-drop burden over time. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-routing-drop-time}
 \end{figure}
 
@@ -651,7 +651,7 @@ Appendix~\ref{app:ch-sync-analysis}).
     \includegraphics[width=0.92\textwidth]{experiment_plots/CL_M_role_scheduling_audit.pdf}
     \caption{Role-stratified scheduling audit. In the role-based protocols, CHs do
     not receive genuinely effective priority, while members experience lower charging
-    success and higher routing-drop burden.}
+    success and higher routing-drop burden. Data source: Test Round 2 (Markov-regime weather).}
     \label{fig:cl-role-audit}
 \end{figure}
 
@@ -660,7 +660,7 @@ Appendix~\ref{app:ch-sync-analysis}).
     \includegraphics[width=0.92\textwidth]{experiment_plots/CL_N_ch_sync_cascade.pdf}
     \caption{CH synchronization and member-starvation cascade. Left: CH charge
     requests occur in close temporal proximity across protocols. Right: runs with
-    longer CH wait tend to exhibit weaker member charge success.}
+    longer CH wait tend to exhibit weaker member charge success. Data source: Test Round 2 (Markov-regime weather).}
     \label{fig:cl-ch-sync-cascade}
 \end{figure}
 
@@ -669,7 +669,7 @@ Appendix~\ref{app:ch-sync-analysis}).
     \includegraphics[width=0.92\textwidth]{experiment_plots/CL_A_protocol_kpi_overview.pdf}
     \caption{Cross-protocol KPI overview. The role-based protocols remain weak in
     overall PDR, depletion burden, and charge success despite explicitly prioritising
-    cluster heads.}
+    cluster heads. Data source: Test Round 2 (Markov-regime weather).}
     \label{fig:cl-protocol-kpi-overview}
 \end{figure}
 \section{Delay Interpretation and Measurement Bias}
@@ -679,14 +679,14 @@ End-to-end delay must be interpreted alongside PDR, not independently. Delay is 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/06_mean_e2e_delay_merged.pdf}
-  \caption{Mean end-to-end delay by protocol.}
+  \caption{Mean end-to-end delay by protocol. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:mean-delay-merged}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/06_pdr_vs_e2e_scatter.pdf}
-  \caption{Joint view of PDR and mean end-to-end delay.}
+  \caption{Joint view of PDR and mean end-to-end delay. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:pdr-vs-delay}
 \end{figure}
 The exact definition of the bias-corrected delay metric used in the robustness check
@@ -699,14 +699,14 @@ Fig.~\ref{fig:cl-delay-robustness} shows the corresponding robustness check.
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/CL_C_e2e_delay_conditioning_analysis.pdf}
-  \caption{Conditioning-bias analysis for end-to-end delay.}
+  \caption{Conditioning-bias analysis for end-to-end delay. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-delay-conditioning}
 \end{figure}
 
 \begin{figure}[h]
   \centering
   \includegraphics[width=.82\textwidth]{experiment_plots/CL_K_delay_robustness_panel.pdf}
-  \caption{Robustness checks for delay interpretation.}
+  \caption{Robustness checks for delay interpretation. Data source: Test Round 2 (Markov-regime weather).}
   \label{fig:cl-delay-robustness}
 \end{figure}
 \section{Controlled Validation Under Fixed Weather}
