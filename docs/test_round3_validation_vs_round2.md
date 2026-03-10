@@ -62,6 +62,8 @@ All figures saved under `analysis/test_round3/figures/`.
 
 **Higher is better** — **Trend match: NO (Kendall tau = -0.24)**
 
+> *Key figures: [F-02](#f-02--01_mean_pdr_merged) · [F-01](#f-01--01_network_pdr_over_time_merged) · [CL-A](#cl-a--cl_a_protocol_kpi_overview) · [CL-F](#cl-f--cl_f_pdr_vs_depletions_timeseries)*
+
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
 | ugv_p_edf | 0.6300 | 0.7323 | 0.1023 | 1 | 2 |
@@ -74,9 +76,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for PDR (Packet Delivery Ratio) differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### E2E Delay (mean, ms)
 
 **Lower is better** — **Trend match: NO (Kendall tau = -0.33)**
+
+> *Key figures: [F-20](#f-20--06_e2e_delay_merged) · [F-21](#f-21--06_mean_e2e_delay_merged) · [F-22](#f-22--06_pdr_vs_e2e_scatter) · [CL-C](#cl-c--cl_c_e2e_delay_conditioning_analysis) · [CL-K](#cl-k--cl_k_delay_robustness_panel)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -90,9 +96,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for E2E Delay (mean, ms) differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Charge Success Rate
 
 **Higher is better** — **Trend match: NO (Kendall tau = 0.33)**
+
+> *Key figures: [F-06](#f-06--02_charge_success_rate_merged) · [F-10](#f-10--03_charge_outcome_breakdown_merged) · [CL-A](#cl-a--cl_a_protocol_kpi_overview)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -106,9 +116,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Charge Success Rate differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Charge Timeout Rate
 
 **Lower is better** — **Trend match: NO (Kendall tau = -0.14)**
+
+> *Key figures: [F-10](#f-10--03_charge_outcome_breakdown_merged) · [F-25](#f-25--07_dock_util_with_timeouts_merged) · [CL-G](#cl-g--cl_g_routing_drop_timeseries) · [CL-M](#cl-m--cl_m_role_scheduling_audit)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -122,9 +136,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Charge Timeout Rate differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Routing Drop Rate
 
 **Lower is better** — **Trend match: NO (Kendall tau = -0.52)**
+
+> *Key figures: [CL-G](#cl-g--cl_g_routing_drop_timeseries) · [F-26](#f-26--07_pdr_events_merged_all_protocols) · [CL-E](#cl-e--cl_e_correlation_bar_chart) · [CL-H](#cl-h--cl_h_lagged_correlation_summary)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -138,9 +156,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Routing Drop Rate differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Decision Latency (mean, ms)
 
 **Lower is better** — **Trend match: NO (Kendall tau = 0.52)**
+
+> *Key figures: [F-07](#f-07--02_decision_latency_merged) · [CL-N](#cl-n--cl_n_ch_sync_cascade) · [CL-K](#cl-k--cl_k_delay_robustness_panel)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -154,9 +176,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Decision Latency (mean, ms) differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Effective Wait (mean, ms)
 
 **Lower is better** — **Trend match: NO (Kendall tau = -0.05)**
+
+> *Key figures: [F-08](#f-08--02_effective_wait_merged) · [F-11](#f-11--03_charge_queue_length_merged) · [CL-I](#cl-i--cl_i_epoch_aligned_pdr)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -170,9 +196,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Effective Wait (mean, ms) differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Battery Depletions (total)
 
 **Lower is better** — **Trend match: NO (Kendall tau = -0.05)**
+
+> *Key figures: [F-12](#f-12--03_dead_uav_cumulative_merged) · [F-15](#f-15--04_policy_radar_merged) · [CL-F](#cl-f--cl_f_pdr_vs_depletions_timeseries)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -186,9 +216,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Mismatch explanation:** The ranking for Battery Depletions (total) differs significantly between rounds. In Round 3, the fixed sunny weather removes WEATHER_DROP-driven routing failures, likely changing the relative impact of scheduling policies on this metric.
 
+---
+
 ### Energy per Session (Wh)
 
 **Higher is better** — **Trend match: PARTIAL (Kendall tau = 0.81)**
+
+> *Key figures: [F-09](#f-09--02_energy_recovered_merged) · [F-13](#f-13--03_cumulative_energy_charged_merged) · [F-15](#f-15--04_policy_radar_merged) · [CL-A](#cl-a--cl_a_protocol_kpi_overview)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -202,9 +236,13 @@ All figures saved under `analysis/test_round3/figures/`.
 
 > **Partial match note:** The top performers are consistent, but mid-tier protocols show some reordering. This is expected given the reduced weather variance in Round 3 (no storm-driven PDR dips).
 
+---
+
 ### Dock Utilisation (mean)
 
 **Higher is better** — **Trend match: NO (Kendall tau = 0.05)**
+
+> *Key figures: [F-14](#f-14--03_dock_utilization_merged) · [F-25](#f-25--07_dock_util_with_timeouts_merged) · [CL-B](#cl-b--cl_b_charging_vs_pdr_scatter) · [CL-D](#cl-d--cl_d_mechanism_chain)*
 
 | Protocol | Round 2 (mean) | Round 3 (mean) | Delta | R2 rank | R3 rank |
 |---|---|---|---|---|---|
@@ -234,6 +272,98 @@ Out of 10 metrics compared:
 3. **Role-based underperformance:** If role-based protocols still underperform in Round 3 (where weather is constant), the member-starvation mechanism described in §4.5 is confirmed as a scheduling issue, not a weather-coupling issue.
 
 4. **Conditioning bias:** With more stable PDR in sunny weather, the E2E delay conditioning bias (§4.3) should be reduced. If the PDR-weighted delay ranking remains similar to the raw ranking in Round 3, this confirms that the bias was driven by weather-induced PDR collapses.
+
+## E. Figure Cross-Reference Index
+
+All figure IDs in this section are cross-comparable between rounds. Paths are relative to `analysis/`.
+
+### Group 01 — Validation
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-01"></a>**F-01** | Network PDR over time (merged) | `test_round2/figures/01_validation/01_network_pdr_over_time_merged.png` | `test_round3/figures/01_validation/01_network_pdr_over_time_merged.png` |
+| <a name="f-02"></a>**F-02** | Mean PDR bar (merged) | `test_round2/figures/01_validation/01_mean_pdr_merged.png` | `test_round3/figures/01_validation/01_mean_pdr_merged.png` |
+| <a name="f-03"></a>**F-03** | Battery ECDF (merged) | `test_round2/figures/01_validation/01_battery_ecdf_merged.png` | `test_round3/figures/01_validation/01_battery_ecdf_merged.png` |
+| <a name="f-04"></a>**F-04** | Packet generation (merged) | `test_round2/figures/01_validation/01_packet_generated_merged.png` | `test_round3/figures/01_validation/01_packet_generated_merged.png` |
+| <a name="f-05"></a>**F-05** | PDR CDF (merged) | `test_round2/figures/01_validation/01_pdr_cdf_merged.png` | `test_round3/figures/01_validation/01_pdr_cdf_merged.png` |
+
+### Group 02 — Per-Protocol Stats
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-06"></a>**F-06** | Charge success rate (merged) | `test_round2/figures/02_per_protocol_stats/02_charge_success_rate_merged.png` | `test_round3/figures/02_per_protocol_stats/02_charge_success_rate_merged.png` |
+| <a name="f-07"></a>**F-07** | Decision latency (merged) | `test_round2/figures/02_per_protocol_stats/02_decision_latency_merged.png` | `test_round3/figures/02_per_protocol_stats/02_decision_latency_merged.png` |
+| <a name="f-08"></a>**F-08** | Effective wait time (merged) | `test_round2/figures/02_per_protocol_stats/02_effective_wait_merged.png` | `test_round3/figures/02_per_protocol_stats/02_effective_wait_merged.png` |
+| <a name="f-09"></a>**F-09** | Energy recovered per session (merged) | `test_round2/figures/02_per_protocol_stats/02_energy_recovered_merged.png` | `test_round3/figures/02_per_protocol_stats/02_energy_recovered_merged.png` |
+
+### Group 03 — Cross-Protocol Charging
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-10"></a>**F-10** | Charge outcome breakdown — proportional (merged) | `test_round2/figures/03_cross_protocol_charging/03_charge_outcome_breakdown_merged.png` | `test_round3/figures/03_cross_protocol_charging/03_charge_outcome_breakdown_merged.png` |
+| <a name="f-10b"></a>**F-10b** | Charge outcome breakdown — absolute counts (R3 appendix) | *(original counts in R2 figure)* | `test_round3/figures/03_cross_protocol_charging/03_charge_outcome_breakdown_merged_absolute.png` |
+| <a name="f-11"></a>**F-11** | Charge queue length (merged) | `test_round2/figures/03_cross_protocol_charging/03_charge_queue_length_merged.png` | `test_round3/figures/03_cross_protocol_charging/03_charge_queue_length_merged.png` |
+| <a name="f-12"></a>**F-12** | Cumulative UAV deaths (merged) | `test_round2/figures/03_cross_protocol_charging/03_dead_uav_cumulative_merged.png` | `test_round3/figures/03_cross_protocol_charging/03_dead_uav_cumulative_merged.png` |
+| <a name="f-13"></a>**F-13** | Cumulative energy charged (merged) | `test_round2/figures/03_cross_protocol_charging/03_cumulative_energy_charged_merged.png` | `test_round3/figures/03_cross_protocol_charging/03_cumulative_energy_charged_merged.png` |
+| <a name="f-14"></a>**F-14** | Dock utilisation (merged) | `test_round2/figures/03_cross_protocol_charging/03_dock_utilization_merged.png` | `test_round3/figures/03_cross_protocol_charging/03_dock_utilization_merged.png` |
+
+### Group 04 — Policy Radar
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-15"></a>**F-15** | Policy radar — merged (all 5 axes incl. 1/Depletions) | `test_round2/figures/04_policy_radar/04_policy_radar_merged.png` | `test_round3/figures/04_policy_radar/04_policy_radar_merged.png` |
+| <a name="f-15b"></a>**F-15b** | Policy radar — per run | `test_round2/figures/04_policy_radar/04_policy_radar.png` | `test_round3/figures/04_policy_radar/04_policy_radar.png` |
+
+### Group 05 — Weather
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-16"></a>**F-16** | PDR vs weather regime (merged) | `test_round2/figures/05_weather/05_pdr_vs_weather_regime_merged.png` | `test_round3/figures/05_weather/05_pdr_vs_weather_regime_merged.png` |
+| <a name="f-17"></a>**F-17** | Delay vs weather regime (merged) | `test_round2/figures/05_weather/05_delay_vs_weather_regime_merged.png` | `test_round3/figures/05_weather/05_delay_vs_weather_regime_merged.png` |
+| <a name="f-18"></a>**F-18** | Weather timeseries (all runs) | `test_round2/figures/05_weather/05_weather_timeseries.png` | `test_round3/figures/05_weather/05_weather_timeseries.png` |
+
+### Group 06 — Network QoS & Delay
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-19"></a>**F-19** | QoS heatmap (merged) | `test_round2/figures/06_network_qos_delay/06_qos_heatmap_merged.png` | `test_round3/figures/06_network_qos_delay/06_qos_heatmap_merged.png` |
+| <a name="f-20"></a>**F-20** | E2E delay distribution (merged) | `test_round2/figures/06_network_qos_delay/06_e2e_delay_merged.png` | `test_round3/figures/06_network_qos_delay/06_e2e_delay_merged.png` |
+| <a name="f-21"></a>**F-21** | Mean E2E delay bar (merged) | `test_round2/figures/06_network_qos_delay/06_mean_e2e_delay_merged.png` | `test_round3/figures/06_network_qos_delay/06_mean_e2e_delay_merged.png` |
+| <a name="f-22"></a>**F-22** | PDR vs E2E delay scatter | `test_round2/figures/06_network_qos_delay/06_pdr_vs_e2e_scatter.png` | `test_round3/figures/06_network_qos_delay/06_pdr_vs_e2e_scatter.png` |
+| <a name="f-23"></a>**F-23** | Correlation heatmap — PDR features | `test_round2/figures/06_network_qos_delay/06_corr_heatmap_pdr.png` | `test_round3/figures/06_network_qos_delay/06_corr_heatmap_pdr.png` |
+| <a name="f-24"></a>**F-24** | Correlation heatmap — E2E features | `test_round2/figures/06_network_qos_delay/06_corr_heatmap_e2e.png` | `test_round3/figures/06_network_qos_delay/06_corr_heatmap_e2e.png` |
+
+### Group 07 — Causal Analysis
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="f-25"></a>**F-25** | Dock util + timeouts overlay (merged) | `test_round2/figures/07_causal_analysis/07_dock_util_with_timeouts_merged.png` | `test_round3/figures/07_causal_analysis/07_dock_util_with_timeouts_merged.png` |
+| <a name="f-26"></a>**F-26** | PDR + events timeseries — all protocols (merged) | `test_round2/figures/07_causal_analysis/07_pdr_events_merged_all_protocols.png` | `test_round3/figures/07_causal_analysis/07_pdr_events_merged_all_protocols.png` |
+| <a name="f-27"></a>**F-27** | Death slope vs PDR dip scatter | `test_round2/figures/07_causal_analysis/07_death_slope_vs_pdr_dip.png` | `test_round3/figures/07_causal_analysis/07_death_slope_vs_pdr_dip.png` |
+| <a name="f-28"></a>**F-28** | Lagged cross-correlation — ugv_dynamic | `test_round2/figures/07_causal_analysis/07_lagged_corr_ugv_dynamic.png` | `test_round3/figures/07_causal_analysis/07_lagged_corr_ugv_dynamic.png` |
+| <a name="f-29"></a>**F-29** | Lagged cross-correlation — ugv_p_edf | `test_round2/figures/07_causal_analysis/07_lagged_corr_ugv_p_edf.png` | `test_round3/figures/07_causal_analysis/07_lagged_corr_ugv_p_edf.png` |
+| <a name="f-30"></a>**F-30** | Lagged cross-correlation — ugv_role_priority | `test_round2/figures/07_causal_analysis/07_lagged_corr_ugv_role_priority.png` | `test_round3/figures/07_causal_analysis/07_lagged_corr_ugv_role_priority.png` |
+| <a name="f-31"></a>**F-31** | Lagged cross-correlation — ugv_p_role_priority | `test_round2/figures/07_causal_analysis/07_lagged_corr_ugv_p_role_priority.png` | `test_round3/figures/07_causal_analysis/07_lagged_corr_ugv_p_role_priority.png` |
+
+### Group 09 — Cross-Layer Analysis (CL_*)
+
+| Fig. ID | Description | Round 2 | Round 3 |
+|---|---|---|---|
+| <a name="cl-a"></a>**CL-A** | Protocol KPI overview (radar + bar panel) | `test_round2/figures/cross_layer/CL_A_protocol_kpi_overview.png` | `test_round3/figures/cross_layer/CL_A_protocol_kpi_overview.png` |
+| <a name="cl-b"></a>**CL-B** | Charging KPI vs PDR scatter matrix | `test_round2/figures/cross_layer/CL_B_charging_vs_pdr_scatter.png` | `test_round3/figures/cross_layer/CL_B_charging_vs_pdr_scatter.png` |
+| <a name="cl-c"></a>**CL-C** | E2E delay conditioning analysis | `test_round2/figures/cross_layer/CL_C_e2e_delay_conditioning_analysis.png` | `test_round3/figures/cross_layer/CL_C_e2e_delay_conditioning_analysis.png` |
+| <a name="cl-d"></a>**CL-D** | Mechanism chain (Scheduling → Charging → Survivability → Network) | `test_round2/figures/cross_layer/CL_D_mechanism_chain.png` | `test_round3/figures/cross_layer/CL_D_mechanism_chain.png` |
+| <a name="cl-e"></a>**CL-E** | Cross-layer Pearson r correlation bar chart | `test_round2/figures/cross_layer/CL_E_correlation_bar_chart.png` | `test_round3/figures/cross_layer/CL_E_correlation_bar_chart.png` |
+| <a name="cl-f"></a>**CL-F** | PDR vs depletions timeseries | `test_round2/figures/cross_layer/CL_F_pdr_vs_depletions_timeseries.png` | `test_round3/figures/cross_layer/CL_F_pdr_vs_depletions_timeseries.png` |
+| <a name="cl-g"></a>**CL-G** | Routing drop rate timeseries | `test_round2/figures/cross_layer/CL_G_routing_drop_timeseries.png` | `test_round3/figures/cross_layer/CL_G_routing_drop_timeseries.png` |
+| <a name="cl-h"></a>**CL-H** | Lagged correlation summary (charging → network) | `test_round2/figures/cross_layer/CL_H_lagged_correlation_summary.png` | `test_round3/figures/cross_layer/CL_H_lagged_correlation_summary.png` |
+| <a name="cl-i"></a>**CL-I** | Epoch-aligned PDR (charge-event triggered) | `test_round2/figures/cross_layer/CL_I_epoch_aligned_pdr.png` | `test_round3/figures/cross_layer/CL_I_epoch_aligned_pdr.png` |
+| <a name="cl-j"></a>**CL-J** | UGV-EDF cascade event (R2 specific) | `test_round2/figures/cross_layer/CL_J_ugv_edf3_cascade.png` | *(not generated — no equivalent cascade event in R3)* |
+| <a name="cl-k"></a>**CL-K** | Delay robustness panel | `test_round2/figures/cross_layer/CL_K_delay_robustness_panel.png` | `test_round3/figures/cross_layer/CL_K_delay_robustness_panel.png` |
+| <a name="cl-l"></a>**CL-L** | Event-aligned composite (deaths → PDR) | `test_round2/figures/cross_layer/CL_L_event_aligned_composite.png` | `test_round3/figures/cross_layer/CL_L_event_aligned_composite.png` |
+| <a name="cl-m"></a>**CL-M** | Role scheduling audit (CH vs member priority) | `test_round2/figures/cross_layer/CL_M_role_scheduling_audit.png` | `test_round3/figures/cross_layer/CL_M_role_scheduling_audit.png` |
+| <a name="cl-n"></a>**CL-N** | CH sync cascade analysis | `test_round2/figures/cross_layer/CL_N_ch_sync_cascade.png` | `test_round3/figures/cross_layer/CL_N_ch_sync_cascade.png` |
+| <a name="cl-o"></a>**CL-O** | Mechanism narrative (§4.2 flow + temporal evidence) | *(not in R2)* | `test_round3/figures/cross_layer/CL_O_mechanism_narrative.png` |
 
 ---
 
