@@ -61,6 +61,16 @@ PROTOCOLS = [
     "ugv_dynamic", "ugv_edf", "ugv_fcfs", "ugv_p_dynamic_score",
     "ugv_p_edf", "ugv_p_role_priority", "ugv_role_priority",
 ]
+
+# Template for per-run folder names inside data_root.
+# Default "{proto}_{r}" works for test_round2  (e.g. ugv_dynamic_1).
+# Override to "{proto}_sunny_{r}" for test_round3.
+FOLDER_FMT = "{proto}_{r}"
+
+def _run_dir(data_root: Path, proto: str, r: int) -> Path:
+    """Return the folder path for a given (protocol, replicate) combo."""
+    return data_root / FOLDER_FMT.format(proto=proto, r=r)
+
 PROTO_LABELS = {
     "ugv_dynamic": "Dynamic",
     "ugv_edf": "EDF",
@@ -105,7 +115,7 @@ def collect_per_run_kpis(data_root: Path) -> pd.DataFrame:
     rows = []
     for proto in PROTOCOLS:
         for r in REPLICATES:
-            folder = data_root / f"{proto}_{r}"
+            folder = _run_dir(data_root, proto, r)
             row: dict = {"protocol": proto, "run": r}
 
             # PDR -------------------------------------------------------
@@ -483,7 +493,7 @@ def plot_cl_f_pdr_vs_depletions_timeseries(
 
         pdr_grids, death_bins_list = [], []
         for r in REPLICATES:
-            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
+            net = _load_csv(_run_dir(data_root, proto, r), "network_timeseries.csv")
             if not net.empty and "window_pdr" in net.columns:
                 net = net[net["window_pdr"] >= 0]
                 pdr_binned = []
@@ -492,7 +502,7 @@ def plot_cl_f_pdr_vs_depletions_timeseries(
                     pdr_binned.append(seg["window_pdr"].mean() if len(seg) > 0 else np.nan)
                 pdr_grids.append(pdr_binned)
 
-            de = _load_csv(data_root / f"{proto}_{r}", "death_events.csv")
+            de = _load_csv(_run_dir(data_root, proto, r), "death_events.csv")
             if not de.empty and "t_rel_s" in de.columns:
                 death_bins_list.append(np.histogram(de["t_rel_s"].values, bins=bins)[0])
 
@@ -541,7 +551,7 @@ def plot_cl_g_routing_drop_timeseries(
     for proto in PROTOCOLS:
         rd_rates_all = []
         for r in REPLICATES:
-            ce = _load_csv(data_root / f"{proto}_{r}", "charge_events.csv")
+            ce = _load_csv(_run_dir(data_root, proto, r), "charge_events.csv")
             if ce.empty or "outcome" not in ce.columns:
                 continue
             bin_rates = []
@@ -649,8 +659,8 @@ def plot_cl_h_lagged_corr_summary(data_root: Path, out_dir: Path) -> None:
     for proto in PROTOCOLS:
         pdr_chunks, death_chunks = [], []
         for r in REPLICATES:
-            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
-            de = _load_csv(data_root / f"{proto}_{r}", "death_events.csv")
+            net = _load_csv(_run_dir(data_root, proto, r), "network_timeseries.csv")
+            de = _load_csv(_run_dir(data_root, proto, r), "death_events.csv")
             if net.empty or de.empty:
                 continue
             valid = net[net["window_pdr"] >= 0]
@@ -765,8 +775,8 @@ def plot_cl_i_epoch_aligned_pdr(data_root: Path, out_dir: Path) -> None:
         proto_epochs: list = []
 
         for r in REPLICATES:
-            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
-            de = _load_csv(data_root / f"{proto}_{r}", "death_events.csv")
+            net = _load_csv(_run_dir(data_root, proto, r), "network_timeseries.csv")
+            de = _load_csv(_run_dir(data_root, proto, r), "death_events.csv")
             if net.empty or de.empty:
                 continue
             valid = net[net["window_pdr"] >= 0].sort_values("t_rel_s")
@@ -961,7 +971,7 @@ def plot_cl_k_delay_robustness_panel(data_root: Path, out_dir: Path) -> None:
     records = []
     for proto in PROTOCOLS:
         for r in REPLICATES:
-            net = _load_csv(data_root / f"{proto}_{r}", "network_timeseries.csv")
+            net = _load_csv(_run_dir(data_root, proto, r), "network_timeseries.csv")
             if net.empty:
                 continue
             needed = {"window_delay_mean_ms", "window_pdr", "window_delivered"}
@@ -1247,7 +1257,7 @@ def _collect_role_kpis(data_root: Path) -> pd.DataFrame:
     rows = []
     for proto in PROTOCOLS:
         for r in REPLICATES:
-            ce = _load_csv(data_root / f"{proto}_{r}", "charge_events.csv")
+            ce = _load_csv(_run_dir(data_root, proto, r), "charge_events.csv")
             if ce.empty or "outcome" not in ce.columns or "role" not in ce.columns:
                 continue
             for role_val, role_label in [(1, "CH"), (0, "member")]:
@@ -1371,7 +1381,7 @@ def _compute_ch_request_gaps(data_root: Path) -> pd.DataFrame:
     rows = []
     for proto in PROTOCOLS:
         for r in REPLICATES:
-            ce = _load_csv(data_root / f"{proto}_{r}", "charge_events.csv")
+            ce = _load_csv(_run_dir(data_root, proto, r), "charge_events.csv")
             if ce.empty or "role" not in ce.columns or "uav_id" not in ce.columns:
                 continue
             ch = ce[ce["role"] == 1][["uav_id", "t_rel_s"]].dropna()
@@ -1613,7 +1623,7 @@ def plot_cl_o_mechanism_narrative(df: pd.DataFrame, data_root: Path, out_dir: Pa
     for proto in PROTOCOLS:
         d_rep, t_rep, de_rep, p_rep = [], [], [], []
         for r in REPLICATES:
-            folder = data_root / f"{proto}_{r}"
+            folder = _run_dir(data_root, proto, r)
 
             # Dock utilisation (mean per bin from timeseries)
             cq = _load_csv(folder, "charge_queue_timeseries.csv")
