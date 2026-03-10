@@ -1,0 +1,714 @@
+\chapter{Experiment \& Results}
+\label{chap:3}
+% =========================================================
+% Chapter 4 -- Sections 4.1 and 4.2
+% Ready-to-paste LaTeX
+%
+% Suggested appendix placeholders to add later:
+%   app:metrics:definitions      -> formal metric definitions (PDR, delay, success rate, etc.)
+%   app:stats:aggregation        -> mean, standard deviation, coefficient of variation
+%   app:stats:correlation        -> Pearson r, Spearman rho, p-values
+%   app:stats:windowing          -> time-window aggregation and filtering rules
+%   app:stats:normalisation      -> rate normalisation by run duration / per-run aggregation
+% =========================================================
+
+\section{Experimental Design and Evaluation Methodology}
+\label{sec:results:methodology}
+To keep the main text focused on interpretation, formal metric definitions and
+post-processing rules are reported in Appendix~\ref{app:metrics:definitions},
+Appendix~\ref{app:stats:aggregation}, and Appendix~\ref{app:stats:windowing}.
+\subsection{Experimental Objective and Research-Question Mapping}
+\label{sec:results:rq-mapping}
+
+The purpose of the experiments is to determine how different UAV charging
+scheduling policies affect system performance when charging coordination is carried
+over the same FANET used for telemetry. Since all other scenario conditions are
+held constant, the comparison isolates the effect of the scheduling policy on both
+resource allocation and network behaviour.
+
+The evaluation is organised around the three research questions introduced in
+Chapter~1:
+
+\begin{itemize}
+    \item \textbf{RQ1 -- FANET robustness and routing quality.}
+    The first objective is to assess whether different charging outcomes are associated
+    with different levels of telemetry reliability, measured primarily through packet
+    delivery ratio (PDR), end-to-end delay, and their temporal evolution.
+
+    \item \textbf{RQ2 -- Charging policy, mission continuity, and survivability.}
+    The second objective is to compare the ability of each policy to preserve UAV
+    availability through successful charging, reduced waiting burden, and lower
+    battery depletion rates.
+
+    \item \textbf{RQ3 -- Shared communication substrate and cross-layer coupling.}
+    The third objective is to examine whether degradation in the FANET also
+    weakens the charging-control loop itself, thereby creating a feedback mechanism
+    in which poor connectivity leads to failed charging, further depletion, and
+    additional network degradation.
+\end{itemize}
+
+\subsection{Protocols Under Comparison}
+\label{sec:results:protocols}
+
+Seven charging policies are evaluated in Test Round~2. They include both
+non-preemptive and preemptive strategies:
+
+\begin{itemize}
+    \item \texttt{ugv\_fcfs}: non-preemptive first-come, first-served;
+    \item \texttt{ugv\_edf}: non-preemptive earliest deadline first;
+    \item \texttt{ugv\_role\_priority}: non-preemptive role-priority scheduling;
+    \item \texttt{ugv\_dynamic}: non-preemptive dynamic-score scheduling;
+    \item \texttt{ugv\_p\_edf}: preemptive earliest deadline first;
+    \item \texttt{ugv\_p\_role\_priority}: preemptive role-priority scheduling;
+    \item \texttt{ugv\_p\_dynamic\_score}: preemptive dynamic-score scheduling.
+\end{itemize}
+
+The non-preemptive policies decide only which waiting UAV should be served next
+when a dock becomes available. By contrast, the preemptive policies are allowed to
+interrupt a lower-priority charging allocation when a more urgent request arrives.
+
+\subsection{Replication Strategy, Dataset Scope, and Artifact Availability}
+\label{sec:results:dataset-scope}
+
+Each of the seven protocols was executed in three independent replicate runs,
+yielding a total of 21 runs for Test Round~2. All runs span the same simulated
+mission duration of 180 minutes and were produced under the same scenario
+configuration apart from the policy switch. This balanced design enables both
+within-policy stability checks and cross-policy comparisons under matched
+experimental conditions.
+
+In the overall experimental workflow, \textbf{Test Round~1} was used primarily as a
+preliminary validation stage to assess simulator stability, inspect logging behaviour,
+and identify implementation issues before conducting the final comparative study.
+The results presented in this chapter are instead based on \textbf{Test Round~2},
+which is the main evaluation dataset used for protocol comparison.
+
+A further important difference is that the weather node in Test Round~2 was
+configured in \textbf{Markov mode}, so that weather regimes evolve over time through
+macrostate transitions rather than remaining fixed throughout the entire run. This
+choice makes the evaluation more representative of time-varying environmental
+stress and allows the charging and network subsystems to be tested under changing
+conditions.
+
+The analysis therefore adopts the protocol as the primary comparison factor and the
+replicate run as the unit of repeated observation. Aggregate protocol summaries are
+reported from the set of three runs belonging to the same policy, while temporal
+plots preserve run-level trajectories in order to expose instability, outliers, and
+failure cascades that would be hidden by averaging alone.
+The chapter concludes with a controlled follow-up validation under fixed sunny
+weather, designed to test whether the main survivability-related pattern observed in
+Test Round~2 remains visible when weather variance is reduced.
+
+For reproducibility, the experiment outputs and the plotting/analysis scripts used to
+generate the figures discussed in this chapter are maintained in the project GitHub
+repository.\footnote{\url{https://github.com/kk-Syuer/UAV_UGV_monitoring}} In
+particular, the Test Round~2 dataset is organised under
+\texttt{experiment\_data\_collection/test\_round2}, while the corresponding figures are
+stored under \texttt{analysis/test\_round2/figures/}.
+
+% \subsection{Logged Data Sources Used in the Analysis}
+% \label{sec:results:data-sources}
+
+% The results in this chapter are derived from the append-only logs introduced in
+% Section~3.9. In particular, the analysis relies on a subset of the files that directly
+% capture network quality, charging decisions, charging execution, and UAV survival.
+
+% The most important files are the following:
+
+% \begin{itemize}
+%     \item \texttt{qos\_metrics.csv}, which provides cumulative reliability and delay
+%     statistics for telemetry and control flows;
+
+%     \item \texttt{network\_timeseries.csv}, which records time-windowed network
+%     indicators such as window-level PDR and mean delay, enabling temporal analysis
+%     of degradation episodes;
+
+%     \item \texttt{charge\_events.csv}, which records the end-to-end outcome of each
+%     charging request, including success, timeout, routing-drop cases, and decision-side
+%     timing/context fields when available;
+
+%     \item \texttt{charge\_session\_events.csv}, which records dock-level charging
+%     activity such as session start, completion, and charged energy;
+
+%     \item \texttt{charge\_queue\_timeseries.csv}, which captures queue length and
+%     dock occupancy over time;
+
+%     \item \texttt{death\_events.csv}, which records battery depletion events and
+%     therefore provides the basis for survivability analysis;
+
+%     \item \texttt{weather\_timeseries.csv}, which provides the environmental context
+%     used to interpret weather-driven degradation and routing-drop episodes.
+% \end{itemize}
+
+\subsection{Evaluation Metrics}
+\label{sec:results:metrics}
+
+The evaluation uses four families of metrics, each corresponding to one aspect of the
+system behaviour under study.
+
+\paragraph{Network-quality metrics.}
+The primary network indicator is the packet delivery ratio (PDR), used as the main
+measure of telemetry reliability. End-to-end delay is also reported, but interpreted
+with caution because later sections show that raw delay values may be biased by
+delivery conditioning when the network collapses and only a restricted subset of
+packets continues to arrive. Window-level PDR and delay are further used to study
+temporal degradation and recovery.
+
+\paragraph{Charging-performance metrics.}
+Charging effectiveness is evaluated using charging success rate, timeout rate,
+ROUTING\_DROP rate, decision latency, effective wait, per-session recovered energy,
+and dock utilisation. These metrics distinguish between failures due to queue
+pressure and failures due to the inability of the request to reach the scheduler.
+
+\paragraph{Fleet-survivability metrics.}
+Mission continuity is assessed through the number and temporal distribution of
+battery depletion events. The analysis also distinguishes between depletions affecting
+cluster heads and member UAVs, since the loss of a cluster head carries a larger
+topological consequence for the FANET backbone.
+
+\paragraph{Cross-layer metrics.}
+To support the main argument of the chapter, network and charging indicators are
+not analysed in isolation. Instead, the results later examine statistical associations
+between PDR and selected charging-related variables, including charge success rate,
+ROUTING\_DROP rate, dock utilisation, queue length, and depletion burden. The
+purpose is not to claim strict causality from correlation alone, but to test whether the
+observed protocol differences are consistent with the proposed mechanism linking
+charging coordination to network quality. Formal definitions of these metrics are
+provided in Appendix~\ref{app:metrics:definitions}.
+
+\subsection{Dataset Reliability Note}
+\label{sec:results:data-reliability}
+
+Before comparing protocol outcomes, the Test Round~2 dataset was checked for
+completeness and structural consistency. All seven protocols were available with
+three replicate runs each, the required analysis files were present for all runs, and
+all runs reached the target mission duration. Additional preprocessing notes,
+including sentinel-value handling, duplicated windows, and record-filtering rules, are
+reported in Appendix~\ref{app:data-validation}.
+
+\section{Aggregate Protocol-Level Results}
+\label{sec:results:aggregate}
+
+This section compares the seven charging policies at an aggregate level using the
+three replicate runs available for each protocol. The discussion focuses on three
+dimensions: overall network performance, charging effectiveness, and fleet
+survivability. Detailed metric definitions and aggregation rules are reported in
+Appendix~\ref{app:metrics:definitions} and Appendix~\ref{app:stats:aggregation}.
+
+\subsection{Overall Network Performance}
+\label{sec:results:network-kpis}
+
+At the aggregate level, \texttt{ugv\_p\_edf} achieves the best overall network
+performance, with the highest mean packet delivery ratio among all tested policies.
+\texttt{ugv\_fcfs} and \texttt{ugv\_dynamic} follow, while
+\texttt{ugv\_role\_priority} and \texttt{ugv\_p\_role\_priority} form the weakest
+tail of the ranking, as shown in Fig.~\ref{fig:mean-pdr-merged}.
+A second relevant observation is the difference in stability across replicates.
+Although the mean PDR range across protocols is not extremely wide, some
+policies show much higher between-run variance than others. In particular,
+\texttt{ugv\_edf} and \texttt{ugv\_p\_role\_priority} display visibly larger
+dispersion, indicating that their behaviour is less robust under the same nominal
+conditions. This instability becomes more visible in the time-series overlays of
+Fig.~\ref{fig:pdr-events-variance-all} and becomes important later when analysing
+failure cascades and outlier runs.
+Delay is treated as a secondary indicator throughout; its interpretation is revisited in
+Section~\ref{sec:results:delay-bias}.
+
+Overall, the aggregate network comparison already suggests that preemptive,
+urgency-aware scheduling is beneficial at system level. The advantage of
+\texttt{ugv\_p\_edf} is not limited to queue handling alone; rather, it appears
+associated with better preservation of the operational fleet and therefore with more
+reliable multi-hop communication.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.8\textwidth]{experiment_plots/01_mean_pdr_merged.pdf}
+  \caption{Mean packet delivery ratio by protocol in Test Round 2 under stochastic
+(Markov-mode) weather from \texttt{qos\_metrics.csv}}
+  \label{fig:mean-pdr-merged}
+\end{figure}
+
+
+\subsection{Charging Scheduler Performance}
+\label{sec:results:charging-kpis}
+
+The charging results reinforce the network-level ranking. Among the seven
+protocols, \texttt{ugv\_p\_edf} achieves the highest charge success rate, indicating
+that preemptive deadline-based scheduling is the most effective at converting
+requests into successful dock starts under contention. \texttt{ugv\_dynamic} is also
+strong, combining a high success rate with comparatively low decision latency and
+effective wait (Fig.~\ref{fig:charge-success-rate}).
+
+At the opposite end, \texttt{ugv\_role\_priority} and \texttt{ugv\_edf} show the
+lowest success rates. Their weaker performance is reflected not only in the number
+of successful charging outcomes, but also in the lower energy recovered per session
+and the higher prevalence of unresolved requests. This indicates that poor charging
+performance is not merely a matter of slower queue progression, but a more general
+difficulty in sustaining the service loop under adverse conditions.
+
+An important result is that routing-related request loss remains a major failure mode
+across all protocols. In other words, a non-negligible share of charging failures
+occurs before the scheduler can even make a decision, as also shown by the
+outcome breakdown in Fig.~\ref{fig:charge-outcome-breakdown}. This supports the thesis
+claim that the charging subsystem is tightly coupled to network health: when the
+FANET is degraded, some UAVs are unable to reliably reach the UGV with their
+requests, and scheduling quality alone cannot compensate for that loss.
+
+For this reason, the charging metrics should be interpreted jointly. A protocol with a
+moderate decision time but a high success rate is more valuable than one with fast
+decisions on the small subset of requests that actually arrive. Later sections return
+to this distinction and show that request reachability is more consequential than raw
+decision latency.  
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.8\textwidth]{experiment_plots/02_charge_success_rate_merged.pdf}
+  \caption{Charging success rate by protocol.}
+  \label{fig:charge-success-rate}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.8\textwidth]{experiment_plots/03_charge_outcome_breakdown_merged.pdf}
+  \caption{Breakdown of charging outcomes by protocol.}
+  \label{fig:charge-outcome-breakdown}
+\end{figure}
+
+\subsection{Fleet Survivability}
+\label{sec:results:survivability}
+
+Fleet survivability further clarifies the protocol differences. The lowest depletion
+burden is observed under \texttt{ugv\_p\_edf}, followed by \texttt{ugv\_dynamic},
+while \texttt{ugv\_role\_priority} and especially \texttt{ugv\_edf} show markedly
+worse outcomes. This confirms that the most effective charging policies are also the
+ones that best preserve the availability of the aerial fleet over the full mission
+horizon, as shown in Fig.~\ref{fig:dead-uav-cumulative}.
+
+The depletion statistics are particularly important because UAV loss has a direct
+network consequence. When member UAVs deplete, sensing and forwarding capacity
+are reduced; when cluster heads deplete, the impact is even more severe because
+the communication backbone itself becomes unstable. For this reason, depletion
+count is not only a survivability metric but also a mechanism-level indicator that
+helps explain subsequent differences in PDR.
+
+The aggregate results also reveal a difference between structural weakness and
+outlier-driven instability. \texttt{ugv\_role\_priority} performs poorly in a relatively
+consistent way across runs, which suggests an intrinsic limitation of the policy.
+By contrast, \texttt{ugv\_edf} is strongly affected by one extreme run, indicating that
+its average result is partly shaped by catastrophic instability rather than uniformly
+poor behaviour in every replicate.
+
+Taken together, the aggregate evidence points to a coherent pattern:
+protocols that achieve more successful charging outcomes tend to show fewer
+depletions, and protocols with fewer depletions tend to preserve better network
+reliability.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.8\textwidth]{experiment_plots/03_dead_uav_cumulative_merged.pdf}
+  \caption{Cumulative UAV battery depletion events by protocol.}
+  \label{fig:dead-uav-cumulative}
+\end{figure}
+
+\subsection{Aggregate Trade-Off View}
+\label{sec:results:tradeoff-view}
+
+When the metrics are read together, \texttt{ugv\_p\_edf} emerges as the strongest
+overall policy in Test Round~2. It combines the highest mean PDR, the highest
+charging success rate, and the lowest depletion burden, making it the most balanced
+solution among the evaluated protocols. \texttt{ugv\_dynamic} is also competitive,
+especially in terms of scheduler responsiveness, but its overall network and
+survivability performance remains slightly weaker.
+
+At the opposite end, \texttt{ugv\_role\_priority} is the weakest policy overall. Its
+lower charging success, higher timeout burden, and heavier depletion load are
+consistent with its weaker network outcomes. \texttt{ugv\_p\_role\_priority} is also
+unfavourable, although for partly different reasons, since its poor network ranking
+coexists with a comparatively healthier surviving fleet and therefore requires more
+careful interpretation in the delay and cross-layer analysis.
+
+These aggregate results establish the broad ranking of the policies, but they do not
+yet explain \emph{how} degradation develops over time. For that reason, the next
+section moves from protocol-level averages to temporal trajectories of PDR, queue
+pressure, dock utilisation, and depletion events.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.8\textwidth]{experiment_plots/04_policy_radar_merged.pdf}
+  \caption{Aggregate trade-off across major protocol KPIs.}
+  \label{fig:policy-radar}
+\end{figure}
+
+\section{Temporal Dynamics of Charging and Network Quality}
+\label{sec:results:temporal}
+
+\subsection{PDR Evolution Over Time}
+\label{sec:results:pdr-time}
+
+The time-series plots show that the protocols differ not only in average PDR, but
+also in the way reliability evolves over the 180-minute mission. In general,
+\texttt{ugv\_p\_edf} exhibits the most stable trajectory, with smaller and less
+persistent drops in delivery performance. By contrast, \texttt{ugv\_edf} and
+\texttt{ugv\_p\_role\_priority} show much larger between-run variability, including
+episodes of abrupt degradation that are not visible from the mean alone.
+
+This temporal view is important because some protocols achieve similar aggregate
+PDR values while behaving very differently over time. A protocol with modest but
+stable reliability may be preferable to one with a similar mean but repeated collapse
+intervals. For this reason, the time-series plots in Fig.~\ref{fig:network-pdr-time-merged}
+and Fig.~\ref{fig:pdr-events-variance-all} are used throughout the chapter to
+separate structural weakness from outlier-driven behaviour. The dip-threshold rule
+used in the event-aligned plots is defined in Appendix~\ref{app:stats:dip-threshold}.
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/01_network_pdr_over_time_merged.pdf}
+  \caption{Merged PDR over time across protocols.}
+  \label{fig:network-pdr-time-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/07_pdr_events_merged_variance_all.pdf}
+  \caption{PDR evolution with replicate variance and event overlays. It reports the temporal mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} (windowed 10-second sliding values, sentinel values excluded). }
+  \label{fig:pdr-events-variance-all}
+\end{figure}
+
+\subsection{Queue Pressure, Dock Utilisation, and Charging Throughput}
+\label{sec:results:queue-dock}
+
+The charging time-series help clarify whether poor outcomes are mainly caused by
+persistent queue overload or by failures earlier in the control path. Across
+protocols, dock utilisation remains within a relatively narrow range compared with
+the much larger variation observed in timeout rates and routing-drop rates. This
+suggests that unsuccessful charging is not explained solely by full docks or long
+local queues.
+
+A more informative pattern is the co-evolution of queue activity and charging
+throughput. In healthier runs, requests continue to arrive, docks remain active, and
+cumulative charged energy grows steadily. In weaker runs, charging throughput
+flattens over time and dock utilisation may fall rather than rise, indicating that the
+system is no longer sustaining a healthy flow of successful requests. In this sense,
+low utilisation is not necessarily a sign of low demand; it can also be a symptom of
+network degradation and fleet attrition.
+
+This distinction is useful for interpreting timeout behaviour. If timeout burden grows
+without a corresponding sustained increase in dock pressure, the cause is more
+likely to lie in policy decisions or request reachability than in simple charger
+saturation. These patterns are visible in Fig.~\ref{fig:queue-length-merged},
+Fig.~\ref{fig:dock-util-merged}, and Fig.~\ref{fig:cumulative-energy-merged}.
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/03_charge_queue_length_merged.pdf}
+  \caption{Queue length over time across protocols.}
+  \label{fig:queue-length-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/03_dock_utilization_merged.pdf}
+  \caption{Dock utilisation over time across protocols.}
+  \label{fig:dock-util-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/03_cumulative_energy_charged_merged.pdf}
+  \caption{Cumulative charged energy over time across protocols.}
+  \label{fig:cumulative-energy-merged}
+\end{figure}
+
+\subsection{Weather Context and Time-Varying Degradation}
+\label{sec:results:weather-time}
+
+Because Test Round~2 uses the weather node in Markov mode without fixed weather seed, network conditions are
+subject to time-varying environmental stress rather than a fixed regime for the
+entire experiment. The weather-conditioned plots therefore provide important
+context for interpreting temporal performance changes. In particular, lower PDR and
+higher delay are expected during harsher regimes, and these periods can coincide
+with higher charging disruption.
+
+The value of these plots is to show
+that protocols are being evaluated under changing external conditions rather than a
+fully static environment. This makes the comparison more realistic and also helps
+explain why some degradation episodes appear clustered in time instead of being
+uniformly distributed across the mission horizon.
+
+For this reason, temporal drops in PDR or charging throughput should be read
+together with the weather timeline in Fig.~\ref{fig:weather-timeseries} and with the
+weather-conditioned comparisons in Fig.~\ref{fig:pdr-weather-merged} and
+Fig.~\ref{fig:delay-weather-merged}, especially before drawing conclusions about
+whether a failure is policy-driven, environment-driven, or the result of both factors
+acting together.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/05_pdr_vs_weather_regime_merged.pdf}
+  \caption{Mean PDR by protocol and weather regime.}
+  \label{fig:pdr-weather-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/05_delay_vs_weather_regime_merged.pdf}
+  \caption{Mean delay by protocol and weather regime.}
+  \label{fig:delay-weather-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.88\textwidth]{experiment_plots/05_weather_timeseries.pdf}
+  \caption{Weather regime evolution over time.}
+  \label{fig:weather-timeseries}
+\end{figure}
+
+\section{Cross-Layer Analysis: From Scheduling to Network Quality}
+\label{sec:results:cross-layer}
+
+The previous sections showed that the protocol ranking is broadly consistent across
+network, charging, and survivability metrics. This section makes that relationship
+explicit by analysing how charging outcomes are associated with FANET quality. The
+goal is not to claim causality from correlation alone, but to test whether the observed
+protocol differences are consistent with the mechanism proposed in this thesis:
+better charging continuity preserves more UAVs, and a healthier fleet preserves more
+stable multi-hop communication.
+
+\subsection{Statistical Association Between Charging Outcomes and PDR}
+\label{sec:results:cross-layer-corr}
+
+Across the 21 runs, charge success rate is positively associated with mean PDR,
+while charge-request \texttt{ROUTING\_DROP} rate is negatively associated with it.
+In the round-2 analysis, charge success shows both positive Pearson and Spearman
+correlations with PDR, whereas \texttt{ROUTING\_DROP} shows negative
+correlations of similar magnitude. This indicates that protocols which convert more
+requests into successful charging sessions also tend to maintain better telemetry
+delivery, as shown in Fig.~\ref{fig:cl-charge-success-vs-pdr} and
+Fig.~\ref{fig:corr-heatmap-pdr}.
+
+A second important result is that battery depletion burden is strongly negatively
+associated with PDR. This makes depletion a useful mediating variable between the
+charging layer and the communication layer: poor charging outcomes are reflected in
+more frequent UAV loss, and heavier UAV loss is reflected in lower network
+reliability. In this sense, depletion is not only an outcome metric, but also a bridge
+that helps explain why charging policy differences reappear at network level. 
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/CL_B_charging_vs_pdr_scatter.pdf}
+  \caption{Association between charging success and mean PDR.}
+  \label{fig:cl-charge-success-vs-pdr}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/06_corr_heatmap_pdr.pdf}
+  \caption{Correlation structure of PDR and selected charging indicators.}
+  \label{fig:corr-heatmap-pdr}
+\end{figure}
+
+\subsection{Mechanism Interpretation}
+\label{sec:results:cross-layer-mechanism}
+
+The aggregate and temporal results support a coherent mechanism chain. First, the
+scheduling policy affects whether a charging request succeeds, times out, or fails
+before reaching the scheduler. Second, unsuccessful charging reduces the amount of
+energy effectively returned to the fleet. Third, reduced energy recovery increases the
+probability of UAV depletion. Finally, heavier depletion weakens the relay structure
+of the FANET, especially when cluster heads are affected, and this lowers packet
+delivery performance. This chain is summarised in Fig.~\ref{fig:cl-mechanism-chain}
+and its temporal signature is visible in Fig.~\ref{fig:cl-pdr-vs-depletions}.
+
+This interpretation also explains why the strongest protocol in this study is
+\texttt{ugv\_p\_edf}. Its advantage is not limited to queue efficiency at the charger.
+Rather, it appears to preserve fleet continuity more effectively, and that continuity in
+turn supports higher PDR. Conversely, the weakest protocols do not fail only because
+they make poor local scheduling decisions; they also allow a larger degradation loop
+to form between charging failure, UAV loss, and network deterioration.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.85\textwidth]{experiment_plots/CL_D_mechanism_chain.pdf}
+  \caption{Cross-layer mechanism linking charging outcomes, depletion, and PDR.}
+  \label{fig:cl-mechanism-chain}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.85\textwidth]{experiment_plots/CL_F_pdr_vs_depletions_timeseries.pdf}
+      \caption{Temporal co-evolution of mean of \texttt{window\_pdr} samples from \texttt{network\_timeseries.csv} and depletion burden.}
+  \label{fig:cl-pdr-vs-depletions}
+\end{figure}
+
+\subsection{Why Request Reachability Matters More Than Decision Speed}
+\label{sec:results:cross-layer-reachability}
+
+One of the clearest findings of the cross-layer analysis is that decision latency and
+effective waiting time are much weaker predictors of PDR than request reachability.
+The round-2 report finds no strong or significant association between mean PDR and
+raw decision latency, whereas \texttt{ROUTING\_DROP} rate shows a clear negative
+association. In practical terms, this means that the dominant bottleneck is often not
+how quickly the scheduler responds, but whether the request reaches the scheduler
+at all.
+
+This distinction is important for the interpretation of protocol quality. A policy may
+appear computationally responsive once a request is available locally at the UGV, yet
+still perform poorly at system level if many requests are lost in transit during adverse
+network conditions. In the present architecture, charging coordination depends on
+the same FANET that carries telemetry, so network degradation can directly disrupt
+access to the charging service itself. 
+
+The result therefore strengthens one of the main thesis claims: in a shared-substrate
+design, charging performance cannot be evaluated only in terms of queue discipline
+or local scheduling speed. It must also be evaluated in terms of end-to-end control
+reachability under network stress, as shown in Fig.~\ref{fig:cl-correlation-bar} and
+Fig.~\ref{fig:cl-routing-drop-time}.
+
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/CL_E_correlation_bar_chart.pdf}
+  \caption{Correlation strength of selected charging indicators with PDR.}
+  \label{fig:cl-correlation-bar}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/CL_G_routing_drop_timeseries.pdf}
+  \caption{Routing-drop burden over time.}
+  \label{fig:cl-routing-drop-time}
+\end{figure}
+
+\subsection{The CH Priority Paradox: Why Role-Based Protocols Underperform}
+\label{sec:results:ch-priority-paradox}
+
+The role-based protocols, \texttt{ugv\_role\_priority} and
+\texttt{ugv\_p\_role\_priority}, perform worse than expected despite explicitly giving
+cluster heads (CHs) the highest scheduling priority. In the present simulator, this
+underperformance is not mainly caused by dock-level contention. Instead, it arises
+from a more structural effect: the system contains only two CHs, and a CH disables
+packet forwarding while charging. As a result, when both CHs are admitted to
+charging in close temporal proximity, the relay backbone becomes temporarily
+unavailable for the three member UAVs.
+
+\paragraph{Hypothesis.}
+The two CHs have identical battery capacity and broadly similar relay-intensive duty
+cycles, so they tend to approach the charging threshold at nearly the same time.
+This produces repeated paired CH charge requests. Under role-based scheduling,
+both CH requests are promoted ahead of member requests and are likely to be served
+in close succession, or even in parallel given the multi-dock UGV configuration.
+Because a charging CH does not forward packets, simultaneous CH charging removes
+the only CH-level relays available to the members. The members then lose their path
+to the UGV scheduler, causing higher \texttt{ROUTING\_DROP} and lower charging
+success. As member survivability deteriorates, the network weakens further and the
+failure loop amplifies.
+
+\paragraph{Empirical evidence.}
+The left panel of Figure~\ref{fig:cl-ch-sync-cascade} shows that the two CHs often
+generate charge requests within a short temporal gap across protocols, confirming
+that CH demand is naturally synchronized. This is consistent with the fleet design:
+the CHs have the same battery capacity and similar relay workload, so they deplete
+on correlated time scales.
+
+Figure~\ref{fig:cl-role-audit} shows that the role-based protocols are associated with
+worse member-side outcomes than the stronger urgency-based alternatives,
+including lower member charge success and heavier member routing-drop burden.
+This pattern is consistent with the loss of relay availability when CH charging events
+become temporally clustered. The protocol-level KPI overview in
+Figure~\ref{fig:cl-protocol-kpi-overview} supports the same interpretation: despite
+prioritising CHs, the role-based policies still exhibit weaker PDR, poorer overall
+charge success, and heavier depletion burden.
+
+The important point is that the paradox does not require CHs to wait behind each
+other at the dock. Since the UGV offers multiple docking spots, both CHs can be
+served quickly. However, this local scheduling success becomes a system-level
+problem because it removes both relay-capable CHs from the forwarding layer at the
+same time.
+
+\paragraph{Interpretation and design implication.}
+The main failure mode of role-based scheduling is therefore simultaneous CH
+withdrawal from the relay backbone rather than simple queue inefficiency. In a fleet
+with only two CHs, prioritising both of them too aggressively can momentarily
+improve CH access to charging while severely damaging communication access for
+the members.
+
+A more suitable fix would be to retain role awareness but avoid concurrent CH
+charging whenever both CHs are the only active high-level relays. One possible
+design is a relay-preserving constraint: if one CH is already charging, the second CH
+may be delayed briefly or conditionally admitted only when member connectivity can
+still be preserved. This would reduce backbone collapse without abandoning the role
+hierarchy entirely.
+
+Further implementation details for the role-stratified metrics, CH synchronization
+analysis, and relay-loss interpretation should be documented in the appendix
+(Appendix~\ref{app:role-stratified-analysis},
+Appendix~\ref{app:ch-sync-analysis}).
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.92\textwidth]{experiment_plots/CL_M_role_scheduling_audit.pdf}
+    \caption{Role-stratified scheduling audit. In the role-based protocols, CHs do
+    not receive genuinely effective priority, while members experience lower charging
+    success and higher routing-drop burden.}
+    \label{fig:cl-role-audit}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.92\textwidth]{experiment_plots/CL_N_ch_sync_cascade.pdf}
+    \caption{CH synchronization and member-starvation cascade. Left: CH charge
+    requests occur in close temporal proximity across protocols. Right: runs with
+    longer CH wait tend to exhibit weaker member charge success.}
+    \label{fig:cl-ch-sync-cascade}
+\end{figure}
+
+\begin{figure}[h]
+    \centering
+    \includegraphics[width=0.92\textwidth]{experiment_plots/CL_A_protocol_kpi_overview.pdf}
+    \caption{Cross-protocol KPI overview. The role-based protocols remain weak in
+    overall PDR, depletion burden, and charge success despite explicitly prioritising
+    cluster heads.}
+    \label{fig:cl-protocol-kpi-overview}
+\end{figure}
+\section{Delay Interpretation and Measurement Bias}
+\label{sec:results:delay-bias}
+
+End-to-end delay must be interpreted alongside PDR, not independently. Delay is computed only over delivered packets; under heavy UAV attrition, many multi-hop transmissions are lost, leaving a surviving packet set that traverses a simpler, shorter topology. This produces a conditioning bias: protocols with worse survivability can appear to have lower delay precisely because their network has collapsed. The weak relationship between PDR and mean delay in Fig.~\ref{fig:pdr-vs-delay} confirms that delay carries limited protocol-discriminating information in this dataset. For this reason, the comparative evaluation is based on PDR, charging success, and depletion burden, while PDR-weighted delay is discussed only as a robustness check.
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/06_mean_e2e_delay_merged.pdf}
+  \caption{Mean end-to-end delay by protocol.}
+  \label{fig:mean-delay-merged}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/06_pdr_vs_e2e_scatter.pdf}
+  \caption{Joint view of PDR and mean end-to-end delay.}
+  \label{fig:pdr-vs-delay}
+\end{figure}
+The exact definition of the bias-corrected delay metric used in the robustness check
+is provided in Appendix~\ref{app:stats:delay-robustness}; the base delay definition
+remains in Appendix~\ref{app:metrics:definitions}.
+
+The conditioning effect is illustrated by Fig.~\ref{fig:cl-delay-conditioning}, while
+Fig.~\ref{fig:cl-delay-robustness} shows the corresponding robustness check.
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/CL_C_e2e_delay_conditioning_analysis.pdf}
+  \caption{Conditioning-bias analysis for end-to-end delay.}
+  \label{fig:cl-delay-conditioning}
+\end{figure}
+
+\begin{figure}[h]
+  \centering
+  \includegraphics[width=.82\textwidth]{experiment_plots/CL_K_delay_robustness_panel.pdf}
+  \caption{Robustness checks for delay interpretation.}
+  \label{fig:cl-delay-robustness}
+\end{figure}
+\section{Controlled Validation Under Fixed Weather}
+\input{chapters/section_4_6_controlled_validation}
+\label{sec:results:test-round3}
