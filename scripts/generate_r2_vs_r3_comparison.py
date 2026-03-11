@@ -632,6 +632,12 @@ def cmp_03_dead_uav_cumulative_merged(r2_runs, r3_runs):
             ax.plot(t_grid / 60, mean,
                     color=PROTO_COLORS[proto], linewidth=1.8,
                     label=PROTO_LABELS.get(proto, proto))
+            # Annotate final value at end of line
+            final_val = mean[-1]
+            ax.text(t_grid[-1] / 60, final_val,
+                    f" {final_val:.1f}",
+                    ha="left", va="center", fontsize=7,
+                    color=PROTO_COLORS[proto], fontweight="bold")
         ax.set_xlabel("Time (min)")
         ax.set_title(title, fontweight="bold")
         ax.grid(alpha=0.3)
