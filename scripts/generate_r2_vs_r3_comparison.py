@@ -1203,6 +1203,63 @@ def cmp_02_energy_recovered_merged(r2_runs, r3_runs):
 
 
 # ===========================================================================
+# CL_A  Protocol KPI overview — 2 × 3 panel summary dashboard
+# ===========================================================================
+def cmp_CL_A_protocol_kpi_overview(r2_runs, r3_runs):
+    """Six-panel at-a-glance KPI comparison across all protocols (R2 vs R3)."""
+    kpis = [
+        ("pdr",                 "PDR",                        ".3f", False),
+        ("charge_success_rate", "Charge Success Rate",        ".3f", False),
+        ("e2e_delay_mean",      "Mean E2E Delay (ms)",        ".1f", True),
+        ("total_deaths",        "Total Deaths (per replicate)",".1f", True),
+        ("energy_per_session",  "Energy / Session (Wh)",      ".2f", False),
+        ("dock_util_mean",      "Mean Dock Utilisation",      ".3f", False),
+    ]
+
+    df2 = _kpi_df(r2_runs)
+    df3 = _kpi_df(r3_runs)
+    protos = [p for p in PROTOCOLS
+              if p in df2["protocol"].values or p in df3["protocol"].values]
+
+    fig, axes = plt.subplots(2, 3, figsize=(20, 10))
+    axes = axes.flatten()
+
+    for ax, (col, label, fmt, lower_better) in zip(axes, kpis):
+        r2_means, r2_errs, r3_means, r3_errs = [], [], [], []
+        for proto in protos:
+            def _agg(df):
+                vals = df.loc[df["protocol"] == proto, col].dropna()
+                if len(vals) == 0:
+                    return np.nan, np.nan
+                return float(vals.mean()), float(vals.std(ddof=0))
+
+            m2, s2 = _agg(df2)
+            m3, s3 = _agg(df3)
+            r2_means.append(m2); r2_errs.append(s2 if not np.isnan(s2) else 0)
+            r3_means.append(m3); r3_errs.append(s3 if not np.isnan(s3) else 0)
+
+        r2_means = np.array(r2_means, dtype=float)
+        r2_errs  = np.array(r2_errs,  dtype=float)
+        r3_means = np.array(r3_means, dtype=float)
+        r3_errs  = np.array(r3_errs,  dtype=float)
+
+        direction = "↓ lower is better" if lower_better else "↑ higher is better"
+        _grouped_bar(ax, protos, r2_means, r2_errs, r3_means, r3_errs,
+                     label, f"{label}\n({direction})", fmt=fmt)
+        ax.grid(axis="y", alpha=0.3)
+
+    # Shared legend on first axes
+    _proto_legend(axes[0], protos)
+
+    fig.suptitle(
+        "Protocol KPI Overview — Round 2 (solid) vs Round 3 (hatched)\n"
+        "Error bars = std dev across replicates",
+        fontsize=13, fontweight="bold")
+    fig.tight_layout(rect=[0, 0, 1, 0.95])
+    _save(fig, "cmp_CL_A_protocol_kpi_overview")
+
+
+# ===========================================================================
 # main
 # ===========================================================================
 def main():
@@ -1213,6 +1270,7 @@ def main():
     print(f"  R2: {len(r2_runs)} runs,  R3: {len(r3_runs)} runs")
 
     tasks = [
+        ("cmp_CL_A_protocol_kpi_overview",             cmp_CL_A_protocol_kpi_overview),
         ("cmp_01_mean_pdr_merged",                    cmp_01_mean_pdr_merged),
         ("cmp_01_network_pdr_over_time_merged",        cmp_01_network_pdr_over_time_merged),
         ("cmp_02_charge_success_rate_merged",          cmp_02_charge_success_rate_merged),
