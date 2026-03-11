@@ -293,7 +293,8 @@ def _save(fig, name: str):
 # ---------------------------------------------------------------------------
 # Grouped-bar helper (R2 solid | R3 hatched)
 # ---------------------------------------------------------------------------
-def _grouped_bar(ax, protos, r2_means, r2_errs, r3_means, r3_errs, ylabel, title):
+def _grouped_bar(ax, protos, r2_means, r2_errs, r3_means, r3_errs, ylabel, title,
+                 fmt=".3f"):
     x, w = np.arange(len(protos)), 0.35
     colors = [PROTO_COLORS[p] for p in protos]
     ax.bar(x - w / 2, r2_means, w, color=colors, edgecolor="white", linewidth=0.5,
@@ -303,6 +304,19 @@ def _grouped_bar(ax, protos, r2_means, r2_errs, r3_means, r3_errs, ylabel, title
            hatch="///", alpha=0.75,
            yerr=r3_errs, capsize=4,
            error_kw={"elinewidth": 1.2, "ecolor": "black"})
+    # Value labels above each bar (offset by error bar height + 1% of data range)
+    all_tops = [v + e for v, e in zip(r2_means + r3_means, r2_errs + r3_errs)
+                if not np.isnan(v)]
+    pad = (max(all_tops) - min(r2_means + r3_means, default=0)) * 0.02 if all_tops else 0
+    for xi, (m2, e2, m3, e3) in enumerate(zip(r2_means, r2_errs, r3_means, r3_errs)):
+        if not np.isnan(m2):
+            ax.text(xi - w / 2, m2 + (e2 or 0) + pad,
+                    format(m2, fmt), ha="center", va="bottom", fontsize=7,
+                    fontweight="bold", color="black")
+        if not np.isnan(m3):
+            ax.text(xi + w / 2, m3 + (e3 or 0) + pad,
+                    format(m3, fmt), ha="center", va="bottom", fontsize=7,
+                    fontweight="bold", color="dimgray")
     ax.set_xticks(x)
     ax.set_xticklabels([PROTO_LABELS.get(p, p) for p in protos], rotation=25, ha="right")
     ax.set_ylabel(ylabel)
@@ -377,7 +391,8 @@ def cmp_01_mean_pdr_merged(r2_runs, r3_runs):
     fig, ax = plt.subplots(figsize=(max(8, len(protos) * 2), 5))
     _grouped_bar(ax, protos, r2_m, r2_e, r3_m, r3_e,
                  "Mean overall PDR (mean ± std across replicates)",
-                 "Mean PDR Comparison — Round 2 vs Round 3")
+                 "Mean PDR Comparison — Round 2 vs Round 3",
+                 fmt=".3f")
     ax.set_ylim(0, 1.0)
     _proto_legend(ax, protos)
     fig.tight_layout()
@@ -427,7 +442,8 @@ def cmp_02_charge_success_rate_merged(r2_runs, r3_runs):
     fig, ax = plt.subplots(figsize=(max(8, len(protos) * 2), 5))
     _grouped_bar(ax, protos, r2_m, r2_e, r3_m, r3_e,
                  "Charge success rate (mean ± std)",
-                 "Charge Success Rate — Round 2 vs Round 3")
+                 "Charge Success Rate — Round 2 vs Round 3",
+                 fmt=".1%")
     ax.set_ylim(0, 1.0)
     _proto_legend(ax, protos)
     fig.tight_layout()
@@ -880,7 +896,8 @@ def cmp_06_mean_e2e_delay_merged(r2_runs, r3_runs):
     fig, ax = plt.subplots(figsize=(max(8, len(protos) * 2), 5))
     _grouped_bar(ax, protos, r2_m, r2_e, r3_m, r3_e,
                  "Mean E2E delay (ms) (mean ± std across replicates)",
-                 "Mean E2E Delay — Round 2 vs Round 3")
+                 "Mean E2E Delay — Round 2 vs Round 3",
+                 fmt=".1f")
     _proto_legend(ax, protos)
     fig.tight_layout()
     _save(fig, "cmp_06_mean_e2e_delay_merged")
